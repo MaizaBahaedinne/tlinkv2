@@ -46,18 +46,20 @@ class ModerationReportTest extends TestCase
         $moderator = User::factory()->create();
         $reporter = User::factory()->create();
 
-        $permission = Permission::query()->create([
-            'name' => 'Moderate Post',
+        $permission = Permission::query()->firstOrCreate([
             'slug' => 'post.moderate',
+        ], [
+            'name' => 'Moderate Post',
         ]);
 
-        $role = Role::query()->create([
-            'name' => 'Club Officer',
+        $role = Role::query()->firstOrCreate([
             'slug' => 'club-officer',
+        ], [
+            'name' => 'Club Officer',
             'scope_type' => 'club',
         ]);
 
-        $role->permissions()->attach($permission->id);
+        $role->permissions()->syncWithoutDetaching([$permission->id]);
 
         RoleAssignment::query()->create([
             'user_id' => $moderator->id,

@@ -18,18 +18,20 @@ class MembershipApprovalTest extends TestCase
 
     public function test_membership_submission_creates_approval_request(): void
     {
-        $entity = Entity::query()->create([
-            'name' => 'University',
+        $entity = Entity::query()->firstOrCreate([
             'slug' => 'university',
+        ], [
+            'name' => 'University',
             'category' => 'education',
         ]);
 
         $reviewer = User::factory()->create();
         $requester = User::factory()->create();
 
-        $role = Role::query()->create([
-            'name' => 'Entity Administrator',
+        $role = Role::query()->firstOrCreate([
             'slug' => 'entity-administrator',
+        ], [
+            'name' => 'Entity Administrator',
             'scope_type' => 'entity',
         ]);
 
@@ -67,26 +69,29 @@ class MembershipApprovalTest extends TestCase
 
     public function test_requester_cannot_self_approve_membership(): void
     {
-        $entity = Entity::query()->create([
-            'name' => 'High School',
+        $entity = Entity::query()->firstOrCreate([
             'slug' => 'high-school',
+        ], [
+            'name' => 'High School',
             'category' => 'education',
         ]);
 
         $user = User::factory()->create();
 
-        $permission = Permission::query()->create([
-            'name' => 'Approve Requests',
+        $permission = Permission::query()->firstOrCreate([
             'slug' => 'approval.review',
+        ], [
+            'name' => 'Approve Requests',
         ]);
 
-        $role = Role::query()->create([
-            'name' => 'National Bureau Administrator',
+        $role = Role::query()->firstOrCreate([
             'slug' => 'national-bureau-administrator',
+        ], [
+            'name' => 'National Bureau Administrator',
             'scope_type' => 'global',
         ]);
 
-        $role->permissions()->attach($permission->id);
+        $role->permissions()->syncWithoutDetaching([$permission->id]);
 
         RoleAssignment::query()->create([
             'user_id' => $user->id,

@@ -44,18 +44,20 @@ class EventRegistrationTest extends TestCase
         $attendeeA = User::factory()->create();
         $attendeeB = User::factory()->create();
 
-        $permission = Permission::query()->create([
-            'name' => 'Manage Events',
+        $permission = Permission::query()->firstOrCreate([
             'slug' => 'event.manage',
+        ], [
+            'name' => 'Manage Events',
         ]);
 
-        $role = Role::query()->create([
-            'name' => 'National Bureau Administrator',
+        $role = Role::query()->firstOrCreate([
             'slug' => 'national-bureau-administrator',
+        ], [
+            'name' => 'National Bureau Administrator',
             'scope_type' => 'global',
         ]);
 
-        $role->permissions()->attach($permission->id);
+        $role->permissions()->syncWithoutDetaching([$permission->id]);
 
         RoleAssignment::query()->create([
             'user_id' => $admin->id,

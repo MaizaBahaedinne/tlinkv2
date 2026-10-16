@@ -26,18 +26,20 @@ class AdminAccessTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $permission = Permission::query()->create([
-            'name' => 'Manage Entities',
+        $permission = Permission::query()->firstOrCreate([
             'slug' => 'entity.manage',
+        ], [
+            'name' => 'Manage Entities',
         ]);
 
-        $role = Role::query()->create([
-            'name' => 'Entity Administrator',
+        $role = Role::query()->firstOrCreate([
             'slug' => 'entity-administrator',
+        ], [
+            'name' => 'Entity Administrator',
             'scope_type' => 'entity',
         ]);
 
-        $role->permissions()->attach($permission->id);
+        $role->permissions()->syncWithoutDetaching([$permission->id]);
 
         RoleAssignment::query()->create([
             'user_id' => $user->id,
