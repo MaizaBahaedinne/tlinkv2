@@ -13,6 +13,14 @@ command -v "$PHP_BIN" >/dev/null 2>&1 || { echo "PHP introuvable"; exit 1; }
 command -v "$COMPOSER_BIN" >/dev/null 2>&1 || { echo "Composer introuvable"; exit 1; }
 command -v git >/dev/null 2>&1 || { echo "Git introuvable"; exit 1; }
 
+if [ -d "$APP_DIR" ]; then
+  owner_user="$(stat -c '%U' "$APP_DIR" 2>/dev/null || echo '')"
+  if [ "${EUID}" -eq 0 ] && [ -n "$owner_user" ] && [ "$owner_user" != "root" ]; then
+    echo "Attention: script lance en root sur un dossier possede par $owner_user."
+    echo "Recommande: sudo -u $owner_user -H bash scripts/deploy_cyberpanel.sh"
+  fi
+fi
+
 if [ ! -d "$APP_DIR/.git" ]; then
   echo "[2/9] Clonage du depot dans $APP_DIR"
   mkdir -p "$APP_DIR"
@@ -20,6 +28,8 @@ if [ ! -d "$APP_DIR/.git" ]; then
 fi
 
 cd "$APP_DIR"
+
+git config --global --add safe.directory "$APP_DIR" >/dev/null 2>&1 || true
 
 echo "[3/9] Mise a jour du code"
 git fetch origin
