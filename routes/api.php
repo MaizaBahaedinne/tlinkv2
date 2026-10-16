@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ApprovalController;
+use App\Http\Controllers\Api\V1\EventController;
 use App\Http\Controllers\Api\V1\FeedController;
+use App\Http\Controllers\Api\V1\MembershipController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,12 +13,23 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/register', [AuthController::class, 'register']);
 
     Route::get('/posts', [FeedController::class, 'index']);
+    Route::get('/events', [EventController::class, 'index']);
     Route::get('/entities', [OrganizationController::class, 'entities']);
     Route::get('/governorates', [OrganizationController::class, 'governorates']);
 
     Route::middleware('auth')->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
+
         Route::post('/posts', [FeedController::class, 'store']);
+
+        Route::get('/memberships', [MembershipController::class, 'index']);
+        Route::post('/memberships', [MembershipController::class, 'store']);
+
+        Route::get('/approvals', [ApprovalController::class, 'index']);
+        Route::post('/approvals/{approvalRequest}/decision', [ApprovalController::class, 'decide']);
+
+        Route::post('/events', [EventController::class, 'store']);
+        Route::post('/events/{event}/register', [EventController::class, 'register']);
     });
 });

@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\Entity;
 use App\Models\Post;
 use App\Models\Profile;
+use App\Models\Role;
+use App\Models\RoleAssignment;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -41,5 +43,20 @@ class DemoContentSeeder extends Seeder
                 'published_at' => now(),
             ]
         );
+
+        $role = Role::query()->where('slug', 'national-bureau-administrator')->first();
+
+        if ($role) {
+            RoleAssignment::query()->updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'role_id' => $role->id,
+                    'status' => 'active',
+                ],
+                [
+                    'starts_at' => now()->toDateString(),
+                ]
+            );
+        }
     }
 }
