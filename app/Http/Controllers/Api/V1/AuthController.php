@@ -1,0 +1,90 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Models\Profile;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
+
+class AuthController extends Controller
+{
+    public function register(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $user = User::query()->create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+        ]);
+
+        Profile::query()->create([
+            'user_id' => $user->id,
+            'headline' => 'Nouveau membre Fondation Tunivisions',
+        ]);
+
+        Auth::login($user);
+
+        return response()->json([
+            'message' => 'Compte cree.',
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+        ], 201);
+    }
+
+    public function login(Request $request): JsonResponse
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            return response()->json([
+                'message' => 'Identifiants invalides.',
+            ], 422);
+        }
+
+        $request->session()->regenerate();
+
+        return response()->json([
+            'message' => 'Connexion reussie.',
+            'data' => [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+            ],
+        ]);
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data' => $request->user(),
+        ]);
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json([
+            'message' => 'Deconnexion effectuee.',
+        ]);
+    }
+}

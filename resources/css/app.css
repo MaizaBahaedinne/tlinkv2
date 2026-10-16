@@ -1,0 +1,36 @@
+@import url('https://fonts.bunny.net/css?family=space-grotesk:400,500,600,700|manrope:400,500,600,700,800');
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+    --color-tlink-blue: #0f2e5f;
+    --color-tlink-blue-700: #0b2348;
+    --color-tlink-cyan: #0b7fab;
+    --color-tlink-sand: #f5f7fb;
+
+    --shadow-soft: 0 18px 35px rgba(15, 46, 95, 0.08);
+}
+
+body {
+    font-family: var(--font-sans);
+    background:
+        radial-gradient(circle at 0% 0%, rgba(11, 127, 171, 0.09), transparent 42%),
+        radial-gradient(circle at 100% 100%, rgba(15, 46, 95, 0.07), transparent 40%),
+        var(--color-tlink-sand);
+}
+
+.font-display {
+    font-family: var(--font-display);
+}
+
+.card {
+    border: 1px solid #e4e8f0;
+    border-radius: 1rem;
+    background: #ffffff;
+    box-shadow: var(--shadow-soft);
+}
