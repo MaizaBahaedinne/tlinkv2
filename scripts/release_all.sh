@@ -108,7 +108,12 @@ chmod -R ug+rwx storage bootstrap/cache
 
 if [ "$WITH_TESTS" = true ]; then
   echo "[11/11] Tests"
-  "$PHP_BIN" artisan test
+  if "$PHP_BIN" artisan list --raw | grep -q '^test$'; then
+    "$PHP_BIN" artisan test
+  else
+    echo "Commande artisan test indisponible (mode --no-dev)."
+    echo "Tests ignores sur ce serveur. Utiliser un environnement staging/dev pour les tests."
+  fi
 else
   echo "[11/11] Tests sautes (utiliser --with-tests pour activer)"
 fi
