@@ -31,6 +31,26 @@ cd "$APP_DIR"
 
 git config --global --add safe.directory "$APP_DIR" >/dev/null 2>&1 || true
 
+# Some hosts mutate tracked placeholder files in storage/bootstrap and block git pull.
+for f in \
+  bootstrap/cache/.gitignore \
+  storage/app/.gitignore \
+  storage/app/private/.gitignore \
+  storage/app/public/.gitignore \
+  storage/framework/.gitignore \
+  storage/framework/cache/.gitignore \
+  storage/framework/cache/data/.gitignore \
+  storage/framework/cache/locks/.gitignore \
+  storage/framework/sessions/.gitignore \
+  storage/framework/testing/.gitignore \
+  storage/framework/views/.gitignore \
+  storage/logs/.gitignore
+do
+  if [ -f "$f" ]; then
+    git restore -- "$f" >/dev/null 2>&1 || true
+  fi
+done
+
 echo "[3/9] Mise a jour du code"
 git fetch origin
 git checkout "$BRANCH"
