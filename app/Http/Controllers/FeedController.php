@@ -19,8 +19,22 @@ class FeedController extends Controller
             ->latest('id')
             ->paginate(12);
 
+        $feedPayload = $posts->getCollection()->map(function (Post $post): array {
+            return [
+                'id' => $post->id,
+                'content' => $post->content,
+                'type' => $post->type,
+                'visibility' => $post->visibility,
+                'published_at' => optional($post->published_at)?->toIso8601String(),
+                'author' => $post->author
+                    ? ['id' => $post->author->id, 'name' => $post->author->name]
+                    : null,
+            ];
+        })->values();
+
         return view('app', [
             'posts' => $posts,
+            'feedPayload' => $feedPayload,
             'user' => $request->user(),
             'entities' => Entity::query()->orderBy('name')->get(['id', 'name', 'slug']),
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
