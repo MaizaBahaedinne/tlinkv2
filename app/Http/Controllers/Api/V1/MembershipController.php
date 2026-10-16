@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalRequest;
 use App\Models\Membership;
 use App\Support\ApprovalResolver;
+use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -53,6 +54,15 @@ class MembershipController extends Controller
             'status' => 'pending',
             'submitted_at' => now(),
         ]);
+
+        AuditLogger::record(
+            actorId: $request->user()->id,
+            action: 'membership.request.created',
+            targetType: Membership::class,
+            targetId: $membership->id,
+            metadata: ['approval_request_id' => $approval->id, 'entity_id' => $membership->entity_id],
+            ip: $request->ip(),
+        );
 
         return response()->json([
             'message' => 'Demande d\'adhesion soumise.',

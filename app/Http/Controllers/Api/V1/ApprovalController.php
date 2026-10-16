@@ -7,6 +7,7 @@ use App\Models\ApprovalDecision;
 use App\Models\ApprovalRequest;
 use App\Models\Membership;
 use App\Support\AccessScope;
+use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -71,6 +72,15 @@ class ApprovalController extends Controller
                 $membership->rejection_reason = $data['decision'] === 'rejected' ? ($data['explanation'] ?? null) : null;
                 $membership->save();
             }
+
+            AuditLogger::record(
+                actorId: $request->user()->id,
+                action: 'approval.decision.recorded',
+                targetType: ApprovalRequest::class,
+                targetId: $approvalRequest->id,
+                metadata: ['decision' => $data['decision']],
+                ip: $request->ip(),
+            );
         });
 
         return response()->json([

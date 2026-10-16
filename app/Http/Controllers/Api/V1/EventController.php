@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Support\AccessScope;
+use App\Support\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +52,15 @@ class EventController extends Controller
             'status' => 'published',
         ]);
 
+        AuditLogger::record(
+            actorId: $request->user()->id,
+            action: 'event.created',
+            targetType: FoundationEvent::class,
+            targetId: $event->id,
+            metadata: ['entity_id' => $event->entity_id, 'capacity' => $event->capacity],
+            ip: $request->ip(),
+        );
+
         return response()->json([
             'message' => 'Evenement cree.',
             'data' => $event,
@@ -87,6 +97,15 @@ class EventController extends Controller
                 'registered_at' => now(),
             ]);
         });
+
+        AuditLogger::record(
+            actorId: $request->user()->id,
+            action: 'event.registration.created',
+            targetType: EventRegistration::class,
+            targetId: $registration->id,
+            metadata: ['event_id' => $event->id, 'status' => $registration->status],
+            ip: $request->ip(),
+        );
 
         return response()->json([
             'message' => 'Inscription enregistree.',

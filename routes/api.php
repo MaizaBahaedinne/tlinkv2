@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ApprovalController;
+use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\EventController;
 use App\Http\Controllers\Api\V1\FeedController;
 use App\Http\Controllers\Api\V1\MembershipController;
+use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +24,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
 
         Route::post('/posts', [FeedController::class, 'store']);
+        Route::post('/moderation/reports', [ModerationController::class, 'report']);
 
         Route::get('/memberships', [MembershipController::class, 'index']);
         Route::post('/memberships', [MembershipController::class, 'store']);
@@ -31,5 +34,14 @@ Route::prefix('v1')->group(function (): void {
 
         Route::post('/events', [EventController::class, 'store']);
         Route::post('/events/{event}/register', [EventController::class, 'register']);
+
+        Route::prefix('/admin')->group(function (): void {
+            Route::get('/overview', [AdminController::class, 'overview']);
+            Route::get('/users', [AdminController::class, 'users']);
+            Route::get('/audit-logs', [AdminController::class, 'auditLogs']);
+
+            Route::get('/moderation-reports', [ModerationController::class, 'index']);
+            Route::post('/moderation-reports/{moderationReport}/review', [ModerationController::class, 'review']);
+        });
     });
 });
