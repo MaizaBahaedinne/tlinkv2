@@ -7,14 +7,22 @@
         "lint": "eslint resources/js --ext .ts,.vue",
         "format": "prettier --check \"resources/**/*.{js,ts,vue,css}\"",
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "cap:init": "npx cap init T.Link com.tunivisions.tlink --web-dir public/build",
+        "cap:sync": "npx cap sync",
+        "cap:android": "npx cap add android",
+        "cap:ios": "npx cap add ios",
+        "cap:open:android": "npx cap open android",
+        "cap:open:ios": "npx cap open ios"
     },
     "dependencies": {
+        "@capacitor/core": "^7.4.3",
         "pinia": "^3.0.3",
         "vue": "^3.5.22",
         "vue-router": "^4.5.1"
     },
     "devDependencies": {
+        "@capacitor/cli": "^7.4.3",
         "@typescript-eslint/eslint-plugin": "^8.46.1",
         "@typescript-eslint/parser": "^8.46.1",
         "@vitejs/plugin-vue": "^6.0.1",
