@@ -8,8 +8,21 @@
         $memberRate = (int) round(($stats['memberships_pending'] / $activityTotal) * 100);
         $approvalRate = (int) round(($stats['approvals_pending'] / $activityTotal) * 100);
         $moderationRate = max(0, 100 - $postsRate - $memberRate - $approvalRate);
+        $toWidthClass = static function (int $value): string {
+            return match (true) {
+                $value >= 90 => 'w-full',
+                $value >= 75 => 'w-3/4',
+                $value >= 50 => 'w-1/2',
+                $value >= 25 => 'w-1/4',
+                default => 'w-[12%]',
+            };
+        };
+        $postsWidth = $toWidthClass($postsRate);
+        $memberWidth = $toWidthClass($memberRate);
+        $approvalWidth = $toWidthClass($approvalRate);
+        $moderationWidth = $toWidthClass($moderationRate);
     @endphp
-    <div class="mx-auto flex w-full max-w-[1500px] gap-4 lg:gap-6">
+    <div class="admin-layout">
         <aside class="hidden w-[270px] shrink-0 rounded-3xl bg-[#101c37] p-5 text-slate-200 shadow-[0_24px_50px_rgba(16,28,55,0.35)] lg:block">
             <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400">T.Link Control</p>
             <h1 class="mt-2 font-display text-2xl text-white">Admin Console</h1>
@@ -49,7 +62,7 @@
                 </div>
             </header>
 
-            <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <section class="admin-kpi-grid">
                 <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
                     <p class="text-xs uppercase tracking-wide text-slate-500">Posts</p>
                     <p class="mt-2 text-3xl font-semibold text-slate-900">{{ $stats['posts'] }}</p>
@@ -77,8 +90,8 @@
                 </article>
             </section>
 
-            <section class="grid gap-4 xl:grid-cols-3">
-                <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft xl:col-span-2">
+            <section class="admin-three-grid">
+                <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
                     <div class="mb-4 flex items-center justify-between">
                         <h3 class="font-display text-lg font-semibold text-slate-900">Activity Breakdown</h3>
                         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">Month to date</span>
@@ -86,19 +99,19 @@
                     <div class="space-y-3 text-sm">
                         <div>
                             <div class="mb-1 flex justify-between text-slate-600"><span>Posts</span><span>{{ $postsRate }}%</span></div>
-                            <div class="h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#3b82f6]" style="width: {{ $postsRate }}%;"></div></div>
+                            <div class="h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-blue-500 {{ $postsWidth }}"></div></div>
                         </div>
                         <div>
                             <div class="mb-1 flex justify-between text-slate-600"><span>Adhesions</span><span>{{ $memberRate }}%</span></div>
-                            <div class="h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#06b6d4]" style="width: {{ $memberRate }}%;"></div></div>
+                            <div class="h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-cyan-500 {{ $memberWidth }}"></div></div>
                         </div>
                         <div>
                             <div class="mb-1 flex justify-between text-slate-600"><span>Approvals</span><span>{{ $approvalRate }}%</span></div>
-                            <div class="h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#f59e0b]" style="width: {{ $approvalRate }}%;"></div></div>
+                            <div class="h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-amber-500 {{ $approvalWidth }}"></div></div>
                         </div>
                         <div>
                             <div class="mb-1 flex justify-between text-slate-600"><span>Moderation</span><span>{{ $moderationRate }}%</span></div>
-                            <div class="h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#ef4444]" style="width: {{ $moderationRate }}%;"></div></div>
+                            <div class="h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-rose-500 {{ $moderationWidth }}"></div></div>
                         </div>
                     </div>
                 </article>
@@ -179,7 +192,7 @@
                 </div>
             </section>
 
-            <section class="grid gap-4 xl:grid-cols-2">
+            <section class="admin-two-grid">
                 <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
                     <div class="mb-3 flex items-center justify-between">
                         <h3 class="font-display text-lg font-semibold text-slate-900">Moderation Queue</h3>

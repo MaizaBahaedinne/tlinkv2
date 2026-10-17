@@ -1,6 +1,8 @@
 @import url('https://fonts.bunny.net/css?family=space-grotesk:400,500,600,700|manrope:400,500,600,700,800');
 @import 'tailwindcss';
 
+@source '../../resources/views/**/*.blade.php';
+@source '../../resources/js/**/*.{js,ts,vue}';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
@@ -33,4 +35,44 @@ body {
     border-radius: 1rem;
     background: #ffffff;
     box-shadow: var(--shadow-soft);
+}
+
+.admin-layout {
+    display: flex;
+    width: 100%;
+    max-width: 1500px;
+    margin: 0 auto;
+    gap: 1rem;
+}
+
+.admin-kpi-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.admin-three-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+}
+
+.admin-two-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+    .admin-layout {
+        gap: 1.5rem;
+    }
+
+    .admin-three-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+
+    .admin-two-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
