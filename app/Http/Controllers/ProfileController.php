@@ -15,6 +15,7 @@ class ProfileController extends Controller
     {
         $user = $request->user()->loadMissing('profile');
         $profile = $user->profile()->firstOrCreate([]);
+        $settings = is_array($profile->privacy_settings) ? $profile->privacy_settings : [];
 
         $skills = collect(explode(',', (string) $profile->skills))
             ->map(fn (string $item) => trim($item))
@@ -36,6 +37,13 @@ class ProfileController extends Controller
             ->filter()
             ->values();
 
+        $professionalExperiences = collect($settings['professional_experiences'] ?? [])->values();
+        $educations = collect($settings['educations'] ?? [])->values();
+        $certifications = collect($settings['certifications'] ?? [])->values();
+        $associativeExperiences = collect($settings['associative_experiences'] ?? [])->values();
+        $skillKeywords = collect($settings['skill_keywords'] ?? [])->values();
+        $languageItems = collect($settings['languages'] ?? [])->values();
+
         $recentPosts = $user->posts()
             ->withCount(['comments', 'reactions'])
             ->latest('published_at')
@@ -50,6 +58,12 @@ class ProfileController extends Controller
             'languages' => $languages,
             'educationItems' => $educationItems,
             'experienceItems' => $experienceItems,
+            'professionalExperiences' => $professionalExperiences,
+            'educations' => $educations,
+            'certifications' => $certifications,
+            'associativeExperiences' => $associativeExperiences,
+            'skillKeywords' => $skillKeywords,
+            'languageItems' => $languageItems,
             'recentPosts' => $recentPosts,
             'stats' => [
                 'posts_count' => $user->posts()->count(),
@@ -69,6 +83,12 @@ class ProfileController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
+        $section = (string) $request->input('section', 'basic');
+
+        if ($section !== 'basic') {
+            return $this->updateSection($request, $section);
+        }
+
         $data = $request->validate([
             'headline' => ['nullable', 'string', 'max:160'],
             'bio' => ['nullable', 'string', 'max:4000'],
@@ -83,5 +103,119 @@ class ProfileController extends Controller
         $profile->save();
 
         return back()->with('status', 'Profil mis a jour.');
+    }
+
+    private function updateSection(Request $request, string $section): RedirectResponse
+    {
+        $profile = $request->user()->profile()->firstOrCreate([]);
+        $settings = is_array($profile->privacy_settings) ? $profile->privacy_settings : [];
+
+        if ($section === 'professional_experiences') {
+            $data = $request->validate([
+                'items' => ['nullable', 'array', 'max:25'],
+                'items.*.company' => ['nullable', 'string', 'max:160'],
+                'items.*.role' => ['nullable', 'string', 'max:160'],
+                'items.*.start_date' => ['nullable', 'date'],
+                'items.*.end_date' => ['nullable', 'date'],
+                'items.*.description' => ['nullable', 'string', 'max:2000'],
+            ]);
+
+            $settings['professional_experiences'] = $this->cleanRows($data['items'] ?? [], ['company', 'role', 'start_date', 'end_date', 'description']);
+        }
+
+        if ($section === 'educations') {
+            $data = $request->validate([
+                'items' => ['nullable', 'array', 'max:25'],
+                'items.*.degree_type' => ['nullable', 'string', 'max:80'],
+                'items.*.diploma_name' => ['nullable', 'string', 'max:180'],
+                'items.*.school' => ['nullable', 'string', 'max:180'],
+                'items.*.start_date' => ['nullable', 'date'],
+                'items.*.end_date' => ['nullable', 'date'],
+            ]);
+
+            $settings['educations'] = $this->cleanRows($data['items'] ?? [], ['degree_type', 'diploma_name', 'school', 'start_date', 'end_date']);
+        }
+
+        if ($section === 'certifications') {
+            $data = $request->validate([
+                'items' => ['nullable', 'array', 'max:25'],
+                'items.*.name' => ['nullable', 'string', 'max:180'],
+                'items.*.issuer' => ['nullable', 'string', 'max:160'],
+                'items.*.date_obtained' => ['nullable', 'date'],
+            ]);
+
+            $settings['certifications'] = $this->cleanRows($data['items'] ?? [], ['name', 'issuer', 'date_obtained']);
+        }
+
+        if ($section === 'associative_experiences') {
+            $data = $request->validate([
+                'items' => ['nullable', 'array', 'max:25'],
+                'items.*.club_name' => ['nullable', 'string', 'max:160'],
+                'items.*.role' => ['nullable', 'string', 'max:160'],
+                'items.*.department' => ['nullable', 'string', 'max:160'],
+                'items.*.start_date' => ['nullable', 'date'],
+                'items.*.end_date' => ['nullable', 'date'],
+                'items.*.description' => ['nullable', 'string', 'max:2000'],
+            ]);
+
+            $settings['associative_experiences'] = $this->cleanRows($data['items'] ?? [], ['club_name', 'role', 'department', 'start_date', 'end_date', 'description']);
+        }
+
+        if ($section === 'skill_keywords') {
+            $data = $request->validate([
+                'keywords' => ['nullable', 'string', 'max:2000'],
+            ]);
+
+            $settings['skill_keywords'] = collect(explode(',', (string) ($data['keywords'] ?? '')))
+                ->map(fn (string $item) => trim($item))
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        if ($section === 'languages') {
+            $data = $request->validate([
+                'items' => ['nullable', 'array', 'max:25'],
+                'items.*.name' => ['nullable', 'string', 'max:100'],
+                'items.*.level' => ['nullable', 'string', 'max:20'],
+            ]);
+
+            $settings['languages'] = $this->cleanRows($data['items'] ?? [], ['name', 'level']);
+        }
+
+        $profile->privacy_settings = $settings;
+        $profile->save();
+
+        return back()->with('status', 'Section mise a jour.');
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     * @param array<int, string> $keys
+     * @return array<int, array<string, mixed>>
+     */
+    private function cleanRows(array $rows, array $keys): array
+    {
+        return collect($rows)
+            ->map(function (array $row) use ($keys): array {
+                $clean = [];
+                foreach ($keys as $key) {
+                    $value = isset($row[$key]) ? trim((string) $row[$key]) : '';
+                    $clean[$key] = $value;
+                }
+
+                return $clean;
+            })
+            ->filter(function (array $row): bool {
+                foreach ($row as $value) {
+                    if ($value !== '') {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            ->values()
+            ->all();
     }
 }
