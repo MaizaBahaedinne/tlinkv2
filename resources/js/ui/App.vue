@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 
 type FeedPost = {
   id: number;
@@ -40,6 +40,13 @@ const form = reactive({
   sentiment: 'neutral',
 });
 
+const photoInput = ref<HTMLInputElement | null>(null);
+const videoInput = ref<HTMLInputElement | null>(null);
+const uploadState = reactive({
+  photos: 0,
+  hasVideo: false,
+});
+
 const latestPosts = computed(() => data.feed.slice(0, 20));
 
 const initials = computed(() => {
@@ -58,6 +65,56 @@ const reactionLabels: Record<string, string> = {
   insightful: 'Insight',
   celebrate: 'Bravo',
 };
+
+const visibilityChoices = [
+  { value: 'public', icon: 'fa-earth-africa', title: 'Public' },
+  { value: 'authenticated', icon: 'fa-user-group', title: 'Communaute' },
+  { value: 'entity', icon: 'fa-building', title: 'Entite' },
+  { value: 'department', icon: 'fa-diagram-project', title: 'Departement' },
+  { value: 'club', icon: 'fa-people-group', title: 'Club' },
+  { value: 'restricted', icon: 'fa-lock', title: 'Restreint' },
+];
+
+const sentimentChoices = [
+  { value: 'neutral', icon: 'fa-face-meh', title: 'Neutre' },
+  { value: 'positive', icon: 'fa-face-smile', title: 'Positif' },
+  { value: 'negative', icon: 'fa-face-frown', title: 'Negatif' },
+  { value: 'inspired', icon: 'fa-lightbulb', title: 'Inspire' },
+  { value: 'grateful', icon: 'fa-hands-praying', title: 'Reconnaissant' },
+];
+
+function triggerPhotos() {
+  photoInput.value?.click();
+}
+
+function triggerVideo() {
+  videoInput.value?.click();
+}
+
+function onPhotosChanged(event: Event) {
+  const target = event.target as HTMLInputElement;
+  uploadState.photos = target.files?.length ?? 0;
+}
+
+function onVideoChanged(event: Event) {
+  const target = event.target as HTMLInputElement;
+  uploadState.hasVideo = (target.files?.length ?? 0) > 0;
+}
+
+function iconForReaction(type: string): string {
+  if (type === 'like') return 'fa-thumbs-up';
+  if (type === 'support') return 'fa-handshake';
+  if (type === 'insightful') return 'fa-lightbulb';
+  return 'fa-star';
+}
+
+function iconForVisibility(value: string): string {
+  return visibilityChoices.find((item) => item.value === value)?.icon ?? 'fa-user-group';
+}
+
+function iconForSentiment(value: string): string {
+  return sentimentChoices.find((item) => item.value === value)?.icon ?? 'fa-face-meh';
+}
 </script>
 
 <template>
@@ -112,83 +169,60 @@ const reactionLabels: Record<string, string> = {
       </div>
     </header>
 
-    <main class="mx-auto mt-6 grid w-full max-w-7xl grid-cols-1 gap-6 px-4 lg:grid-cols-12 lg:px-8">
-      <aside class="space-y-4 lg:col-span-3">
-        <section class="card p-4">
-          <div class="mb-4 flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-tlink-blue text-sm font-semibold text-white">
-              {{ initials }}
-            </div>
-            <div>
-              <p class="font-semibold">{{ data.auth.user?.name ?? 'Visiteur' }}</p>
-              <p class="text-xs text-slate-500">Reseau Fondation Tunivisions</p>
-            </div>
-          </div>
-          <p class="text-sm text-slate-600">
-            {{ data.auth.isAuthenticated ? 'Connecte a la communaute T.Link.' : 'Connecte-toi pour publier, reagir et commenter.' }}
-          </p>
-        </section>
-
-        <section class="card p-4">
-          <h2 class="mb-2 font-display text-base font-semibold text-tlink-blue">Entites</h2>
-          <ul class="space-y-1 text-sm text-slate-600">
-            <li v-for="entity in data.entities" :key="entity.id">{{ entity.name }}</li>
-          </ul>
-        </section>
-      </aside>
-
-      <section class="space-y-4 lg:col-span-6">
+    <main class="mx-auto mt-6 w-full max-w-4xl px-4 lg:px-8">
+      <section class="space-y-4">
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4">
           <input type="hidden" name="_token" :value="data.csrf" />
-          <label for="composer" class="mb-2 block text-sm font-medium text-slate-700">
-            <i class="fa-regular fa-pen-to-square mr-2 text-slate-500"></i>
-            Nouveau post
-          </label>
           <textarea
             id="composer"
             v-model="form.content"
             name="content"
-            rows="4"
+            rows="3"
             class="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-tlink-blue"
             placeholder="Partage une actualite de ton club, projet ou evenement..."
             required
           ></textarea>
-          <div class="mt-3 grid gap-3 md:grid-cols-2">
-            <label class="block text-sm text-slate-600">
-              <span class="mb-1 block"><i class="fa-regular fa-image mr-1"></i>Photos</span>
-              <input type="file" name="photos[]" accept="image/*" multiple class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-            </label>
-            <label class="block text-sm text-slate-600">
-              <span class="mb-1 block"><i class="fa-solid fa-video mr-1"></i>Video</span>
-              <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-            </label>
-          </div>
-          <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex flex-wrap gap-2">
-              <select
-                v-model="form.visibility"
-                name="visibility"
-                class="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+          <input ref="photoInput" type="file" name="photos[]" accept="image/*" multiple class="hidden" @change="onPhotosChanged" />
+          <input ref="videoInput" type="file" name="video" accept="video/mp4,video/webm,video/quicktime" class="hidden" @change="onVideoChanged" />
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" title="Ajouter des photos" @click="triggerPhotos">
+              <i class="fa-regular fa-image"></i>
+              <span v-if="uploadState.photos" class="ml-1 text-xs text-slate-500">{{ uploadState.photos }}</span>
+            </button>
+            <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" title="Ajouter une video" @click="triggerVideo">
+              <i class="fa-solid fa-video"></i>
+              <span v-if="uploadState.hasVideo" class="ml-1 text-xs text-slate-500">1</span>
+            </button>
+            <input type="hidden" name="visibility" :value="form.visibility" />
+            <div class="flex flex-wrap gap-1 rounded-xl border border-slate-300 p-1">
+              <button
+                v-for="item in visibilityChoices"
+                :key="item.value"
+                type="button"
+                :title="item.title"
+                class="rounded-lg px-2 py-1 text-sm"
+                :class="form.visibility === item.value ? 'bg-slate-100 text-tlink-blue' : 'text-slate-500 hover:bg-slate-50'"
+                @click="form.visibility = item.value"
               >
-                <option value="public">Public</option>
-                <option value="authenticated">Communaute</option>
-                <option value="entity">Entite</option>
-                <option value="department">Departement</option>
-                <option value="club">Club</option>
-                <option value="restricted">Audience restreinte</option>
-              </select>
-              <select
-                v-model="form.sentiment"
-                name="sentiment"
-                class="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="neutral">Neutre</option>
-                <option value="positive">Positif</option>
-                <option value="negative">Negatif</option>
-                <option value="inspired">Inspire</option>
-                <option value="grateful">Reconnaissant</option>
-              </select>
+                <i class="fa-solid" :class="item.icon"></i>
+              </button>
             </div>
+            <input type="hidden" name="sentiment" :value="form.sentiment" />
+            <div class="flex flex-wrap gap-1 rounded-xl border border-slate-300 p-1">
+              <button
+                v-for="item in sentimentChoices"
+                :key="item.value"
+                type="button"
+                :title="item.title"
+                class="rounded-lg px-2 py-1 text-sm"
+                :class="form.sentiment === item.value ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'"
+                @click="form.sentiment = item.value"
+              >
+                <i class="fa-regular" :class="item.icon"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mt-3 flex justify-end">
             <button class="rounded-xl bg-tlink-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-600" type="submit">
               <i class="fa-solid fa-paper-plane mr-1"></i>
               Publier
@@ -200,8 +234,12 @@ const reactionLabels: Record<string, string> = {
           <div class="mb-2 flex items-center justify-between">
             <p class="text-sm font-semibold text-slate-800">{{ post.author?.name ?? 'Membre Tunivisions' }}</p>
             <div class="flex items-center gap-2">
-              <span class="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{{ post.visibility }}</span>
-              <span class="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">{{ post.sentiment }}</span>
+              <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-600" :title="post.visibility">
+                <i class="fa-solid" :class="iconForVisibility(post.visibility)"></i>
+              </span>
+              <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs text-blue-700" :title="post.sentiment">
+                <i class="fa-regular" :class="iconForSentiment(post.sentiment)"></i>
+              </span>
             </div>
           </div>
           <p class="whitespace-pre-line text-sm leading-6 text-slate-700">{{ post.content }}</p>
@@ -226,7 +264,9 @@ const reactionLabels: Record<string, string> = {
           </div>
 
           <div class="mt-3 flex items-center gap-3 text-xs text-slate-500">
-            <span>{{ post.type }}</span>
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100" :title="post.type">
+              <i class="fa-regular fa-newspaper"></i>
+            </span>
             <span>{{ post.published_at ? new Date(post.published_at).toLocaleString('fr-FR') : 'Brouillon' }}</span>
           </div>
 
@@ -238,8 +278,8 @@ const reactionLabels: Record<string, string> = {
           </div>
 
           <div v-if="Object.keys(post.reactions).length" class="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
-            <span v-for="(count, key) in post.reactions" :key="key" class="rounded-full bg-blue-50 px-2 py-1 text-blue-700">
-              {{ reactionLabels[key] ?? key }}: {{ count }}
+            <span v-for="(count, key) in post.reactions" :key="key" class="rounded-full bg-blue-50 px-2 py-1 text-blue-700" :title="reactionLabels[key] ?? key">
+              <i class="fa-regular mr-1" :class="iconForReaction(key)"></i>{{ count }}
             </span>
           </div>
 
@@ -296,23 +336,6 @@ const reactionLabels: Record<string, string> = {
           Aucun post pour le moment.
         </div>
       </section>
-
-      <aside class="space-y-4 lg:col-span-3">
-        <section class="card p-4">
-          <h2 class="mb-2 font-display text-base font-semibold text-tlink-blue">We Are Carthage</h2>
-          <p class="mb-3 text-xs text-slate-500">24 gouvernorats configures</p>
-          <ul class="grid grid-cols-2 gap-1 text-xs text-slate-600">
-            <li v-for="gov in data.governorates" :key="gov.id">{{ gov.name }}</li>
-          </ul>
-        </section>
-
-        <section class="card bg-gradient-to-br from-tlink-blue to-tlink-blue-700 p-4 text-white">
-          <h3 class="font-display text-lg font-semibold">Prochaine etape</h3>
-          <p class="mt-2 text-sm text-blue-100">
-            Validation des memberships, roles scopes, et modules projets/evenements.
-          </p>
-        </section>
-      </aside>
     </main>
   </div>
 </template>

@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'T.Link | Fondation Tunivisions' }}</title>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/main.ts'])
+        @vite(['resources/js/main.ts'])
     @endif
 </head>
 <body>

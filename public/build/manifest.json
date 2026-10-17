@@ -53,12 +53,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-CqGHJo3i.js",
+    "file": "assets/main-BNR0LErl.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
-      "assets/main-zXd8mtO7.css"
+      "assets/main-zXd8mtO7.css",
+      "assets/app-Chzt1p7s.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",

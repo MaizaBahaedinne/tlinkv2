@@ -27,11 +27,13 @@ class FeedController extends Controller
         $posts->getCollection()->transform(function (Post $post): Post {
             $post->setAttribute(
                 'attachments_payload',
-                $post->attachments->map(fn (PostAttachment $attachment) => [
-                    'url' => Storage::disk($attachment->disk)->url($attachment->path),
-                    'mime_type' => $attachment->mime_type,
-                    'kind' => str_starts_with($attachment->mime_type, 'video/') ? 'video' : 'image',
-                ])->values()
+                $post->attachments
+                    ->filter(fn (PostAttachment $attachment) => Storage::disk($attachment->disk)->exists($attachment->path))
+                    ->map(fn (PostAttachment $attachment) => [
+                        'url' => Storage::disk($attachment->disk)->url($attachment->path),
+                        'mime_type' => $attachment->mime_type,
+                        'kind' => str_starts_with($attachment->mime_type, 'video/') ? 'video' : 'image',
+                    ])->values()
             );
 
             return $post;

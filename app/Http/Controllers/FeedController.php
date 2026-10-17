@@ -48,13 +48,15 @@ class FeedController extends Controller
                 'author' => $post->author
                     ? ['id' => $post->author->id, 'name' => $post->author->name]
                     : null,
-                'attachments' => $post->attachments->map(function (PostAttachment $attachment): array {
-                    return [
-                        'url' => Storage::disk($attachment->disk)->url($attachment->path),
-                        'mime_type' => $attachment->mime_type,
-                        'kind' => str_starts_with($attachment->mime_type, 'video/') ? 'video' : 'image',
-                    ];
-                })->values(),
+                'attachments' => $post->attachments
+                    ->filter(fn (PostAttachment $attachment) => Storage::disk($attachment->disk)->exists($attachment->path))
+                    ->map(function (PostAttachment $attachment): array {
+                        return [
+                            'url' => Storage::disk($attachment->disk)->url($attachment->path),
+                            'mime_type' => $attachment->mime_type,
+                            'kind' => str_starts_with($attachment->mime_type, 'video/') ? 'video' : 'image',
+                        ];
+                    })->values(),
                 'counts' => [
                     'comments' => (int) $post->comments_count,
                     'reactions' => (int) $post->reactions_count,
