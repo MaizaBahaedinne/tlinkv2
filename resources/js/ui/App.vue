@@ -55,8 +55,8 @@ const initials = computed(() => {
 const reactionLabels: Record<string, string> = {
   like: 'Like',
   support: 'Support',
-  insightful: 'Insightful',
-  celebrate: 'Celebrate',
+  insightful: 'Insight',
+  celebrate: 'Bravo',
 };
 </script>
 
@@ -88,12 +88,26 @@ const reactionLabels: Record<string, string> = {
             class="rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700"
             >Inscription</a
           >
-          <a
-            v-if="data.auth.isAuthenticated"
-            href="/profil"
-            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
-            >Profil</a
-          >
+          <details v-if="data.auth.isAuthenticated" class="relative">
+            <summary class="list-none cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
+              <span class="inline-flex items-center gap-2">
+                <i class="fa-regular fa-user"></i>
+                <span>{{ data.auth.user?.name }}</span>
+                <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+              </span>
+            </summary>
+            <div class="absolute right-0 z-30 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-soft">
+              <a href="/profil" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2"></i>Profil</a>
+              <a href="/admin" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-list-check mr-2"></i>Roadmap</a>
+              <a href="/notifications" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-bell mr-2"></i>Notifications</a>
+              <form action="/deconnexion" method="post" class="mt-1">
+                <input type="hidden" name="_token" :value="data.csrf" />
+                <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">
+                  <i class="fa-solid fa-right-from-bracket mr-2"></i>Deconnexion
+                </button>
+              </form>
+            </div>
+          </details>
         </div>
       </div>
     </header>
@@ -126,7 +140,10 @@ const reactionLabels: Record<string, string> = {
       <section class="space-y-4 lg:col-span-6">
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4">
           <input type="hidden" name="_token" :value="data.csrf" />
-          <label for="composer" class="mb-2 block text-sm font-medium text-slate-700">Publier une actualite</label>
+          <label for="composer" class="mb-2 block text-sm font-medium text-slate-700">
+            <i class="fa-regular fa-pen-to-square mr-2 text-slate-500"></i>
+            Nouveau post
+          </label>
           <textarea
             id="composer"
             v-model="form.content"
@@ -138,11 +155,11 @@ const reactionLabels: Record<string, string> = {
           ></textarea>
           <div class="mt-3 grid gap-3 md:grid-cols-2">
             <label class="block text-sm text-slate-600">
-              <span class="mb-1 block">Photos (max 4)</span>
+              <span class="mb-1 block"><i class="fa-regular fa-image mr-1"></i>Photos</span>
               <input type="file" name="photos[]" accept="image/*" multiple class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
             </label>
             <label class="block text-sm text-slate-600">
-              <span class="mb-1 block">Video (mp4/webm/mov)</span>
+              <span class="mb-1 block"><i class="fa-solid fa-video mr-1"></i>Video</span>
               <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
             </label>
           </div>
@@ -154,7 +171,7 @@ const reactionLabels: Record<string, string> = {
                 class="rounded-xl border border-slate-300 px-3 py-2 text-sm"
               >
                 <option value="public">Public</option>
-                <option value="authenticated">Communaute connectee</option>
+                <option value="authenticated">Communaute</option>
                 <option value="entity">Entite</option>
                 <option value="department">Departement</option>
                 <option value="club">Club</option>
@@ -165,14 +182,15 @@ const reactionLabels: Record<string, string> = {
                 name="sentiment"
                 class="rounded-xl border border-slate-300 px-3 py-2 text-sm"
               >
-                <option value="neutral">Sentiment neutre</option>
-                <option value="positive">Sentiment positif</option>
-                <option value="negative">Sentiment negatif</option>
-                <option value="inspired">Sentiment inspire</option>
-                <option value="grateful">Sentiment reconnaissant</option>
+                <option value="neutral">Neutre</option>
+                <option value="positive">Positif</option>
+                <option value="negative">Negatif</option>
+                <option value="inspired">Inspire</option>
+                <option value="grateful">Reconnaissant</option>
               </select>
             </div>
             <button class="rounded-xl bg-tlink-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-600" type="submit">
+              <i class="fa-solid fa-paper-plane mr-1"></i>
               Publier
             </button>
           </div>
@@ -213,10 +231,10 @@ const reactionLabels: Record<string, string> = {
           </div>
 
           <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-            <span class="rounded-full bg-slate-100 px-2 py-1">{{ post.counts.views }} vues</span>
-            <span class="rounded-full bg-slate-100 px-2 py-1">{{ post.counts.reactions }} reactions</span>
-            <span class="rounded-full bg-slate-100 px-2 py-1">{{ post.counts.comments }} commentaires</span>
-            <span class="rounded-full bg-slate-100 px-2 py-1">{{ post.counts.shares }} partages</span>
+            <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-eye mr-1"></i>{{ post.counts.views }}</span>
+            <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-thumbs-up mr-1"></i>{{ post.counts.reactions }}</span>
+            <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-comment mr-1"></i>{{ post.counts.comments }}</span>
+            <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-solid fa-share-nodes mr-1"></i>{{ post.counts.shares }}</span>
           </div>
 
           <div v-if="Object.keys(post.reactions).length" class="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
@@ -229,18 +247,27 @@ const reactionLabels: Record<string, string> = {
             <form v-for="(label, reactionType) in reactionLabels" :key="reactionType" :action="`/posts/${post.id}/react`" method="post">
               <input type="hidden" name="_token" :value="data.csrf" />
               <input type="hidden" name="reaction_type" :value="reactionType" />
-              <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50">{{ label }}</button>
+              <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" :title="label">
+                <i v-if="reactionType === 'like'" class="fa-regular fa-thumbs-up"></i>
+                <i v-else-if="reactionType === 'support'" class="fa-regular fa-handshake"></i>
+                <i v-else-if="reactionType === 'insightful'" class="fa-regular fa-lightbulb"></i>
+                <i v-else class="fa-regular fa-star"></i>
+              </button>
             </form>
             <form :action="`/posts/${post.id}/share`" method="post">
               <input type="hidden" name="_token" :value="data.csrf" />
               <input type="hidden" name="channel" value="internal" />
-              <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50">Partager</button>
+              <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Partager">
+                <i class="fa-solid fa-share-nodes"></i>
+              </button>
             </form>
           </div>
 
           <form :action="`/posts/${post.id}/view`" method="post" class="mt-2">
             <input type="hidden" name="_token" :value="data.csrf" />
-            <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50">Marquer comme vue</button>
+            <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Marquer vue">
+              <i class="fa-regular fa-eye"></i>
+            </button>
           </form>
 
           <div v-if="post.comments_preview.length" class="mt-3 space-y-2">
@@ -256,10 +283,12 @@ const reactionLabels: Record<string, string> = {
               name="content"
               maxlength="1000"
               required
-              placeholder="Ajouter un commentaire..."
+              placeholder="Commenter..."
               class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
             />
-            <button type="submit" class="rounded-xl bg-tlink-blue px-3 py-2 text-xs font-semibold text-white hover:bg-tlink-blue-700">Commenter</button>
+            <button type="submit" class="rounded-xl bg-tlink-blue px-3 py-2 text-xs font-semibold text-white hover:bg-tlink-blue-700" title="Commenter">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
           </form>
         </article>
 
