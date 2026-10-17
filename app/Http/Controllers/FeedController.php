@@ -22,6 +22,7 @@ class FeedController extends Controller
         $posts = Post::query()
             ->with([
                 'author:id,name',
+                'author.profile:id,user_id,headline,photo_path',
                 'attachments:id,post_id,disk,path,mime_type',
                 'comments' => fn ($query) => $query->with('author:id,name')->latest('id'),
             ])
@@ -46,7 +47,15 @@ class FeedController extends Controller
                 'sentiment' => $post->sentiment,
                 'published_at' => optional($post->published_at)?->toIso8601String(),
                 'author' => $post->author
-                    ? ['id' => $post->author->id, 'name' => $post->author->name]
+                    ? [
+                        'id' => $post->author->id,
+                        'name' => $post->author->name,
+                        'headline' => $post->author->profile?->headline,
+                        'avatar_url' => ($post->author->profile?->photo_path
+                            && Storage::disk('public')->exists($post->author->profile->photo_path))
+                            ? Storage::disk('public')->url($post->author->profile->photo_path)
+                            : null,
+                    ]
                     : null,
                 'attachments' => $post->attachments
                     ->filter(fn (PostAttachment $attachment) => Storage::disk($attachment->disk)->exists($attachment->path))

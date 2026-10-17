@@ -8,7 +8,7 @@ type FeedPost = {
   visibility: string;
   sentiment: string;
   published_at: string | null;
-  author?: { id: number; name: string };
+  author?: { id: number; name: string; headline?: string | null; avatar_url?: string | null };
   attachments: Array<{ url: string; mime_type: string; kind: 'image' | 'video' }>;
   counts: { comments: number; reactions: number; shares: number; views: number };
   reactions: Record<string, number>;
@@ -114,6 +114,27 @@ function iconForVisibility(value: string): string {
 
 function iconForSentiment(value: string): string {
   return sentimentChoices.find((item) => item.value === value)?.icon ?? 'fa-face-meh';
+}
+
+function authorInitials(name?: string): string {
+  const full = (name ?? 'Membre').trim();
+  return full
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatPublishedAt(value: string | null): string {
+  if (!value) return 'Brouillon';
+  return new Date(value).toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 </script>
 
@@ -231,8 +252,29 @@ function iconForSentiment(value: string): string {
         </form>
 
         <article v-for="post in latestPosts" :key="post.id" class="card p-4">
-          <div class="mb-2 flex items-center justify-between">
-            <p class="text-sm font-semibold text-slate-800">{{ post.author?.name ?? 'Membre Tunivisions' }}</p>
+          <div class="mb-3 flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <img
+                v-if="post.author?.avatar_url"
+                :src="post.author.avatar_url"
+                :alt="post.author?.name ?? 'avatar'"
+                class="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                loading="lazy"
+              />
+              <span
+                v-else
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-tlink-blue text-xs font-semibold text-white"
+              >
+                {{ authorInitials(post.author?.name) }}
+              </span>
+              <div>
+                <p class="text-sm font-semibold text-slate-800">{{ post.author?.name ?? 'Membre Tunivisions' }}</p>
+                <p class="text-xs text-slate-500">{{ post.author?.headline || 'Membre Tunivisions' }}</p>
+                <p class="mt-0.5 text-xs text-slate-400">
+                  <i class="fa-regular fa-clock mr-1"></i>{{ formatPublishedAt(post.published_at) }}
+                </p>
+              </div>
+            </div>
             <div class="flex items-center gap-2">
               <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-600" :title="post.visibility">
                 <i class="fa-solid" :class="iconForVisibility(post.visibility)"></i>
@@ -263,52 +305,45 @@ function iconForSentiment(value: string): string {
             </template>
           </div>
 
-          <div class="mt-3 flex items-center gap-3 text-xs text-slate-500">
-            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100" :title="post.type">
-              <i class="fa-regular fa-newspaper"></i>
-            </span>
-            <span>{{ post.published_at ? new Date(post.published_at).toLocaleString('fr-FR') : 'Brouillon' }}</span>
-          </div>
-
-          <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-            <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-eye mr-1"></i>{{ post.counts.views }}</span>
-            <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-thumbs-up mr-1"></i>{{ post.counts.reactions }}</span>
-            <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-comment mr-1"></i>{{ post.counts.comments }}</span>
-            <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-solid fa-share-nodes mr-1"></i>{{ post.counts.shares }}</span>
-          </div>
-
           <div v-if="Object.keys(post.reactions).length" class="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
             <span v-for="(count, key) in post.reactions" :key="key" class="rounded-full bg-blue-50 px-2 py-1 text-blue-700" :title="reactionLabels[key] ?? key">
               <i class="fa-regular mr-1" :class="iconForReaction(key)"></i>{{ count }}
             </span>
           </div>
 
-          <div v-if="data.auth.isAuthenticated" class="mt-3 flex flex-wrap gap-2">
-            <form v-for="(label, reactionType) in reactionLabels" :key="reactionType" :action="`/posts/${post.id}/react`" method="post">
-              <input type="hidden" name="_token" :value="data.csrf" />
-              <input type="hidden" name="reaction_type" :value="reactionType" />
-              <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" :title="label">
-                <i v-if="reactionType === 'like'" class="fa-regular fa-thumbs-up"></i>
-                <i v-else-if="reactionType === 'support'" class="fa-regular fa-handshake"></i>
-                <i v-else-if="reactionType === 'insightful'" class="fa-regular fa-lightbulb"></i>
-                <i v-else class="fa-regular fa-star"></i>
-              </button>
-            </form>
-            <form :action="`/posts/${post.id}/share`" method="post">
-              <input type="hidden" name="_token" :value="data.csrf" />
-              <input type="hidden" name="channel" value="internal" />
-              <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Partager">
-                <i class="fa-solid fa-share-nodes"></i>
-              </button>
-            </form>
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+            <div v-if="data.auth.isAuthenticated" class="flex flex-wrap gap-2">
+              <form v-for="(label, reactionType) in reactionLabels" :key="reactionType" :action="`/posts/${post.id}/react`" method="post">
+                <input type="hidden" name="_token" :value="data.csrf" />
+                <input type="hidden" name="reaction_type" :value="reactionType" />
+                <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" :title="label">
+                  <i v-if="reactionType === 'like'" class="fa-regular fa-thumbs-up"></i>
+                  <i v-else-if="reactionType === 'support'" class="fa-regular fa-handshake"></i>
+                  <i v-else-if="reactionType === 'insightful'" class="fa-regular fa-lightbulb"></i>
+                  <i v-else class="fa-regular fa-star"></i>
+                </button>
+              </form>
+              <form :action="`/posts/${post.id}/share`" method="post">
+                <input type="hidden" name="_token" :value="data.csrf" />
+                <input type="hidden" name="channel" value="internal" />
+                <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Partager">
+                  <i class="fa-solid fa-share-nodes"></i>
+                </button>
+              </form>
+              <form :action="`/posts/${post.id}/view`" method="post">
+                <input type="hidden" name="_token" :value="data.csrf" />
+                <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Marquer vue">
+                  <i class="fa-regular fa-eye"></i>
+                </button>
+              </form>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs text-slate-600">
+              <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-thumbs-up mr-1"></i>{{ post.counts.reactions }}</span>
+              <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-comment mr-1"></i>{{ post.counts.comments }}</span>
+              <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-solid fa-share-nodes mr-1"></i>{{ post.counts.shares }}</span>
+              <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-eye mr-1"></i>{{ post.counts.views }}</span>
+            </div>
           </div>
-
-          <form :action="`/posts/${post.id}/view`" method="post" class="mt-2">
-            <input type="hidden" name="_token" :value="data.csrf" />
-            <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Marquer vue">
-              <i class="fa-regular fa-eye"></i>
-            </button>
-          </form>
 
           <div v-if="post.comments_preview.length" class="mt-3 space-y-2">
             <div v-for="comment in post.comments_preview" :key="comment.id" class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">

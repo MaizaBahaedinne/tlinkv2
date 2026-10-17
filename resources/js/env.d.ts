@@ -21,6 +21,8 @@ declare global {
         author?: {
           id: number;
           name: string;
+          headline?: string | null;
+          avatar_url?: string | null;
         };
         attachments: Array<{
           url: string;
