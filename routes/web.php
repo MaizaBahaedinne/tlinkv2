@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\FeedController;
+use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,9 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/posts', [FeedController::class, 'storePost'])->name('posts.store');
     Route::get('/admin', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/notifications', [NotificationPageController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{notification}/read', [NotificationPageController::class, 'markRead'])->name('notifications.mark-read');
+    Route::post('/notifications/read-all', [NotificationPageController::class, 'markAllRead'])->name('notifications.mark-all-read');
     Route::get('/media/{mediaFile}/download', [PrivateMediaController::class, 'download'])
         ->middleware('signed')
         ->name('media.download');

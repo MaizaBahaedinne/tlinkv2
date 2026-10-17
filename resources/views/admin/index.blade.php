@@ -10,7 +10,10 @@
                     Scope: {{ $isGlobal ? 'National' : ('Entites '.implode(', ', $entityIds)) }}
                 </p>
             </div>
-            <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Retour</a>
+            <div class="flex gap-2">
+                <a href="{{ route('notifications.index') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Notifications</a>
+                <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Retour</a>
+            </div>
         </div>
 
         <div class="grid gap-4 md:grid-cols-4">
@@ -21,6 +24,27 @@
         </div>
 
         <div class="mt-6 grid gap-4 lg:grid-cols-2">
+            <section class="card p-4">
+                <h2 class="mb-3 font-display text-lg font-semibold text-tlink-blue">Exports CSV</h2>
+                <div class="grid gap-2 text-sm">
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/admin/exports/users">Export utilisateurs</a>
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/admin/exports/memberships">Export adhesions</a>
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/admin/exports/events">Export evenements</a>
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/admin/exports/event-registrations">Export inscriptions evenements</a>
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/admin/exports/moderation-reports">Export moderation</a>
+                </div>
+            </section>
+
+            <section class="card p-4">
+                <h2 class="mb-3 font-display text-lg font-semibold text-tlink-blue">Raccourcis filtres API</h2>
+                <div class="grid gap-2 text-sm">
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/admin/users?from={{ now()->subDays(30)->toDateString() }}">Utilisateurs des 30 derniers jours</a>
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/admin/audit-logs?action=approval.decision.recorded">Audit decisions approbation</a>
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/admin/moderation-reports?status=pending">Moderation en attente</a>
+                    <a class="rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50" href="/api/v1/notifications?unread_only=1">Mes notifications non lues</a>
+                </div>
+            </section>
+
             <section class="card p-4">
                 <h2 class="mb-3 font-display text-lg font-semibold text-tlink-blue">Audit logs recents</h2>
                 <div class="overflow-auto">
