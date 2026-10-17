@@ -7,6 +7,8 @@ type FeedPost = {
   type: string;
   visibility: string;
   sentiment: string;
+  comments_enabled: boolean;
+  can_manage: boolean;
   published_at: string | null;
   author?: { id: number; name: string; headline?: string | null; avatar_url?: string | null };
   attachments: Array<{ url: string; mime_type: string; kind: 'image' | 'video' }>;
@@ -213,8 +215,50 @@ function formatCommentAt(value: string | null): string {
       </div>
     </header>
 
-    <main class="mx-auto mt-6 w-full max-w-4xl px-4 lg:px-8">
-      <section class="space-y-4">
+    <main class="mx-auto mt-6 w-full max-w-7xl px-4 lg:px-8">
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <aside class="hidden lg:col-span-3 lg:block">
+          <div class="sticky top-24 space-y-4">
+            <nav class="card p-4">
+              <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Menu</p>
+              <ul class="space-y-2 text-sm">
+                <li>
+                  <a href="/" class="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-slate-800">
+                    <i class="fa-solid fa-house text-slate-500"></i>
+                    <span>Accueil</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/profil" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                    <i class="fa-regular fa-user text-slate-500"></i>
+                    <span>Profil</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/notifications" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                    <i class="fa-regular fa-bell text-slate-500"></i>
+                    <span>Notifications</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/admin" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                    <i class="fa-solid fa-list-check text-slate-500"></i>
+                    <span>Roadmap</span>
+                  </a>
+                </li>
+              </ul>
+            </nav>
+
+            <section class="card p-4">
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Entites</p>
+              <ul class="space-y-1 text-sm text-slate-700">
+                <li v-for="entity in data.entities.slice(0, 5)" :key="entity.id">{{ entity.name }}</li>
+              </ul>
+            </section>
+          </div>
+        </aside>
+
+        <section class="space-y-4 lg:col-span-6">
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4">
           <input type="hidden" name="_token" :value="data.csrf" />
           <textarea
@@ -460,7 +504,36 @@ function formatCommentAt(value: string | null): string {
         <div v-if="latestPosts.length === 0" class="card p-6 text-center text-sm text-slate-500">
           Aucun post pour le moment.
         </div>
-      </section>
+        </section>
+
+        <aside class="hidden lg:col-span-3 lg:block">
+          <div class="sticky top-24 space-y-4">
+            <section class="card overflow-hidden p-0">
+              <div class="bg-gradient-to-r from-cyan-600 to-blue-700 px-4 py-3 text-white">
+                <p class="text-xs font-semibold uppercase tracking-wide">Publicite</p>
+                <h3 class="mt-1 text-sm font-semibold">Formation Leadership</h3>
+              </div>
+              <div class="p-4 text-sm text-slate-700">
+                Boostez vos competences de pilotage projet en 4 semaines.
+              </div>
+            </section>
+
+            <section class="card p-4">
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sponsor</p>
+              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+                Tunivisions Campus Tour 2027
+              </div>
+            </section>
+
+            <section class="card p-4">
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Annonce</p>
+              <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+                Ouverture des inscriptions aux clubs partenaires.
+              </div>
+            </section>
+          </div>
+        </aside>
+      </div>
     </main>
   </div>
 </template>
