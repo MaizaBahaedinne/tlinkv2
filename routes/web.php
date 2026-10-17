@@ -28,6 +28,7 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/posts', [FeedController::class, 'storePost'])->name('posts.store');
     Route::get('/admin', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    Route::post('/admin/roadmap/action', [AdminDashboardController::class, 'updateAction'])->name('admin.roadmap.action.update');
     Route::get('/notifications', [NotificationPageController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{notification}/read', [NotificationPageController::class, 'markRead'])->name('notifications.mark-read');
     Route::post('/notifications/read-all', [NotificationPageController::class, 'markAllRead'])->name('notifications.mark-all-read');

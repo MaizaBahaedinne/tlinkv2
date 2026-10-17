@@ -1,200 +1,127 @@
-@extends('layouts.base', ['title' => 'Administration | T.Link'])
+@extends('layouts.base', ['title' => 'Roadmap Projet | T.Link'])
 
 @section('content')
 <style>
-.adm-page{min-height:100vh;padding:20px;background:radial-gradient(circle at top left,#f4f8ff 0,#f8fafd 44%,#f3f6fb 100%);font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;color:#111827}
-.adm-shell{max-width:1480px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:16px}
-.adm-sidebar{background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;padding:16px;position:sticky;top:14px;height:calc(100vh - 28px);overflow:auto}
-.adm-brand-kicker{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#94a3b8}
-.adm-brand-title{margin:6px 0 0;font-family:'Space Grotesk',ui-sans-serif,system-ui,sans-serif;font-size:28px;color:#0f172a}
-.adm-brand-sub{margin-top:8px;font-size:12px;color:#64748b}
-.adm-nav{margin-top:16px;display:grid;gap:6px}
-.adm-nav a{display:block;border-radius:10px;padding:9px 11px;color:#334155;text-decoration:none;font-size:14px;border:1px solid transparent}
-.adm-nav a:hover{background:#f8fafc;border-color:#e2e8f0}
-.adm-nav a.is-active{background:#e8f0ff;border-color:#c7d7ff;color:#0f2e5f;font-weight:700}
-.adm-exports{margin-top:16px;border:1px solid #dbe7ff;border-radius:12px;padding:12px;background:#f7faff}
-.adm-exports p{margin:0 0 8px;font-size:12px;color:#334155}
-.adm-exports a{display:block;border-radius:8px;border:1px solid #dbe5f5;padding:6px 8px;color:#1e3a8a;text-decoration:none;font-size:12px;margin-top:6px;background:#fff}
-.adm-main{min-width:0;display:grid;gap:12px}
-.adm-card{background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:15px;box-shadow:0 8px 24px rgba(15,23,42,.05)}
-.adm-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.adm-title{margin:4px 0 0;font-family:'Space Grotesk',ui-sans-serif,system-ui,sans-serif;font-size:34px;line-height:1}
-.adm-kicker{margin:0;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#64748b}
-.adm-sub{margin:8px 0 0;color:#64748b;font-size:14px}
-.adm-actions{display:flex;gap:8px;flex-wrap:wrap}
-.adm-btn{display:inline-block;padding:8px 12px;border-radius:10px;border:1px solid #d1dae8;background:#fff;color:#0f172a;text-decoration:none;font-size:13px;font-weight:600;cursor:pointer}
-.adm-btn.primary{background:#0f2e5f;color:#fff;border-color:#0f2e5f}
-.adm-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
-.adm-kpi{border:1px solid #e2e8f0;border-radius:12px;padding:11px;background:#fff}
-.adm-kpi .l{margin:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
-.adm-kpi .v{margin:5px 0 0;font-size:28px;font-weight:800}
-.adm-kpi .n{margin:5px 0 0;font-size:12px;color:#64748b}
-.adm-grid-2-1{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:12px}
-.adm-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.adm-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
-.adm-h h3{margin:0;font-family:'Space Grotesk',ui-sans-serif,system-ui,sans-serif;font-size:20px}
-.adm-link{font-size:12px;font-weight:700;color:#1e3a8a;text-decoration:none}
-.adm-form{display:grid;gap:8px}
-.adm-form label{display:grid;gap:4px;font-size:12px;color:#475569}
-.adm-form select,.adm-form input{border:1px solid #cbd5e1;border-radius:9px;padding:8px;background:#fff;font-size:14px}
-.adm-bars{display:grid;gap:10px}
-.adm-bar-head{display:flex;justify-content:space-between;font-size:12px;color:#475569;margin-bottom:4px}
-.adm-track{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden}
-.adm-fill{height:100%;border-radius:999px}
-.adm-w-10{width:10%}.adm-w-20{width:20%}.adm-w-30{width:30%}.adm-w-40{width:40%}.adm-w-50{width:50%}
-.adm-w-60{width:60%}.adm-w-70{width:70%}.adm-w-80{width:80%}.adm-w-90{width:90%}.adm-w-100{width:100%}
-.adm-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:10px}
-.adm-table{width:100%;min-width:680px;border-collapse:collapse;font-size:13px}
-.adm-table th,.adm-table td{text-align:left;padding:8px 9px;border-bottom:1px solid #eef2f7;vertical-align:top}
-.adm-table th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;background:#f8fafc}
-.adm-muted{color:#64748b}
-.adm-pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700}
-.adm-pill.pending{background:#fef3c7;color:#92400e}.adm-pill.approved{background:#dcfce7;color:#166534}.adm-pill.rejected{background:#fee2e2;color:#991b1b}.adm-pill.neutral{background:#e2e8f0;color:#334155}
-@media (max-width:1300px){.adm-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:1040px){.adm-shell{grid-template-columns:1fr}.adm-sidebar{position:static;height:auto}.adm-grid-2-1,.adm-grid-2{grid-template-columns:1fr}}
-@media (max-width:760px){.adm-page{padding:10px}.adm-title{font-size:28px}.adm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:520px){.adm-kpis{grid-template-columns:1fr}}
+.rm-page { min-height: 100vh; background: #f4f7fb; padding: 18px; font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif; color: #0f172a; }
+.rm-wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 14px; }
+.rm-card { background: #fff; border: 1px solid #dbe4f0; border-radius: 16px; padding: 16px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
+.rm-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.rm-kicker { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b; }
+.rm-title { margin: 6px 0 0; font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif; font-size: 34px; line-height: 1; }
+.rm-sub { margin: 8px 0 0; font-size: 14px; color: #64748b; }
+.rm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.rm-btn { display: inline-block; text-decoration: none; border-radius: 10px; border: 1px solid #cfd9e8; background: #fff; color: #0f172a; font-size: 13px; font-weight: 600; padding: 8px 12px; }
+.rm-btn:hover { background: #f8fafc; }
+.rm-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.rm-kpi { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #fff; }
+.rm-kpi p { margin: 0; }
+.rm-kpi .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+.rm-kpi .v { margin-top: 6px; font-size: 26px; font-weight: 800; }
+.rm-track { height: 9px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+.rm-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%); }
+.rm-modules { display: grid; gap: 12px; }
+.rm-module-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.rm-module-title { margin: 0; font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif; font-size: 22px; }
+.rm-module-goal { margin: 6px 0 0; color: #64748b; font-size: 13px; }
+.rm-module-progress { min-width: 160px; text-align: right; font-size: 12px; color: #334155; }
+.rm-table-wrap { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: auto; }
+.rm-table { width: 100%; min-width: 980px; border-collapse: collapse; font-size: 13px; }
+.rm-table th, .rm-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef2f7; vertical-align: middle; }
+.rm-table th { background: #f8fafc; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+.rm-pill { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+.rm-pill.todo { background: #e2e8f0; color: #334155; }
+.rm-pill.in_progress { background: #dbeafe; color: #1d4ed8; }
+.rm-pill.done { background: #dcfce7; color: #166534; }
+.rm-pill.blocked { background: #fee2e2; color: #991b1b; }
+.rm-row-form { display: flex; gap: 8px; align-items: center; }
+.rm-row-form select, .rm-row-form input { border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font-size: 12px; padding: 6px 8px; }
+.rm-row-form input { width: 230px; }
+.rm-row-form button { border: 1px solid #0f2e5f; background: #0f2e5f; color: #fff; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.rm-row-form button:hover { background: #0b2348; }
+.rm-updated { color: #64748b; font-size: 12px; }
+@media (max-width: 1180px) { .rm-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .rm-page { padding: 10px; } .rm-title { font-size: 28px; } .rm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .rm-grid { grid-template-columns: 1fr; } }
 </style>
 
-@php
-    $activityTotal = max(1, $stats['posts'] + $stats['memberships_pending'] + $stats['approvals_pending'] + $stats['moderation_pending']);
-    $postsRate = (int) round(($stats['posts'] / $activityTotal) * 100);
-    $memberRate = (int) round(($stats['memberships_pending'] / $activityTotal) * 100);
-    $approvalRate = (int) round(($stats['approvals_pending'] / $activityTotal) * 100);
-    $moderationRate = max(0, 100 - $postsRate - $memberRate - $approvalRate);
-    $toStepClass = static function (int $value): string {
-        $step = max(10, min(100, (int) (ceil($value / 10) * 10)));
-        return 'adm-w-'.$step;
-    };
-    $postsWidthClass = $toStepClass($postsRate);
-    $memberWidthClass = $toStepClass($memberRate);
-    $approvalWidthClass = $toStepClass($approvalRate);
-    $moderationWidthClass = $toStepClass($moderationRate);
-@endphp
-
-<div class="adm-page">
-    <div class="adm-shell">
-        <aside class="adm-sidebar">
-            <p class="adm-brand-kicker">T.Link Control</p>
-            <h1 class="adm-brand-title">Admin Console</h1>
-            <p class="adm-brand-sub">{{ $isGlobal ? 'Scope national' : ('Scope entites: '.implode(', ', $entityIds)) }}</p>
-            <nav class="adm-nav">
-                <a href="{{ route('admin.dashboard') }}" class="is-active">Dashboard</a>
-                <a href="{{ route('notifications.index') }}">Notifications</a>
-                <a href="/api/v1/admin/users">Users API</a>
-                <a href="/api/v1/admin/moderation-reports?status=pending">Moderation API</a>
-                <a href="/api/v1/admin/audit-logs">Audit API</a>
-                <a href="{{ route('home') }}">Retour accueil</a>
-            </nav>
-            <div class="adm-exports">
-                <p>Export rapide</p>
-                <a href="/api/v1/admin/exports/users">CSV users</a>
-                <a href="/api/v1/admin/exports/events">CSV events</a>
-                <a href="/api/v1/admin/exports/moderation-reports">CSV moderation</a>
+<div class="rm-page">
+    <div class="rm-wrap">
+        <section class="rm-card">
+            <div class="rm-top">
+                <div>
+                    <p class="rm-kicker">Pilotage Produit</p>
+                    <h1 class="rm-title">{{ $roadmap['project_name'] }}</h1>
+                    <p class="rm-sub">Une seule page de pilotage. Mise a jour module par module et action par action.</p>
+                </div>
+                <div class="rm-actions">
+                    <a href="{{ route('home') }}" class="rm-btn">Retour accueil</a>
+                    <a href="{{ route('notifications.index') }}" class="rm-btn">Notifications</a>
+                </div>
             </div>
-        </aside>
+            <div style="margin-top: 14px;" class="rm-grid">
+                <article class="rm-kpi"><p class="k">Avancement global</p><p class="v">{{ $summary['global_progress'] }}%</p></article>
+                <article class="rm-kpi"><p class="k">Actions totales</p><p class="v">{{ $summary['total_actions'] }}</p></article>
+                <article class="rm-kpi"><p class="k">Terminees</p><p class="v">{{ $summary['done_actions'] }}</p></article>
+                <article class="rm-kpi"><p class="k">En cours</p><p class="v">{{ $summary['in_progress_actions'] }}</p></article>
+                <article class="rm-kpi"><p class="k">Bloquees</p><p class="v">{{ $summary['blocked_actions'] }}</p></article>
+            </div>
+            <div style="margin-top: 12px;">
+                <div class="rm-track"><div class="rm-fill" style="width: {{ $summary['global_progress'] }}%;"></div></div>
+            </div>
+        </section>
 
-        <main class="adm-main">
-            <section class="adm-card">
-                <div class="adm-top">
-                    <div>
-                        <p class="adm-kicker">Operations Dashboard</p>
-                        <h2 class="adm-title">Welcome back, admin</h2>
-                        <p class="adm-sub">Vue centralisee des operations, des risques et des demandes.</p>
+        <section class="rm-modules">
+            @foreach($roadmap['modules'] as $module)
+                <article class="rm-card">
+                    <div class="rm-module-head">
+                        <div>
+                            <h2 class="rm-module-title">{{ $module['title'] }}</h2>
+                            <p class="rm-module-goal">{{ $module['goal'] }}</p>
+                        </div>
+                        <div class="rm-module-progress">Progression module: <strong>{{ $module['progress'] ?? 0 }}%</strong></div>
                     </div>
-                    <div class="adm-actions">
-                        <a href="{{ route('notifications.index') }}" class="adm-btn">Notifications</a>
-                        <a href="/api/v1/admin/users?from={{ now()->subDays($windowDays)->toDateString() }}" class="adm-btn primary">Nouveaux users</a>
-                    </div>
-                </div>
-            </section>
+                    <div style="margin-top: 8px;" class="rm-track"><div class="rm-fill" style="width: {{ $module['progress'] ?? 0 }}%;"></div></div>
 
-            <section class="adm-kpis">
-                <article class="adm-kpi"><p class="l">Posts</p><p class="v">{{ $stats['posts'] }}</p><p class="n">+{{ max(1, intdiv($stats['posts'], 8)) }} today</p></article>
-                <article class="adm-kpi"><p class="l">Adhesions pending</p><p class="v">{{ $stats['memberships_pending'] }}</p><p class="n">a traiter rapidement</p></article>
-                <article class="adm-kpi"><p class="l">Approvals pending</p><p class="v">{{ $stats['approvals_pending'] }}</p><p class="n">workflow actif</p></article>
-                <article class="adm-kpi"><p class="l">Moderation pending</p><p class="v">{{ $stats['moderation_pending'] }}</p><p class="n">controle contenu</p></article>
-                <article class="adm-kpi"><p class="l">Nouveaux users ({{ $windowDays }}j)</p><p class="v">{{ $stats['new_users_window'] }}</p><p class="n">croissance audience</p></article>
-            </section>
-
-            <section class="adm-grid-2-1">
-                <article class="adm-card">
-                    <div class="adm-h"><h3>Activity Breakdown</h3><span class="adm-pill neutral">Month to date</span></div>
-                    <div class="adm-bars">
-                        <div><div class="adm-bar-head"><span>Posts</span><span>{{ $postsRate }}%</span></div><div class="adm-track"><div class="adm-fill {{ $postsWidthClass }}" style="background:#3b82f6;"></div></div></div>
-                        <div><div class="adm-bar-head"><span>Adhesions</span><span>{{ $memberRate }}%</span></div><div class="adm-track"><div class="adm-fill {{ $memberWidthClass }}" style="background:#06b6d4;"></div></div></div>
-                        <div><div class="adm-bar-head"><span>Approvals</span><span>{{ $approvalRate }}%</span></div><div class="adm-track"><div class="adm-fill {{ $approvalWidthClass }}" style="background:#f59e0b;"></div></div></div>
-                        <div><div class="adm-bar-head"><span>Moderation</span><span>{{ $moderationRate }}%</span></div><div class="adm-track"><div class="adm-fill {{ $moderationWidthClass }}" style="background:#ef4444;"></div></div></div>
-                    </div>
-                </article>
-                <article class="adm-card">
-                    <div class="adm-h"><h3>Filtres rapides</h3></div>
-                    <form method="get" action="{{ route('admin.dashboard') }}" class="adm-form">
-                        <label><span>Fenetre jours</span><select name="window_days">@foreach([7,14,30,60,90,180] as $days)<option value="{{ $days }}" @selected($windowDays === $days)>{{ $days }}</option>@endforeach</select></label>
-                        <label><span>Approvals</span><select name="approval_status">@foreach(['pending'=>'Pending','approved'=>'Approved','rejected'=>'Rejected','all'=>'Tous'] as $key => $label)<option value="{{ $key }}" @selected($approvalStatus === $key)>{{ $label }}</option>@endforeach</select></label>
-                        <label><span>Moderation</span><select name="moderation_status">@foreach(['pending'=>'Pending','reviewed'=>'Reviewed','resolved'=>'Resolved','all'=>'Tous'] as $key => $label)<option value="{{ $key }}" @selected($moderationStatus === $key)>{{ $label }}</option>@endforeach</select></label>
-                        <label><span>Action audit</span><input type="text" name="audit_action" value="{{ $auditAction }}" placeholder="approval.decision"></label>
-                        <div class="adm-actions"><button type="submit" class="adm-btn primary">Appliquer</button><a href="{{ route('admin.dashboard') }}" class="adm-btn">Reset</a></div>
-                    </form>
-                </article>
-            </section>
-
-            <section class="adm-card">
-                <div class="adm-h"><h3>Recent Approvals</h3><a href="/api/v1/approvals?status={{ $approvalStatus }}" class="adm-link">Voir API</a></div>
-                <div class="adm-table-wrap">
-                    <table class="adm-table">
-                        <thead><tr><th>ID</th><th>Type</th><th>Demandeur</th><th>Objet</th><th>Status</th><th>Soumis</th></tr></thead>
-                        <tbody>
-                            @forelse($approvalItems as $approval)
+                    <div class="rm-table-wrap">
+                        <table class="rm-table">
+                            <thead>
                                 <tr>
-                                    <td>#{{ $approval->id }}</td><td>{{ $approval->request_type }}</td><td>{{ $approval->requester?->name ?? 'N/A' }}</td>
-                                    <td class="adm-muted">{{ class_basename($approval->approvable_type) }} #{{ $approval->approvable_id }}</td>
-                                    <td>@if($approval->status==='pending')<span class="adm-pill pending">PENDING</span>@elseif($approval->status==='approved')<span class="adm-pill approved">APPROVED</span>@else<span class="adm-pill rejected">REJECTED</span>@endif</td>
-                                    <td class="adm-muted">{{ $approval->submitted_at ?? $approval->created_at }}</td>
+                                    <th>Action</th>
+                                    <th>Etat</th>
+                                    <th>Note</th>
+                                    <th>Derniere maj</th>
+                                    <th>Mise a jour</th>
                                 </tr>
-                            @empty
-                                <tr><td class="adm-muted" colspan="6">Aucune approbation.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section class="adm-grid-2">
-                <article class="adm-card">
-                    <div class="adm-h"><h3>Moderation Queue</h3><a href="/api/v1/admin/moderation-reports?status={{ $moderationStatus }}" class="adm-link">Voir API</a></div>
-                    <div class="adm-table-wrap"><table class="adm-table" style="min-width:620px"><thead><tr><th>Report</th><th>Type</th><th>Raison</th><th>Status</th></tr></thead><tbody>
-                        @forelse($recentModeration as $report)
-                        <tr><td>#{{ $report->id }}</td><td>{{ class_basename($report->reportable_type) }}</td><td>{{ \Illuminate\Support\Str::limit($report->reason, 50) }}</td><td>@if($report->status==='pending')<span class="adm-pill pending">PENDING</span>@else<span class="adm-pill neutral">{{ strtoupper($report->status) }}</span>@endif</td></tr>
-                        @empty
-                        <tr><td class="adm-muted" colspan="4">Aucun signalement.</td></tr>
-                        @endforelse
-                    </tbody></table></div>
+                            </thead>
+                            <tbody>
+                                @foreach($module['actions'] as $action)
+                                    <tr>
+                                        <td>{{ $action['label'] }}</td>
+                                        <td><span class="rm-pill {{ $action['status'] }}">{{ strtoupper($action['status']) }}</span></td>
+                                        <td>{{ $action['note'] !== '' ? $action['note'] : '-' }}</td>
+                                        <td class="rm-updated">{{ $action['updated_at'] ?? '-' }}</td>
+                                        <td>
+                                            <form class="rm-row-form" method="post" action="{{ route('admin.roadmap.action.update') }}">
+                                                @csrf
+                                                <input type="hidden" name="module_id" value="{{ $module['id'] }}">
+                                                <input type="hidden" name="action_id" value="{{ $action['id'] }}">
+                                                <select name="status" required>
+                                                    @foreach($statusOptions as $statusValue => $statusLabel)
+                                                        <option value="{{ $statusValue }}" @selected($action['status'] === $statusValue)>{{ $statusLabel }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="text" name="note" value="{{ $action['note'] }}" maxlength="300" placeholder="Commentaire court">
+                                                <button type="submit">Mettre a jour</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </article>
-
-                <article class="adm-card">
-                    <div class="adm-h"><h3>Recent Audit Logs</h3><a href="/api/v1/admin/audit-logs{{ $auditAction !== '' ? ('?action='.urlencode($auditAction)) : '' }}" class="adm-link">Voir API</a></div>
-                    <div class="adm-table-wrap"><table class="adm-table" style="min-width:620px"><thead><tr><th>Action</th><th>Target</th><th>IP</th><th>Date</th></tr></thead><tbody>
-                        @forelse($recentAuditLogs as $log)
-                        <tr><td>{{ $log->action }}</td><td class="adm-muted">{{ $log->target_type }} #{{ $log->target_id }}</td><td>{{ $log->ip_address ?? 'N/A' }}</td><td class="adm-muted">{{ $log->created_at }}</td></tr>
-                        @empty
-                        <tr><td class="adm-muted" colspan="4">Aucun log.</td></tr>
-                        @endforelse
-                    </tbody></table></div>
-                </article>
-            </section>
-
-            <section class="adm-card">
-                <div class="adm-h"><h3>Recent Users</h3><a href="/api/v1/admin/users?from={{ now()->subDays($windowDays)->toDateString() }}" class="adm-link">Voir API</a></div>
-                <div class="adm-table-wrap"><table class="adm-table" style="min-width:760px"><thead><tr><th>ID</th><th>Nom</th><th>Email</th><th>Creation</th></tr></thead><tbody>
-                    @forelse($recentUsers as $user)
-                    <tr><td>#{{ $user->id }}</td><td>{{ $user->name }}</td><td class="adm-muted">{{ $user->email }}</td><td class="adm-muted">{{ $user->created_at }}</td></tr>
-                    @empty
-                    <tr><td class="adm-muted" colspan="4">Aucun utilisateur dans la fenetre choisie.</td></tr>
-                    @endforelse
-                </tbody></table></div>
-            </section>
-        </main>
+            @endforeach
+        </section>
     </div>
 </div>
 @endsection
