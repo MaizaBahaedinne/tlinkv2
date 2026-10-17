@@ -23,10 +23,16 @@ Route::post('/deconnexion', [LoginController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
+Route::post('/posts/{post}/view', [FeedController::class, 'view'])
+    ->name('posts.view');
+
 Route::middleware('auth')->group(function (): void {
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/posts', [FeedController::class, 'storePost'])->name('posts.store');
+    Route::post('/posts/{post}/react', [FeedController::class, 'react'])->name('posts.react');
+    Route::post('/posts/{post}/comment', [FeedController::class, 'comment'])->name('posts.comment');
+    Route::post('/posts/{post}/share', [FeedController::class, 'share'])->name('posts.share');
     Route::get('/admin', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
     Route::post('/admin/roadmap/action', [AdminDashboardController::class, 'updateAction'])->name('admin.roadmap.action.update');
     Route::get('/notifications', [NotificationPageController::class, 'index'])->name('notifications.index');

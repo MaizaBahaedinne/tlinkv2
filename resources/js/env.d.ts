@@ -16,11 +16,29 @@ declare global {
         content: string;
         type: string;
         visibility: string;
+        sentiment: string;
         published_at: string | null;
         author?: {
           id: number;
           name: string;
         };
+        attachments: Array<{
+          url: string;
+          mime_type: string;
+          kind: 'image' | 'video';
+        }>;
+        counts: {
+          comments: number;
+          reactions: number;
+          shares: number;
+          views: number;
+        };
+        reactions: Record<string, number>;
+        comments_preview: Array<{
+          id: number;
+          content: string;
+          author: string;
+        }>;
       }>;
       entities: Array<{
         id: number;

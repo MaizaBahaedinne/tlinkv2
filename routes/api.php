@@ -26,6 +26,10 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/auth/me', [AuthController::class, 'me']);
 
         Route::post('/posts', [FeedController::class, 'store']);
+        Route::post('/posts/{post}/react', [FeedController::class, 'react']);
+        Route::post('/posts/{post}/comment', [FeedController::class, 'comment']);
+        Route::post('/posts/{post}/share', [FeedController::class, 'share']);
+        Route::post('/posts/{post}/view', [FeedController::class, 'view']);
         Route::post('/moderation/reports', [ModerationController::class, 'report']);
 
         Route::get('/notifications', [NotificationController::class, 'index']);

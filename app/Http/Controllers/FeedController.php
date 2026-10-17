@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Comment;
 use App\Models\Entity;
 use App\Models\Governorate;
 use App\Models\Post;
+use App\Models\PostAttachment;
+use App\Models\PostReaction;
+use App\Models\PostShare;
+use App\Models\PostView;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class FeedController extends Controller
@@ -14,21 +20,55 @@ class FeedController extends Controller
     public function index(Request $request): View
     {
         $posts = Post::query()
-            ->with(['author:id,name'])
+            ->with([
+                'author:id,name',
+                'attachments:id,post_id,disk,path,mime_type',
+                'comments' => fn ($query) => $query->with('author:id,name')->latest('id'),
+            ])
+            ->withCount(['comments', 'reactions', 'shares', 'views'])
             ->latest('published_at')
             ->latest('id')
             ->paginate(12);
 
         $feedPayload = $posts->getCollection()->map(function (Post $post): array {
+            $reactionBreakdown = PostReaction::query()
+                ->selectRaw('reaction_type, COUNT(*) as aggregate_count')
+                ->where('post_id', $post->id)
+                ->groupBy('reaction_type')
+                ->pluck('aggregate_count', 'reaction_type')
+                ->toArray();
+
             return [
                 'id' => $post->id,
                 'content' => $post->content,
                 'type' => $post->type,
                 'visibility' => $post->visibility,
+                'sentiment' => $post->sentiment,
                 'published_at' => optional($post->published_at)?->toIso8601String(),
                 'author' => $post->author
                     ? ['id' => $post->author->id, 'name' => $post->author->name]
                     : null,
+                'attachments' => $post->attachments->map(function (PostAttachment $attachment): array {
+                    return [
+                        'url' => Storage::disk($attachment->disk)->url($attachment->path),
+                        'mime_type' => $attachment->mime_type,
+                        'kind' => str_starts_with($attachment->mime_type, 'video/') ? 'video' : 'image',
+                    ];
+                })->values(),
+                'counts' => [
+                    'comments' => (int) $post->comments_count,
+                    'reactions' => (int) $post->reactions_count,
+                    'shares' => (int) $post->shares_count,
+                    'views' => (int) $post->views_count,
+                ],
+                'reactions' => $reactionBreakdown,
+                'comments_preview' => $post->comments->take(3)->map(function (Comment $comment): array {
+                    return [
+                        'id' => $comment->id,
+                        'content' => $comment->content,
+                        'author' => $comment->author ? $comment->author->name : 'Membre',
+                    ];
+                })->values(),
             ];
         })->values();
 
@@ -43,19 +83,133 @@ class FeedController extends Controller
 
     public function storePost(Request $request): RedirectResponse
     {
-        $request->validate([
+        $data = $request->validate([
             'content' => ['required', 'string', 'max:3000'],
             'visibility' => ['required', 'in:public,authenticated,entity,department,club,restricted'],
+            'sentiment' => ['nullable', 'in:positive,neutral,negative,inspired,grateful'],
+            'photos' => ['nullable', 'array', 'max:4'],
+            'photos.*' => ['file', 'image', 'max:5120'],
+            'video' => ['nullable', 'file', 'mimetypes:video/mp4,video/webm,video/quicktime', 'max:30720'],
         ]);
 
-        Post::query()->create([
+        $postType = 'text';
+        if ($request->hasFile('video')) {
+            $postType = 'image';
+        }
+        if ($request->hasFile('photos')) {
+            $postType = 'image';
+        }
+
+        $post = Post::query()->create([
             'user_id' => $request->user()->id,
-            'type' => 'text',
-            'visibility' => $request->string('visibility')->toString(),
-            'content' => $request->string('content')->toString(),
+            'type' => $postType,
+            'visibility' => $data['visibility'],
+            'sentiment' => $data['sentiment'] ?? 'neutral',
+            'content' => $data['content'],
             'published_at' => now(),
         ]);
 
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos', []) as $photo) {
+                $path = $photo->store('posts/images', 'public');
+                PostAttachment::query()->create([
+                    'post_id' => $post->id,
+                    'disk' => 'public',
+                    'path' => $path,
+                    'mime_type' => (string) $photo->getMimeType(),
+                    'size_bytes' => (int) $photo->getSize(),
+                ]);
+            }
+        }
+
+        if ($request->hasFile('video')) {
+            $video = $request->file('video');
+            $path = $video->store('posts/videos', 'public');
+            PostAttachment::query()->create([
+                'post_id' => $post->id,
+                'disk' => 'public',
+                'path' => $path,
+                'mime_type' => (string) $video->getMimeType(),
+                'size_bytes' => (int) $video->getSize(),
+            ]);
+        }
+
         return back()->with('status', 'Publication partagee.');
+    }
+
+    public function react(Request $request, Post $post): RedirectResponse
+    {
+        $data = $request->validate([
+            'reaction_type' => ['required', 'in:like,support,insightful,celebrate'],
+        ]);
+
+        PostReaction::query()->updateOrCreate(
+            [
+                'post_id' => $post->id,
+                'user_id' => $request->user()->id,
+            ],
+            [
+                'reaction_type' => $data['reaction_type'],
+            ]
+        );
+
+        return back()->with('status', 'Reaction enregistree.');
+    }
+
+    public function comment(Request $request, Post $post): RedirectResponse
+    {
+        $data = $request->validate([
+            'content' => ['required', 'string', 'max:1000'],
+        ]);
+
+        Comment::query()->create([
+            'post_id' => $post->id,
+            'user_id' => $request->user()->id,
+            'content' => $data['content'],
+        ]);
+
+        return back()->with('status', 'Commentaire publie.');
+    }
+
+    public function share(Request $request, Post $post): RedirectResponse
+    {
+        $data = $request->validate([
+            'channel' => ['nullable', 'in:internal,copy_link,external'],
+        ]);
+
+        PostShare::query()->create([
+            'post_id' => $post->id,
+            'user_id' => $request->user()->id,
+            'channel' => $data['channel'] ?? 'internal',
+        ]);
+
+        return back()->with('status', 'Partage comptabilise.');
+    }
+
+    public function view(Request $request, Post $post): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user) {
+            PostView::query()->firstOrCreate([
+                'post_id' => $post->id,
+                'user_id' => $user->id,
+            ], [
+                'ip_address' => $request->ip(),
+                'user_agent' => (string) $request->userAgent(),
+                'viewed_at' => now(),
+            ]);
+        } else {
+            PostView::query()->firstOrCreate([
+                'post_id' => $post->id,
+                'user_id' => null,
+                'ip_address' => $request->ip(),
+            ], [
+                'user_agent' => (string) $request->userAgent(),
+                'viewed_at' => now(),
+            ]);
+        }
+
+        return back();
     }
 }

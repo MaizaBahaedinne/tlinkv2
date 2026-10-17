@@ -19,6 +19,7 @@ class Post extends Model
         'governorate_id',
         'type',
         'visibility',
+        'sentiment',
         'content',
         'published_at',
     ];
@@ -35,5 +36,25 @@ class Post extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class)->latest();
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(PostAttachment::class);
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(PostReaction::class);
+    }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(PostShare::class);
+    }
+
+    public function views(): HasMany
+    {
+        return $this->hasMany(PostView::class);
     }
 }
