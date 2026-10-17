@@ -2,6 +2,26 @@
 
 @section('content')
 <div class="min-h-screen bg-[#eef3fb] px-4 py-8">
+    <header class="sticky top-0 z-20 mb-4 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-2 py-3 sm:px-4">
+            <a href="{{ route('home') }}" class="flex items-center gap-3">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-tlink-blue text-white">
+                    <i class="fa-solid fa-file-lines"></i>
+                </span>
+                <span>
+                    <span class="block font-display text-xl font-semibold text-tlink-blue">T.Link</span>
+                    <span class="block text-xs text-slate-500">Fondation Tunivisions</span>
+                </span>
+            </a>
+
+            <div class="flex items-center gap-2">
+                <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Accueil</a>
+                <a href="{{ route('notifications.index') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Notifications</a>
+                <span class="rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">{{ $user->name }}</span>
+            </div>
+        </div>
+    </header>
+
     <div class="mx-auto w-full max-w-6xl space-y-4">
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
             <div class="h-32 bg-[radial-gradient(circle_at_20%_20%,#38bdf8_0,#1d4ed8_45%,#0f172a_100%)]"></div>
@@ -172,7 +192,7 @@
     </div>
 </div>
 
-<dialog id="modal-professional" class="w-full max-w-4xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+<dialog id="modal-professional" class="profile-modal rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
     <form method="dialog" class="border-b border-slate-200 px-5 py-3">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-slate-900">Modifier experience pro</h3>
@@ -199,7 +219,7 @@
     </form>
 </dialog>
 
-<dialog id="modal-education" class="w-full max-w-4xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+<dialog id="modal-education" class="profile-modal rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
     <form method="dialog" class="border-b border-slate-200 px-5 py-3">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-slate-900">Modifier formation</h3>
@@ -230,7 +250,7 @@
     </form>
 </dialog>
 
-<dialog id="modal-certification" class="w-full max-w-4xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+<dialog id="modal-certification" class="profile-modal rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
     <form method="dialog" class="border-b border-slate-200 px-5 py-3">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-slate-900">Modifier certifications</h3>
@@ -255,7 +275,7 @@
     </form>
 </dialog>
 
-<dialog id="modal-associative" class="w-full max-w-4xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+<dialog id="modal-associative" class="profile-modal rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
     <form method="dialog" class="border-b border-slate-200 px-5 py-3">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-slate-900">Modifier experience associatif</h3>
@@ -283,7 +303,7 @@
     </form>
 </dialog>
 
-<dialog id="modal-skills" class="w-full max-w-2xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+<dialog id="modal-skills" class="profile-modal profile-modal-sm rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
     <form method="dialog" class="border-b border-slate-200 px-5 py-3">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-slate-900">Modifier competences</h3>
@@ -299,7 +319,7 @@
     </form>
 </dialog>
 
-<dialog id="modal-languages" class="w-full max-w-3xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+<dialog id="modal-languages" class="profile-modal profile-modal-md rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
     <form method="dialog" class="border-b border-slate-200 px-5 py-3">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-slate-900">Modifier langues</h3>
@@ -409,4 +429,19 @@
         list.insertAdjacentHTML('beforeend', html);
     }
 </script>
+
+<style>
+    .profile-modal {
+        width: min(96vw, 64rem);
+        margin: auto;
+    }
+
+    .profile-modal.profile-modal-md {
+        width: min(96vw, 48rem);
+    }
+
+    .profile-modal.profile-modal-sm {
+        width: min(96vw, 40rem);
+    }
+</style>
 @endsection
