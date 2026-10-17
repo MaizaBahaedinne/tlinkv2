@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Models\Membership;
 use App\Models\ModerationReport;
@@ -113,6 +114,36 @@ class AdminExportController extends Controller
             $r->status,
             optional($r->created_at)->toDateTimeString(),
             optional($r->reviewed_at)->toDateTimeString(),
+        ]));
+    }
+
+    public function eventRegistrations(Request $request): StreamedResponse|\Illuminate\Http\JsonResponse
+    {
+        if ($denied = $this->assertAdmin($request)) {
+            return $denied;
+        }
+
+        $entityIds = ScopeResolver::managedEntityIds($request->user(), 'entity.manage');
+        $isGlobal = $entityIds === [];
+
+        $query = EventRegistration::query()
+            ->with(['event:id,title,entity_id', 'user:id,name,email'])
+            ->when(! $isGlobal, function ($q) use ($entityIds): void {
+                $q->whereHas('event', fn ($ev) => $ev->whereIn('entity_id', $entityIds));
+            })
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')->toString()))
+            ->select(['id', 'event_id', 'user_id', 'status', 'registered_at', 'created_at']);
+
+        AuditLogger::record($request->user()->id, 'admin.export.event_registrations', EventRegistration::class, null, ['is_global' => $isGlobal], $request->ip());
+
+        return $this->streamCsv('event_registrations_export.csv', ['id', 'event_title', 'user', 'email', 'status', 'registered_at', 'created_at'], $query->cursor()->map(fn ($r) => [
+            $r->id,
+            $r->event?->title,
+            $r->user?->name,
+            $r->user?->email,
+            $r->status,
+            optional($r->registered_at)->toDateTimeString(),
+            optional($r->created_at)->toDateTimeString(),
         ]));
     }
 

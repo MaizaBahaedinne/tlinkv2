@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
 use App\Models\ApprovalDecision;
 use App\Models\ApprovalRequest;
 use App\Models\Membership;
@@ -81,6 +82,16 @@ class ApprovalController extends Controller
                 metadata: ['decision' => $data['decision']],
                 ip: $request->ip(),
             );
+
+            AppNotification::query()->create([
+                'user_id' => $approvalRequest->requester_id,
+                'type' => 'approval.decided',
+                'title' => 'Decision sur votre demande',
+                'body' => $data['decision'] === 'approved'
+                    ? 'Votre demande a ete approuvee.'
+                    : 'Votre demande a ete rejetee.',
+                'data' => ['approval_request_id' => $approvalRequest->id, 'decision' => $data['decision']],
+            ]);
         });
 
         return response()->json([

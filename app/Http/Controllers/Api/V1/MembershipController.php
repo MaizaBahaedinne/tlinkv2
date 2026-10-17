@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
 use App\Models\ApprovalRequest;
 use App\Models\Membership;
 use App\Support\ApprovalResolver;
@@ -63,6 +64,16 @@ class MembershipController extends Controller
             metadata: ['approval_request_id' => $approval->id, 'entity_id' => $membership->entity_id],
             ip: $request->ip(),
         );
+
+        if ($reviewerId !== null) {
+            AppNotification::query()->create([
+                'user_id' => $reviewerId,
+                'type' => 'membership.submitted',
+                'title' => 'Nouvelle demande d\'adhesion',
+                'body' => 'Une demande d\'adhesion attend votre validation.',
+                'data' => ['membership_id' => $membership->id, 'approval_request_id' => $approval->id],
+            ]);
+        }
 
         return response()->json([
             'message' => 'Demande d\'adhesion soumise.',

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EventRegistration extends Model
 {
@@ -19,4 +20,14 @@ class EventRegistration extends Model
     protected $casts = [
         'registered_at' => 'datetime',
     ];
+
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(FoundationEvent::class, 'event_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

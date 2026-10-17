@@ -48,6 +48,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/exports/users', [AdminExportController::class, 'users']);
             Route::get('/exports/memberships', [AdminExportController::class, 'memberships']);
             Route::get('/exports/events', [AdminExportController::class, 'events']);
+            Route::get('/exports/event-registrations', [AdminExportController::class, 'eventRegistrations']);
             Route::get('/exports/moderation-reports', [AdminExportController::class, 'moderationReports']);
 
             Route::get('/moderation-reports', [ModerationController::class, 'index']);

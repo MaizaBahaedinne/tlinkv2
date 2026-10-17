@@ -50,4 +50,33 @@ class AdminExportTest extends TestCase
         $response->assertOk();
         $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
     }
+
+    public function test_admin_can_export_event_registrations_csv(): void
+    {
+        $admin = User::factory()->create();
+
+        $permission = Permission::query()->firstOrCreate(
+            ['slug' => 'entity.manage'],
+            ['name' => 'Manage Entities']
+        );
+
+        $role = Role::query()->firstOrCreate(
+            ['slug' => 'entity-administrator'],
+            ['name' => 'Entity Administrator', 'scope_type' => 'entity']
+        );
+
+        $role->permissions()->syncWithoutDetaching([$permission->id]);
+
+        RoleAssignment::query()->create([
+            'user_id' => $admin->id,
+            'role_id' => $role->id,
+            'status' => 'active',
+            'starts_at' => now()->toDateString(),
+        ]);
+
+        $response = $this->actingAs($admin)->get('/api/v1/admin/exports/event-registrations');
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
+    }
 }

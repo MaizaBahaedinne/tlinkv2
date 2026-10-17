@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Support\AccessScope;
@@ -61,6 +62,14 @@ class EventController extends Controller
             ip: $request->ip(),
         );
 
+        AppNotification::query()->create([
+            'user_id' => $request->user()->id,
+            'type' => 'event.published',
+            'title' => 'Evenement publie',
+            'body' => 'Votre evenement "'.$event->title.'" est publie.',
+            'data' => ['event_id' => $event->id],
+        ]);
+
         return response()->json([
             'message' => 'Evenement cree.',
             'data' => $event,
@@ -106,6 +115,16 @@ class EventController extends Controller
             metadata: ['event_id' => $event->id, 'status' => $registration->status],
             ip: $request->ip(),
         );
+
+        AppNotification::query()->create([
+            'user_id' => $request->user()->id,
+            'type' => 'event.registration',
+            'title' => 'Inscription evenement',
+            'body' => $registration->status === 'confirmed'
+                ? 'Votre inscription est confirmee.'
+                : 'Vous etes en liste d\'attente.',
+            'data' => ['event_id' => $event->id, 'registration_id' => $registration->id, 'status' => $registration->status],
+        ]);
 
         return response()->json([
             'message' => 'Inscription enregistree.',

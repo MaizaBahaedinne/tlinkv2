@@ -75,7 +75,14 @@ class AdminController extends Controller
         }
 
         $users = User::query()
-            ->when($request->filled('q'), fn ($q) => $q->where('name', 'like', '%'.$request->string('q')->toString().'%'))
+            ->when($request->filled('q'), function ($q) use ($request): void {
+                $needle = '%'.$request->string('q')->toString().'%';
+                $q->where(function ($inner) use ($needle): void {
+                    $inner->where('name', 'like', $needle)->orWhere('email', 'like', $needle);
+                });
+            })
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from')->toString()))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->string('to')->toString()))
             ->latest('id')
             ->paginate(min((int) $request->integer('per_page', 20), 100));
 
@@ -90,6 +97,8 @@ class AdminController extends Controller
 
         $logs = AuditLog::query()
             ->when($request->filled('action'), fn ($q) => $q->where('action', $request->string('action')->toString()))
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from')->toString()))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->string('to')->toString()))
             ->latest('id')
             ->paginate(min((int) $request->integer('per_page', 20), 100));
 
