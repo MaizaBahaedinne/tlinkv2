@@ -12,7 +12,20 @@ type FeedPost = {
   attachments: Array<{ url: string; mime_type: string; kind: 'image' | 'video' }>;
   counts: { comments: number; reactions: number; shares: number; views: number };
   reactions: Record<string, number>;
-  comments_preview: Array<{ id: number; content: string; author: string }>;
+  comments_preview: Array<{
+    id: number;
+    content: string;
+    author: string;
+    author_avatar_url?: string | null;
+    created_at: string | null;
+    replies: Array<{
+      id: number;
+      content: string;
+      author: string;
+      author_avatar_url?: string | null;
+      created_at: string | null;
+    }>;
+  }>;
 };
 
 type RootData = {
@@ -132,6 +145,16 @@ function formatPublishedAt(value: string | null): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatCommentAt(value: string | null): string {
+  if (!value) return 'A l\'instant';
+  return new Date(value).toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -345,9 +368,76 @@ function formatPublishedAt(value: string | null): string {
             </div>
           </div>
 
-          <div v-if="post.comments_preview.length" class="mt-3 space-y-2">
-            <div v-for="comment in post.comments_preview" :key="comment.id" class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
-              <strong>{{ comment.author }}:</strong> {{ comment.content }}
+          <div v-if="post.comments_preview.length" class="mt-3 space-y-3">
+            <div v-for="comment in post.comments_preview" :key="comment.id" class="rounded-xl bg-slate-50 px-3 py-3 text-xs text-slate-700">
+              <div class="flex items-start gap-2">
+                <img
+                  v-if="comment.author_avatar_url"
+                  :src="comment.author_avatar_url"
+                  :alt="comment.author"
+                  class="h-7 w-7 rounded-full border border-slate-200 object-cover"
+                  loading="lazy"
+                />
+                <span
+                  v-else
+                  class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-700"
+                >
+                  {{ authorInitials(comment.author) }}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <strong>{{ comment.author }}</strong>
+                    <span class="text-[11px] text-slate-400">{{ formatCommentAt(comment.created_at) }}</span>
+                  </div>
+                  <p class="mt-0.5 whitespace-pre-line text-xs text-slate-700">{{ comment.content }}</p>
+
+                  <div v-if="comment.replies.length" class="mt-2 space-y-2 border-l border-slate-200 pl-3">
+                    <div v-for="reply in comment.replies" :key="reply.id" class="rounded-lg bg-white px-2 py-2">
+                      <div class="flex items-start gap-2">
+                        <img
+                          v-if="reply.author_avatar_url"
+                          :src="reply.author_avatar_url"
+                          :alt="reply.author"
+                          class="h-6 w-6 rounded-full border border-slate-200 object-cover"
+                          loading="lazy"
+                        />
+                        <span
+                          v-else
+                          class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-700"
+                        >
+                          {{ authorInitials(reply.author) }}
+                        </span>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-2">
+                            <strong>{{ reply.author }}</strong>
+                            <span class="text-[11px] text-slate-400">{{ formatCommentAt(reply.created_at) }}</span>
+                          </div>
+                          <p class="mt-0.5 whitespace-pre-line text-xs text-slate-700">{{ reply.content }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <details v-if="data.auth.isAuthenticated" class="mt-2">
+                    <summary class="cursor-pointer select-none text-[11px] text-tlink-blue">Repondre</summary>
+                    <form :action="`/posts/${post.id}/comment`" method="post" class="mt-2 flex gap-2">
+                      <input type="hidden" name="_token" :value="data.csrf" />
+                      <input type="hidden" name="parent_id" :value="comment.id" />
+                      <input
+                        type="text"
+                        name="content"
+                        maxlength="1000"
+                        required
+                        placeholder="Votre reponse..."
+                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+                      />
+                      <button type="submit" class="rounded-xl bg-tlink-blue px-3 py-2 text-xs font-semibold text-white hover:bg-tlink-blue-700" title="Envoyer la reponse">
+                        <i class="fa-solid fa-paper-plane"></i>
+                      </button>
+                    </form>
+                  </details>
+                </div>
+              </div>
             </div>
           </div>
 

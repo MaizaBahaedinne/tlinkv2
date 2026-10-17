@@ -13,6 +13,7 @@ use App\Models\PostView;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class FeedController extends Controller
@@ -24,7 +25,9 @@ class FeedController extends Controller
                 'author:id,name',
                 'author.profile:id,user_id,headline,photo_path',
                 'attachments:id,post_id,disk,path,mime_type',
-                'comments' => fn ($query) => $query->with('author:id,name')->latest('id'),
+                'comments' => fn ($query) => $query
+                    ->with(['author:id,name', 'author.profile:id,user_id,photo_path'])
+                    ->orderBy('created_at'),
             ])
             ->withCount(['comments', 'reactions', 'shares', 'views'])
             ->latest('published_at')
@@ -73,13 +76,38 @@ class FeedController extends Controller
                     'views' => (int) $post->views_count,
                 ],
                 'reactions' => $reactionBreakdown,
-                'comments_preview' => $post->comments->take(3)->map(function (Comment $comment): array {
-                    return [
-                        'id' => $comment->id,
-                        'content' => $comment->content,
-                        'author' => $comment->author ? $comment->author->name : 'Membre',
-                    ];
-                })->values(),
+                'comments_preview' => $post->comments
+                    ->whereNull('parent_id')
+                    ->take(5)
+                    ->map(function (Comment $comment) use ($post): array {
+                        $authorPhotoPath = $comment->author?->profile?->photo_path;
+
+                        return [
+                            'id' => $comment->id,
+                            'content' => $comment->content,
+                            'author' => $comment->author ? $comment->author->name : 'Membre',
+                            'author_avatar_url' => ($authorPhotoPath && Storage::disk('public')->exists($authorPhotoPath))
+                                ? Storage::disk('public')->url($authorPhotoPath)
+                                : null,
+                            'created_at' => optional($comment->created_at)?->toIso8601String(),
+                            'replies' => $post->comments
+                                ->where('parent_id', $comment->id)
+                                ->take(3)
+                                ->map(function (Comment $reply): array {
+                                    $replyPhotoPath = $reply->author?->profile?->photo_path;
+
+                                    return [
+                                        'id' => $reply->id,
+                                        'content' => $reply->content,
+                                        'author' => $reply->author ? $reply->author->name : 'Membre',
+                                        'author_avatar_url' => ($replyPhotoPath && Storage::disk('public')->exists($replyPhotoPath))
+                                            ? Storage::disk('public')->url($replyPhotoPath)
+                                            : null,
+                                        'created_at' => optional($reply->created_at)?->toIso8601String(),
+                                    ];
+                                })->values(),
+                        ];
+                    })->values(),
             ];
         })->values();
 
@@ -171,11 +199,24 @@ class FeedController extends Controller
     {
         $data = $request->validate([
             'content' => ['required', 'string', 'max:1000'],
+            'parent_id' => ['nullable', 'integer', Rule::exists('comments', 'id')],
         ]);
+
+        if (!empty($data['parent_id'])) {
+            $isParentInSamePost = Comment::query()
+                ->whereKey($data['parent_id'])
+                ->where('post_id', $post->id)
+                ->exists();
+
+            if (! $isParentInSamePost) {
+                return back()->with('status', 'Commentaire parent invalide.');
+            }
+        }
 
         Comment::query()->create([
             'post_id' => $post->id,
             'user_id' => $request->user()->id,
+            'parent_id' => $data['parent_id'] ?? null,
             'content' => $data['content'],
         ]);
 

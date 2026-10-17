@@ -40,6 +40,15 @@ declare global {
           id: number;
           content: string;
           author: string;
+          author_avatar_url?: string | null;
+          created_at: string | null;
+          replies: Array<{
+            id: number;
+            content: string;
+            author: string;
+            author_avatar_url?: string | null;
+            created_at: string | null;
+          }>;
         }>;
       }>;
       entities: Array<{

@@ -12,6 +12,7 @@ use App\Models\PostView;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class FeedController extends Controller
 {
@@ -117,11 +118,26 @@ class FeedController extends Controller
     {
         $data = $request->validate([
             'content' => ['required', 'string', 'max:1000'],
+            'parent_id' => ['nullable', 'integer', Rule::exists('comments', 'id')],
         ]);
+
+        if (!empty($data['parent_id'])) {
+            $isParentInSamePost = Comment::query()
+                ->whereKey($data['parent_id'])
+                ->where('post_id', $post->id)
+                ->exists();
+
+            if (! $isParentInSamePost) {
+                return response()->json([
+                    'message' => 'Commentaire parent invalide.',
+                ], 422);
+            }
+        }
 
         $comment = Comment::query()->create([
             'post_id' => $post->id,
             'user_id' => $request->user()->id,
+            'parent_id' => $data['parent_id'] ?? null,
             'content' => $data['content'],
         ]);
 
