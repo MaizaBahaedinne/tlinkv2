@@ -12,6 +12,9 @@ class AccessScope
         $query = RoleAssignment::query()
             ->where('user_id', $user->id)
             ->where('status', 'active')
+            ->whereHas('role', function ($builder): void {
+                $builder->where('is_active', true);
+            })
             ->whereHas('role.permissions', fn ($builder) => $builder->where('slug', $permissionSlug));
 
         if ($entityId !== null) {

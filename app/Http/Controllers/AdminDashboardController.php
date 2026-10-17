@@ -167,7 +167,7 @@ class AdminDashboardController extends Controller
                     'goal' => 'Stabiliser la base Laravel, auth, roles, permissions et CI/CD.',
                     'actions' => [
                         ['id' => 'foundation-auth', 'label' => 'Valider auth web/API et gestion session', 'status' => 'done', 'note' => '', 'updated_at' => now()->toDateTimeString()],
-                        ['id' => 'foundation-roles', 'label' => 'Finaliser matrice roles/permissions', 'status' => 'in_progress', 'note' => '', 'updated_at' => now()->toDateTimeString()],
+                        ['id' => 'foundation-roles', 'label' => 'Finaliser matrice roles/permissions', 'status' => 'done', 'note' => 'Matrice centralisee et sync complete par role.', 'updated_at' => now()->toDateTimeString()],
                         ['id' => 'foundation-release', 'label' => 'Verifier pipeline release VPS sans interruption', 'status' => 'todo', 'note' => '', 'updated_at' => now()->toDateTimeString()],
                     ],
                 ],
