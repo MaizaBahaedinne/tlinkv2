@@ -4,6 +4,7 @@ set -euo pipefail
 # Usage:
 #   bash scripts/release_all.sh
 #   bash scripts/release_all.sh --with-seed --with-tests
+#   bash scripts/release_all.sh --no-test
 #
 # Env overrides (optional):
 #   APP_DIR=/home/persomy.com/tlink.persomy.com
@@ -27,6 +28,7 @@ for arg in "$@"; do
   case "$arg" in
     --with-seed) WITH_SEED=true ;;
     --with-tests) WITH_TESTS=true ;;
+    --no-test|--no-tests) WITH_TESTS=false ;;
     *) echo "Argument inconnu: $arg"; exit 1 ;;
   esac
 done
