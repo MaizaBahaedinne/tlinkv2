@@ -12,6 +12,7 @@ use App\Models\PostShare;
 use App\Models\PostView;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -20,6 +21,8 @@ class FeedController extends Controller
 {
     public function index(Request $request): View
     {
+        $currentUserId = $request->user()?->id;
+
         $posts = Post::query()
             ->with([
                 'author:id,name',
@@ -34,7 +37,7 @@ class FeedController extends Controller
             ->latest('id')
             ->paginate(12);
 
-        $feedPayload = $posts->getCollection()->map(function (Post $post): array {
+        $feedPayload = $posts->getCollection()->map(function (Post $post) use ($currentUserId): array {
             $reactionBreakdown = PostReaction::query()
                 ->selectRaw('reaction_type, COUNT(*) as aggregate_count')
                 ->where('post_id', $post->id)
@@ -48,6 +51,8 @@ class FeedController extends Controller
                 'type' => $post->type,
                 'visibility' => $post->visibility,
                 'sentiment' => $post->sentiment,
+                'comments_enabled' => (bool) $post->comments_enabled,
+                'can_manage' => $currentUserId ? ((int) $currentUserId === (int) $post->user_id) : false,
                 'published_at' => optional($post->published_at)?->toIso8601String(),
                 'author' => $post->author
                     ? [
@@ -64,7 +69,7 @@ class FeedController extends Controller
                     ->filter(fn (PostAttachment $attachment) => Storage::disk($attachment->disk)->exists($attachment->path))
                     ->map(function (PostAttachment $attachment): array {
                         return [
-                            'url' => Storage::disk($attachment->disk)->url($attachment->path),
+                            'url' => route('posts.attachments.show', ['attachment' => $attachment->id]),
                             'mime_type' => $attachment->mime_type,
                             'kind' => str_starts_with($attachment->mime_type, 'video/') ? 'video' : 'image',
                         ];
@@ -197,6 +202,10 @@ class FeedController extends Controller
 
     public function comment(Request $request, Post $post): RedirectResponse
     {
+        if (! $post->comments_enabled) {
+            return back()->with('status', 'Commentaires desactives pour ce post.');
+        }
+
         $data = $request->validate([
             'content' => ['required', 'string', 'max:1000'],
             'parent_id' => ['nullable', 'integer', Rule::exists('comments', 'id')],
@@ -221,6 +230,45 @@ class FeedController extends Controller
         ]);
 
         return back()->with('status', 'Commentaire publie.');
+    }
+
+    public function updatePost(Request $request, Post $post): RedirectResponse
+    {
+        if ((int) $post->user_id !== (int) $request->user()->id) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'content' => ['required', 'string', 'max:3000'],
+        ]);
+
+        $post->content = $data['content'];
+        $post->save();
+
+        return back()->with('status', 'Post modifie.');
+    }
+
+    public function destroyPost(Request $request, Post $post): RedirectResponse
+    {
+        if ((int) $post->user_id !== (int) $request->user()->id) {
+            abort(403);
+        }
+
+        $post->delete();
+
+        return back()->with('status', 'Post supprime.');
+    }
+
+    public function toggleComments(Request $request, Post $post): RedirectResponse
+    {
+        if ((int) $post->user_id !== (int) $request->user()->id) {
+            abort(403);
+        }
+
+        $post->comments_enabled = ! $post->comments_enabled;
+        $post->save();
+
+        return back()->with('status', $post->comments_enabled ? 'Commentaires actives.' : 'Commentaires desactives.');
     }
 
     public function share(Request $request, Post $post): RedirectResponse
@@ -263,5 +311,23 @@ class FeedController extends Controller
         }
 
         return back();
+    }
+
+    public function showAttachment(PostAttachment $attachment): StreamedResponse
+    {
+        $disk = $attachment->disk ?: 'public';
+
+        if (! Storage::disk($disk)->exists($attachment->path)) {
+            abort(404);
+        }
+
+        return Storage::disk($disk)->response(
+            $attachment->path,
+            basename($attachment->path),
+            [
+                'Content-Type' => $attachment->mime_type,
+                'Cache-Control' => 'public, max-age=86400',
+            ]
+        );
     }
 }

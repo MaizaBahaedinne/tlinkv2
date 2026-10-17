@@ -31,7 +31,7 @@ class FeedController extends Controller
                 $post->attachments
                     ->filter(fn (PostAttachment $attachment) => Storage::disk($attachment->disk)->exists($attachment->path))
                     ->map(fn (PostAttachment $attachment) => [
-                        'url' => Storage::disk($attachment->disk)->url($attachment->path),
+                        'url' => route('posts.attachments.show', ['attachment' => $attachment->id]),
                         'mime_type' => $attachment->mime_type,
                         'kind' => str_starts_with($attachment->mime_type, 'video/') ? 'video' : 'image',
                     ])->values()

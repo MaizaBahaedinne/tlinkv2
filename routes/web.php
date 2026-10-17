@@ -26,10 +26,16 @@ Route::post('/deconnexion', [LoginController::class, 'destroy'])
 Route::post('/posts/{post}/view', [FeedController::class, 'view'])
     ->name('posts.view');
 
+Route::get('/posts/attachments/{attachment}', [FeedController::class, 'showAttachment'])
+    ->name('posts.attachments.show');
+
 Route::middleware('auth')->group(function (): void {
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/posts', [FeedController::class, 'storePost'])->name('posts.store');
+    Route::patch('/posts/{post}', [FeedController::class, 'updatePost'])->name('posts.update');
+    Route::delete('/posts/{post}', [FeedController::class, 'destroyPost'])->name('posts.destroy');
+    Route::patch('/posts/{post}/comments-state', [FeedController::class, 'toggleComments'])->name('posts.comments-state');
     Route::post('/posts/{post}/react', [FeedController::class, 'react'])->name('posts.react');
     Route::post('/posts/{post}/comment', [FeedController::class, 'comment'])->name('posts.comment');
     Route::post('/posts/{post}/share', [FeedController::class, 'share'])->name('posts.share');
