@@ -17,6 +17,8 @@ declare global {
         type: string;
         visibility: string;
         sentiment: string;
+        comments_enabled: boolean;
+        can_manage: boolean;
         published_at: string | null;
         author?: {
           id: number;

@@ -21,11 +21,13 @@ class Post extends Model
         'visibility',
         'sentiment',
         'content',
+        'comments_enabled',
         'published_at',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
+        'comments_enabled' => 'boolean',
     ];
 
     public function author(): BelongsTo

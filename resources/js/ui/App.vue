@@ -349,6 +349,42 @@ function formatCommentAt(value: string | null): string {
               <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs text-blue-700" :title="post.sentiment">
                 <i class="fa-regular" :class="iconForSentiment(post.sentiment)"></i>
               </span>
+              <details v-if="post.can_manage" class="relative">
+                <summary class="flex h-7 w-7 cursor-pointer list-none items-center justify-center rounded-full border border-slate-300 text-xs text-slate-600 hover:bg-slate-50" title="Gerer le post">
+                  <i class="fa-solid fa-ellipsis"></i>
+                </summary>
+                <div class="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-soft">
+                  <form :action="`/posts/${post.id}`" method="post" class="space-y-2">
+                    <input type="hidden" name="_token" :value="data.csrf" />
+                    <input type="hidden" name="_method" value="PATCH" />
+                    <textarea
+                      name="content"
+                      rows="3"
+                      class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-tlink-blue"
+                      required
+                    >{{ post.content }}</textarea>
+                    <button type="submit" class="w-full rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700">
+                      Modifier le post
+                    </button>
+                  </form>
+
+                  <form :action="`/posts/${post.id}/comments-state`" method="post" class="mt-2">
+                    <input type="hidden" name="_token" :value="data.csrf" />
+                    <input type="hidden" name="_method" value="PATCH" />
+                    <button type="submit" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs hover:bg-slate-50">
+                      {{ post.comments_enabled ? 'Desactiver les commentaires' : 'Activer les commentaires' }}
+                    </button>
+                  </form>
+
+                  <form :action="`/posts/${post.id}`" method="post" class="mt-2" onsubmit="return confirm('Supprimer ce post ?');">
+                    <input type="hidden" name="_token" :value="data.csrf" />
+                    <input type="hidden" name="_method" value="DELETE" />
+                    <button type="submit" class="w-full rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100">
+                      Supprimer le post
+                    </button>
+                  </form>
+                </div>
+              </details>
             </div>
           </div>
           <p class="whitespace-pre-line text-sm leading-6 text-slate-700">{{ post.content }}</p>
@@ -412,6 +448,10 @@ function formatCommentAt(value: string | null): string {
             </div>
           </div>
 
+          <div v-if="!post.comments_enabled" class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Commentaires desactives pour ce post.
+          </div>
+
           <div v-if="post.comments_preview.length" class="mt-3 space-y-3">
             <div v-for="comment in post.comments_preview" :key="comment.id" class="rounded-xl bg-slate-50 px-3 py-3 text-xs text-slate-700">
               <div class="flex items-start gap-2">
@@ -462,7 +502,7 @@ function formatCommentAt(value: string | null): string {
                     </div>
                   </div>
 
-                  <details v-if="data.auth.isAuthenticated" class="mt-2">
+                  <details v-if="data.auth.isAuthenticated && post.comments_enabled" class="mt-2">
                     <summary class="cursor-pointer select-none text-[11px] text-tlink-blue">Repondre</summary>
                     <form :action="`/posts/${post.id}/comment`" method="post" class="mt-2 flex gap-2">
                       <input type="hidden" name="_token" :value="data.csrf" />
@@ -485,7 +525,7 @@ function formatCommentAt(value: string | null): string {
             </div>
           </div>
 
-          <form v-if="data.auth.isAuthenticated" :action="`/posts/${post.id}/comment`" method="post" class="mt-3 flex gap-2">
+          <form v-if="data.auth.isAuthenticated && post.comments_enabled" :action="`/posts/${post.id}/comment`" method="post" class="mt-3 flex gap-2">
             <input type="hidden" name="_token" :value="data.csrf" />
             <input
               type="text"
