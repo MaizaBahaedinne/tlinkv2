@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Entity;
 use App\Models\Setting;
 use App\Support\AccessScope;
 use Illuminate\Http\RedirectResponse;
@@ -22,10 +23,12 @@ class AdminDashboardController extends Controller
 
         $roadmap = $this->loadRoadmap();
         $summary = $this->computeSummary($roadmap);
+        $organization = $this->loadOrganizationOverview();
 
         return response()->view('admin.index', [
             'roadmap' => $roadmap,
             'summary' => $summary,
+            'organization' => $organization,
             'statusOptions' => [
                 'todo' => 'A faire',
                 'in_progress' => 'En cours',
@@ -152,6 +155,56 @@ class AdminDashboardController extends Controller
             'in_progress_actions' => $inProgress,
             'blocked_actions' => $blocked,
             'global_progress' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+        ];
+    }
+
+    private function loadOrganizationOverview(): array
+    {
+        $entities = Entity::query()
+            ->withCount(['departments', 'institutions', 'clubs', 'memberships'])
+            ->with([
+                'departments:id,entity_id,name,slug',
+                'institutions' => fn ($query) => $query
+                    ->select(['id', 'entity_id', 'name', 'slug', 'institution_type'])
+                    ->withCount('clubs')
+                    ->orderBy('name'),
+                'clubs:id,entity_id,department_id,institution_id,name,slug',
+            ])
+            ->orderBy('name')
+            ->get();
+
+        return [
+            'total_entities' => $entities->count(),
+            'total_departments' => $entities->sum('departments_count'),
+            'total_institutions' => $entities->sum('institutions_count'),
+            'total_clubs' => $entities->sum('clubs_count'),
+            'entities' => $entities->map(function (Entity $entity): array {
+                return [
+                    'name' => $entity->name,
+                    'slug' => $entity->slug,
+                    'category' => $entity->category,
+                    'description' => $entity->description,
+                    'departments_count' => (int) $entity->departments_count,
+                    'institutions_count' => (int) $entity->institutions_count,
+                    'clubs_count' => (int) $entity->clubs_count,
+                    'memberships_count' => (int) $entity->memberships_count,
+                    'departments' => $entity->departments->map(fn ($department) => [
+                        'name' => $department->name,
+                        'slug' => $department->slug,
+                    ])->values(),
+                    'institutions' => $entity->institutions->map(fn ($institution) => [
+                        'name' => $institution->name,
+                        'slug' => $institution->slug,
+                        'type' => $institution->institution_type,
+                        'clubs_count' => (int) $institution->clubs_count,
+                    ])->values(),
+                    'clubs' => $entity->clubs->map(fn ($club) => [
+                        'name' => $club->name,
+                        'slug' => $club->slug,
+                        'institution_id' => $club->institution_id,
+                    ])->values(),
+                ];
+            })->values(),
         ];
     }
 

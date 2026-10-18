@@ -4,25 +4,25 @@ namespace Database\Seeders;
 
 use App\Models\Entity;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class EntitySeeder extends Seeder
 {
     public function run(): void
     {
         $entities = [
-            ['name' => 'University', 'category' => 'education'],
-            ['name' => 'High School', 'category' => 'education'],
-            ['name' => 'We Are Carthage', 'category' => 'territorial'],
-            ['name' => 'We Are Campers', 'category' => 'community'],
+            ['name' => 'Fondation', 'slug' => 'foundation', 'category' => 'foundation', 'description' => 'Branche nationale de gouvernance et de coordination.'],
+            ['name' => 'University', 'slug' => 'university', 'category' => 'education', 'description' => 'Branche universitaire et ses clubs.'],
+            ['name' => 'High School', 'slug' => 'high-school', 'category' => 'education', 'description' => 'Branche secondaire et ses clubs.'],
+            ['name' => 'Alumni', 'slug' => 'alumni', 'category' => 'alumni', 'description' => 'Branche des anciens membres et du réseau alumni.'],
         ];
 
         foreach ($entities as $entity) {
             Entity::query()->updateOrCreate(
-                ['slug' => Str::slug($entity['name'])],
+                ['slug' => $entity['slug']],
                 [
                     'name' => $entity['name'],
                     'category' => $entity['category'],
+                    'description' => $entity['description'] ?? null,
                     'is_active' => true,
                 ]
             );

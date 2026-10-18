@@ -29,4 +29,9 @@ class Institution extends Model
     {
         return $this->hasMany(Club::class);
     }
+
+    public function departments(): HasMany
+    {
+        return $this->hasMany(Department::class);
+    }
 }

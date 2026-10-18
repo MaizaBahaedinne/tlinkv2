@@ -39,4 +39,14 @@ class Membership extends Model
     {
         return $this->belongsTo(Entity::class);
     }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function club(): BelongsTo
+    {
+        return $this->belongsTo(Club::class);
+    }
 }

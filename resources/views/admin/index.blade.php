@@ -17,6 +17,16 @@
 .rm-kpi p { margin: 0; }
 .rm-kpi .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
 .rm-kpi .v { margin-top: 6px; font-size: 26px; font-weight: 800; }
+.org-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.org-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); }
+.org-card h3 { margin: 0; font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif; font-size: 20px; }
+.org-meta { margin-top: 6px; color: #64748b; font-size: 13px; }
+.org-stats { margin-top: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.org-stat { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px; }
+.org-stat .k { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+.org-stat .v { display: block; margin-top: 4px; font-size: 18px; font-weight: 800; }
+.org-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.org-chip { border-radius: 999px; border: 1px solid #dbe4f0; background: #fff; padding: 6px 10px; font-size: 12px; color: #0f172a; }
 .rm-track { height: 9px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
 .rm-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%); }
 .rm-modules { display: grid; gap: 12px; }
@@ -67,6 +77,55 @@
             </div>
             <div style="margin-top: 12px;">
                 <div class="rm-track"><div class="rm-fill" style="width: {{ $summary['global_progress'] }}%;"></div></div>
+            </div>
+        </section>
+
+        <section class="rm-card">
+            <div class="rm-top">
+                <div>
+                    <p class="rm-kicker">Structure organisationnelle</p>
+                    <h2 class="rm-title" style="font-size: 26px;">Fondation, University, High School, Alumni</h2>
+                    <p class="rm-sub">Vue synthétique des branches, bureaux, institutions et clubs seedés dans le modèle actuel.</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 14px;" class="org-grid">
+                @foreach($organization['entities'] as $entity)
+                    <article class="org-card">
+                        <h3>{{ $entity['name'] }}</h3>
+                        <p class="org-meta">{{ $entity['description'] ?? 'Branche organisationnelle' }}</p>
+                        <div class="org-stats">
+                            <div class="org-stat"><span class="k">Bureaux</span><span class="v">{{ $entity['departments_count'] }}</span></div>
+                            <div class="org-stat"><span class="k">Institutions</span><span class="v">{{ $entity['institutions_count'] }}</span></div>
+                            <div class="org-stat"><span class="k">Clubs</span><span class="v">{{ $entity['clubs_count'] }}</span></div>
+                            <div class="org-stat"><span class="k">Adhesions</span><span class="v">{{ $entity['memberships_count'] }}</span></div>
+                        </div>
+
+                        @if($entity['departments']->isNotEmpty())
+                            <div class="org-list">
+                                @foreach($entity['departments'] as $department)
+                                    <span class="org-chip">{{ $department['name'] }}</span>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        @if($entity['institutions']->isNotEmpty())
+                            <div class="org-list">
+                                @foreach($entity['institutions'] as $institution)
+                                    <span class="org-chip">{{ $institution['name'] }} ({{ $institution['clubs_count'] }})</span>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        @if($entity['clubs']->isNotEmpty())
+                            <div class="org-list">
+                                @foreach($entity['clubs'] as $club)
+                                    <span class="org-chip">{{ $club['name'] }}</span>
+                                @endforeach
+                            </div>
+                        @endif
+                    </article>
+                @endforeach
             </div>
         </section>
 

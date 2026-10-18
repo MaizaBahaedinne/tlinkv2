@@ -22,4 +22,19 @@ class Entity extends Model
     {
         return $this->hasMany(Club::class);
     }
+
+    public function departments(): HasMany
+    {
+        return $this->hasMany(Department::class);
+    }
+
+    public function institutions(): HasMany
+    {
+        return $this->hasMany(Institution::class);
+    }
+
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(Membership::class);
+    }
 }

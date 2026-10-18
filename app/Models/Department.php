@@ -22,4 +22,9 @@ class Department extends Model
     {
         return $this->hasMany(Club::class);
     }
+
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(Membership::class);
+    }
 }

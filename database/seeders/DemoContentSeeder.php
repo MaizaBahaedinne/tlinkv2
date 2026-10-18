@@ -31,7 +31,7 @@ class DemoContentSeeder extends Seeder
             ]
         );
 
-        $entity = Entity::query()->where('slug', 'university')->first();
+        $entity = Entity::query()->where('slug', 'foundation')->first();
 
         Post::query()->updateOrCreate(
             ['content' => 'Bienvenue sur T.Link, le reseau de Fondation Tunivisions.'],
