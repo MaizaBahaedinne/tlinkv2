@@ -3,7 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Entity;
+use App\Models\ApprovalRequest;
+use App\Models\Comment;
+use App\Models\EventRegistration;
+use App\Models\FoundationEvent;
+use App\Models\ModerationReport;
+use App\Models\Post;
 use App\Models\Setting;
+use App\Models\User;
 use App\Support\AccessScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,11 +31,13 @@ class AdminDashboardController extends Controller
         $roadmap = $this->loadRoadmap();
         $summary = $this->computeSummary($roadmap);
         $organization = $this->loadOrganizationOverview();
+        $platform = $this->loadPlatformOverview();
 
         return response()->view('admin.index', [
             'roadmap' => $roadmap,
             'summary' => $summary,
             'organization' => $organization,
+            'platform' => $platform,
             'statusOptions' => [
                 'todo' => 'A faire',
                 'in_progress' => 'En cours',
@@ -205,6 +214,59 @@ class AdminDashboardController extends Controller
                     ])->values(),
                 ];
             })->values(),
+        ];
+    }
+
+    private function loadPlatformOverview(): array
+    {
+        $now = now();
+
+        return [
+            'totals' => [
+                'users' => User::query()->count(),
+                'users_30d' => User::query()->where('created_at', '>=', $now->copy()->subDays(30))->count(),
+                'posts' => Post::query()->count(),
+                'posts_7d' => Post::query()->where('created_at', '>=', $now->copy()->subDays(7))->count(),
+                'comments' => Comment::query()->count(),
+                'reports_pending' => ModerationReport::query()->where('status', 'pending')->count(),
+                'approvals_pending' => ApprovalRequest::query()->where('status', 'pending')->count(),
+                'events' => FoundationEvent::query()->count(),
+                'registrations' => EventRegistration::query()->count(),
+            ],
+            'recent_users' => User::query()
+                ->select(['id', 'name', 'email', 'created_at'])
+                ->latest('id')
+                ->limit(5)
+                ->get()
+                ->map(fn (User $user): array => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'joined_at' => optional($user->created_at)->toDateTimeString(),
+                ])
+                ->values(),
+            'recent_posts' => Post::query()
+                ->with('author:id,name')
+                ->select(['id', 'user_id', 'content', 'created_at'])
+                ->latest('id')
+                ->limit(5)
+                ->get()
+                ->map(fn (Post $post): array => [
+                    'author' => $post->author?->name ?? 'Utilisateur inconnu',
+                    'content' => $post->content,
+                    'created_at' => optional($post->created_at)->toDateTimeString(),
+                ])
+                ->values(),
+            'recent_reports' => ModerationReport::query()
+                ->select(['id', 'reason', 'status', 'created_at'])
+                ->latest('id')
+                ->limit(5)
+                ->get()
+                ->map(fn (ModerationReport $report): array => [
+                    'reason' => $report->reason,
+                    'status' => $report->status,
+                    'created_at' => optional($report->created_at)->toDateTimeString(),
+                ])
+                ->values(),
         ];
     }
 

@@ -49,13 +49,35 @@
 .rm-row-form button { border: 1px solid #0f2e5f; background: #0f2e5f; color: #fff; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
 .rm-row-form button:hover { background: #0b2348; }
 .rm-updated { color: #64748b; font-size: 12px; }
+.rm-success { border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 700; }
+.ops-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ops-card { border: 1px solid #d9e4f5; border-radius: 14px; padding: 14px; background: linear-gradient(165deg, #ffffff 0%, #f5f9ff 100%); }
+.ops-card h3 { margin: 0; font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif; font-size: 18px; }
+.ops-kpis { margin-top: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ops-kpi { border-radius: 10px; border: 1px solid #dbe4f0; background: #fff; padding: 9px 10px; }
+.ops-kpi .k { display: block; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+.ops-kpi .v { display: block; margin-top: 4px; font-size: 20px; font-weight: 800; }
+.ops-list { margin-top: 12px; display: grid; gap: 8px; }
+.ops-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px; background: #fff; }
+.ops-main { margin: 0; font-size: 13px; font-weight: 700; color: #0f172a; }
+.ops-sub { margin: 4px 0 0; font-size: 12px; color: #64748b; }
+.ops-status { display: inline-block; margin-top: 6px; border-radius: 999px; padding: 3px 8px; font-size: 10px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+.ops-status.pending { background: #ffedd5; color: #9a3412; }
+.ops-status.approved { background: #dcfce7; color: #166534; }
+.ops-status.rejected { background: #fee2e2; color: #991b1b; }
+.ops-status.cancelled { background: #e2e8f0; color: #334155; }
 @media (max-width: 1180px) { .rm-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 760px) { .rm-page { padding: 10px; } .rm-title { font-size: 28px; } .rm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1180px) { .ops-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .rm-page { padding: 10px; } .rm-title { font-size: 28px; } .rm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ops-kpis { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .rm-grid { grid-template-columns: 1fr; } }
 </style>
 
 <div class="rm-page">
     <div class="rm-wrap">
+        @if(session('status'))
+            <div class="rm-success">{{ session('status') }}</div>
+        @endif
+
         <section class="rm-card">
             <div class="rm-top">
                 <div>
@@ -77,6 +99,76 @@
             </div>
             <div style="margin-top: 12px;">
                 <div class="rm-track"><div class="rm-fill" style="width: {{ $summary['global_progress'] }}%;"></div></div>
+            </div>
+        </section>
+
+        <section class="rm-card">
+            <div class="rm-top">
+                <div>
+                    <p class="rm-kicker">IHM de gestion admin</p>
+                    <h2 class="rm-title" style="font-size: 26px;">Supervision plateforme</h2>
+                    <p class="rm-sub">Vision instantanee des flux clefs: utilisateurs, contenu, moderation et workflow d approbation.</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 14px;" class="ops-grid">
+                <article class="ops-card">
+                    <h3>Utilisateurs & activite</h3>
+                    <div class="ops-kpis">
+                        <div class="ops-kpi"><span class="k">Comptes totaux</span><span class="v">{{ $platform['totals']['users'] }}</span></div>
+                        <div class="ops-kpi"><span class="k">Nouveaux (30j)</span><span class="v">{{ $platform['totals']['users_30d'] }}</span></div>
+                    </div>
+                    <div class="ops-list">
+                        @forelse($platform['recent_users'] as $user)
+                            <div class="ops-item">
+                                <p class="ops-main">{{ $user['name'] }}</p>
+                                <p class="ops-sub">{{ $user['email'] }} • {{ $user['joined_at'] ?? '-' }}</p>
+                            </div>
+                        @empty
+                            <div class="ops-item"><p class="ops-sub">Aucun utilisateur recent.</p></div>
+                        @endforelse
+                    </div>
+                </article>
+
+                <article class="ops-card">
+                    <h3>Contenu social</h3>
+                    <div class="ops-kpis">
+                        <div class="ops-kpi"><span class="k">Posts</span><span class="v">{{ $platform['totals']['posts'] }}</span></div>
+                        <div class="ops-kpi"><span class="k">Posts (7j)</span><span class="v">{{ $platform['totals']['posts_7d'] }}</span></div>
+                        <div class="ops-kpi"><span class="k">Commentaires</span><span class="v">{{ $platform['totals']['comments'] }}</span></div>
+                        <div class="ops-kpi"><span class="k">Rapports en attente</span><span class="v">{{ $platform['totals']['reports_pending'] }}</span></div>
+                    </div>
+                    <div class="ops-list">
+                        @forelse($platform['recent_posts'] as $post)
+                            <div class="ops-item">
+                                <p class="ops-main">{{ $post['author'] }}</p>
+                                <p class="ops-sub">{{ \Illuminate\Support\Str::limit($post['content'], 90) }} • {{ $post['created_at'] ?? '-' }}</p>
+                            </div>
+                        @empty
+                            <div class="ops-item"><p class="ops-sub">Aucun post recent.</p></div>
+                        @endforelse
+                    </div>
+                </article>
+
+                <article class="ops-card">
+                    <h3>Validation & evenements</h3>
+                    <div class="ops-kpis">
+                        <div class="ops-kpi"><span class="k">Approvals en attente</span><span class="v">{{ $platform['totals']['approvals_pending'] }}</span></div>
+                        <div class="ops-kpi"><span class="k">Evenements</span><span class="v">{{ $platform['totals']['events'] }}</span></div>
+                        <div class="ops-kpi"><span class="k">Inscriptions events</span><span class="v">{{ $platform['totals']['registrations'] }}</span></div>
+                    </div>
+                    <div class="ops-list">
+                        @forelse($platform['recent_reports'] as $report)
+                            <div class="ops-item">
+                                <p class="ops-main">{{ \Illuminate\Support\Str::limit($report['reason'], 90) }}</p>
+                                <p class="ops-sub">{{ $report['created_at'] ?? '-' }}</p>
+                                <span class="ops-status {{ $report['status'] }}">{{ strtoupper($report['status']) }}</span>
+                            </div>
+                        @empty
+                            <div class="ops-item"><p class="ops-sub">Aucun signalement recent.</p></div>
+                        @endforelse
+                    </div>
+                </article>
             </div>
         </section>
 
