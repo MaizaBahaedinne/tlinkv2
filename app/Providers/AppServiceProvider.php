@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
+use App\Support\AdminContext;
+use App\Support\AdminMenu;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -28,6 +31,16 @@ class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(120)->by($key),
             ];
+        });
+
+        View::composer('admin.layouts.app', function ($view): void {
+            $request = request();
+
+            if ($request->user()) {
+                $context = AdminContext::of($request);
+                $view->with('adminUser', $request->user());
+                $view->with('adminNav', AdminMenu::build($context));
+            }
         });
     }
 }

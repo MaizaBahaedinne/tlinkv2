@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\PrivateMediaController;
@@ -39,13 +39,6 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/posts/{post}/react', [FeedController::class, 'react'])->name('posts.react');
     Route::post('/posts/{post}/comment', [FeedController::class, 'comment'])->name('posts.comment');
     Route::post('/posts/{post}/share', [FeedController::class, 'share'])->name('posts.share');
-    Route::get('/admin', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
-    Route::get('/admin/structure', [AdminDashboardController::class, 'structure'])->name('admin.structure');
-    Route::post('/admin/structure/entity', [AdminDashboardController::class, 'storeEntity'])->name('admin.structure.entity.store');
-    Route::post('/admin/structure/department', [AdminDashboardController::class, 'storeDepartment'])->name('admin.structure.department.store');
-    Route::post('/admin/structure/institution', [AdminDashboardController::class, 'storeInstitution'])->name('admin.structure.institution.store');
-    Route::post('/admin/structure/club', [AdminDashboardController::class, 'storeClub'])->name('admin.structure.club.store');
-    Route::post('/admin/roadmap/action', [AdminDashboardController::class, 'updateAction'])->name('admin.roadmap.action.update');
     Route::get('/notifications', [NotificationPageController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{notification}/read', [NotificationPageController::class, 'markRead'])->name('notifications.mark-read');
     Route::post('/notifications/read-all', [NotificationPageController::class, 'markAllRead'])->name('notifications.mark-all-read');
@@ -53,3 +46,81 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('signed')
         ->name('media.download');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Espace d'administration
+|--------------------------------------------------------------------------
+| Chaque section est protegee par `admin.can:<permissions>` (au moins une).
+| Le perimetre (global ou limite a des entites) est ensuite applique dans les controleurs.
+*/
+Route::middleware(['auth', 'admin.can:entity.manage,role.manage,membership.manage,approval.review,post.moderate,event.manage'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/', Admin\DashboardController::class)->name('dashboard');
+
+        // Organisation + pilotage (entity.manage)
+        Route::middleware('admin.can:entity.manage')->group(function (): void {
+            Route::get('feuille-de-route', [Admin\RoadmapController::class, 'index'])->name('roadmap.index');
+            Route::post('feuille-de-route', [Admin\RoadmapController::class, 'update'])->name('roadmap.update');
+            Route::get('journal', [Admin\AuditLogController::class, 'index'])->name('audit.index');
+
+            $crud = function (string $uri, string $name, string $controller, string $param): void {
+                Route::get($uri, [$controller, 'index'])->name("{$name}.index");
+                Route::get("{$uri}/creer", [$controller, 'create'])->name("{$name}.create");
+                Route::post($uri, [$controller, 'store'])->name("{$name}.store");
+                Route::get("{$uri}/{{$param}}/modifier", [$controller, 'edit'])->name("{$name}.edit");
+                Route::put("{$uri}/{{$param}}", [$controller, 'update'])->name("{$name}.update");
+                Route::delete("{$uri}/{{$param}}", [$controller, 'destroy'])->name("{$name}.destroy");
+            };
+
+            $crud('entites', 'entities', Admin\EntityController::class, 'entity');
+            $crud('departements', 'departments', Admin\DepartmentController::class, 'department');
+            $crud('institutions', 'institutions', Admin\InstitutionController::class, 'institution');
+            $crud('clubs', 'clubs', Admin\ClubController::class, 'club');
+        });
+
+        // Communaute
+        Route::middleware('admin.can:entity.manage,role.manage,membership.manage')->group(function (): void {
+            Route::get('utilisateurs', [Admin\UserController::class, 'index'])->name('users.index');
+            Route::get('utilisateurs/{user}', [Admin\UserController::class, 'show'])->name('users.show');
+        });
+
+        Route::middleware('admin.can:role.manage')->group(function (): void {
+            Route::get('roles', [Admin\RoleController::class, 'index'])->name('roles.index');
+            Route::post('utilisateurs/{user}/roles', [Admin\UserController::class, 'assignRole'])->name('users.roles.store');
+            Route::delete('utilisateurs/{user}/roles/{assignment}', [Admin\UserController::class, 'revokeRole'])->name('users.roles.destroy');
+        });
+
+        Route::middleware('admin.can:membership.manage')->group(function (): void {
+            Route::get('adhesions', [Admin\MembershipController::class, 'index'])->name('memberships.index');
+            Route::patch('adhesions/{membership}', [Admin\MembershipController::class, 'update'])->name('memberships.update');
+        });
+
+        // Contenu
+        Route::middleware('admin.can:post.moderate')->group(function (): void {
+            Route::get('publications', [Admin\PostController::class, 'index'])->name('posts.index');
+            Route::patch('publications/{post}/commentaires', [Admin\PostController::class, 'toggleComments'])->name('posts.comments');
+            Route::delete('publications/{post}', [Admin\PostController::class, 'destroy'])->name('posts.destroy');
+            Route::get('moderation', [Admin\ModerationController::class, 'index'])->name('moderation.index');
+            Route::patch('moderation/{report}', [Admin\ModerationController::class, 'update'])->name('moderation.update');
+        });
+
+        // Gouvernance
+        Route::middleware('admin.can:approval.review')->group(function (): void {
+            Route::get('approbations', [Admin\ApprovalController::class, 'index'])->name('approvals.index');
+            Route::post('approbations/{approvalRequest}', [Admin\ApprovalController::class, 'decide'])->name('approvals.decide');
+        });
+
+        Route::middleware('admin.can:event.manage')->group(function (): void {
+            Route::get('evenements', [Admin\EventController::class, 'index'])->name('events.index');
+            Route::get('evenements/creer', [Admin\EventController::class, 'create'])->name('events.create');
+            Route::post('evenements', [Admin\EventController::class, 'store'])->name('events.store');
+            Route::get('evenements/{event}', [Admin\EventController::class, 'show'])->name('events.show');
+            Route::get('evenements/{event}/modifier', [Admin\EventController::class, 'edit'])->name('events.edit');
+            Route::put('evenements/{event}', [Admin\EventController::class, 'update'])->name('events.update');
+            Route::delete('evenements/{event}', [Admin\EventController::class, 'destroy'])->name('events.destroy');
+            Route::patch('evenements/{event}/inscriptions/{registration}', [Admin\EventController::class, 'updateRegistration'])->name('events.registrations.update');
+        });
+    });

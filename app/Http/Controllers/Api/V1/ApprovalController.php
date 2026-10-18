@@ -3,15 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\AppNotification;
-use App\Models\ApprovalDecision;
 use App\Models\ApprovalRequest;
-use App\Models\Membership;
-use App\Support\AccessScope;
-use App\Support\AuditLogger;
+use App\Support\ApprovalDecisionException;
+use App\Support\ApprovalDecisionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ApprovalController extends Controller
 {
@@ -33,66 +29,17 @@ class ApprovalController extends Controller
             'explanation' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        if ($approvalRequest->status !== 'pending') {
-            return response()->json(['message' => 'Cette demande est deja traitee.'], 409);
-        }
-
-        if ((int) $approvalRequest->requester_id === (int) $request->user()->id) {
-            return response()->json(['message' => 'Auto-approbation interdite.'], 403);
-        }
-
-        if ($approvalRequest->assigned_reviewer_id !== null && (int) $approvalRequest->assigned_reviewer_id !== (int) $request->user()->id) {
-            return response()->json(['message' => 'Tu n\'es pas le validateur assigne.'], 403);
-        }
-
-        $membership = null;
-        if ($approvalRequest->approvable_type === Membership::class) {
-            $membership = Membership::query()->findOrFail($approvalRequest->approvable_id);
-
-            if (! AccessScope::can($request->user(), 'approval.review', $membership->entity_id)) {
-                return response()->json(['message' => 'Permission insuffisante.'], 403);
-            }
-        }
-
-        DB::transaction(function () use ($request, $approvalRequest, $data, $membership): void {
-            ApprovalDecision::query()->create([
-                'approval_request_id' => $approvalRequest->id,
-                'decided_by' => $request->user()->id,
-                'decision' => $data['decision'],
-                'explanation' => $data['explanation'] ?? null,
-            ]);
-
-            $approvalRequest->status = $data['decision'];
-            $approvalRequest->decided_at = now();
-            $approvalRequest->save();
-
-            if ($membership !== null) {
-                $membership->status = $data['decision'] === 'approved' ? 'approved' : 'rejected';
-                $membership->approved_by = $request->user()->id;
-                $membership->approved_at = now();
-                $membership->rejection_reason = $data['decision'] === 'rejected' ? ($data['explanation'] ?? null) : null;
-                $membership->save();
-            }
-
-            AuditLogger::record(
-                actorId: $request->user()->id,
-                action: 'approval.decision.recorded',
-                targetType: ApprovalRequest::class,
-                targetId: $approvalRequest->id,
-                metadata: ['decision' => $data['decision']],
-                ip: $request->ip(),
+        try {
+            app(ApprovalDecisionService::class)->decide(
+                $approvalRequest,
+                $request->user(),
+                $data['decision'],
+                $data['explanation'] ?? null,
+                $request->ip(),
             );
-
-            AppNotification::query()->create([
-                'user_id' => $approvalRequest->requester_id,
-                'type' => 'approval.decided',
-                'title' => 'Decision sur votre demande',
-                'body' => $data['decision'] === 'approved'
-                    ? 'Votre demande a ete approuvee.'
-                    : 'Votre demande a ete rejetee.',
-                'data' => ['approval_request_id' => $approvalRequest->id, 'decision' => $data['decision']],
-            ]);
-        });
+        } catch (ApprovalDecisionException $exception) {
+            return response()->json(['message' => $exception->getMessage()], $exception->status);
+        }
 
         return response()->json([
             'message' => 'Decision enregistree.',
