@@ -8,8 +8,8 @@
     <title>@yield('title', 'Administration') · T.Link Admin</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link rel="stylesheet" href="https://fonts.bunny.net/css?family=space-grotesk:500,600,700|manrope:400,500,600,700,800">
-    @php($adminCssVersion = @filemtime(public_path('admin/admin.css')) ?: 1)
-    <link rel="stylesheet" href="{{ asset('admin/admin.css') }}?v={{ $adminCssVersion }}">
+    @php($adminCssVersion = @filemtime(public_path('backoffice/admin.css')) ?: 1)
+    <link rel="stylesheet" href="{{ asset('backoffice/admin.css') }}?v={{ $adminCssVersion }}">
 </head>
 <body class="adm-body">
 <div class="adm">
@@ -114,6 +114,6 @@
     </div>
 </dialog>
 
-<script src="{{ asset('admin/admin.js') }}?v={{ @filemtime(public_path('admin/admin.js')) ?: 1 }}" defer></script>
+<script src="{{ asset('backoffice/admin.js') }}?v={{ @filemtime(public_path('backoffice/admin.js')) ?: 1 }}" defer></script>
 </body>
 </html>
