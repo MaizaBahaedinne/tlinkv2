@@ -4,7 +4,7 @@
 <div class="min-h-screen bg-[#eef3fb] px-4 py-8">
     <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
-            <a href="{{ route('home') }}" class="flex items-center gap-3">
+            <div class="flex items-center gap-3">
                 <div class="h-10 w-10 rounded-2xl bg-tlink-blue p-2 text-white shadow-soft">
                     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v13a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 18.5v-13zm3.75 1.25a1 1 0 100 2h8.5a1 1 0 100-2h-8.5zm0 4a1 1 0 100 2h8.5a1 1 0 100-2h-8.5zm0 4a1 1 0 100 2h5.25a1 1 0 100-2H7.75z"/>
@@ -14,7 +14,7 @@
                     <p class="font-display text-xl font-semibold text-tlink-blue">T.Link</p>
                     <p class="text-xs text-slate-500">Fondation Tunivisions</p>
                 </div>
-            </a>
+            </div>
             <div class="flex items-center gap-3">
                 <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">Accueil</a>
                 <details class="relative">
@@ -43,31 +43,29 @@
 
     <div class="mx-auto w-full max-w-6xl space-y-4">
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
-            <div class="relative h-40 bg-slate-900">
+            <div class="relative h-48 bg-slate-900">
                 <div class="absolute inset-0 bg-cover bg-center" @if($coverUrl) style="background-image: url('{{ $coverUrl }}');" @endif></div>
                 <div class="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-900/30 to-slate-900/20"></div>
-                <div class="absolute right-4 top-4 flex gap-2">
-                    <button type="button" class="rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-slate-800 shadow-soft hover:bg-white" onclick="openMediaModal('cover')">Modifier cover</button>
-                    <button type="button" class="rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-slate-800 shadow-soft hover:bg-white" onclick="openMediaModal('avatar')">Modifier avatar</button>
-                </div>
             </div>
             <div class="px-6 pb-6">
-                <div class="-mt-14 flex flex-wrap items-end justify-between gap-4">
-                    <div class="flex items-end gap-4">
-                        <div class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl border-4 border-white bg-tlink-blue text-3xl font-semibold text-white shadow-soft">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-5">
+                        <div class="-mt-12 flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl border-4 border-white bg-tlink-blue text-3xl font-semibold text-white shadow-soft">
                             @if($avatarUrl)
                                 <img src="{{ $avatarUrl }}" alt="Avatar" class="h-full w-full object-cover">
                             @else
                                 {{ $avatarInitials ?: 'TL' }}
                             @endif
                         </div>
-                        <div class="pb-1">
+                        <div class="pb-1 pt-2 lg:pt-0">
                             <h1 class="font-display text-2xl font-semibold text-slate-900">{{ $user->name }}</h1>
                             <p class="text-sm text-slate-600">{{ $profile->headline ?: 'Ajoutez un titre professionnel impactant.' }}</p>
                             <p class="mt-1 text-xs text-slate-500">{{ $user->email }}</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 pb-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" onclick="openMediaModal('cover')">Modifier cover</button>
+                        <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" onclick="openMediaModal('avatar')">Modifier avatar</button>
                         <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Retour accueil</a>
                     </div>
                 </div>
