@@ -4,17 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Entity;
 use App\Models\ApprovalRequest;
+use App\Models\Department;
 use App\Models\Comment;
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
+use App\Models\Governorate;
+use App\Models\Institution;
 use App\Models\ModerationReport;
 use App\Models\Post;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\Club;
 use App\Support\AccessScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AdminDashboardController extends Controller
@@ -86,6 +91,183 @@ class AdminDashboardController extends Controller
         $this->saveRoadmap($roadmap);
 
         return back()->with('status', 'Roadmap mise a jour.');
+    }
+
+    public function structure(Request $request): View|Response
+    {
+        if (! AccessScope::can($request->user(), 'entity.manage')) {
+            abort(403, 'Acces admin refuse.');
+        }
+
+        return response()->view('admin.structure', [
+            'overview' => $this->loadStructureOverview(),
+            'institutionTypes' => [
+                'university' => 'Universite',
+                'high_school' => 'Lycee',
+                'other' => 'Autre',
+            ],
+            'clubStatuses' => [
+                'draft' => 'Brouillon',
+                'active' => 'Actif',
+                'inactive' => 'Inactif',
+                'archived' => 'Archive',
+            ],
+        ]);
+    }
+
+    public function storeEntity(Request $request): RedirectResponse
+    {
+        if (! AccessScope::can($request->user(), 'entity.manage')) {
+            abort(403, 'Acces admin refuse.');
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'category' => ['required', 'string', 'max:50'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        Entity::query()->create([
+            'name' => $payload['name'],
+            'slug' => $this->resolveUniqueSlug(Entity::class, $payload['name']),
+            'category' => $payload['category'],
+            'description' => trim((string) ($payload['description'] ?? '')),
+            'is_active' => (bool) ($payload['is_active'] ?? true),
+        ]);
+
+        return back()->with('status', 'Entite ajoutee avec succes.');
+    }
+
+    public function storeDepartment(Request $request): RedirectResponse
+    {
+        if (! AccessScope::can($request->user(), 'entity.manage')) {
+            abort(403, 'Acces admin refuse.');
+        }
+
+        $payload = $request->validate([
+            'entity_id' => ['required', 'integer', 'exists:entities,id'],
+            'name' => ['required', 'string', 'max:120'],
+            'description' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $baseSlug = Str::slug($payload['name']);
+        $slug = $baseSlug !== '' ? $baseSlug : 'departement';
+        $counter = 1;
+
+        while (Department::query()->where('entity_id', $payload['entity_id'])->where('slug', $slug)->exists()) {
+            $counter++;
+            $slug = $baseSlug !== '' ? $baseSlug . '-' . $counter : 'departement-' . $counter;
+        }
+
+        Department::query()->create([
+            'entity_id' => $payload['entity_id'],
+            'name' => $payload['name'],
+            'slug' => $slug,
+            'description' => trim((string) ($payload['description'] ?? '')),
+        ]);
+
+        return back()->with('status', 'Departement ajoute avec succes.');
+    }
+
+    public function storeInstitution(Request $request): RedirectResponse
+    {
+        if (! AccessScope::can($request->user(), 'entity.manage')) {
+            abort(403, 'Acces admin refuse.');
+        }
+
+        $payload = $request->validate([
+            'entity_id' => ['nullable', 'integer', 'exists:entities,id'],
+            'name' => ['required', 'string', 'max:120'],
+            'institution_type' => ['required', 'in:university,high_school,other'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $baseSlug = Str::slug($payload['name']);
+        $slug = $baseSlug !== '' ? $baseSlug : 'institution';
+        $counter = 1;
+
+        while (Institution::query()->where('institution_type', $payload['institution_type'])->where('slug', $slug)->exists()) {
+            $counter++;
+            $slug = $baseSlug !== '' ? $baseSlug . '-' . $counter : 'institution-' . $counter;
+        }
+
+        Institution::query()->create([
+            'entity_id' => $payload['entity_id'] ?? null,
+            'name' => $payload['name'],
+            'slug' => $slug,
+            'institution_type' => $payload['institution_type'],
+            'description' => trim((string) ($payload['description'] ?? '')),
+            'is_active' => (bool) ($payload['is_active'] ?? true),
+        ]);
+
+        return back()->with('status', 'Institution ajoutee avec succes.');
+    }
+
+    public function storeClub(Request $request): RedirectResponse
+    {
+        if (! AccessScope::can($request->user(), 'entity.manage')) {
+            abort(403, 'Acces admin refuse.');
+        }
+
+        $payload = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'entity_id' => ['nullable', 'integer', 'exists:entities,id'],
+            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'institution_id' => ['nullable', 'integer', 'exists:institutions,id'],
+            'governorate_id' => ['nullable', 'integer', 'exists:governorates,id'],
+            'status' => ['required', 'in:draft,active,inactive,archived'],
+        ]);
+
+        Club::query()->create([
+            'name' => $payload['name'],
+            'slug' => $this->resolveUniqueSlug(Club::class, $payload['name']),
+            'entity_id' => $payload['entity_id'] ?? null,
+            'department_id' => $payload['department_id'] ?? null,
+            'institution_id' => $payload['institution_id'] ?? null,
+            'governorate_id' => $payload['governorate_id'] ?? null,
+            'status' => $payload['status'],
+        ]);
+
+        return back()->with('status', 'Club ajoute avec succes.');
+    }
+
+    private function loadStructureOverview(): array
+    {
+        $entities = Entity::query()
+            ->withCount(['departments', 'institutions', 'clubs'])
+            ->with([
+                'departments' => fn ($query) => $query->select(['id', 'entity_id', 'name', 'slug'])->orderBy('name'),
+                'institutions' => fn ($query) => $query->select(['id', 'entity_id', 'name', 'slug', 'institution_type', 'is_active'])->orderBy('name'),
+                'clubs' => fn ($query) => $query
+                    ->select(['id', 'name', 'slug', 'entity_id', 'department_id', 'institution_id', 'status'])
+                    ->with(['department:id,name', 'institution:id,name'])
+                    ->orderBy('name'),
+            ])
+            ->orderBy('name')
+            ->get();
+
+        return [
+            'entities' => $entities,
+            'departments' => Department::query()->select(['id', 'entity_id', 'name'])->orderBy('name')->get(),
+            'institutions' => Institution::query()->select(['id', 'entity_id', 'name', 'institution_type'])->orderBy('name')->get(),
+            'governorates' => Governorate::query()->select(['id', 'name'])->orderBy('name')->get(),
+        ];
+    }
+
+    private function resolveUniqueSlug(string $modelClass, string $value): string
+    {
+        $baseSlug = Str::slug($value);
+        $slug = $baseSlug !== '' ? $baseSlug : 'item';
+        $counter = 1;
+
+        while ($modelClass::query()->where('slug', $slug)->exists()) {
+            $counter++;
+            $slug = ($baseSlug !== '' ? $baseSlug : 'item') . '-' . $counter;
+        }
+
+        return $slug;
     }
 
     private function loadRoadmap(): array

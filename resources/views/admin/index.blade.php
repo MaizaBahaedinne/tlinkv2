@@ -87,6 +87,7 @@
                 </div>
                 <div class="rm-actions">
                     <a href="{{ route('home') }}" class="rm-btn">Retour accueil</a>
+                    <a href="{{ route('admin.structure') }}" class="rm-btn">Gestion structure</a>
                     <a href="{{ route('notifications.index') }}" class="rm-btn">Notifications</a>
                 </div>
             </div>

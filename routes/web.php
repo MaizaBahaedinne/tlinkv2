@@ -40,6 +40,11 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/posts/{post}/comment', [FeedController::class, 'comment'])->name('posts.comment');
     Route::post('/posts/{post}/share', [FeedController::class, 'share'])->name('posts.share');
     Route::get('/admin', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/admin/structure', [AdminDashboardController::class, 'structure'])->name('admin.structure');
+    Route::post('/admin/structure/entity', [AdminDashboardController::class, 'storeEntity'])->name('admin.structure.entity.store');
+    Route::post('/admin/structure/department', [AdminDashboardController::class, 'storeDepartment'])->name('admin.structure.department.store');
+    Route::post('/admin/structure/institution', [AdminDashboardController::class, 'storeInstitution'])->name('admin.structure.institution.store');
+    Route::post('/admin/structure/club', [AdminDashboardController::class, 'storeClub'])->name('admin.structure.club.store');
     Route::post('/admin/roadmap/action', [AdminDashboardController::class, 'updateAction'])->name('admin.roadmap.action.update');
     Route::get('/notifications', [NotificationPageController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{notification}/read', [NotificationPageController::class, 'markRead'])->name('notifications.mark-read');
