@@ -2,34 +2,64 @@
 
 @section('content')
 <div class="min-h-screen bg-[#eef3fb] px-4 py-8">
-    <header class="sticky top-0 z-20 mb-4 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-2 py-3 sm:px-4">
+    <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
             <a href="{{ route('home') }}" class="flex items-center gap-3">
-                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-tlink-blue text-white">
-                    <i class="fa-solid fa-file-lines"></i>
-                </span>
-                <span>
-                    <span class="block font-display text-xl font-semibold text-tlink-blue">T.Link</span>
-                    <span class="block text-xs text-slate-500">Fondation Tunivisions</span>
-                </span>
+                <div class="h-10 w-10 rounded-2xl bg-tlink-blue p-2 text-white shadow-soft">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v13a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 18.5v-13zm3.75 1.25a1 1 0 100 2h8.5a1 1 0 100-2h-8.5zm0 4a1 1 0 100 2h8.5a1 1 0 100-2h-8.5zm0 4a1 1 0 100 2h5.25a1 1 0 100-2H7.75z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-display text-xl font-semibold text-tlink-blue">T.Link</p>
+                    <p class="text-xs text-slate-500">Fondation Tunivisions</p>
+                </div>
             </a>
-
-            <div class="flex items-center gap-2">
-                <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Accueil</a>
-                <a href="{{ route('notifications.index') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Notifications</a>
-                <span class="rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">{{ $user->name }}</span>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">Accueil</a>
+                <details class="relative">
+                    <summary class="list-none cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
+                        <span class="inline-flex items-center gap-2">
+                            <i class="fa-regular fa-user"></i>
+                            <span>{{ $user->name }}</span>
+                            <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+                        </span>
+                    </summary>
+                    <div class="absolute right-0 z-30 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-soft">
+                        <a href="{{ route('profile.show') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2"></i>Profil</a>
+                        <a href="{{ route('admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-list-check mr-2"></i>Roadmap</a>
+                        <a href="{{ route('notifications.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-bell mr-2"></i>Notifications</a>
+                        <form action="{{ route('logout') }}" method="post" class="mt-1">
+                            @csrf
+                            <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">
+                                <i class="fa-solid fa-right-from-bracket mr-2"></i>Deconnexion
+                            </button>
+                        </form>
+                    </div>
+                </details>
             </div>
         </div>
     </header>
 
     <div class="mx-auto w-full max-w-6xl space-y-4">
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
-            <div class="h-32 bg-[radial-gradient(circle_at_20%_20%,#38bdf8_0,#1d4ed8_45%,#0f172a_100%)]"></div>
+            <div class="relative h-40 bg-slate-900">
+                <div class="absolute inset-0 bg-cover bg-center" @if($coverUrl) style="background-image: url('{{ $coverUrl }}');" @endif></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-900/30 to-slate-900/20"></div>
+                <div class="absolute right-4 top-4 flex gap-2">
+                    <button type="button" class="rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-slate-800 shadow-soft hover:bg-white" onclick="openMediaModal('cover')">Modifier cover</button>
+                    <button type="button" class="rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-slate-800 shadow-soft hover:bg-white" onclick="openMediaModal('avatar')">Modifier avatar</button>
+                </div>
+            </div>
             <div class="px-6 pb-6">
                 <div class="-mt-14 flex flex-wrap items-end justify-between gap-4">
                     <div class="flex items-end gap-4">
-                        <div class="flex h-28 w-28 items-center justify-center rounded-3xl border-4 border-white bg-tlink-blue text-3xl font-semibold text-white shadow-soft">
-                            {{ $avatarInitials ?: 'TL' }}
+                        <div class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl border-4 border-white bg-tlink-blue text-3xl font-semibold text-white shadow-soft">
+                            @if($avatarUrl)
+                                <img src="{{ $avatarUrl }}" alt="Avatar" class="h-full w-full object-cover">
+                            @else
+                                {{ $avatarInitials ?: 'TL' }}
+                            @endif
                         </div>
                         <div class="pb-1">
                             <h1 class="font-display text-2xl font-semibold text-slate-900">{{ $user->name }}</h1>
@@ -62,7 +92,10 @@
         <div class="grid gap-4 lg:grid-cols-12">
             <div class="space-y-4 lg:col-span-8">
                 <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                    <h2 class="font-display text-xl font-semibold text-slate-900">A propos</h2>
+                    <div class="flex items-center justify-between gap-3">
+                        <h2 class="font-display text-xl font-semibold text-slate-900">A propos</h2>
+                        <button type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50" onclick="openProfileModal('modal-about')">Modifier</button>
+                    </div>
                     <p class="mt-3 whitespace-pre-line text-sm leading-6 text-slate-700">{{ $profile->bio ?: 'Ajoutez une bio claire pour presenter votre impact, vos valeurs et vos objectifs.' }}</p>
                 </section>
 
@@ -191,6 +224,69 @@
         </div>
     </div>
 </div>
+
+<dialog id="modal-about" class="profile-modal profile-modal-md rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+    <form method="dialog" class="border-b border-slate-200 px-5 py-3">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-900">Modifier a propos</h3>
+            <button class="rounded-lg px-3 py-1 text-sm hover:bg-slate-100">Fermer</button>
+        </div>
+    </form>
+    <form method="post" action="{{ route('profile.update') }}" class="space-y-4 px-5 py-5">
+        @csrf
+        @method('PATCH')
+        <input type="hidden" name="section" value="basic">
+        <div>
+            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500" for="headline">Titre</label>
+            <input id="headline" name="headline" type="text" value="{{ old('headline', $profile?->headline) }}" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Ex: Responsable Communication - Tunivisions">
+        </div>
+        <div>
+            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500" for="bio">A propos</label>
+            <textarea id="bio" name="bio" rows="6" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Votre resume professionnel">{{ old('bio', $profile?->bio) }}</textarea>
+        </div>
+        <button class="w-full rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700">Enregistrer</button>
+    </form>
+</dialog>
+
+<form id="profile-media-form" method="post" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="hidden">
+    @csrf
+    @method('PATCH')
+    <input type="hidden" name="section" value="media">
+    <input type="file" id="profile-media-source" accept="image/*" class="hidden">
+    <input type="file" id="profile-avatar-file" name="avatar" accept="image/*" class="hidden">
+    <input type="file" id="profile-cover-file" name="cover" accept="image/*" class="hidden">
+</form>
+
+<dialog id="modal-media" class="profile-modal rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+    <div class="border-b border-slate-200 px-5 py-3">
+        <div class="flex items-center justify-between gap-3">
+            <h3 id="media-title" class="text-lg font-semibold text-slate-900">Modifier media</h3>
+            <button type="button" class="rounded-lg px-3 py-1 text-sm hover:bg-slate-100" onclick="closeMediaModal()">Fermer</button>
+        </div>
+    </div>
+    <div class="space-y-4 px-5 py-5">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div id="profile-media-stage" class="relative mx-auto overflow-hidden rounded-2xl bg-slate-200 shadow-inner" data-kind="avatar">
+                <img id="profile-media-preview" alt="Recadrage" class="absolute left-1/2 top-1/2 select-none" draggable="false" />
+            </div>
+        </div>
+        <div class="grid gap-3 md:grid-cols-2">
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500" for="profile-media-zoom">Zoom</label>
+                <input id="profile-media-zoom" type="range" min="1" max="3" step="0.01" value="1" class="w-full" oninput="updateMediaCrop()">
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" onclick="pickMediaSource()">Choisir un fichier</button>
+                <span id="media-hint" class="text-xs text-slate-500">Deplacez l'image dans la zone pour recadrer.</span>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button type="button" class="flex-1 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" onclick="applyMediaCrop()">Appliquer le recadrage</button>
+            <button type="button" class="rounded-xl border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50" onclick="closeMediaModal()">Annuler</button>
+        </div>
+        <button type="button" id="media-submit-btn" class="hidden"></button>
+    </div>
+</dialog>
 
 <dialog id="modal-professional" class="profile-modal rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
     <form method="dialog" class="border-b border-slate-200 px-5 py-3">
@@ -417,6 +513,222 @@
         }
     }
 
+    const mediaState = {
+        kind: 'avatar',
+        image: null,
+        dragging: false,
+        startX: 0,
+        startY: 0,
+        offsetX: 0,
+        offsetY: 0,
+        zoom: 1,
+    };
+
+    function openMediaModal(kind) {
+        mediaState.kind = kind;
+        mediaState.image = null;
+        mediaState.dragging = false;
+        mediaState.startX = 0;
+        mediaState.startY = 0;
+        mediaState.offsetX = 0;
+        mediaState.offsetY = 0;
+        mediaState.zoom = 1;
+
+        const stage = document.getElementById('profile-media-stage');
+        const title = document.getElementById('media-title');
+        const hint = document.getElementById('media-hint');
+        const zoom = document.getElementById('profile-media-zoom');
+        const preview = document.getElementById('profile-media-preview');
+
+        if (!stage || !title || !hint || !zoom || !preview) {
+            return;
+        }
+
+        stage.dataset.kind = kind;
+        title.textContent = kind === 'cover' ? 'Modifier cover' : 'Modifier avatar';
+        hint.textContent = kind === 'cover'
+            ? 'Recadrez la cover dans une zone large.'
+            : 'Recadrez l avatar dans une zone carre.';
+        zoom.value = '1';
+        preview.src = '';
+        preview.style.width = '0px';
+        preview.style.height = '0px';
+        preview.style.transform = 'translate(-50%, -50%)';
+
+        pickMediaSource();
+    }
+
+    function closeMediaModal() {
+        const dlg = document.getElementById('modal-media');
+        if (dlg && typeof dlg.close === 'function') {
+            dlg.close();
+        }
+    }
+
+    function pickMediaSource() {
+        const input = document.getElementById('profile-media-source');
+        if (input) {
+            input.value = '';
+            input.click();
+        }
+    }
+
+    function bindMediaInput() {
+        const input = document.getElementById('profile-media-source');
+        if (!input || input.dataset.bound === '1') {
+            return;
+        }
+
+        input.dataset.bound = '1';
+        input.addEventListener('change', handleMediaFileChange);
+    }
+
+    function handleMediaFileChange(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        const preview = document.getElementById('profile-media-preview');
+        const stage = document.getElementById('profile-media-stage');
+        const dlg = document.getElementById('modal-media');
+
+        if (!preview || !stage || !dlg) {
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        preview.onload = () => {
+            mediaState.image = preview;
+            mediaState.zoom = 1;
+            mediaState.offsetX = 0;
+            mediaState.offsetY = 0;
+            const zoom = document.getElementById('profile-media-zoom');
+            if (zoom) {
+                zoom.value = '1';
+            }
+            renderMediaPreview();
+        };
+        preview.src = objectUrl;
+
+        if (typeof dlg.showModal === 'function') {
+            dlg.showModal();
+        }
+    }
+
+    function renderMediaPreview() {
+        const stage = document.getElementById('profile-media-stage');
+        const preview = document.getElementById('profile-media-preview');
+        if (!stage || !preview || !preview.naturalWidth || !preview.naturalHeight) {
+            return;
+        }
+
+        const rect = stage.getBoundingClientRect();
+        const baseScale = Math.max(rect.width / preview.naturalWidth, rect.height / preview.naturalHeight);
+        const scale = baseScale * mediaState.zoom;
+        const width = preview.naturalWidth * scale;
+        const height = preview.naturalHeight * scale;
+
+        preview.style.width = `${width}px`;
+        preview.style.height = `${height}px`;
+        preview.style.transform = `translate(-50%, -50%) translate(${mediaState.offsetX}px, ${mediaState.offsetY}px)`;
+    }
+
+    function updateMediaCrop() {
+        const zoom = document.getElementById('profile-media-zoom');
+        if (!zoom) {
+            return;
+        }
+
+        mediaState.zoom = Number(zoom.value);
+        renderMediaPreview();
+    }
+
+    function applyMediaCrop() {
+        const stage = document.getElementById('profile-media-stage');
+        const preview = document.getElementById('profile-media-preview');
+        const form = document.getElementById('profile-media-form');
+        if (!stage || !preview || !form || !preview.naturalWidth || !preview.naturalHeight) {
+            return;
+        }
+
+        const rect = stage.getBoundingClientRect();
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(rect.width * 2);
+        canvas.height = Math.round(rect.height * 2);
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            return;
+        }
+
+        ctx.scale(2, 2);
+
+        const baseScale = Math.max(rect.width / preview.naturalWidth, rect.height / preview.naturalHeight);
+        const scale = baseScale * mediaState.zoom;
+        const width = preview.naturalWidth * scale;
+        const height = preview.naturalHeight * scale;
+        const x = rect.width / 2 - width / 2 + mediaState.offsetX;
+        const y = rect.height / 2 - height / 2 + mediaState.offsetY;
+
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.drawImage(preview, x, y, width, height);
+
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                return;
+            }
+
+            const fileName = `${mediaState.kind}-${Date.now()}.jpg`;
+            const file = new File([blob], fileName, { type: 'image/jpeg' });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+
+            const targetInput = document.getElementById(mediaState.kind === 'avatar' ? 'profile-avatar-file' : 'profile-cover-file');
+            if (targetInput) {
+                targetInput.files = dataTransfer.files;
+            }
+
+            form.submit();
+        }, 'image/jpeg', 0.92);
+    }
+
+    function bindMediaStage() {
+        const stage = document.getElementById('profile-media-stage');
+        if (!stage || stage.dataset.bound === '1') {
+            return;
+        }
+
+        stage.dataset.bound = '1';
+
+        stage.addEventListener('pointerdown', (event) => {
+            mediaState.dragging = true;
+            mediaState.startX = event.clientX;
+            mediaState.startY = event.clientY;
+            stage.setPointerCapture(event.pointerId);
+        });
+
+        stage.addEventListener('pointermove', (event) => {
+            if (!mediaState.dragging) {
+                return;
+            }
+
+            mediaState.offsetX += event.clientX - mediaState.startX;
+            mediaState.offsetY += event.clientY - mediaState.startY;
+            mediaState.startX = event.clientX;
+            mediaState.startY = event.clientY;
+            renderMediaPreview();
+        });
+
+        stage.addEventListener('pointerup', () => {
+            mediaState.dragging = false;
+        });
+
+        stage.addEventListener('pointerleave', () => {
+            mediaState.dragging = false;
+        });
+    }
+
     function addProfileRow(listId) {
         const list = document.getElementById(listId);
         if (!list) return;
@@ -428,6 +740,9 @@
         const html = tpl.innerHTML.replaceAll('__INDEX__', String(index));
         list.insertAdjacentHTML('beforeend', html);
     }
+
+    bindMediaInput();
+    bindMediaStage();
 </script>
 
 <style>
@@ -436,12 +751,31 @@
         margin: auto;
     }
 
+    .profile-modal::backdrop {
+        background: rgba(15, 23, 42, 0.55);
+    }
+
     .profile-modal.profile-modal-md {
         width: min(96vw, 48rem);
     }
 
     .profile-modal.profile-modal-sm {
         width: min(96vw, 40rem);
+    }
+
+    #profile-media-stage[data-kind="avatar"] {
+        width: min(72vw, 22rem);
+        aspect-ratio: 1 / 1;
+    }
+
+    #profile-media-stage[data-kind="cover"] {
+        width: 100%;
+        aspect-ratio: 16 / 5;
+        max-height: 24rem;
+    }
+
+    #profile-media-preview {
+        touch-action: none;
     }
 </style>
 @endsection

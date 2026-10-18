@@ -7,6 +7,7 @@ use App\Models\PostReaction;
 use Illuminate\Support\Str;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -54,6 +55,12 @@ class ProfileController extends Controller
         return view('profile.show', [
             'user' => $user,
             'profile' => $profile,
+            'avatarUrl' => $profile->photo_path && Storage::disk('public')->exists($profile->photo_path)
+                ? Storage::disk('public')->url($profile->photo_path)
+                : null,
+            'coverUrl' => $profile->cover_path && Storage::disk('public')->exists($profile->cover_path)
+                ? Storage::disk('public')->url($profile->cover_path)
+                : null,
             'skills' => $skills,
             'languages' => $languages,
             'educationItems' => $educationItems,
@@ -85,6 +92,10 @@ class ProfileController extends Controller
     {
         $section = (string) $request->input('section', 'basic');
 
+        if ($section === 'media') {
+            return $this->updateMedia($request);
+        }
+
         if ($section !== 'basic') {
             return $this->updateSection($request, $section);
         }
@@ -103,6 +114,36 @@ class ProfileController extends Controller
         $profile->save();
 
         return back()->with('status', 'Profil mis a jour.');
+    }
+
+    private function updateMedia(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'avatar' => ['nullable', 'file', 'image', 'max:5120'],
+            'cover' => ['nullable', 'file', 'image', 'max:10240'],
+        ]);
+
+        $profile = $request->user()->profile()->firstOrCreate([]);
+
+        if ($request->hasFile('avatar')) {
+            if ($profile->photo_path && Storage::disk('public')->exists($profile->photo_path)) {
+                Storage::disk('public')->delete($profile->photo_path);
+            }
+
+            $profile->photo_path = $request->file('avatar')->store('profiles/avatars', 'public');
+        }
+
+        if ($request->hasFile('cover')) {
+            if ($profile->cover_path && Storage::disk('public')->exists($profile->cover_path)) {
+                Storage::disk('public')->delete($profile->cover_path);
+            }
+
+            $profile->cover_path = $request->file('cover')->store('profiles/covers', 'public');
+        }
+
+        $profile->save();
+
+        return back()->with('status', 'Photo de profil mise a jour.');
     }
 
     private function updateSection(Request $request, string $section): RedirectResponse
