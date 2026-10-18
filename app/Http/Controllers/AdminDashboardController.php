@@ -20,7 +20,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Throwable;
 
 class AdminDashboardController extends Controller
 {
@@ -351,105 +353,142 @@ class AdminDashboardController extends Controller
 
     private function loadOrganizationOverview(): array
     {
-        $entities = Entity::query()
-            ->withCount(['departments', 'institutions', 'clubs', 'memberships'])
-            ->with([
-                'departments:id,entity_id,name,slug',
-                'institutions' => fn ($query) => $query
-                    ->select(['id', 'entity_id', 'name', 'slug', 'institution_type'])
-                    ->withCount('clubs')
-                    ->orderBy('name'),
-                'clubs:id,entity_id,department_id,institution_id,name,slug',
-            ])
-            ->orderBy('name')
-            ->get();
+        try {
+            $entities = Entity::query()
+                ->withCount(['departments', 'institutions', 'clubs', 'memberships'])
+                ->with([
+                    'departments:id,entity_id,name,slug',
+                    'institutions' => fn ($query) => $query
+                        ->select(['id', 'entity_id', 'name', 'slug', 'institution_type'])
+                        ->withCount('clubs')
+                        ->orderBy('name'),
+                    'clubs:id,entity_id,department_id,institution_id,name,slug',
+                ])
+                ->orderBy('name')
+                ->get();
 
-        return [
-            'total_entities' => $entities->count(),
-            'total_departments' => $entities->sum('departments_count'),
-            'total_institutions' => $entities->sum('institutions_count'),
-            'total_clubs' => $entities->sum('clubs_count'),
-            'entities' => $entities->map(function (Entity $entity): array {
-                return [
-                    'name' => $entity->name,
-                    'slug' => $entity->slug,
-                    'category' => $entity->category,
-                    'description' => $entity->description,
-                    'departments_count' => (int) $entity->departments_count,
-                    'institutions_count' => (int) $entity->institutions_count,
-                    'clubs_count' => (int) $entity->clubs_count,
-                    'memberships_count' => (int) $entity->memberships_count,
-                    'departments' => $entity->departments->map(fn ($department) => [
-                        'name' => $department->name,
-                        'slug' => $department->slug,
-                    ])->values(),
-                    'institutions' => $entity->institutions->map(fn ($institution) => [
-                        'name' => $institution->name,
-                        'slug' => $institution->slug,
-                        'type' => $institution->institution_type,
-                        'clubs_count' => (int) $institution->clubs_count,
-                    ])->values(),
-                    'clubs' => $entity->clubs->map(fn ($club) => [
-                        'name' => $club->name,
-                        'slug' => $club->slug,
-                        'institution_id' => $club->institution_id,
-                    ])->values(),
-                ];
-            })->values(),
-        ];
+            return [
+                'total_entities' => $entities->count(),
+                'total_departments' => $entities->sum('departments_count'),
+                'total_institutions' => $entities->sum('institutions_count'),
+                'total_clubs' => $entities->sum('clubs_count'),
+                'entities' => $entities->map(function (Entity $entity): array {
+                    return [
+                        'name' => $entity->name,
+                        'slug' => $entity->slug,
+                        'category' => $entity->category,
+                        'description' => $entity->description,
+                        'departments_count' => (int) $entity->departments_count,
+                        'institutions_count' => (int) $entity->institutions_count,
+                        'clubs_count' => (int) $entity->clubs_count,
+                        'memberships_count' => (int) $entity->memberships_count,
+                        'departments' => $entity->departments->map(fn ($department) => [
+                            'name' => $department->name,
+                            'slug' => $department->slug,
+                        ])->values(),
+                        'institutions' => $entity->institutions->map(fn ($institution) => [
+                            'name' => $institution->name,
+                            'slug' => $institution->slug,
+                            'type' => $institution->institution_type,
+                            'clubs_count' => (int) $institution->clubs_count,
+                        ])->values(),
+                        'clubs' => $entity->clubs->map(fn ($club) => [
+                            'name' => $club->name,
+                            'slug' => $club->slug,
+                            'institution_id' => $club->institution_id,
+                        ])->values(),
+                    ];
+                })->values(),
+            ];
+        } catch (Throwable $exception) {
+            Log::warning('Admin organization overview unavailable', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return [
+                'total_entities' => 0,
+                'total_departments' => 0,
+                'total_institutions' => 0,
+                'total_clubs' => 0,
+                'entities' => collect(),
+            ];
+        }
     }
 
     private function loadPlatformOverview(): array
     {
-        $now = now();
+        try {
+            $now = now();
 
-        return [
-            'totals' => [
-                'users' => User::query()->count(),
-                'users_30d' => User::query()->where('created_at', '>=', $now->copy()->subDays(30))->count(),
-                'posts' => Post::query()->count(),
-                'posts_7d' => Post::query()->where('created_at', '>=', $now->copy()->subDays(7))->count(),
-                'comments' => Comment::query()->count(),
-                'reports_pending' => ModerationReport::query()->where('status', 'pending')->count(),
-                'approvals_pending' => ApprovalRequest::query()->where('status', 'pending')->count(),
-                'events' => FoundationEvent::query()->count(),
-                'registrations' => EventRegistration::query()->count(),
-            ],
-            'recent_users' => User::query()
-                ->select(['id', 'name', 'email', 'created_at'])
-                ->latest('id')
-                ->limit(5)
-                ->get()
-                ->map(fn (User $user): array => [
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'joined_at' => optional($user->created_at)->toDateTimeString(),
-                ])
-                ->values(),
-            'recent_posts' => Post::query()
-                ->with('author:id,name')
-                ->select(['id', 'user_id', 'content', 'created_at'])
-                ->latest('id')
-                ->limit(5)
-                ->get()
-                ->map(fn (Post $post): array => [
-                    'author' => $post->author?->name ?? 'Utilisateur inconnu',
-                    'content' => $post->content,
-                    'created_at' => optional($post->created_at)->toDateTimeString(),
-                ])
-                ->values(),
-            'recent_reports' => ModerationReport::query()
-                ->select(['id', 'reason', 'status', 'created_at'])
-                ->latest('id')
-                ->limit(5)
-                ->get()
-                ->map(fn (ModerationReport $report): array => [
-                    'reason' => $report->reason,
-                    'status' => $report->status,
-                    'created_at' => optional($report->created_at)->toDateTimeString(),
-                ])
-                ->values(),
-        ];
+            return [
+                'totals' => [
+                    'users' => User::query()->count(),
+                    'users_30d' => User::query()->where('created_at', '>=', $now->copy()->subDays(30))->count(),
+                    'posts' => Post::query()->count(),
+                    'posts_7d' => Post::query()->where('created_at', '>=', $now->copy()->subDays(7))->count(),
+                    'comments' => Comment::query()->count(),
+                    'reports_pending' => ModerationReport::query()->where('status', 'pending')->count(),
+                    'approvals_pending' => ApprovalRequest::query()->where('status', 'pending')->count(),
+                    'events' => FoundationEvent::query()->count(),
+                    'registrations' => EventRegistration::query()->count(),
+                ],
+                'recent_users' => User::query()
+                    ->select(['id', 'name', 'email', 'created_at'])
+                    ->latest('id')
+                    ->limit(5)
+                    ->get()
+                    ->map(fn (User $user): array => [
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'joined_at' => optional($user->created_at)->toDateTimeString(),
+                    ])
+                    ->values(),
+                'recent_posts' => Post::query()
+                    ->with('author:id,name')
+                    ->select(['id', 'user_id', 'content', 'created_at'])
+                    ->latest('id')
+                    ->limit(5)
+                    ->get()
+                    ->map(fn (Post $post): array => [
+                        'author' => $post->author?->name ?? 'Utilisateur inconnu',
+                        'content' => $post->content,
+                        'created_at' => optional($post->created_at)->toDateTimeString(),
+                    ])
+                    ->values(),
+                'recent_reports' => ModerationReport::query()
+                    ->select(['id', 'reason', 'status', 'created_at'])
+                    ->latest('id')
+                    ->limit(5)
+                    ->get()
+                    ->map(fn (ModerationReport $report): array => [
+                        'reason' => $report->reason,
+                        'status' => $report->status,
+                        'created_at' => optional($report->created_at)->toDateTimeString(),
+                    ])
+                    ->values(),
+            ];
+        } catch (Throwable $exception) {
+            Log::warning('Admin platform overview unavailable', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return [
+                'totals' => [
+                    'users' => 0,
+                    'users_30d' => 0,
+                    'posts' => 0,
+                    'posts_7d' => 0,
+                    'comments' => 0,
+                    'reports_pending' => 0,
+                    'approvals_pending' => 0,
+                    'events' => 0,
+                    'registrations' => 0,
+                ],
+                'recent_users' => collect(),
+                'recent_posts' => collect(),
+                'recent_reports' => collect(),
+            ];
+        }
     }
 
     private function defaultRoadmap(): array
