@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\NotificationPageController;
+use App\Http\Controllers\OrgChartController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +46,36 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/media/{mediaFile}/download', [PrivateMediaController::class, 'download'])
         ->middleware('signed')
         ->name('media.download');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Organigramme de la Fondation
+|--------------------------------------------------------------------------
+| Lecture pour tout utilisateur connecte ; l'ecriture exige `entity.manage`
+| en perimetre global (verifie dans le controleur).
+*/
+Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(function (): void {
+    Route::get('/', [OrgChartController::class, 'index'])->name('index');
+    Route::get('donnees', [OrgChartController::class, 'data'])->name('data');
+    Route::get('historique', [OrgChartController::class, 'history'])->name('history');
+    Route::get('export.json', [OrgChartController::class, 'exportJson'])->name('export.json');
+    Route::get('export.csv', [OrgChartController::class, 'exportCsv'])->name('export.csv');
+
+    Route::post('blocs', [OrgChartController::class, 'storeNode'])->name('nodes.store');
+    Route::patch('blocs/{node}', [OrgChartController::class, 'updateNode'])->name('nodes.update');
+    Route::delete('blocs/{node}', [OrgChartController::class, 'destroyNode'])->name('nodes.destroy');
+    Route::post('blocs/{node}/ordre', [OrgChartController::class, 'reorder'])->name('nodes.reorder');
+    Route::put('blocs/{node}/affectations', [OrgChartController::class, 'syncAssignments'])->name('nodes.assignments');
+    Route::post('blocs/{node}/modele', [OrgChartController::class, 'applyTemplate'])->name('nodes.template');
+    Route::post('disposition', [OrgChartController::class, 'saveLayout'])->name('layout.save');
+    Route::post('clubs', [OrgChartController::class, 'storeClub'])->name('clubs.store');
+
+    Route::post('personnes', [OrgChartController::class, 'storePerson'])->name('people.store');
+    Route::patch('personnes/{person}', [OrgChartController::class, 'updatePerson'])->name('people.update');
+    Route::delete('personnes/{person}', [OrgChartController::class, 'destroyPerson'])->name('people.destroy');
+
+    Route::post('import', [OrgChartController::class, 'import'])->name('import');
 });
 
 /*

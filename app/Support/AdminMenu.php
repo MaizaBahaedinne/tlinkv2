@@ -29,6 +29,7 @@ class AdminMenu
                 'title' => 'Organisation',
                 'items' => [
                     ['label' => 'Entités', 'route' => 'admin.entities.index', 'icon' => 'building', 'match' => 'admin.entities.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Organigramme', 'route' => 'orgchart.index', 'icon' => 'network', 'match' => 'orgchart.*', 'perms' => ['entity.manage']],
                     ['label' => 'Départements', 'route' => 'admin.departments.index', 'icon' => 'layers', 'match' => 'admin.departments.*', 'perms' => ['entity.manage']],
                     ['label' => 'Institutions', 'route' => 'admin.institutions.index', 'icon' => 'graduation', 'match' => 'admin.institutions.*', 'perms' => ['entity.manage']],
                     ['label' => 'Clubs', 'route' => 'admin.clubs.index', 'icon' => 'users', 'match' => 'admin.clubs.*', 'perms' => ['entity.manage']],

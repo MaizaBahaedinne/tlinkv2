@@ -80,6 +80,11 @@ Voir la documentation detaillee:
 
 - `docs/deployment-cyberpanel.md`
 
+## Organigramme de la Fondation
+
+Page interactive `/organigramme` (lecture pour tous, edition pour les administrateurs globaux).
+Voir `docs/organigramme.md` (structure, utilisation, exports, import, deploiement).
+
 ## Prochaine phase
 
 - Politiques d'autorisation scopees et tests d'isolation (entity/governorate).

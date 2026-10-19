@@ -37,6 +37,18 @@ class AuditLabels
         'admin.post.comments_toggled' => 'Commentaires activés/désactivés',
         'admin.moderation.reviewed' => 'Signalement traité (admin)',
         'admin.roadmap.updated' => 'Feuille de route mise à jour',
+        'orgchart.node.created' => 'Organigramme : bloc créé',
+        'orgchart.node.updated' => 'Organigramme : bloc modifié',
+        'orgchart.node.deleted' => 'Organigramme : bloc supprimé',
+        'orgchart.node.reordered' => 'Organigramme : ordre modifié',
+        'orgchart.layout.saved' => 'Organigramme : positions enregistrées',
+        'orgchart.club.created' => 'Organigramme : club créé',
+        'orgchart.club.template_applied' => 'Organigramme : équipe type appliquée',
+        'orgchart.assignments.updated' => 'Organigramme : affectations modifiées',
+        'orgchart.person.created' => 'Organigramme : personne ajoutée',
+        'orgchart.person.updated' => 'Organigramme : personne modifiée',
+        'orgchart.person.deleted' => 'Organigramme : personne supprimée',
+        'orgchart.imported' => 'Organigramme : import JSON',
     ];
 
     public static function label(string $action): string
