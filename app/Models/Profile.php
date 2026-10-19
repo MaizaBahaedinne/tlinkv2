@@ -13,6 +13,17 @@ class Profile extends Model
     protected $fillable = [
         'user_id',
         'headline',
+        'phone',
+        'phone_secondary',
+        'gender',
+        'birth_date',
+        'address',
+        'governorate_id',
+        'delegation',
+        'cin',
+        'facebook_url',
+        'instagram_url',
+        'linkedin_url',
         'bio',
         'photo_path',
         'cover_path',
@@ -23,8 +34,13 @@ class Profile extends Model
         'privacy_settings',
     ];
 
+    /** Le CIN ne doit jamais fuiter dans une reponse JSON. */
+    protected $hidden = ['cin'];
+
     protected $casts = [
         'privacy_settings' => 'array',
+        'birth_date' => 'date',
+        'cin' => 'encrypted',
     ];
 
     public function user(): BelongsTo

@@ -26,7 +26,8 @@ class LoginController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        // Un compte desactive (exclu, demissionnaire, supprime) ne peut plus se connecter.
+        if (! Auth::attempt($credentials + ['is_active' => true], $request->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'email' => 'Identifiants invalides.',
             ]);
