@@ -6,10 +6,19 @@ use App\Models\Club;
 use App\Models\Department;
 use App\Models\Entity;
 use App\Models\Governorate;
+use App\Models\Institution;
 use Illuminate\Support\Str;
 
 class LegacyClubImporter
 {
+    /** Noms de clubs rattaches a un etablissement different de leur propre nom. */
+    private const INSTITUTION_ALIASES = [
+        'esprit tic' => 'ESPRIT',
+        'esprit gcem' => 'ESPRIT',
+        'lycée hammam lif bougarnin' => 'Lycée Hammam Lif Bougarnine',
+        'ipeim' => 'IPEIM',
+    ];
+
     public function import(string $dumpPath): array
     {
         if (! is_file($dumpPath)) {
@@ -133,6 +142,7 @@ class LegacyClubImporter
         }
 
         $governorate = $this->resolveGovernorate($row['city']);
+        $institution = $entity ? $this->syncInstitution($row, $entity) : null;
 
         // Dans l'ancienne base, les colonnes `facebook` et `email` sont inversees
         // sur de nombreuses lignes : on classe chaque valeur selon son contenu.
@@ -166,6 +176,7 @@ class LegacyClubImporter
             'legacy_id' => $row['club_id'],
             'entity_id' => $entity?->id,
             'department_id' => $department?->id,
+            'institution_id' => $institution?->id,
             'governorate_id' => $governorate?->id,
             'email' => $email,
             'facebook_url' => $facebook,
@@ -175,6 +186,41 @@ class LegacyClubImporter
         ])->save();
 
         return ['created' => $created, 'governorate' => $governorate !== null];
+    }
+
+    /**
+     * Une institution (universite / lycee) par etablissement. Le club legacy porte
+     * le nom de son etablissement ; plusieurs clubs d'un meme etablissement
+     * (ex. ESPRIT TIC et ESPRIT GCEM) partagent la meme institution.
+     */
+    private function syncInstitution(array $row, Entity $entity): ?Institution
+    {
+        $type = match ($entity->slug) {
+            'university' => 'university',
+            'high-school' => 'high_school',
+            default => null,
+        };
+
+        $name = preg_replace('/\s+/u', ' ', $row['name']);
+        $name = self::INSTITUTION_ALIASES[mb_strtolower($name)] ?? $name;
+        $slug = Str::slug($name);
+
+        if ($type === null || $slug === '') {
+            return null;
+        }
+
+        $institution = Institution::query()->firstOrNew(['institution_type' => $type, 'slug' => $slug]);
+        if (! $institution->exists) {
+            $institution->name = $name;
+            $institution->description = 'Etablissement importe depuis tbl_club.';
+        }
+
+        $institution->entity_id = $entity->id;
+        // Une institution reste active des qu'un de ses clubs l'est.
+        $institution->is_active = $row['is_active'] === '1' || ($institution->exists && $institution->is_active);
+        $institution->save();
+
+        return $institution;
     }
 
     private function resolveGovernorate(string $city): ?Governorate

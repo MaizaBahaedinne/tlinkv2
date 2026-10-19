@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Club;
+use App\Models\Institution;
 use App\Support\LegacyClubImporter;
 use Database\Seeders\EntitySeeder;
 use Database\Seeders\GovernorateSeeder;
@@ -22,6 +23,7 @@ INSERT INTO `tbl_club` (`clubID`, `name`, `birthday`, `city`, `facebook`, `email
 (1, 'High School', '2019-03-20', 'Tunis', 'x@gmail.com', 'https://www.facebook.com/x/', '1', 1, 2),
 (2, 'Alumni', '2020-02-18', 'Tunis', 'x@gmail.com', 'https://www.facebook.com/x/', '1', 1, 2),
 (143, 'ESPRIT TIC', '2016-12-16', 'Ariana', 'esprit@esprit.tn', 'https://www.facebook.com/ClubTunivisionsEsprit/', '1', 1, 3),
+(144, 'ESPRIT GCEM', '2017-11-27', 'Ariana', 'gcem@esprit.tn', 'https://www.facebook.com/gcem/', '1', 1, 3),
 (149, 'ISIMS', '0000-00-00', 'Sfax', 'club@gmail.com', '', '1', 0, 3),
 (159, 'FSB', '2019-02-13', 'Bizert', 'tunivision2019@gmail.com', 'https://www.facebook.com/fsb/', '0', 1, 3),
 (173, 'CSFMT H.LIF', '2020-11-15', 'Tunis', 'csf@gmail.com', 'https://www.facebook.com/csf', '1', 1, 3),
@@ -49,9 +51,9 @@ SQL;
         $stats = app(LegacyClubImporter::class)->import($path);
 
         $this->assertSame(4, $stats['branches']);
-        $this->assertSame(8, $stats['clubs']);
+        $this->assertSame(9, $stats['clubs']);
         $this->assertSame(0, $stats['skipped']);
-        $this->assertSame(8, Club::query()->count());
+        $this->assertSame(9, Club::query()->count());
         $this->assertSame(['Sans ville ()'], $stats['no_governorate']);
 
         // Le champ email/facebook est classe selon son contenu, meme si inverse.
@@ -77,10 +79,21 @@ SQL;
         $this->assertSame('ben-arous', $lycee->governorate->slug);
         $this->assertSame("Lycée le pôle d'enseignement", Club::query()->where('legacy_id', 332)->value('name'));
 
+        // Institutions : une par etablissement, ESPRIT TIC + ESPRIT GCEM partagent ESPRIT.
+        $this->assertSame(8, Institution::query()->count());
+        $this->assertSame(Club::query()->where('legacy_id', 143)->value('institution_id'), Club::query()->where('legacy_id', 144)->value('institution_id'));
+        $this->assertSame('ESPRIT', $esprit->institution->name);
+        $this->assertSame('university', $esprit->institution->institution_type);
+        $this->assertSame($esprit->entity_id, $esprit->institution->entity_id);
+        $this->assertSame('high_school', $lycee->institution->institution_type);
+        $this->assertSame('Lycée Cité Salem', $lycee->institution->name);
+        $this->assertSame(0, Club::query()->whereNull('institution_id')->count());
+
         $again = app(LegacyClubImporter::class)->import($path);
         $this->assertSame(0, $again['created']);
-        $this->assertSame(8, $again['updated']);
-        $this->assertSame(8, Club::query()->count());
+        $this->assertSame(9, $again['updated']);
+        $this->assertSame(9, Club::query()->count());
+        $this->assertSame(8, Institution::query()->count());
 
         unlink($path);
     }
