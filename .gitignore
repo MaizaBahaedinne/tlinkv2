@@ -26,3 +26,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 TlinkDB.sql
+
+# Donnees legacy (contacts personnels) : ne jamais versionner
+/database/legacy/

@@ -19,7 +19,10 @@ class LegacyClubImporter
         $stats = [
             'branches' => 0,
             'clubs' => 0,
+            'created' => 0,
+            'updated' => 0,
             'skipped' => 0,
+            'no_governorate' => [],
         ];
 
         $inClubTable = false;
@@ -51,17 +54,22 @@ class LegacyClubImporter
             $row = $this->parseRow($trimmed);
             if ($row === null) {
                 $stats['skipped']++;
-                continue;
-            }
-
-            if (in_array($row['club_id'], [-1, 0, 1, 2], true)) {
+            } elseif (in_array($row['club_id'], [-1, 0, 1, 2], true)) {
                 $this->syncBranch($row);
                 $stats['branches']++;
-                continue;
+            } else {
+                $result = $this->syncClub($row);
+                $stats['clubs']++;
+                $stats[$result['created'] ? 'created' : 'updated']++;
+                if (! $result['governorate']) {
+                    $stats['no_governorate'][] = $row['name'].' ('.$row['city'].')';
+                }
             }
 
-            $this->syncClub($row);
-            $stats['clubs']++;
+            // La derniere ligne du INSERT se termine par un point-virgule.
+            if (str_ends_with($trimmed, ';')) {
+                break;
+            }
         }
 
         fclose($handle);
@@ -102,7 +110,8 @@ class LegacyClubImporter
         );
     }
 
-    private function syncClub(array $row): void
+    /** @return array{created: bool, governorate: bool} */
+    private function syncClub(array $row): array
     {
         $entitySlug = $this->resolveEntitySlug($row);
         $entity = Entity::query()->where('slug', $entitySlug)->first();
@@ -123,28 +132,83 @@ class LegacyClubImporter
             $department = Department::query()->where('entity_id', $entity->id)->where('slug', $departmentSlug)->first();
         }
 
-        $governorate = null;
-        if (! empty($row['city'])) {
-            $governorate = Governorate::query()
-                ->whereRaw('LOWER(slug) = ?', [Str::slug($row['city'])])
-                ->orWhereRaw('LOWER(name) = ?', [mb_strtolower($row['city'])])
-                ->first();
+        $governorate = $this->resolveGovernorate($row['city']);
+
+        // Dans l'ancienne base, les colonnes `facebook` et `email` sont inversees
+        // sur de nombreuses lignes : on classe chaque valeur selon son contenu.
+        $email = null;
+        $facebook = null;
+        foreach ([$row['facebook'], $row['email']] as $value) {
+            if ($value === '') {
+                continue;
+            }
+            if (preg_match('#^https?://#i', $value)) {
+                $facebook ??= $value;
+            } elseif (str_contains($value, '@')) {
+                $email ??= $value;
+            }
         }
 
-        Club::query()->updateOrCreate(
-            ['slug' => 'legacy-'.$row['club_id'].'-'.Str::slug($row['name'])],
-            [
-                'name' => $row['name'],
-                'entity_id' => $entity?->id,
-                'department_id' => $department?->id,
-                'governorate_id' => $governorate?->id,
-                'status' => ($row['is_active'] ?? '0') === '1' ? 'active' : 'inactive',
-            ]
-        );
+        $founded = null;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $row['birthday']) && $row['birthday'] !== '0000-00-00' && strtotime($row['birthday']) !== false) {
+            $founded = $row['birthday'];
+        }
+
+        $slug = 'legacy-'.$row['club_id'].'-'.Str::slug($row['name']);
+        $club = Club::query()->where('legacy_id', $row['club_id'])->first()
+            ?? Club::query()->where('slug', $slug)->first()
+            ?? new Club();
+        $created = ! $club->exists;
+
+        $club->fill([
+            'name' => $row['name'],
+            'slug' => $club->slug ?: $slug,
+            'legacy_id' => $row['club_id'],
+            'entity_id' => $entity?->id,
+            'department_id' => $department?->id,
+            'governorate_id' => $governorate?->id,
+            'email' => $email,
+            'facebook_url' => $facebook,
+            'founded_on' => $founded,
+            'charter_signed' => $row['charte'] === '1',
+            'status' => $row['is_active'] === '1' ? 'active' : 'inactive',
+        ])->save();
+
+        return ['created' => $created, 'governorate' => $governorate !== null];
+    }
+
+    private function resolveGovernorate(string $city): ?Governorate
+    {
+        $slug = Str::slug($city);
+        if ($slug === '') {
+            return null;
+        }
+
+        // Graphies de l'ancienne base et villes rattachees a leur gouvernorat.
+        $slug = [
+            'bizert' => 'bizerte',
+            'mednine' => 'medenine',
+            'mannouba' => 'manouba',
+            'kassrine' => 'kasserine',
+            'kef' => 'le-kef',
+            'jandouba' => 'jendouba',
+            'kelibia' => 'nabeul',
+        ][$slug] ?? $slug;
+
+        return Governorate::query()->where('slug', $slug)->first();
     }
 
     private function resolveEntitySlug(array $row): string
     {
+        // SenJun : 3 = club universitaire, 4 = club lycee (fiable, contrairement au nom).
+        if ($row['sen_jun'] === '4') {
+            return 'high-school';
+        }
+
+        if ($row['sen_jun'] === '3') {
+            return 'university';
+        }
+
         $haystack = mb_strtolower(trim(($row['name'] ?? '').' '.($row['city'] ?? '').' '.($row['facebook'] ?? '').' '.($row['email'] ?? '')));
 
         if (str_contains($haystack, 'lycee') || str_contains($haystack, 'lycée') || str_contains($haystack, 'h.lif') || str_contains($haystack, 'high school')) {
@@ -186,14 +250,14 @@ class LegacyClubImporter
 
         return [
             'club_id' => (int) $values[0],
-            'name' => (string) $values[1],
-            'birthday' => (string) ($values[2] ?? ''),
-            'city' => (string) ($values[3] ?? ''),
-            'facebook' => (string) ($values[4] ?? ''),
-            'email' => (string) ($values[5] ?? ''),
-            'is_active' => (string) ($values[6] ?? ''),
-            'charte' => (string) ($values[7] ?? ''),
-            'sen_jun' => (string) ($values[8] ?? ''),
+            'name' => trim((string) $values[1]),
+            'birthday' => trim((string) ($values[2] ?? '')),
+            'city' => trim((string) ($values[3] ?? '')),
+            'facebook' => trim((string) ($values[4] ?? '')),
+            'email' => trim((string) ($values[5] ?? '')),
+            'is_active' => trim((string) ($values[6] ?? '')),
+            'charte' => trim((string) ($values[7] ?? '')),
+            'sen_jun' => trim((string) ($values[8] ?? '')),
         ];
     }
 }

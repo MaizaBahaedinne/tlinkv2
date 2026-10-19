@@ -19,7 +19,20 @@ class Club extends Model
         'institution_id',
         'governorate_id',
         'status',
+        'legacy_id',
+        'email',
+        'facebook_url',
+        'founded_on',
+        'charter_signed',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'founded_on' => 'date',
+            'charter_signed' => 'boolean',
+        ];
+    }
 
     public function entity(): BelongsTo
     {
