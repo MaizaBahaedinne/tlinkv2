@@ -132,7 +132,10 @@ final class LegacyUserImporter
         }
 
         if ($groups === []) {
-            throw new \RuntimeException('Aucune ligne `tbl_users` trouvee dans '.$path);
+            throw new \RuntimeException(
+                'Aucune ligne `tbl_users` dans '.$path.'. Copiez le fichier des utilisateurs dans '
+                .base_path('database/legacy/tbl_users.sql').' (ou passez son chemin en argument).'
+            );
         }
 
         return $groups;
