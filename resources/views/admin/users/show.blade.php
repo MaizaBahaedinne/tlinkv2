@@ -88,6 +88,25 @@
                     <x-admin.empty icon="user-check" title="Aucune adhésion" />
                 @endif
             </article>
+
+            <article class="card card-flush">
+                <div class="card-head"><h2>Postes dans l'organigramme</h2></div>
+                @if($orgPositions->count())
+                    <div class="list">
+                        @foreach($orgPositions as $position)
+                            <div class="list-item">
+                                <div class="grow">
+                                    <strong>{{ $position->node->title }}</strong>
+                                    <span class="text-sm text-muted">{{ collect([$position->node->subtitle, $position->person->job_title])->filter()->implode(' · ') ?: '—' }}</span>
+                                </div>
+                                <a href="{{ route('orgchart.index', ['bloc' => $position->node_id]) }}" class="btn btn-secondary btn-icon btn-sm" title="Voir dans l'organigramme" aria-label="Voir dans l'organigramme"><x-admin.icon name="network" :size="15" /></a>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <x-admin.empty icon="network" title="Aucun poste dans l'organigramme" />
+                @endif
+            </article>
         </div>
 
         <div style="display:grid;gap:22px;align-content:start;min-width:0">

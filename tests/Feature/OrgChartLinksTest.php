@@ -370,6 +370,22 @@ class OrgChartLinksTest extends TestCase
         $this->assertSame('Alice Renommée', $renamed['full_name']);
     }
 
+    public function test_admin_user_page_lists_the_positions_held_in_the_chart(): void
+    {
+        $alice = User::factory()->create(['name' => 'Alice Ben Salah']);
+        $chart = $this->chart();
+        $director = $this->bySystemKey($chart, 'executive-director');
+        $editor = $this->editor();
+
+        $this->actingAs($editor)->get('/admin/utilisateurs/'.$alice->id)->assertOk()->assertSee('Aucun poste dans l', false);
+
+        $this->actingAs($editor)->postJson('/organigramme/blocs/'.$director['id'].'/utilisateurs', ['user_id' => $alice->id])->assertOk();
+
+        $this->get('/admin/utilisateurs/'.$alice->id)->assertOk()
+            ->assertSee('Directeur ex', false)
+            ->assertSee('/organigramme?bloc='.$director['id'], false);
+    }
+
     public function test_assigning_an_inactive_account_or_as_reader_is_refused(): void
     {
         $node = $this->bySystemKey($this->chart(), 'executive-director');

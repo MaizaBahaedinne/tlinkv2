@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\OrgAssignment;
 use App\Models\Role;
 use App\Models\RoleAssignment;
 use App\Models\User;
@@ -70,6 +71,7 @@ class UserController extends AdminController
         return view('admin.users.show', [
             'user' => $user,
             'memberships' => $user->memberships()->with(['entity:id,name', 'department:id,name', 'club:id,name'])->latest('id')->get(),
+            'orgPositions' => $this->orgPositions($user),
             'assignments' => $assignments,
             'recentPosts' => $user->posts()->latest('id')->limit(5)->get(['id', 'content', 'type', 'created_at']),
             'canManageRoles' => $roleScope !== null,
@@ -200,5 +202,22 @@ class UserController extends AdminController
             $inner->whereHas('memberships', fn ($memberships) => $memberships->whereIn('entity_id', $entityIds))
                 ->orWhereHas('roleAssignments', fn ($assignments) => $assignments->whereIn('entity_id', $entityIds));
         });
+    }
+
+    /**
+     * Postes actuellement occupés par l'utilisateur dans l'organigramme.
+     *
+     * @return \Illuminate\Support\Collection<int, OrgAssignment>
+     */
+    private function orgPositions(User $user)
+    {
+        $today = now()->toDateString();
+
+        return OrgAssignment::query()
+            ->whereHas('person', fn ($person) => $person->where('user_id', $user->id))
+            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
+            ->with(['node:id,title,subtitle', 'person:id,user_id,job_title'])
+            ->orderBy('id')
+            ->get();
     }
 }
