@@ -61,9 +61,23 @@ Le filtre « Mettre en évidence les relations à valider » (panneau de gauche)
 
 ### Édition (administrateurs globaux)
 
+**Types de blocs** (l'organigramme est la seule base de la structure de la fondation) :
+
+| Type | Rôle |
+| --- | --- |
+| Poste | Seul type qui accueille des personnes (avatar affiché). |
+| Unité / branche | Regroupement (ex. branche des clubs) : sans avatar ni personne. |
+| Département de bureau national | Marketing, RH, Events, R&D d'un bureau national ; ne peut pas se trouver dans un club. |
+| Club | Suit sa fiche club (gouvernorat, entité, institution) ; sans avatar. |
+| Département de club | Marketing, RH, Events, R&D d'un club ; uniquement dans un club. |
+
+**Capacité d'un poste** : *Un seul titulaire* (défaut) ou *Plusieurs personnes* (assistants, membres…). Vérifications côté serveur : un poste à titulaire unique refuse une deuxième personne (affectation, import), un poste ne peut pas repasser en titulaire unique s'il a déjà plusieurs personnes, et un bloc qui a des personnes ne peut pas changer pour un type autre que poste.
+
+Les bureaux nationaux et les équipes types de club sont rangés sous des départements. `php artisan orgchart:sync` convertit une ancienne structure plate (managers / vice-présidents directement sous leur coordinateur / président) ; l'opération est idempotente.
+
 | Action | Comment |
 | --- | --- |
-| Ajouter un poste / une unité | **Ajouter ▾ → Poste ou unité**, ou **Ajouter un sous-poste** dans la fiche. |
+| Ajouter un poste, une unité ou un département | **Ajouter ▾ → Poste, unité ou département**, ou **Ajouter un sous-poste** dans la fiche. Voir « Types de blocs » ci-dessous. |
 | Ajouter un club | **Ajouter ▾ → Club** : type (régional, University, High School), nom, gouvernorat, équipe type. |
 | Affecter un utilisateur | Champ **« Affecter un utilisateur »** dans la fiche : recherche par nom ou e-mail dans les comptes actifs. **Une personne de l'organigramme est un utilisateur** : nom, photo, e-mail et téléphone sont lus dans le compte (rien n'est copié, ils se mettent à jour seuls) ; la fiche ne porte que la fonction, la visibilité des coordonnées et des notes internes. Les e-mails de remplacement des comptes importés (`@legacy.invalid`) ne sont pas affichés. Un même utilisateur sur plusieurs postes n'a qu'une seule fiche. |
 | Retirer | Bouton ⊖ dans la fiche (retire du poste) ; « Retirer de l'organigramme » dans la fiche personne (retire de tous ses postes, le compte n'est pas supprimé). |

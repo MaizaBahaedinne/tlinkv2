@@ -18,7 +18,18 @@ class OrgNode extends Model
         'highschool_club' => 'High School Clubs',
     ];
 
-    public const KINDS = ['position' => 'Poste', 'unit' => 'Unité / branche', 'club' => 'Club'];
+    public const KINDS = [
+        'position' => 'Poste',
+        'unit' => 'Unité / branche',
+        'department' => 'Département de bureau national',
+        'club' => 'Club',
+        'club_department' => 'Département de club',
+    ];
+
+    /** Types de blocs qu'un utilisateur peut creer a la main (le club suit la fiche Club). */
+    public const MANUAL_KINDS = ['position', 'unit', 'department', 'club_department'];
+
+    public const CAPACITIES = ['single' => 'Un seul titulaire', 'multiple' => 'Plusieurs personnes'];
 
     public const RELATIONS = ['hierarchy' => 'Lien hiérarchique', 'attachment' => 'Rattachement (sans lien hiérarchique)'];
 
@@ -30,6 +41,7 @@ class OrgNode extends Model
         'parent_id',
         'relation_type',
         'kind',
+        'capacity',
         'category',
         'title',
         'subtitle',

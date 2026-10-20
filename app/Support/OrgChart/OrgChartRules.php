@@ -96,6 +96,78 @@ class OrgChartRules
     }
 
     /**
+     * Un departement de club n'existe que dans un club ; un departement de bureau national jamais dans un club.
+     *
+     * @throws ValidationException
+     */
+    public function assertValidKind(string $kind, ?int $parentId): void
+    {
+        if (! in_array($kind, ['department', 'club_department'], true)) {
+            return;
+        }
+
+        $inClub = $this->hasClubAncestor($parentId);
+
+        if ($kind === 'club_department' && ! $inClub) {
+            $this->fail('kind', 'Un département de club doit se trouver dans un club.');
+        }
+
+        if ($kind === 'department' && $inClub) {
+            $this->fail('kind', 'Dans un club, utilisez « Département de club » : le département de bureau national est réservé aux bureaux nationaux.');
+        }
+    }
+
+    /**
+     * Nombre de personnes actuellement affectees a un bloc (affectations non terminees).
+     */
+    public function currentPeopleCount(OrgNode $node): int
+    {
+        $today = now()->toDateString();
+
+        return $node->assignments()
+            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
+            ->distinct()
+            ->count('person_id');
+    }
+
+    /**
+     * Verifie qu'un bloc peut accueillir `$total` personnes : seuls les postes ont des titulaires,
+     * et un poste a titulaire unique n'en accepte qu'un.
+     *
+     * @throws ValidationException
+     */
+    public function assertCanHold(OrgNode $node, int $total): void
+    {
+        if ($total === 0) {
+            return;
+        }
+
+        if ($node->kind !== 'position') {
+            $this->fail('person_ids', 'Seuls les postes peuvent accueillir des personnes : ajoutez un poste dans « '.$node->title.' » puis affectez-y la personne.');
+        }
+
+        if ($node->capacity !== 'multiple' && $total > 1) {
+            $this->fail('person_ids', 'Le poste « '.$node->title.' » est à titulaire unique. Retirez la personne en place ou passez le poste en « Plusieurs personnes ».');
+        }
+    }
+
+    private function hasClubAncestor(?int $parentId): bool
+    {
+        $parents = $this->parentMap();
+        $kinds = OrgNode::query()->pluck('kind', 'id')->all();
+
+        for ($guard = 0; $parentId !== null && $guard < 80; $guard++) {
+            if (($kinds[$parentId] ?? null) === 'club') {
+                return true;
+            }
+
+            $parentId = $parents[$parentId] ?? null;
+        }
+
+        return false;
+    }
+
+    /**
      * Retourne les identifiants a supprimer (sous-arbre), du plus profond au plus proche de la racine.
      *
      * @return array<int, int>

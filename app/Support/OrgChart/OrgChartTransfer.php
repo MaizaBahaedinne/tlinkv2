@@ -44,6 +44,7 @@ class OrgChartTransfer
                 'parent_id' => $node->parent_id,
                 'relation_type' => $node->relation_type,
                 'kind' => $node->kind,
+                'capacity' => $node->capacity,
                 'category' => $node->category,
                 'title' => $node->title,
                 'subtitle' => $node->subtitle,
@@ -155,6 +156,7 @@ class OrgChartTransfer
             'nodes.*.parent_id' => ['nullable', 'integer'],
             'nodes.*.relation_type' => ['required', Rule::in(array_keys(OrgNode::RELATIONS))],
             'nodes.*.kind' => ['required', Rule::in(array_keys(OrgNode::KINDS))],
+            'nodes.*.capacity' => ['nullable', Rule::in(array_keys(OrgNode::CAPACITIES))],
             'nodes.*.category' => ['required', Rule::in(array_keys(OrgNode::CATEGORIES))],
             'nodes.*.title' => ['required', 'string', 'max:255'],
             'nodes.*.subtitle' => ['nullable', 'string', 'max:255'],
@@ -204,6 +206,8 @@ class OrgChartTransfer
             }
         }
 
+        $data['nodes'] = $this->checkedCapacities($data['nodes'], $data['assignments']);
+
         return OrgChartLinker::withoutSync(fn (): array => DB::transaction(function () use ($data): array {
             OrgAssignment::query()->delete();
             OrgNode::query()->update(['parent_id' => null]);
@@ -236,6 +240,7 @@ class OrgChartTransfer
                     'parent_id' => $node['parent_id'] !== null ? $nodeMap[$node['parent_id']] : null,
                     'relation_type' => $node['relation_type'],
                     'kind' => $node['kind'],
+                    'capacity' => $node['capacity'],
                     'category' => $node['category'],
                     'title' => $node['title'],
                     'subtitle' => $node['subtitle'] ?? null,
@@ -270,6 +275,38 @@ class OrgChartTransfer
                 'assignments' => count($data['assignments']),
             ];
         }));
+    }
+
+    /**
+     * Seuls les postes ont des titulaires, et un poste a titulaire unique n'en a qu'un.
+     * Les anciens exports sans capacite : un poste qui a plusieurs personnes devient « plusieurs personnes ».
+     *
+     * @param array<int, array<string, mixed>> $nodes
+     * @param array<int, array<string, mixed>> $assignments
+     * @return array<int, array<string, mixed>>
+     *
+     * @throws ValidationException
+     */
+    private function checkedCapacities(array $nodes, array $assignments): array
+    {
+        $counts = collect($assignments)->groupBy('node_id')->map(fn ($rows): int => $rows->pluck('person_id')->unique()->count());
+
+        foreach ($nodes as $index => $node) {
+            $count = (int) ($counts[$node['id']] ?? 0);
+            $capacity = $node['capacity'] ?? ($count > 1 ? 'multiple' : 'single');
+
+            if ($count > 0 && $node['kind'] !== 'position') {
+                throw ValidationException::withMessages(['assignments' => 'Le bloc « '.$node['title'].' » n’est pas un poste : seuls les postes ont des titulaires.']);
+            }
+
+            if ($capacity === 'single' && $count > 1) {
+                throw ValidationException::withMessages(['assignments' => 'Le poste « '.$node['title'].' » est à titulaire unique mais a '.$count.' personnes.']);
+            }
+
+            $nodes[$index]['capacity'] = $capacity;
+        }
+
+        return $nodes;
     }
 
     /**

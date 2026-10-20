@@ -68,9 +68,11 @@ Artisan::command('orgchart:sync', function () {
         $this->info('Organigramme installe.');
     }
 
+    $departments = $installer->restructure();
     $stats = app(OrgChartLinker::class)->sync();
 
     $this->info('Organigramme synchronise avec les entites, departements, institutions et clubs.');
+    $this->line('Departements ranges (bureaux nationaux et clubs): '.$departments);
     $this->line('Blocs systeme relies: '.$stats['linked']);
     $this->line('Blocs de clubs crees: '.$stats['created'].' | mis a jour: '.$stats['updated']);
     $this->line('Clubs sans branche dans l\'organigramme (ni University ni High School): '.$stats['skipped']);

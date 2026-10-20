@@ -132,6 +132,8 @@ class OrgChartController extends Controller
         $data['category'] = $data['category'] ?? $parent?->category ?? 'direction';
 
         $this->rules->assertValidPlacement(null, $data['parent_id'] ?? null, $data['relation_type']);
+        $this->rules->assertValidKind($data['kind'], $data['parent_id'] ?? null);
+        $data['capacity'] = $data['kind'] === 'position' ? ($data['capacity'] ?? 'single') : 'single';
 
         $personIds = Arr::pull($data, 'person_ids');
 
@@ -163,6 +165,11 @@ class OrgChartController extends Controller
         }
 
         $this->rules->assertValidPlacement($node, $data['parent_id'] ?? null, $data['relation_type']);
+        $this->rules->assertValidKind($data['kind'] ?? $node->kind, $data['parent_id'] ?? null);
+
+        if (($data['kind'] ?? $node->kind) !== 'position') {
+            $data['capacity'] = 'single';
+        }
 
         $personIds = Arr::pull($data, 'person_ids');
         $before = $node->only(array_keys($data));
@@ -183,6 +190,9 @@ class OrgChartController extends Controller
 
             if ($personIds !== null) {
                 $this->syncPeople($node, $personIds);
+            } else {
+                // Changement de type ou de capacite : les titulaires en place doivent rester coherents.
+                $this->rules->assertCanHold($node, $this->rules->currentPeopleCount($node));
             }
         });
 
@@ -315,7 +325,8 @@ class OrgChartController extends Controller
     {
         $this->requireEditor($request);
 
-        $stats = $this->linker->sync();
+        $departments = $this->installer->restructure();
+        $stats = $this->linker->sync() + ['departments' => $departments];
 
         AuditLogger::record($request->user()->id, 'orgchart.synced', null, null, $stats, $request->ip());
 
@@ -433,6 +444,13 @@ class OrgChartController extends Controller
         $user = User::query()->with('profile:id,user_id,phone')->findOrFail($data['user_id']);
 
         abort_unless($user->is_active, 422, 'Ce compte est désactivé.');
+
+        $alreadyHere = OrgAssignment::query()->where('node_id', $node->id)
+            ->whereHas('person', fn ($query) => $query->where('user_id', $user->id))->exists();
+
+        if (! $alreadyHere) {
+            $this->rules->assertCanHold($node, $this->rules->currentPeopleCount($node) + 1);
+        }
 
         $person = OrgPerson::query()->firstOrCreate(['user_id' => $user->id], [
             'full_name' => $user->name,
@@ -629,6 +647,7 @@ class OrgChartController extends Controller
             'meta' => [
                 'categories' => OrgNode::CATEGORIES,
                 'kinds' => OrgNode::KINDS,
+                'capacities' => OrgNode::CAPACITIES,
                 'relations' => OrgNode::RELATIONS,
                 'validations' => OrgNode::VALIDATIONS,
                 'layouts' => OrgNode::LAYOUTS,
@@ -646,6 +665,7 @@ class OrgChartController extends Controller
                     'parent_id' => $node->parent_id,
                     'relation_type' => $node->relation_type,
                     'kind' => $node->kind,
+                    'capacity' => $node->capacity ?? 'single',
                     'category' => $node->category,
                     'title' => $node->title,
                     'subtitle' => $node->subtitle,
@@ -715,7 +735,8 @@ class OrgChartController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'kind' => [$node ? 'nullable' : 'required', Rule::in(['position', 'unit'])],
+            'kind' => [$node ? 'nullable' : 'required', Rule::in(OrgNode::MANUAL_KINDS)],
+            'capacity' => ['nullable', Rule::in(array_keys(OrgNode::CAPACITIES))],
             'category' => ['nullable', Rule::in(array_keys(OrgNode::CATEGORIES))],
             'relation_type' => ['required', Rule::in(array_keys(OrgNode::RELATIONS))],
             'parent_id' => ['nullable', 'integer', 'exists:org_nodes,id'],
@@ -737,6 +758,10 @@ class OrgChartController extends Controller
 
         if ($node && empty($data['kind'])) {
             unset($data['kind']);
+        }
+
+        if (empty($data['capacity'])) {
+            unset($data['capacity']);
         }
 
         if ($node && empty($data['category'])) {
@@ -815,6 +840,8 @@ class OrgChartController extends Controller
     private function syncPeople(OrgNode $node, array $personIds): void
     {
         $personIds = array_values(array_unique(array_map('intval', $personIds)));
+
+        $this->rules->assertCanHold($node, count($personIds));
 
         OrgAssignment::query()->where('node_id', $node->id)->whereNotIn('person_id', $personIds)->delete();
 

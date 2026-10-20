@@ -28,6 +28,11 @@ class OrgChartInstaller
 
     private const TO_VALIDATE_NOTE = 'Rattachement déduit du descriptif : à confirmer par un administrateur.';
 
+    /** Departements types d'un bureau national et d'un club : slug => libelle. */
+    public const DEPARTMENT_SLOTS = ['marketing' => 'Marketing', 'hr' => 'RH', 'events' => 'Events', 'rd' => 'R&D'];
+
+    private const CLUB_CATEGORIES = ['regional_club', 'university_club', 'highschool_club'];
+
     public function __construct(private readonly OrgChartLinker $linker)
     {
     }
@@ -65,9 +70,10 @@ class OrgChartInstaller
                 'validation_status' => 'to_validate',
                 'validation_note' => self::TO_VALIDATE_NOTE,
             ]);
-            $this->node('we-are-carthage-managers', $carthage, 'project', 'Managers', ['subtitle' => 'We Are Carthage']);
+            $this->node('we-are-carthage-managers', $carthage, 'project', 'Managers', ['subtitle' => 'We Are Carthage', 'capacity' => 'multiple']);
             $this->node('we-are-carthage-operations', $carthage, 'project', 'Équipe opérationnelle', [
                 'subtitle' => 'We Are Carthage',
+                'capacity' => 'multiple',
                 'validation_status' => 'to_validate',
                 'validation_note' => 'Équipe prévue « si nécessaire » : à confirmer.',
             ]);
@@ -83,9 +89,10 @@ class OrgChartInstaller
                 'validation_status' => 'to_validate',
                 'validation_note' => self::TO_VALIDATE_NOTE,
             ]);
-            $this->node('we-are-campers-managers', $campers, 'project', 'Managers', ['subtitle' => 'We Are Campers']);
+            $this->node('we-are-campers-managers', $campers, 'project', 'Managers', ['subtitle' => 'We Are Campers', 'capacity' => 'multiple']);
             $this->node('we-are-campers-operations', $campers, 'project', 'Équipe opérationnelle', [
                 'subtitle' => 'We Are Campers',
+                'capacity' => 'multiple',
                 'validation_status' => 'to_validate',
                 'validation_note' => 'Équipe prévue « si nécessaire » : à confirmer.',
             ]);
@@ -96,9 +103,10 @@ class OrgChartInstaller
                 'validation_status' => 'to_validate',
                 'validation_note' => self::TO_VALIDATE_NOTE,
             ]);
-            $this->node('alumni-managers', $alumni, 'project', 'Managers', ['subtitle' => 'Réseau Alumni']);
+            $this->node('alumni-managers', $alumni, 'project', 'Managers', ['subtitle' => 'Réseau Alumni', 'capacity' => 'multiple']);
             $this->node('alumni-operations', $alumni, 'project', 'Équipe opérationnelle', [
                 'subtitle' => 'Réseau Alumni',
+                'capacity' => 'multiple',
                 'validation_status' => 'to_validate',
                 'validation_note' => 'Équipe prévue « si nécessaire » : à confirmer.',
             ]);
@@ -117,7 +125,87 @@ class OrgChartInstaller
         });
 
         // Relie les blocs systeme a la structure et ajoute les clubs deja presents en base (import legacy...).
+        $this->restructure();
         $this->linker->sync();
+    }
+
+    /**
+     * Range les postes des bureaux nationaux et des clubs sous des departements (anciens organigrammes
+     * ou la hierarchie passait directement du coordinateur / president aux managers / vice-presidents).
+     * Idempotent : un poste deja dans un departement n'est pas retouche.
+     *
+     * @return int nombre de departements crees
+     */
+    public function restructure(): int
+    {
+        return DB::transaction(function (): int {
+            $created = 0;
+
+            foreach (['university', 'highschool'] as $key) {
+                $coordinator = OrgNode::query()->where('system_key', $key.'-office')->first();
+
+                if (! $coordinator) {
+                    continue;
+                }
+
+                foreach (self::DEPARTMENT_SLOTS as $slug => $label) {
+                    $manager = OrgNode::query()->where('system_key', $key.'-manager-'.$slug)->first();
+                    $deptKey = $key.'-dept-'.$slug;
+
+                    if (! $manager || (int) $manager->parent_id !== (int) $coordinator->id || OrgNode::query()->where('system_key', $deptKey)->exists()) {
+                        continue;
+                    }
+
+                    $department = OrgNode::query()->create([
+                        'parent_id' => $coordinator->id,
+                        'relation_type' => 'hierarchy',
+                        'kind' => 'department',
+                        'category' => 'national_office',
+                        'title' => 'Département '.$label,
+                        'subtitle' => $manager->subtitle,
+                        'sort_order' => $manager->sort_order,
+                        'system_key' => $deptKey,
+                    ]);
+
+                    $manager->update(['parent_id' => $department->id, 'sort_order' => 0]);
+                    $created++;
+                }
+            }
+
+            $titles = [];
+
+            foreach (self::DEPARTMENT_SLOTS as $label) {
+                $titles['Vice-président '.$label] = $label;
+                $titles['VP '.$label] = $label;
+            }
+
+            $vicePresidents = OrgNode::query()->with('parent')
+                ->where('kind', 'position')
+                ->whereIn('title', array_keys($titles))
+                ->whereIn('category', self::CLUB_CATEGORIES)
+                ->get();
+
+            foreach ($vicePresidents as $vp) {
+                if (! $vp->parent || $vp->parent->kind !== 'position') {
+                    continue;
+                }
+
+                $department = OrgNode::query()->create([
+                    'parent_id' => $vp->parent_id,
+                    'relation_type' => 'hierarchy',
+                    'kind' => 'club_department',
+                    'category' => $vp->category,
+                    'title' => 'Département '.$titles[$vp->title],
+                    'subtitle' => $vp->subtitle,
+                    'sort_order' => $vp->sort_order,
+                ]);
+
+                $vp->update(['parent_id' => $department->id, 'sort_order' => 0]);
+                $created++;
+            }
+
+            return $created;
+        });
     }
 
     /**
@@ -173,7 +261,8 @@ class OrgChartInstaller
             $created[$slot] = OrgNode::query()->create([
                 'parent_id' => $parentId,
                 'relation_type' => 'hierarchy',
-                'kind' => 'position',
+                'kind' => $definition['kind'],
+                'capacity' => $definition['capacity'],
                 'category' => $clubNode->category,
                 'title' => $definition['title'],
                 'subtitle' => $clubNode->title,
@@ -188,31 +277,32 @@ class OrgChartInstaller
     }
 
     /**
-     * @return array<string, array{title: string, parent: string|null, validate: bool}>
+     * @return array<string, array{title: string, parent: string|null, validate: bool, kind: string, capacity: string}>
      */
     public function clubTemplate(bool $regional): array
     {
-        if ($regional) {
-            return [
-                'president' => ['title' => 'Président du club régional', 'parent' => null, 'validate' => false],
-                'vp-marketing' => ['title' => 'Vice-président Marketing', 'parent' => 'president', 'validate' => false],
-                'vp-hr' => ['title' => 'Vice-président RH', 'parent' => 'president', 'validate' => false],
-                'vp-events' => ['title' => 'Vice-président Events', 'parent' => 'president', 'validate' => false],
-                'vp-rd' => ['title' => 'Vice-président R&D', 'parent' => 'president', 'validate' => false],
-                'members' => ['title' => 'Assistants et membres', 'parent' => 'president', 'validate' => true],
-            ];
+        $slot = static fn (string $title, ?string $parent, bool $validate = false, string $kind = 'position', string $capacity = 'single'): array => [
+            'title' => $title, 'parent' => $parent, 'validate' => $validate, 'kind' => $kind, 'capacity' => $capacity,
+        ];
+
+        $slots = ['president' => $slot($regional ? 'Président du club régional' : 'Président de club', null)];
+
+        foreach (self::DEPARTMENT_SLOTS as $slug => $label) {
+            $slots['dept-'.$slug] = $slot('Département '.$label, 'president', false, 'club_department');
+            $slots['vp-'.$slug] = $slot(($regional ? 'Vice-président ' : 'VP ').$label, 'dept-'.$slug);
         }
 
-        return [
-            'president' => ['title' => 'Président de club', 'parent' => null, 'validate' => false],
-            'vp-marketing' => ['title' => 'VP Marketing', 'parent' => 'president', 'validate' => false],
-            'vp-hr' => ['title' => 'VP RH', 'parent' => 'president', 'validate' => false],
-            'vp-events' => ['title' => 'VP Events', 'parent' => 'president', 'validate' => false],
-            'vp-rd' => ['title' => 'VP R&D', 'parent' => 'president', 'validate' => false],
-            'assistant-marketing' => ['title' => 'Assistant Marketing', 'parent' => 'vp-marketing', 'validate' => true],
-            'assistant-hr' => ['title' => 'Assistant RH', 'parent' => 'vp-hr', 'validate' => true],
-            'others' => ['title' => 'Autres membres et responsables', 'parent' => 'president', 'validate' => true],
-        ];
+        if ($regional) {
+            $slots['members'] = $slot('Assistants et membres', 'president', true, 'position', 'multiple');
+
+            return $slots;
+        }
+
+        $slots['assistant-marketing'] = $slot('Assistant Marketing', 'vp-marketing', true, 'position', 'multiple');
+        $slots['assistant-hr'] = $slot('Assistant RH', 'vp-hr', true, 'position', 'multiple');
+        $slots['others'] = $slot('Autres membres et responsables', 'president', true, 'position', 'multiple');
+
+        return $slots;
     }
 
     private function installNationalOffice(OrgNode $director, string $key, string $coordinatorTitle, string $office, string $clubsBranchTitle, string $clubCategory): void
@@ -225,14 +315,14 @@ class OrgChartInstaller
             'description' => 'Coordonne les activités destinées aux '.($key === 'university' ? 'étudiants universitaires' : 'lycéens').'.',
         ]);
 
-        $marketing = $this->node($key.'-manager-marketing', $coordinator, 'national_office', 'Manager Marketing', ['subtitle' => $office]);
-        $this->node($key.'-assistant-marketing', $marketing, 'national_office', 'Assistant Marketing', ['subtitle' => $office]);
+        foreach (self::DEPARTMENT_SLOTS as $slug => $label) {
+            $department = $this->node($key.'-dept-'.$slug, $coordinator, 'national_office', 'Département '.$label, ['kind' => 'department', 'subtitle' => $office]);
+            $manager = $this->node($key.'-manager-'.$slug, $department, 'national_office', 'Manager '.$label, ['subtitle' => $office]);
 
-        $hr = $this->node($key.'-manager-hr', $coordinator, 'national_office', 'Manager RH', ['subtitle' => $office]);
-        $this->node($key.'-assistant-hr', $hr, 'national_office', 'Assistant RH', ['subtitle' => $office]);
-
-        $this->node($key.'-manager-events', $coordinator, 'national_office', 'Manager Events', ['subtitle' => $office]);
-        $this->node($key.'-manager-rd', $coordinator, 'national_office', 'Manager R&D', ['subtitle' => $office]);
+            if (in_array($slug, ['marketing', 'hr'], true)) {
+                $this->node($key.'-assistant-'.$slug, $manager, 'national_office', 'Assistant '.$label, ['subtitle' => $office, 'capacity' => 'multiple']);
+            }
+        }
 
         // Branche des clubs : volontairement vide, les clubs se creent depuis l'interface.
         $this->node($key.'-clubs', $coordinator, $clubCategory, $clubsBranchTitle, [

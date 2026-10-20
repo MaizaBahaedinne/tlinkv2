@@ -35,7 +35,7 @@
             <div class="oc-menu">
                 <button type="button" class="oc-btn" data-menu="m-add" aria-haspopup="true" aria-expanded="false">Ajouter ▾</button>
                 <div class="oc-menu-list" id="m-add" hidden>
-                    <button type="button" data-act="add-node">Poste ou unité</button>
+                    <button type="button" data-act="add-node">Poste, unité ou département</button>
                     <button type="button" data-act="add-club">Club (régional, université, lycée)</button>
                     <button type="button" data-act="sync">Synchroniser avec les clubs</button>
                 </div>
@@ -139,9 +139,10 @@
             <div class="oc-field"><label for="n-title">Intitulé du poste ou du bloc *</label><input id="n-title" name="title" maxlength="255" required></div>
             <div class="oc-field"><label for="n-subtitle">Sous-titre (bureau, club…)</label><input id="n-subtitle" name="subtitle" maxlength="255"></div>
             <div class="oc-grid2">
-                <div class="oc-field"><label for="n-kind">Type</label><select id="n-kind" name="kind"><option value="position">Poste</option><option value="unit">Unité / branche</option></select></div>
+                <div class="oc-field"><label for="n-kind">Type</label><select id="n-kind" name="kind"></select></div>
                 <div class="oc-field"><label for="n-category">Catégorie (couleur)</label><select id="n-category" name="category"></select></div>
             </div>
+            <div class="oc-field" id="n-capacity-wrap"><label for="n-capacity">Titulaires du poste</label><select id="n-capacity" name="capacity"></select><small class="oc-muted">Seuls les postes accueillent des personnes ; un poste à titulaire unique refuse une deuxième personne.</small></div>
             <div class="oc-field"><label for="n-parent">Rattaché à</label><select id="n-parent" name="parent_id"></select></div>
             <div class="oc-grid2">
                 <div class="oc-field"><label for="n-relation">Nature du lien</label><select id="n-relation" name="relation_type"></select></div>
