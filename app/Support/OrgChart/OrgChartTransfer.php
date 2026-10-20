@@ -11,6 +11,7 @@ use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
 use App\Models\User;
+use App\Support\AccessLevels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -45,6 +46,7 @@ class OrgChartTransfer
                 'relation_type' => $node->relation_type,
                 'kind' => $node->kind,
                 'capacity' => $node->capacity,
+                'access_level' => $node->access_level,
                 'category' => $node->category,
                 'title' => $node->title,
                 'subtitle' => $node->subtitle,
@@ -157,6 +159,7 @@ class OrgChartTransfer
             'nodes.*.relation_type' => ['required', Rule::in(array_keys(OrgNode::RELATIONS))],
             'nodes.*.kind' => ['required', Rule::in(array_keys(OrgNode::KINDS))],
             'nodes.*.capacity' => ['nullable', Rule::in(array_keys(OrgNode::CAPACITIES))],
+            'nodes.*.access_level' => ['nullable', Rule::in(array_keys(AccessLevels::LEVELS))],
             'nodes.*.category' => ['required', Rule::in(array_keys(OrgNode::CATEGORIES))],
             'nodes.*.title' => ['required', 'string', 'max:255'],
             'nodes.*.subtitle' => ['nullable', 'string', 'max:255'],
@@ -241,6 +244,7 @@ class OrgChartTransfer
                     'relation_type' => $node['relation_type'],
                     'kind' => $node['kind'],
                     'capacity' => $node['capacity'],
+                    'access_level' => $node['kind'] === 'position' ? ($node['access_level'] ?? 'none') : 'none',
                     'category' => $node['category'],
                     'title' => $node['title'],
                     'subtitle' => $node['subtitle'] ?? null,
@@ -267,6 +271,11 @@ class OrgChartTransfer
                     ['node_id' => $nodeMap[$assignment['node_id']], 'person_id' => $personMap[$assignment['person_id']]],
                     ['starts_at' => $assignment['starts_at'] ?? null, 'ends_at' => $assignment['ends_at'] ?? null]
                 );
+            }
+
+            // Export antérieur aux niveaux d'accès : on applique les niveaux par défaut plutôt que de retirer tous les droits.
+            if (collect($data['nodes'])->contains(fn (array $node): bool => ! array_key_exists('access_level', $node))) {
+                app(OrgChartInstaller::class)->applyDefaultAccess();
             }
 
             return [

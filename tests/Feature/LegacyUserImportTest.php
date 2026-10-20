@@ -6,7 +6,6 @@ use App\Models\Club;
 use App\Models\Entity;
 use App\Models\Membership;
 use App\Models\Profile;
-use App\Models\RoleAssignment;
 use App\Models\User;
 use App\Support\Legacy\LegacyUserImporter;
 use App\Support\Legacy\SqlDumpReader;
@@ -193,8 +192,8 @@ class LegacyUserImportTest extends TestCase
         $this->assertSame('archived', $branch->status);
         $this->assertSame(Entity::query()->where('slug', 'high-school')->value('id'), $branch->entity_id);
 
-        // Securite : aucun role n'est attribue (meme au super admin legacy SA=1).
-        $this->assertSame(0, RoleAssignment::query()->count());
+        // Securite : aucun droit n'est attribue (meme au super admin legacy SA=1) : pas de poste dans l'organigramme.
+        $this->assertSame(0, \App\Models\OrgAssignment::query()->count());
         $issues = collect($result['report'])->pluck(1)->all();
         $this->assertContains('legacy_super_admin', $issues);
         $this->assertContains('duplicate_merged', $issues);

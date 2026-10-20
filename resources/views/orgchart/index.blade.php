@@ -143,6 +143,7 @@
                 <div class="oc-field"><label for="n-category">Catégorie (couleur)</label><select id="n-category" name="category"></select></div>
             </div>
             <div class="oc-field" id="n-capacity-wrap"><label for="n-capacity">Titulaires du poste</label><select id="n-capacity" name="capacity"></select><small class="oc-muted">Seuls les postes accueillent des personnes ; un poste à titulaire unique refuse une deuxième personne.</small></div>
+            <div class="oc-field" id="n-access-wrap"><label for="n-access">Niveau d'accès (droits de la personne en poste)</label><select id="n-access" name="access_level"></select><small class="oc-muted">Les droits d'administration viennent uniquement des postes. Ils s'appliquent à l'entité du poste (ou héritée du bloc parent), sauf l'administrateur global.</small></div>
             <div class="oc-field"><label for="n-parent">Rattaché à</label><select id="n-parent" name="parent_id"></select></div>
             <div class="oc-grid2">
                 <div class="oc-field"><label for="n-relation">Nature du lien</label><select id="n-relation" name="relation_type"></select></div>

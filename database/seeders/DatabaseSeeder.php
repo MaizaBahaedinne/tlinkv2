@@ -18,7 +18,6 @@ class DatabaseSeeder extends Seeder
             EntitySeeder::class,
             OrganizationStructureSeeder::class,
             GovernorateSeeder::class,
-            RolePermissionSeeder::class,
         ]);
 
         if (app()->environment('local', 'development')) {

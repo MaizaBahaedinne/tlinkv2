@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Usage: ->middleware('admin.can:entity.manage,role.manage')
+ * Usage: ->middleware('admin.can:entity.manage,membership.manage')
  * L'acces est accorde si l'utilisateur possede AU MOINS UNE des permissions listees.
  */
 class EnsureAdminAccess

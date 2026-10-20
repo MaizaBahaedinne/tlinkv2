@@ -38,9 +38,8 @@ class AdminMenu
             [
                 'title' => 'Communauté',
                 'items' => [
-                    ['label' => 'Utilisateurs', 'route' => 'admin.users.index', 'icon' => 'user', 'match' => 'admin.users.*', 'perms' => ['entity.manage', 'role.manage', 'membership.manage']],
+                    ['label' => 'Utilisateurs', 'route' => 'admin.users.index', 'icon' => 'user', 'match' => 'admin.users.*', 'perms' => ['entity.manage', 'membership.manage']],
                     ['label' => 'Adhésions', 'route' => 'admin.memberships.index', 'icon' => 'user-check', 'match' => 'admin.memberships.*', 'perms' => ['membership.manage'], 'badge' => 'memberships'],
-                    ['label' => 'Rôles & permissions', 'route' => 'admin.roles.index', 'icon' => 'key', 'match' => 'admin.roles.*', 'perms' => ['role.manage']],
                 ],
             ],
             [

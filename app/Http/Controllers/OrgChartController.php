@@ -14,6 +14,7 @@ use App\Models\OrgNode;
 use App\Models\OrgPerson;
 use App\Models\User;
 use App\Support\AdminContext;
+use App\Support\AccessLevels;
 use App\Support\AuditLogger;
 use App\Support\OrgChart\OrgChartInstaller;
 use App\Support\OrgChart\OrgChartLinker;
@@ -48,7 +49,7 @@ class OrgChartController extends Controller
         return view('orgchart.index', [
             'canEdit' => $this->canEdit($request),
             'userName' => $request->user()->name,
-            'adminUrl' => AdminContext::of($request)->canAny(['entity.manage', 'role.manage', 'membership.manage', 'approval.review', 'post.moderate', 'event.manage'])
+            'adminUrl' => AdminContext::of($request)->canAny(['entity.manage', 'membership.manage', 'approval.review', 'post.moderate', 'event.manage'])
                 ? route('admin.dashboard')
                 : null,
         ]);
@@ -134,6 +135,7 @@ class OrgChartController extends Controller
         $this->rules->assertValidPlacement(null, $data['parent_id'] ?? null, $data['relation_type']);
         $this->rules->assertValidKind($data['kind'], $data['parent_id'] ?? null);
         $data['capacity'] = $data['kind'] === 'position' ? ($data['capacity'] ?? 'single') : 'single';
+        $data['access_level'] = $data['kind'] === 'position' ? ($data['access_level'] ?? 'none') : 'none';
 
         $personIds = Arr::pull($data, 'person_ids');
 
@@ -169,12 +171,13 @@ class OrgChartController extends Controller
 
         if (($data['kind'] ?? $node->kind) !== 'position') {
             $data['capacity'] = 'single';
+            $data['access_level'] = 'none';
         }
 
         $personIds = Arr::pull($data, 'person_ids');
         $before = $node->only(array_keys($data));
 
-        DB::transaction(function () use ($node, $data, $personIds): void {
+        $this->keepingAdminAccess($request, function () use ($node, $data, $personIds): void {
             if (($data['parent_id'] ?? null) !== $node->parent_id) {
                 $data['sort_order'] = $this->nextSort($data['parent_id'] ?? null);
             }
@@ -219,7 +222,7 @@ class OrgChartController extends Controller
         $title = $node->title;
         $this->audit($request, 'orgchart.node.deleted', $node, ['title' => $title, 'deleted_blocks' => count($plan)]);
 
-        DB::transaction(function () use ($plan): void {
+        $this->keepingAdminAccess($request, function () use ($plan): void {
             foreach ($plan as $id) {
                 OrgNode::query()->whereKey($id)->delete();
             }
@@ -388,7 +391,7 @@ class OrgChartController extends Controller
             'person_ids.*' => ['integer', 'distinct', 'exists:org_people,id'],
         ]);
 
-        $this->syncPeople($node, $data['person_ids']);
+        $this->keepingAdminAccess($request, fn () => $this->syncPeople($node, $data['person_ids']));
         $this->audit($request, 'orgchart.assignments.updated', $node, ['title' => $node->title, 'person_ids' => $data['person_ids']]);
 
         return $this->respond($request, $node->id);
@@ -535,7 +538,7 @@ class OrgChartController extends Controller
 
         $this->audit($request, 'orgchart.person.deleted', $person, ['name' => $person->full_name, 'assignments' => $person->assignments()->count()]);
         $this->deletePhoto($person);
-        $person->delete();
+        $this->keepingAdminAccess($request, fn () => $person->delete());
 
         return $this->respond($request, null);
     }
@@ -557,7 +560,7 @@ class OrgChartController extends Controller
             throw ValidationException::withMessages(['file' => 'Le fichier n’est pas un JSON valide.']);
         }
 
-        $result = $this->transfer->import($payload);
+        $result = $this->keepingAdminAccess($request, fn (): array => $this->transfer->import($payload));
 
         AuditLogger::record($request->user()->id, 'orgchart.imported', null, null, $result, $request->ip());
 
@@ -574,6 +577,27 @@ class OrgChartController extends Controller
     private function requireEditor(Request $request): void
     {
         abort_unless($this->canEdit($request), 403, 'Seuls les administrateurs globaux peuvent modifier l’organigramme.');
+    }
+
+    /**
+     * Les droits viennent des postes : une modification qui retirerait ses droits d'administrateur global
+     * à celui qui la fait est annulée (sinon plus personne ne pourrait corriger l'organigramme).
+     *
+     * @template T
+     * @param \Closure(): T $mutation
+     * @return T
+     */
+    private function keepingAdminAccess(Request $request, \Closure $mutation): mixed
+    {
+        return DB::transaction(function () use ($request, $mutation) {
+            $result = $mutation();
+
+            if (! (new AdminContext($request->user()))->isGlobal('entity.manage')) {
+                throw ValidationException::withMessages(['node' => 'Cette modification vous retirerait vos droits d’administrateur global : elle est annulée.']);
+            }
+
+            return $result;
+        });
     }
 
     /**
@@ -648,6 +672,7 @@ class OrgChartController extends Controller
                 'categories' => OrgNode::CATEGORIES,
                 'kinds' => OrgNode::KINDS,
                 'capacities' => OrgNode::CAPACITIES,
+                'access_levels' => AccessLevels::LEVELS,
                 'relations' => OrgNode::RELATIONS,
                 'validations' => OrgNode::VALIDATIONS,
                 'layouts' => OrgNode::LAYOUTS,
@@ -666,6 +691,7 @@ class OrgChartController extends Controller
                     'relation_type' => $node->relation_type,
                     'kind' => $node->kind,
                     'capacity' => $node->capacity ?? 'single',
+                    'access_level' => $canEdit ? $node->access_level : null,
                     'category' => $node->category,
                     'title' => $node->title,
                     'subtitle' => $node->subtitle,
@@ -737,6 +763,7 @@ class OrgChartController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'kind' => [$node ? 'nullable' : 'required', Rule::in(OrgNode::MANUAL_KINDS)],
             'capacity' => ['nullable', Rule::in(array_keys(OrgNode::CAPACITIES))],
+            'access_level' => ['nullable', Rule::in(array_keys(AccessLevels::LEVELS))],
             'category' => ['nullable', Rule::in(array_keys(OrgNode::CATEGORIES))],
             'relation_type' => ['required', Rule::in(array_keys(OrgNode::RELATIONS))],
             'parent_id' => ['nullable', 'integer', 'exists:org_nodes,id'],
@@ -762,6 +789,10 @@ class OrgChartController extends Controller
 
         if (empty($data['capacity'])) {
             unset($data['capacity']);
+        }
+
+        if (empty($data['access_level'])) {
+            unset($data['access_level']);
         }
 
         if ($node && empty($data['category'])) {

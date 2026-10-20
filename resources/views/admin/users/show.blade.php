@@ -13,53 +13,23 @@
     <div class="grid-3-1">
         <div style="display:grid;gap:22px;align-content:start;min-width:0">
             <article class="card card-flush">
-                <div class="card-head"><h2>Rôles et permissions</h2></div>
-
-                @if($assignments->count())
-                    <div class="table-wrap">
-                        <table class="tbl">
-                            <thead>
-                                <tr><th>Rôle</th><th>Périmètre</th><th>Depuis</th><th>Statut</th><th></th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach($assignments as $assignment)
-                                    @php($revocable = $assignment->status === 'active' && $canManageRoles && $user->id !== auth()->id() && ($roleScope === [] || ($assignment->entity_id !== null && in_array((int) $assignment->entity_id, $roleScope, true))))
-                                    <tr>
-                                        <td class="cell-main">{{ $assignment->role?->name }}</td>
-                                        <td>{{ $assignment->entity?->name ?? 'Global' }}</td>
-                                        <td class="text-sm text-muted nowrap">{{ $assignment->starts_at?->format('d/m/Y') ?? $assignment->created_at?->format('d/m/Y') }}</td>
-                                        <td><x-admin.badge :status="$assignment->status" /></td>
-                                        <td class="cell-actions">
-                                            @if($revocable)
-                                                <form method="post" action="{{ route('admin.users.roles.destroy', [$user, $assignment]) }}" data-confirm="Ce rôle sera retiré à {{ $user->name }}." data-confirm-title="Retirer ce rôle ?">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger btn-sm">Retirer</button>
-                                                </form>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                <div class="card-head"><h2>Postes et droits</h2></div>
+                @if($orgPositions->count())
+                    <div class="list">
+                        @foreach($orgPositions as $position)
+                            <div class="list-item">
+                                <div class="grow">
+                                    <strong>{{ $position->node->title }}</strong>
+                                    <span class="text-sm text-muted">{{ collect([$position->node->subtitle, $position->person->job_title])->filter()->implode(' · ') ?: '—' }}</span>
+                                    <span class="text-sm">{{ \App\Support\AccessLevels::LEVELS[$position->node->access_level] ?? $position->node->access_level }}</span>
+                                </div>
+                                <a href="{{ route('orgchart.index', ['bloc' => $position->node_id]) }}" class="btn btn-secondary btn-icon btn-sm" title="Voir dans l'organigramme" aria-label="Voir dans l'organigramme"><x-admin.icon name="network" :size="15" /></a>
+                            </div>
+                        @endforeach
                     </div>
+                    <p class="card-body text-sm text-muted">Les droits d’administration viennent uniquement des postes de l’organigramme. Pour les modifier, changez l’affectation ou le niveau d’accès du poste.</p>
                 @else
-                    <x-admin.empty icon="key" title="Aucun rôle" text="Cet utilisateur n’a aucune affectation de rôle." />
-                @endif
-
-                @if($canManageRoles)
-                    <form method="post" action="{{ route('admin.users.roles.store', $user) }}" class="card-body" style="border-top:1px solid var(--line);background:#fbfcfe">
-                        @csrf
-                        <h3 style="font-size:14px;margin-bottom:12px">Attribuer un rôle</h3>
-                        <div class="form-grid">
-                            <x-admin.select name="role_id" label="Rôle" :options="$roleOptions" required />
-                            <x-admin.select name="entity_id" label="Entité" :options="$entityOptions" :required="! $canAssignGlobal" :placeholder="$canAssignGlobal ? 'Global (toutes les entités)' : 'Sélectionner…'" />
-                            <x-admin.input name="ends_at" type="date" label="Fin de l’affectation" hint="Optionnel. Laisser vide pour une durée illimitée." />
-                        </div>
-                        <div style="margin-top:16px;text-align:right">
-                            <button type="submit" class="btn btn-primary btn-sm"><x-admin.icon name="plus" :size="15" /> Attribuer</button>
-                        </div>
-                    </form>
+                    <x-admin.empty icon="network" title="Aucun poste dans l'organigramme" text="Sans poste, l’utilisateur a les droits de membre de base, sans accès à l’administration." />
                 @endif
             </article>
 
@@ -86,25 +56,6 @@
                     </div>
                 @else
                     <x-admin.empty icon="user-check" title="Aucune adhésion" />
-                @endif
-            </article>
-
-            <article class="card card-flush">
-                <div class="card-head"><h2>Postes dans l'organigramme</h2></div>
-                @if($orgPositions->count())
-                    <div class="list">
-                        @foreach($orgPositions as $position)
-                            <div class="list-item">
-                                <div class="grow">
-                                    <strong>{{ $position->node->title }}</strong>
-                                    <span class="text-sm text-muted">{{ collect([$position->node->subtitle, $position->person->job_title])->filter()->implode(' · ') ?: '—' }}</span>
-                                </div>
-                                <a href="{{ route('orgchart.index', ['bloc' => $position->node_id]) }}" class="btn btn-secondary btn-icon btn-sm" title="Voir dans l'organigramme" aria-label="Voir dans l'organigramme"><x-admin.icon name="network" :size="15" /></a>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <x-admin.empty icon="network" title="Aucun poste dans l'organigramme" />
                 @endif
             </article>
         </div>

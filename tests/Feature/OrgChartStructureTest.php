@@ -3,14 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\OrgNode;
-use App\Models\Permission;
-use App\Models\Role;
-use App\Models\RoleAssignment;
 use App\Models\User;
 use App\Support\OrgChart\OrgChartInstaller;
 use Database\Seeders\EntitySeeder;
 use Database\Seeders\GovernorateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GrantsAccess;
 use Tests\TestCase;
 
 /**
@@ -19,6 +17,7 @@ use Tests\TestCase;
  */
 class OrgChartStructureTest extends TestCase
 {
+    use GrantsAccess;
     use RefreshDatabase;
 
     private ?User $editorUser = null;
@@ -37,10 +36,7 @@ class OrgChartStructureTest extends TestCase
         }
 
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'Admin global', 'slug' => 'admin-'.uniqid(), 'scope_type' => 'global']);
-        $permission = Permission::query()->firstOrCreate(['slug' => 'entity.manage'], ['name' => 'entity.manage']);
-        $role->permissions()->syncWithoutDetaching([$permission->id]);
-        RoleAssignment::query()->create(['user_id' => $user->id, 'role_id' => $role->id, 'status' => 'active', 'starts_at' => now()->toDateString()]);
+        $this->grantPlatformAdmin($user);
 
         return $this->editorUser = $user;
     }

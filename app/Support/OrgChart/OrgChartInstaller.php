@@ -45,7 +45,8 @@ class OrgChartInstaller
     public function install(): void
     {
         DB::transaction(function (): void {
-            $president = $this->node('presidency', null, 'presidency', 'Président de la fondation');
+            $president = $this->node('presidency', null, 'presidency', 'Président de la fondation', ['access_level' => 'global_admin']);
+            $this->ensureAdministrators($president);
 
             // Rattachements a la presidence : pas de lien hierarchique avec le directeur executif.
             $this->node('president-advisors', $president, 'presidency', 'Conseillers du président', [
@@ -99,6 +100,7 @@ class OrgChartInstaller
 
             $alumni = $this->node('alumni', $director, 'project', 'Coordinateur national Alumni', [
                 'subtitle' => 'Réseau Alumni',
+                'access_level' => 'entity_admin',
                 'children_layout' => 'vertical',
                 'validation_status' => 'to_validate',
                 'validation_note' => self::TO_VALIDATE_NOTE,
@@ -140,6 +142,10 @@ class OrgChartInstaller
     {
         return DB::transaction(function (): int {
             $created = 0;
+
+            if ($president = OrgNode::query()->where('system_key', 'presidency')->first()) {
+                $this->ensureAdministrators($president);
+            }
 
             foreach (['university', 'highschool'] as $key) {
                 $coordinator = OrgNode::query()->where('system_key', $key.'-office')->first();
@@ -208,8 +214,52 @@ class OrgChartInstaller
         });
     }
 
+    /**     * Poste des administrateurs de la plateforme : la place des anciens rôles « administrateur national ».
+     * Seul niveau d'accès global : on y affecte les personnes qui administrent toute la plateforme.
+     */
+    public function ensureAdministrators(OrgNode $president): OrgNode
+    {
+        return $this->node('national-administrators', $president, 'presidency', 'Administrateurs de la plateforme', [
+            'subtitle' => 'Bureau national',
+            'relation_type' => 'attachment',
+            'capacity' => 'multiple',
+            'access_level' => 'global_admin',
+            'description' => 'Les personnes affectées à ce poste administrent toute la plateforme T.Link.',
+        ]);
+    }
+
     /**
-     * Cree un club (modele `clubs`) et son bloc dans l'organigramme, avec l'equipe type.
+     * Niveaux d'accès par défaut des postes existants (migration des anciens rôles) : ne touche que les postes sans niveau.
+     *
+     * @return int nombre de postes mis à jour
+     */
+    public function applyDefaultAccess(): int
+    {
+        $count = 0;
+
+        $set = function (OrgNode $node, string $level) use (&$count): void {
+            if ($node->access_level === 'none' && $node->kind === 'position') {
+                $node->update(['access_level' => $level]);
+                $count++;
+            }
+        };
+
+        foreach (['presidency' => 'global_admin', 'national-administrators' => 'global_admin', 'university-office' => 'entity_admin', 'highschool-office' => 'entity_admin', 'alumni' => 'entity_admin'] as $key => $level) {
+            if ($node = OrgNode::query()->where('system_key', $key)->first()) {
+                $set($node, $level);
+            }
+        }
+
+        OrgNode::query()->where('system_key', 'like', '%-manager-%')->get()->each(fn (OrgNode $node) => $set($node, 'manager'));
+
+        OrgNode::query()->where('kind', 'position')->where('title', 'like', 'Président%')
+            ->whereIn('parent_id', OrgNode::query()->where('kind', 'club')->pluck('id'))
+            ->get()->each(fn (OrgNode $node) => $set($node, 'club_president'));
+
+        return $count;
+    }
+
+    /**     * Cree un club (modele `clubs`) et son bloc dans l'organigramme, avec l'equipe type.
      */
     public function createClub(OrgNode $branch, string $name, string $category, ?Governorate $governorate, bool $withTemplate, ?string $systemKey = null): OrgNode
     {
@@ -263,6 +313,7 @@ class OrgChartInstaller
                 'relation_type' => 'hierarchy',
                 'kind' => $definition['kind'],
                 'capacity' => $definition['capacity'],
+                'access_level' => $definition['access'],
                 'category' => $clubNode->category,
                 'title' => $definition['title'],
                 'subtitle' => $clubNode->title,
@@ -277,15 +328,15 @@ class OrgChartInstaller
     }
 
     /**
-     * @return array<string, array{title: string, parent: string|null, validate: bool, kind: string, capacity: string}>
+     * @return array<string, array{title: string, parent: string|null, validate: bool, kind: string, capacity: string, access: string}>
      */
     public function clubTemplate(bool $regional): array
     {
-        $slot = static fn (string $title, ?string $parent, bool $validate = false, string $kind = 'position', string $capacity = 'single'): array => [
-            'title' => $title, 'parent' => $parent, 'validate' => $validate, 'kind' => $kind, 'capacity' => $capacity,
+        $slot = static fn (string $title, ?string $parent, bool $validate = false, string $kind = 'position', string $capacity = 'single', string $access = 'none'): array => [
+            'title' => $title, 'parent' => $parent, 'validate' => $validate, 'kind' => $kind, 'capacity' => $capacity, 'access' => $access,
         ];
 
-        $slots = ['president' => $slot($regional ? 'Président du club régional' : 'Président de club', null)];
+        $slots = ['president' => $slot($regional ? 'Président du club régional' : 'Président de club', null, false, 'position', 'single', 'club_president')];
 
         foreach (self::DEPARTMENT_SLOTS as $slug => $label) {
             $slots['dept-'.$slug] = $slot('Département '.$label, 'president', false, 'club_department');
@@ -313,11 +364,12 @@ class OrgChartInstaller
             'validation_status' => 'to_validate',
             'validation_note' => self::TO_VALIDATE_NOTE,
             'description' => 'Coordonne les activités destinées aux '.($key === 'university' ? 'étudiants universitaires' : 'lycéens').'.',
+            'access_level' => 'entity_admin',
         ]);
 
         foreach (self::DEPARTMENT_SLOTS as $slug => $label) {
             $department = $this->node($key.'-dept-'.$slug, $coordinator, 'national_office', 'Département '.$label, ['kind' => 'department', 'subtitle' => $office]);
-            $manager = $this->node($key.'-manager-'.$slug, $department, 'national_office', 'Manager '.$label, ['subtitle' => $office]);
+            $manager = $this->node($key.'-manager-'.$slug, $department, 'national_office', 'Manager '.$label, ['subtitle' => $office, 'access_level' => 'manager']);
 
             if (in_array($slug, ['marketing', 'hr'], true)) {
                 $this->node($key.'-assistant-'.$slug, $manager, 'national_office', 'Assistant '.$label, ['subtitle' => $office, 'capacity' => 'multiple']);

@@ -42,6 +42,7 @@ class OrgNode extends Model
         'relation_type',
         'kind',
         'capacity',
+        'access_level',
         'category',
         'title',
         'subtitle',

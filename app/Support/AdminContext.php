@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use App\Models\RoleAssignment;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -19,20 +18,8 @@ class AdminContext
 
     public function __construct(public readonly User $user)
     {
-        $assignments = RoleAssignment::query()
-            ->where('user_id', $user->id)
-            ->where('status', 'active')
-            ->whereHas('role', fn ($query) => $query->where('is_active', true))
-            ->with('role.permissions')
-            ->get();
-
-        foreach ($assignments as $assignment) {
-            foreach ($assignment->role?->permissions ?? [] as $permission) {
-                $this->entityScopes[$permission->slug][] = $assignment->entity_id !== null
-                    ? (int) $assignment->entity_id
-                    : null;
-            }
-        }
+        // Les droits viennent des postes occupés dans l'organigramme (niveau d'accès du poste).
+        $this->entityScopes = OrgAccess::grants($user);
     }
 
     public static function of(Request $request): self

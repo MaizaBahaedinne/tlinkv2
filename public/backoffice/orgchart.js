@@ -805,6 +805,7 @@
             h('div', { class: 'oc-badges' },
                 chip(S.chart.meta.kinds[n.kind] || n.kind),
                 n.kind === 'position' ? chip(S.chart.meta.capacities[n.capacity] || n.capacity, null, n.capacity === 'multiple' ? 'is-ok' : '') : null,
+                n.kind === 'position' && n.access_level && n.access_level !== 'none' ? chip('Accès : ' + (S.chart.meta.access_levels[n.access_level] || n.access_level).split(' (')[0], '#6d3fd0') : null,
                 n.relation_type === 'attachment' ? chip('Rattachement', '#6d3fd0') : chip('Lien hiérarchique'),
                 n.validation_status === 'to_validate' ? chip('À valider', '#a85a08', 'is-warn') : chip('Confirmé', '#0f7a58', 'is-ok')
             ),
@@ -1079,6 +1080,7 @@
 
     function syncCapacityField() {
         $('#n-capacity-wrap').hidden = $('#n-kind').value !== 'position';
+        $('#n-access-wrap').hidden = $('#n-kind').value !== 'position';
     }
 
     $('#n-kind').addEventListener('change', syncCapacityField);
@@ -1100,6 +1102,7 @@
         $('#n-collapsed').checked = n ? !!n.is_collapsed : false;
 
         fillSelect($('#n-capacity'), mapOptions(meta.capacities), n ? n.capacity : 'single');
+        fillSelect($('#n-access'), mapOptions(meta.access_levels), n ? (n.access_level || 'none') : 'none');
         refreshKindOptions(n && !isClub ? n.kind : 'position', parent ? parent.id : null, isClub);
         fillSelect($('#n-category'), mapOptions(meta.categories), n ? n.category : (parent ? parent.category : 'direction'));
         fillSelect($('#n-relation'), mapOptions(meta.relations), n ? n.relation_type : 'hierarchy');
@@ -1195,6 +1198,7 @@
         if (!isClub) {
             body.kind = $('#n-kind').value;
             body.capacity = body.kind === 'position' ? $('#n-capacity').value : 'single';
+            body.access_level = body.kind === 'position' ? $('#n-access').value : 'none';
         }
         if (!body.title) { showError('#n-error', { message: 'L\'intitulé est obligatoire.' }); return; }
 

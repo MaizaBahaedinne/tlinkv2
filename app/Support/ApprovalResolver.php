@@ -2,31 +2,19 @@
 
 namespace App\Support;
 
-use App\Models\RoleAssignment;
-
 class ApprovalResolver
 {
+    /**
+     * Premier validateur disponible pour une entite : un administrateur de cette entite d'abord,
+     * puis un administrateur global. Le demandeur n'est jamais son propre validateur.
+     */
     public static function resolveMembershipReviewer(int $entityId, int $requesterId): ?int
     {
-        $priorityRoleSlugs = [
-            'entity-administrator',
-            'national-bureau-administrator',
-            'foundation-president',
-        ];
+        foreach (['entity_admin', 'global_admin'] as $level) {
+            $ids = OrgAccess::userIdsWith('approval.review', $entityId, $requesterId, $level);
 
-        foreach ($priorityRoleSlugs as $slug) {
-            $assignment = RoleAssignment::query()
-                ->where('status', 'active')
-                ->where('user_id', '!=', $requesterId)
-                ->where(function ($builder) use ($entityId): void {
-                    $builder->whereNull('entity_id')->orWhere('entity_id', $entityId);
-                })
-                ->whereHas('role', fn ($builder) => $builder->where('slug', $slug))
-                ->orderBy('id')
-                ->first();
-
-            if ($assignment) {
-                return $assignment->user_id;
+            if ($ids !== []) {
+                return $ids[0];
             }
         }
 

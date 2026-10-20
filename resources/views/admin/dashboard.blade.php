@@ -62,7 +62,7 @@
                         <a href="{{ route('admin.institutions.index') }}"><x-admin.icon name="graduation" /> Institutions</a>
                         <a href="{{ route('admin.clubs.index') }}"><x-admin.icon name="users" /> Clubs</a>
                     @endif
-                    @if($ctx->canAny(['entity.manage', 'role.manage', 'membership.manage']))
+                    @if($ctx->canAny(['entity.manage', 'membership.manage']))
                         <a href="{{ route('admin.users.index') }}"><x-admin.icon name="user" /> Utilisateurs</a>
                     @endif
                     @if($ctx->can('post.moderate'))

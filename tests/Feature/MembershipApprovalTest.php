@@ -5,15 +5,14 @@ namespace Tests\Feature;
 use App\Models\ApprovalRequest;
 use App\Models\Entity;
 use App\Models\Membership;
-use App\Models\Permission;
-use App\Models\Role;
-use App\Models\RoleAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GrantsAccess;
 use Tests\TestCase;
 
 class MembershipApprovalTest extends TestCase
 {
+    use GrantsAccess;
     use RefreshDatabase;
 
     public function test_membership_submission_creates_approval_request(): void
@@ -28,20 +27,7 @@ class MembershipApprovalTest extends TestCase
         $reviewer = User::factory()->create();
         $requester = User::factory()->create();
 
-        $role = Role::query()->firstOrCreate([
-            'slug' => 'entity-administrator',
-        ], [
-            'name' => 'Entity Administrator',
-            'scope_type' => 'entity',
-        ]);
-
-        RoleAssignment::query()->create([
-            'user_id' => $reviewer->id,
-            'role_id' => $role->id,
-            'entity_id' => $entity->id,
-            'status' => 'active',
-            'starts_at' => now()->toDateString(),
-        ]);
+        $this->grantAccess($reviewer, 'entity_admin', $entity);
 
         $response = $this->actingAs($requester)->postJson('/api/v1/memberships', [
             'entity_id' => $entity->id,
@@ -78,27 +64,7 @@ class MembershipApprovalTest extends TestCase
 
         $user = User::factory()->create();
 
-        $permission = Permission::query()->firstOrCreate([
-            'slug' => 'approval.review',
-        ], [
-            'name' => 'Approve Requests',
-        ]);
-
-        $role = Role::query()->firstOrCreate([
-            'slug' => 'national-bureau-administrator',
-        ], [
-            'name' => 'National Bureau Administrator',
-            'scope_type' => 'global',
-        ]);
-
-        $role->permissions()->syncWithoutDetaching([$permission->id]);
-
-        RoleAssignment::query()->create([
-            'user_id' => $user->id,
-            'role_id' => $role->id,
-            'status' => 'active',
-            'starts_at' => now()->toDateString(),
-        ]);
+        $this->grantAccess($user, 'global_admin');
 
         $membership = Membership::query()->create([
             'user_id' => $user->id,

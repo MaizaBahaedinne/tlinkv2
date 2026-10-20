@@ -4,7 +4,7 @@
 @section('section', 'Utilisateurs')
 
 @section('content')
-    <x-admin.page-header title="Utilisateurs" subtitle="Comptes de la plateforme, leurs rôles actifs et leur activité." />
+    <x-admin.page-header title="Utilisateurs" subtitle="Comptes de la plateforme, leurs postes dans l’organigramme et leur activité." />
 
     <article class="card card-flush">
         <div class="toolbar">
@@ -13,10 +13,10 @@
                     <x-admin.icon name="search" :size="16" />
                     <input type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Rechercher par nom ou e-mail…">
                 </div>
-                <select name="role" aria-label="Rôle">
-                    <option value="">Tous les rôles</option>
-                    @foreach($roles as $id => $name)
-                        <option value="{{ $id }}" @selected((string) ($filters['role'] ?? '') === (string) $id)>{{ $name }}</option>
+                <select name="access" aria-label="Niveau d'accès">
+                    <option value="">Tous les niveaux d'accès</option>
+                    @foreach($levels as $id => $name)
+                        <option value="{{ $id }}" @selected((string) ($filters['access'] ?? '') === (string) $id)>{{ $name }}</option>
                     @endforeach
                 </select>
                 <button class="btn btn-primary btn-sm" type="submit">Filtrer</button>
@@ -32,7 +32,7 @@
                     <thead>
                         <tr>
                             <th>Utilisateur</th>
-                            <th>Rôles actifs</th>
+                            <th>Postes</th>
                             <th class="hide-mobile">Adhésions</th>
                             <th class="hide-mobile">Publications</th>
                             <th class="hide-mobile">Inscrit le</th>
@@ -52,8 +52,8 @@
                                     </div>
                                 </td>
                                 <td>
-                                    @forelse($user->roleAssignments->pluck('role.name')->filter()->unique() as $roleName)
-                                        <span class="chip">{{ $roleName }}</span>
+                                    @forelse(($user->orgPerson?->assignments ?? collect())->pluck('node.title')->filter()->unique() as $positionTitle)
+                                        <span class="chip">{{ $positionTitle }}</span>
                                     @empty
                                         <span class="text-muted text-sm">Aucun</span>
                                     @endforelse

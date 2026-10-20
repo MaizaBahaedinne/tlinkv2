@@ -89,7 +89,7 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
 | Chaque section est protegee par `admin.can:<permissions>` (au moins une).
 | Le perimetre (global ou limite a des entites) est ensuite applique dans les controleurs.
 */
-Route::middleware(['auth', 'admin.can:entity.manage,role.manage,membership.manage,approval.review,post.moderate,event.manage'])
+Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.review,post.moderate,event.manage'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function (): void {
@@ -117,15 +117,9 @@ Route::middleware(['auth', 'admin.can:entity.manage,role.manage,membership.manag
         });
 
         // Communaute
-        Route::middleware('admin.can:entity.manage,role.manage,membership.manage')->group(function (): void {
+        Route::middleware('admin.can:entity.manage,membership.manage')->group(function (): void {
             Route::get('utilisateurs', [Admin\UserController::class, 'index'])->name('users.index');
             Route::get('utilisateurs/{user}', [Admin\UserController::class, 'show'])->name('users.show');
-        });
-
-        Route::middleware('admin.can:role.manage')->group(function (): void {
-            Route::get('roles', [Admin\RoleController::class, 'index'])->name('roles.index');
-            Route::post('utilisateurs/{user}/roles', [Admin\UserController::class, 'assignRole'])->name('users.roles.store');
-            Route::delete('utilisateurs/{user}/roles/{assignment}', [Admin\UserController::class, 'revokeRole'])->name('users.roles.destroy');
         });
 
         Route::middleware('admin.can:membership.manage')->group(function (): void {

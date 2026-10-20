@@ -44,9 +44,9 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
-    public function roleAssignments(): HasMany
+    public function orgPerson(): HasOne
     {
-        return $this->hasMany(RoleAssignment::class);
+        return $this->hasOne(OrgPerson::class);
     }
 
     public function memberships(): HasMany

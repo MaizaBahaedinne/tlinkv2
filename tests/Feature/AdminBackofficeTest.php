@@ -9,16 +9,15 @@ use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Models\Membership;
 use App\Models\ModerationReport;
-use App\Models\Permission;
 use App\Models\Post;
-use App\Models\Role;
-use App\Models\RoleAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GrantsAccess;
 use Tests\TestCase;
 
 class AdminBackofficeTest extends TestCase
 {
+    use GrantsAccess;
     use RefreshDatabase;
 
     private const ALL_PERMISSIONS = [
@@ -31,29 +30,16 @@ class AdminBackofficeTest extends TestCase
     ];
 
     /**
+     * Les droits viennent du niveau d'accès du poste : global, entité (si une entité est donnée) ou modérateur seul.
+     *
      * @param array<int, string> $permissions
      */
     private function adminWith(array $permissions, ?Entity $entity = null): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create([
-            'name' => 'Role '.uniqid(),
-            'slug' => 'role-'.uniqid(),
-            'scope_type' => $entity ? 'entity' : 'global',
-        ]);
+        $level = $entity ? 'entity_admin' : (in_array('entity.manage', $permissions, true) ? 'global_admin' : 'moderator');
 
-        foreach ($permissions as $slug) {
-            $permission = Permission::query()->firstOrCreate(['slug' => $slug], ['name' => $slug]);
-            $role->permissions()->syncWithoutDetaching([$permission->id]);
-        }
-
-        RoleAssignment::query()->create([
-            'user_id' => $user->id,
-            'role_id' => $role->id,
-            'entity_id' => $entity?->id,
-            'status' => 'active',
-            'starts_at' => now()->toDateString(),
-        ]);
+        $this->grantAccess($user, $level, $entity);
 
         return $user;
     }
@@ -91,7 +77,7 @@ class AdminBackofficeTest extends TestCase
             '/admin/institutions', '/admin/institutions/creer',
             '/admin/clubs', '/admin/clubs/creer',
             '/admin/utilisateurs', "/admin/utilisateurs/{$admin->id}",
-            '/admin/roles', '/admin/adhesions',
+            '/admin/adhesions',
             '/admin/publications', '/admin/moderation', '/admin/approbations',
             '/admin/evenements', '/admin/evenements/creer', "/admin/evenements/{$event->id}", "/admin/evenements/{$event->id}/modifier",
         ];
@@ -172,37 +158,26 @@ class AdminBackofficeTest extends TestCase
             ->assertRedirect(route('admin.departments.index'));
     }
 
-    public function test_role_can_be_assigned_and_revoked(): void
+    public function test_roles_screen_and_manual_role_routes_no_longer_exist(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
         $member = User::factory()->create();
-        $entity = $this->entity();
-        $role = Role::query()->create(['name' => 'Responsable', 'slug' => 'responsable', 'scope_type' => 'entity']);
 
-        $this->actingAs($admin)->post("/admin/utilisateurs/{$member->id}/roles", [
-            'role_id' => $role->id, 'entity_id' => $entity->id,
-        ])->assertSessionHas('status');
-
-        $assignment = RoleAssignment::query()->where('user_id', $member->id)->firstOrFail();
-        $this->assertSame('active', $assignment->status);
-        $this->assertSame($admin->id, $assignment->assigned_by);
-
-        // Doublon refuse
-        $this->actingAs($admin)->post("/admin/utilisateurs/{$member->id}/roles", [
-            'role_id' => $role->id, 'entity_id' => $entity->id,
-        ])->assertSessionHasErrors('role_id');
-
-        $this->actingAs($admin)->delete("/admin/utilisateurs/{$member->id}/roles/{$assignment->id}")->assertSessionHas('status');
-        $this->assertSame('ended', $assignment->fresh()->status);
+        $this->actingAs($admin)->get('/admin/roles')->assertNotFound();
+        $this->actingAs($admin)->post("/admin/utilisateurs/{$member->id}/roles", ['role_id' => 1])->assertNotFound();
     }
 
-    public function test_admin_cannot_revoke_own_role(): void
+    public function test_user_page_shows_positions_and_their_access_level(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
-        $assignment = RoleAssignment::query()->where('user_id', $admin->id)->firstOrFail();
+        $member = User::factory()->create();
+        $this->grantAccess($member, 'moderator');
 
-        $this->actingAs($admin)->delete("/admin/utilisateurs/{$admin->id}/roles/{$assignment->id}")->assertSessionHas('error');
-        $this->assertSame('active', $assignment->fresh()->status);
+        $this->actingAs($admin)->get("/admin/utilisateurs/{$member->id}")
+            ->assertOk()
+            ->assertSee('Poste de test moderator')
+            ->assertSee('Modérateur');
+        $this->actingAs($admin)->get('/admin/utilisateurs?access=moderator')->assertOk()->assertSee($member->email);
     }
 
     public function test_membership_status_transitions_are_enforced(): void

@@ -32,7 +32,7 @@ class DashboardController extends AdminController
 
         $stats = [];
 
-        if ($canPlatform || $ctx->can('role.manage')) {
+        if ($canPlatform) {
             $stats[] = [
                 'label' => 'Utilisateurs',
                 'value' => User::query()->count(),

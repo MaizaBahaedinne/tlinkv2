@@ -4,18 +4,17 @@ namespace Tests\Feature;
 
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
-use App\Models\Permission;
-use App\Models\Role;
-use App\Models\RoleAssignment;
 use App\Models\User;
 use Database\Seeders\GovernorateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\GrantsAccess;
 use Tests\TestCase;
 
 class OrgChartTest extends TestCase
 {
+    use GrantsAccess;
     use RefreshDatabase;
 
     private ?User $editorUser = null;
@@ -27,16 +26,7 @@ class OrgChartTest extends TestCase
         }
 
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'Admin global', 'slug' => 'admin-'.uniqid(), 'scope_type' => 'global']);
-        $permission = Permission::query()->firstOrCreate(['slug' => 'entity.manage'], ['name' => 'entity.manage']);
-        $role->permissions()->syncWithoutDetaching([$permission->id]);
-
-        RoleAssignment::query()->create([
-            'user_id' => $user->id,
-            'role_id' => $role->id,
-            'status' => 'active',
-            'starts_at' => now()->toDateString(),
-        ]);
+        $this->grantPlatformAdmin($user);
 
         return $this->editorUser = $user;
     }
@@ -104,8 +94,8 @@ class OrgChartTest extends TestCase
         $this->assertGreaterThanOrEqual(5, $team->count());
         $this->assertTrue($team->contains(fn ($n) => str_contains($n['title'], 'Président')));
 
-        // Aucune personne inventee : tous les postes sont vacants.
-        $this->assertSame([], $chart['people']);
+        // Aucune personne inventee : seul l'administrateur de test (un compte réel) figure dans l'organigramme.
+        $this->assertSame([$this->editor()->id], collect($chart['people'])->pluck('user_id')->all());
 
         // Presidence : conseillers et ancien president rattaches, sans lien hierarchique avec le directeur.
         $presidency = $this->node($chart, 'presidency');
@@ -297,17 +287,17 @@ class OrgChartTest extends TestCase
             'photo' => UploadedFile::fake()->image('p.jpg', 200, 200),
         ], ['Accept' => 'application/json'])->assertCreated();
 
-        $person = OrgPerson::query()->firstOrFail();
+        $person = OrgPerson::query()->where('full_name', 'Personne de test')->firstOrFail();
         Storage::disk('public')->assertExists($person->photo_path);
         $this->assertSame([$person->id], collect($response->json('chart.nodes'))->firstWhere('id', $node['id'])['person_ids']);
 
         // Un lecteur ne voit pas les coordonnees d'une personne a contact masque.
-        $reader = $this->actingAs(User::factory()->create())->getJson('/organigramme/donnees')->json('people.0');
+        $reader = collect($this->actingAs(User::factory()->create())->getJson('/organigramme/donnees')->json('people'))->firstWhere('full_name', 'Personne de test');
         $this->assertNull($reader['phone']);
         $this->assertNull($reader['email']);
         $this->assertSame('Personne de test', $reader['full_name']);
 
-        $admin = $this->actingAs($editor)->getJson('/organigramme/donnees')->json('people.0');
+        $admin = collect($this->actingAs($editor)->getJson('/organigramme/donnees')->json('people'))->firstWhere('full_name', 'Personne de test');
         $this->assertSame('contact@example.test', $admin['email']);
 
         // Numero invalide refuse.
@@ -320,7 +310,7 @@ class OrgChartTest extends TestCase
         // Suppression de la personne : photo supprimee, affectation retiree.
         $this->actingAs($editor)->deleteJson("/organigramme/personnes/{$person->id}")->assertOk();
         Storage::disk('public')->assertMissing($person->photo_path);
-        $this->assertDatabaseCount('org_assignments', 0);
+        $this->assertDatabaseCount('org_assignments', 1);
     }
 
     public function test_json_round_trip_and_csv_export(): void
@@ -360,7 +350,7 @@ class OrgChartTest extends TestCase
 
         $this->assertSame($nodeCount, OrgNode::query()->count());
         $this->assertDatabaseMissing('org_nodes', ['title' => 'Bloc temporaire']);
-        $this->assertDatabaseCount('org_people', 1);
+        $this->assertDatabaseCount('org_people', 2);
     }
 
     public function test_import_rejects_invalid_structures(): void

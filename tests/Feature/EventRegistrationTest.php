@@ -4,15 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
-use App\Models\Permission;
-use App\Models\Role;
-use App\Models\RoleAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GrantsAccess;
 use Tests\TestCase;
 
 class EventRegistrationTest extends TestCase
 {
+    use GrantsAccess;
     use RefreshDatabase;
 
     public function test_duplicate_event_registration_is_prevented(): void
@@ -44,27 +43,7 @@ class EventRegistrationTest extends TestCase
         $attendeeA = User::factory()->create();
         $attendeeB = User::factory()->create();
 
-        $permission = Permission::query()->firstOrCreate([
-            'slug' => 'event.manage',
-        ], [
-            'name' => 'Manage Events',
-        ]);
-
-        $role = Role::query()->firstOrCreate([
-            'slug' => 'national-bureau-administrator',
-        ], [
-            'name' => 'National Bureau Administrator',
-            'scope_type' => 'global',
-        ]);
-
-        $role->permissions()->syncWithoutDetaching([$permission->id]);
-
-        RoleAssignment::query()->create([
-            'user_id' => $admin->id,
-            'role_id' => $role->id,
-            'status' => 'active',
-            'starts_at' => now()->toDateString(),
-        ]);
+        $this->grantAccess($admin, 'global_admin');
 
         $create = $this->actingAs($admin)->postJson('/api/v1/events', [
             'title' => 'Capacity Test',

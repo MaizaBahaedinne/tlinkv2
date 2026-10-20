@@ -3,16 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\ModerationReport;
-use App\Models\Permission;
 use App\Models\Post;
-use App\Models\Role;
-use App\Models\RoleAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GrantsAccess;
 use Tests\TestCase;
 
 class ModerationReportTest extends TestCase
 {
+    use GrantsAccess;
     use RefreshDatabase;
 
     public function test_authenticated_user_can_report_post(): void
@@ -46,27 +45,7 @@ class ModerationReportTest extends TestCase
         $moderator = User::factory()->create();
         $reporter = User::factory()->create();
 
-        $permission = Permission::query()->firstOrCreate([
-            'slug' => 'post.moderate',
-        ], [
-            'name' => 'Moderate Post',
-        ]);
-
-        $role = Role::query()->firstOrCreate([
-            'slug' => 'club-officer',
-        ], [
-            'name' => 'Club Officer',
-            'scope_type' => 'club',
-        ]);
-
-        $role->permissions()->syncWithoutDetaching([$permission->id]);
-
-        RoleAssignment::query()->create([
-            'user_id' => $moderator->id,
-            'role_id' => $role->id,
-            'status' => 'active',
-            'starts_at' => now()->toDateString(),
-        ]);
+        $this->grantAccess($moderator, 'moderator');
 
         $report = ModerationReport::query()->create([
             'reported_by' => $reporter->id,
