@@ -12,6 +12,7 @@ use App\Models\Membership;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
+use App\Models\User;
 use App\Support\AdminContext;
 use App\Support\AuditLogger;
 use App\Support\OrgChart\OrgChartInstaller;
@@ -384,6 +385,75 @@ class OrgChartController extends Controller
 
     /* ------------------------------------------------------------------ Personnes */
 
+    /**
+     * Recherche dans la liste des utilisateurs de la plateforme (comptes actifs) pour les affecter a un poste.
+     */
+    public function searchUsers(Request $request): JsonResponse
+    {
+        $this->requireEditor($request);
+
+        $term = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($term) < 2) {
+            return response()->json(['users' => []]);
+        }
+
+        $query = User::query()->with('profile:id,user_id,phone')->where('is_active', true);
+
+        foreach (array_slice(preg_split('/\s+/u', mb_substr($term, 0, 80)), 0, 4) as $word) {
+            $like = '%'.addcslashes($word, '\\%_').'%';
+            $query->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('email', 'like', $like));
+        }
+
+        $users = $query->orderBy('name')->limit(15)->get(['id', 'name', 'email']);
+        $linked = OrgPerson::query()->whereIn('user_id', $users->pluck('id'))->pluck('id', 'user_id');
+
+        return response()->json(['users' => $users->map(fn (User $user): array => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $this->isPlaceholderEmail($user->email) ? null : $user->email,
+            'phone' => $user->profile?->phone,
+            'already_listed' => isset($linked[$user->id]),
+        ])->all()]);
+    }
+
+    /**
+     * Affecte un utilisateur a un bloc : sa fiche « personne » est creee a partir du compte (nom, e-mail, telephone)
+     * ou reutilisee s'il figure deja dans l'organigramme.
+     */
+    public function assignUser(Request $request, OrgNode $node): JsonResponse
+    {
+        $this->requireEditor($request);
+
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'job_title' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $user = User::query()->with('profile:id,user_id,phone')->findOrFail($data['user_id']);
+
+        abort_unless($user->is_active, 422, 'Ce compte est désactivé.');
+
+        $person = OrgPerson::query()->firstOrCreate(['user_id' => $user->id], [
+            'full_name' => $user->name,
+            'job_title' => $data['job_title'] ?? null,
+            'email' => $this->isPlaceholderEmail($user->email) ? null : $user->email,
+            'phone' => $user->profile?->phone,
+            'contact_visible' => true,
+        ]);
+
+        OrgAssignment::query()->firstOrCreate(['node_id' => $node->id, 'person_id' => $person->id]);
+
+        $this->audit($request, 'orgchart.assignments.updated', $node, ['title' => $node->title, 'user_id' => $user->id]);
+
+        return $this->respond($request, $node->id, 200, ['person_id' => $person->id]);
+    }
+
+    private function isPlaceholderEmail(?string $email): bool
+    {
+        return $email === null || str_ends_with($email, '@legacy.invalid');
+    }
+
     public function storePerson(Request $request): JsonResponse
     {
         $this->requireEditor($request);
@@ -610,12 +680,13 @@ class OrgChartController extends Controller
                     'person_ids' => ($assignments[$node->id] ?? collect())->pluck('person_id')->all(),
                 ];
             })->all(),
-            'people' => OrgPerson::query()->orderBy('full_name')->get()->map(function (OrgPerson $person) use ($canEdit): array {
+            'people' => OrgPerson::query()->with('user:id,name')->orderBy('full_name')->get()->map(function (OrgPerson $person) use ($canEdit): array {
                 $showContact = $canEdit || $person->contact_visible;
 
                 return [
                     'id' => $person->id,
-                    'full_name' => $person->full_name,
+                    // Une personne issue d'un compte suit le nom de ce compte.
+                    'full_name' => $person->user?->name ?? $person->full_name,
                     'job_title' => $person->job_title,
                     'phone' => $showContact ? $person->phone : null,
                     'email' => $showContact ? $person->email : null,
@@ -623,6 +694,7 @@ class OrgChartController extends Controller
                     'photo_url' => $person->photoUrl(),
                     'notes' => $canEdit ? $person->notes : null,
                     'user_id' => $canEdit ? $person->user_id : null,
+                    'user_url' => $canEdit && $person->user_id ? route('admin.users.show', $person->user_id) : null,
                 ];
             })->all(),
         ];

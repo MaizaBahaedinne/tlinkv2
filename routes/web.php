@@ -73,6 +73,8 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
     Route::post('disposition', [OrgChartController::class, 'saveLayout'])->name('layout.save');
     Route::post('clubs', [OrgChartController::class, 'storeClub'])->name('clubs.store');
 
+    Route::get('utilisateurs', [OrgChartController::class, 'searchUsers'])->name('users.search');
+    Route::post('blocs/{node}/utilisateurs', [OrgChartController::class, 'assignUser'])->name('nodes.users');
     Route::post('personnes', [OrgChartController::class, 'storePerson'])->name('people.store');
     Route::patch('personnes/{person}', [OrgChartController::class, 'updatePerson'])->name('people.update');
     Route::delete('personnes/{person}', [OrgChartController::class, 'destroyPerson'])->name('people.destroy');

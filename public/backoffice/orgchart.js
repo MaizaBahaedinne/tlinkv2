@@ -700,6 +700,50 @@
         return h('section', { class: 'oc-sec' }, h('div', { class: 'oc-sec-head' }, h('h3', { text: title }), actions || null), body);
     }
 
+    // Recherche dans la liste des utilisateurs de la plateforme (nom ou e-mail) puis affectation au bloc.
+    function userPicker(n) {
+        var input = h('input', { type: 'search', class: 'oc-user-input', placeholder: 'Affecter un utilisateur (nom ou e-mail)…', autocomplete: 'off', 'aria-label': 'Rechercher un utilisateur à affecter' });
+        var results = h('div', { class: 'oc-user-results', role: 'listbox', hidden: true });
+        var timer = null;
+        var seq = 0;
+
+        function show(users, message) {
+            results.textContent = '';
+            results.hidden = false;
+            if (message) { results.appendChild(h('p', { class: 'oc-muted', text: message })); }
+            users.forEach(function (u) {
+                var assigned = (n.person_ids || []).some(function (pid) { var p = S.people[pid]; return p && p.user_id === u.id; });
+                results.appendChild(h('button', {
+                    type: 'button', class: 'oc-user-item', role: 'option', disabled: assigned,
+                    onclick: function () { pick(u); }
+                }, h('strong', { text: u.name }), h('small', { class: 'oc-muted', text: [u.email, u.phone, assigned ? 'déjà affecté' : (u.already_listed ? 'déjà dans l\'organigramme' : null)].filter(Boolean).join(' · ') })));
+            });
+        }
+
+        function pick(u) {
+            input.disabled = true;
+            api('POST', '/blocs/' + n.id + '/utilisateurs', { user_id: u.id }).then(function (res) {
+                applyResponse(res, u.name + ' affecté(e) à « ' + n.title + ' ».');
+            }).catch(function (err) { input.disabled = false; toast(formatError(err), 'error'); });
+        }
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            var term = input.value.trim();
+            if (term.length < 2) { results.hidden = true; return; }
+            timer = setTimeout(function () {
+                var mine = ++seq;
+                api('GET', '/utilisateurs?q=' + encodeURIComponent(term)).then(function (res) {
+                    if (mine !== seq) { return; }
+                    show(res.users, res.users.length ? null : 'Aucun utilisateur actif ne correspond.');
+                }).catch(function (err) { show([], formatError(err)); });
+            }, 250);
+        });
+        input.addEventListener('keydown', function (e) { if (e.key === 'Escape') { results.hidden = true; } });
+
+        return h('div', { class: 'oc-user-picker' }, input, results);
+    }
+
     function btn(label, onclick, cls) {
         return h('button', { type: 'button', class: 'oc-btn ' + (cls || ''), onclick: onclick, text: label });
     }
@@ -797,12 +841,13 @@
         });
 
         if (S.canEdit) {
+            list.appendChild(userPicker(n));
             var free = S.chart.people.filter(function (p) { return (n.person_ids || []).indexOf(p.id) === -1; });
-            var select = h('select', { 'aria-label': 'Affecter une personne existante' }, h('option', { value: '', text: free.length ? 'Affecter une personne existante…' : 'Aucune autre personne' }));
+            var select = h('select', { 'aria-label': 'Affecter une personne déjà dans l\'organigramme' }, h('option', { value: '', text: free.length ? 'Ou une personne déjà dans l\'organigramme…' : 'Aucune autre personne dans l\'organigramme' }));
             free.forEach(function (p) { select.appendChild(h('option', { value: p.id, text: p.full_name + (p.job_title ? ' — ' + p.job_title : '') })); });
             select.disabled = !free.length;
             select.addEventListener('change', function () { if (select.value) { assign(n, Number(select.value)); } });
-            list.appendChild(h('div', { class: 'oc-assign' }, select, btn('Nouvelle personne', function () { openPersonDialog({ assignTo: n.id }); }, 'oc-btn-sm')));
+            list.appendChild(h('div', { class: 'oc-assign' }, select, btn('Sans compte', function () { openPersonDialog({ assignTo: n.id }); }, 'oc-btn-sm')));
         }
         body.appendChild(section('Personnes', list));
 

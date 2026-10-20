@@ -7,7 +7,9 @@ use App\Models\Entity;
 use App\Models\Governorate;
 use App\Models\Institution;
 use App\Models\Membership;
+use App\Models\OrgAssignment;
 use App\Models\OrgNode;
+use App\Models\OrgPerson;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\RoleAssignment;
@@ -325,5 +327,55 @@ class OrgChartLinksTest extends TestCase
 
         $csv = $this->actingAs($editor)->get('/organigramme/export.csv')->assertOk()->streamedContent();
         $this->assertStringContainsString('gouvernorat;entite;departement;institution;validation', $csv);
+    }
+
+    public function test_users_can_be_searched_and_assigned_to_a_block(): void
+    {
+        $alice = User::factory()->create(['name' => 'Alice Ben Salah', 'email' => 'alice@example.test']);
+        $alice->profile()->create(['phone' => '+216 20 000 000']);
+        User::factory()->create(['name' => 'Alice Inactive', 'email' => 'inactive@example.test', 'is_active' => false]);
+        User::factory()->create(['name' => 'Alice Legacy', 'email' => 'legacy-9@legacy.invalid']);
+
+        $chart = $this->chart();
+        $editor = $this->editor();
+
+        $found = $this->actingAs($editor)->getJson('/organigramme/utilisateurs?q=alice')->assertOk()->json('users');
+        $names = collect($found)->pluck('name')->all();
+        $this->assertContains('Alice Ben Salah', $names);
+        $this->assertContains('Alice Legacy', $names);
+        $this->assertNotContains('Alice Inactive', $names, 'Les comptes désactivés ne sont pas proposés.');
+        $this->assertNull(collect($found)->firstWhere('name', 'Alice Legacy')['email'], 'Les e-mails de remplacement sont masqués.');
+
+        $this->assertSame([], $this->actingAs($editor)->getJson('/organigramme/utilisateurs?q=a')->json('users'));
+        $this->actingAs(User::factory()->create())->getJson('/organigramme/utilisateurs?q=alice')->assertForbidden();
+
+        $director = $this->bySystemKey($chart, 'executive-director');
+        $response = $this->actingAs($editor)->postJson('/organigramme/blocs/'.$director['id'].'/utilisateurs', ['user_id' => $alice->id])->assertOk();
+
+        $person = collect($response->json('chart.people'))->firstWhere('user_id', $alice->id);
+        $this->assertSame('Alice Ben Salah', $person['full_name']);
+        $this->assertSame('alice@example.test', $person['email']);
+        $this->assertSame('+216 20 000 000', $person['phone']);
+        $this->assertContains($person['id'], collect($response->json('chart.nodes'))->firstWhere('id', $director['id'])['person_ids']);
+
+        // Même utilisateur sur un second poste : une seule fiche personne.
+        $office = $this->bySystemKey($chart, 'university-office');
+        $this->actingAs($editor)->postJson('/organigramme/blocs/'.$office['id'].'/utilisateurs', ['user_id' => $alice->id])->assertOk();
+        $this->assertSame(1, OrgPerson::query()->where('user_id', $alice->id)->count());
+        $this->assertSame(2, OrgAssignment::query()->where('person_id', $person['id'])->count());
+
+        // Le nom suit le compte.
+        $alice->update(['name' => 'Alice Renommée']);
+        $renamed = collect($this->chart()['people'])->firstWhere('user_id', $alice->id);
+        $this->assertSame('Alice Renommée', $renamed['full_name']);
+    }
+
+    public function test_assigning_an_inactive_account_or_as_reader_is_refused(): void
+    {
+        $node = $this->bySystemKey($this->chart(), 'executive-director');
+        $inactive = User::factory()->create(['is_active' => false]);
+
+        $this->actingAs($this->editor())->postJson('/organigramme/blocs/'.$node['id'].'/utilisateurs', ['user_id' => $inactive->id])->assertUnprocessable();
+        $this->actingAs(User::factory()->create())->postJson('/organigramme/blocs/'.$node['id'].'/utilisateurs', ['user_id' => $inactive->id])->assertForbidden();
     }
 }

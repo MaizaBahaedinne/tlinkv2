@@ -341,3 +341,14 @@ html, body { height: 100%; margin: 0; }
 .oc-link-row a { color: var(--oc-navy-800); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
 .oc-fieldset { border: 1px solid var(--oc-line, #d9e0ee); border-radius: 10px; padding: 10px 12px 12px; margin: 4px 0 8px; display: grid; gap: 8px; }
 .oc-fieldset legend { padding: 0 6px; font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--oc-muted); }
+
+/* Affectation d'un utilisateur de la plateforme */
+.oc-user-picker { position: relative; margin-top: 10px; }
+.oc-user-input { width: 100%; padding: 9px 11px; border: 1px solid var(--oc-line, #d9e0ee); border-radius: 9px; font: inherit; font-size: .85rem; }
+.oc-user-results { margin-top: 4px; border: 1px solid var(--oc-line, #d9e0ee); border-radius: 9px; background: #fff; max-height: 260px; overflow: auto; box-shadow: 0 6px 18px rgba(15, 30, 70, .12); }
+.oc-user-results > p { margin: 0; padding: 10px 12px; font-size: .82rem; }
+.oc-user-item { display: grid; width: 100%; text-align: left; gap: 1px; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--oc-line, #eef1f7); background: transparent; font: inherit; cursor: pointer; }
+.oc-user-item:last-child { border-bottom: 0; }
+.oc-user-item:hover:not(:disabled), .oc-user-item:focus-visible { background: var(--oc-bg, #f3f6fc); outline: none; }
+.oc-user-item:disabled { opacity: .5; cursor: not-allowed; }
+.oc-user-item small { font-size: .74rem; }
