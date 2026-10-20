@@ -65,9 +65,9 @@ Le filtre « Mettre en évidence les relations à valider » (panneau de gauche)
 | --- | --- |
 | Ajouter un poste / une unité | **Ajouter ▾ → Poste ou unité**, ou **Ajouter un sous-poste** dans la fiche. |
 | Ajouter un club | **Ajouter ▾ → Club** : type (régional, University, High School), nom, gouvernorat, équipe type. |
-| Affecter un utilisateur | Champ **« Affecter un utilisateur »** dans la fiche : recherche par nom ou e-mail dans les comptes actifs de la plateforme. La fiche « personne » est créée à partir du compte (nom, e-mail, téléphone du profil) ; un même utilisateur sur plusieurs postes n'a qu'une seule fiche, et son nom suit celui du compte. Les e-mails de remplacement des comptes importés (`@legacy.invalid`) ne sont pas repris. |
-| Personne sans compte | **Sans compte** dans la fiche, ou **Ajouter ▾ → Personne** (saisie manuelle, photo JPG / PNG / WebP, 2 Mo max). |
-| Affecter / retirer | Liste « Ou une personne déjà dans l'organigramme » dans la fiche ; bouton ⊖ pour retirer. |
+| Affecter un utilisateur | Champ **« Affecter un utilisateur »** dans la fiche : recherche par nom ou e-mail dans les comptes actifs. **Une personne de l'organigramme est un utilisateur** : nom, photo, e-mail et téléphone sont lus dans le compte (rien n'est copié, ils se mettent à jour seuls) ; la fiche ne porte que la fonction, la visibilité des coordonnées et des notes internes. Les e-mails de remplacement des comptes importés (`@legacy.invalid`) ne sont pas affichés. Un même utilisateur sur plusieurs postes n'a qu'une seule fiche. |
+| Retirer | Bouton ⊖ dans la fiche (retire du poste) ; « Retirer de l'organigramme » dans la fiche personne (retire de tous ses postes, le compte n'est pas supprimé). |
+| Affecter quelqu'un déjà dans l'organigramme | Liste « Ou quelqu'un déjà dans l'organigramme » dans la fiche. |
 | Modifier un bloc | **Modifier le bloc** ou double-clic sur le bloc : intitulé, catégorie (couleur), rattachement, nature du lien, statut, disposition, repli par défaut… |
 | Déplacer un poste vers un autre manager | Dans **Modifier le bloc**, champ *Rattaché à* ; ou en mode **Modifier**, **Maj + glisser-déposer** sur le nouveau parent (confirmation demandée). |
 | Réordonner des frères | **Monter / Descendre** dans la fiche. |

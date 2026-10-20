@@ -437,8 +437,6 @@ class OrgChartController extends Controller
         $person = OrgPerson::query()->firstOrCreate(['user_id' => $user->id], [
             'full_name' => $user->name,
             'job_title' => $data['job_title'] ?? null,
-            'email' => $this->isPlaceholderEmail($user->email) ? null : $user->email,
-            'phone' => $user->profile?->phone,
             'contact_visible' => true,
         ]);
 
@@ -487,6 +485,14 @@ class OrgChartController extends Controller
         $data = $this->validatedPerson($request);
         $photo = Arr::pull($data, 'photo');
         $remove = (bool) Arr::pull($data, 'remove_photo');
+
+        // Une personne liee a un compte : identite et coordonnees restent celles du compte.
+        if ($person->user_id) {
+            $person->fill(Arr::only($data, ['job_title', 'contact_visible', 'notes']))->save();
+            $this->audit($request, 'orgchart.person.updated', $person, ['name' => $person->displayName()]);
+
+            return $this->respond($request, $request->integer('node_id') ?: null);
+        }
 
         $person->fill($data);
 
@@ -680,21 +686,21 @@ class OrgChartController extends Controller
                     'person_ids' => ($assignments[$node->id] ?? collect())->pluck('person_id')->all(),
                 ];
             })->all(),
-            'people' => OrgPerson::query()->with('user:id,name')->orderBy('full_name')->get()->map(function (OrgPerson $person) use ($canEdit): array {
+            'people' => OrgPerson::query()->with('user.profile')->orderBy('full_name')->get()->map(function (OrgPerson $person) use ($canEdit): array {
                 $showContact = $canEdit || $person->contact_visible;
 
                 return [
                     'id' => $person->id,
-                    // Une personne issue d'un compte suit le nom de ce compte.
-                    'full_name' => $person->user?->name ?? $person->full_name,
+                    'full_name' => $person->displayName(),
                     'job_title' => $person->job_title,
-                    'phone' => $showContact ? $person->phone : null,
-                    'email' => $showContact ? $person->email : null,
+                    'phone' => $showContact ? $person->displayPhone() : null,
+                    'email' => $showContact ? $person->displayEmail() : null,
                     'contact_visible' => $person->contact_visible,
                     'photo_url' => $person->photoUrl(),
                     'notes' => $canEdit ? $person->notes : null,
                     'user_id' => $canEdit ? $person->user_id : null,
                     'user_url' => $canEdit && $person->user_id ? route('admin.users.show', $person->user_id) : null,
+                    'from_account' => $person->user_id !== null,
                 ];
             })->all(),
         ];

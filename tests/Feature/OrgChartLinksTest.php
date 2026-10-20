@@ -386,6 +386,64 @@ class OrgChartLinksTest extends TestCase
             ->assertSee('/organigramme?bloc='.$director['id'], false);
     }
 
+    public function test_a_person_linked_to_an_account_is_that_account(): void
+    {
+        $alice = User::factory()->create(['name' => 'Alice Ben Salah', 'email' => 'alice@example.test']);
+        $alice->profile()->create(['phone' => '+216 20 000 000', 'photo_path' => 'profiles/avatars/alice.jpg']);
+        $chart = $this->chart();
+        $editor = $this->editor();
+        $director = $this->bySystemKey($chart, 'executive-director');
+
+        $response = $this->actingAs($editor)->postJson('/organigramme/blocs/'.$director['id'].'/utilisateurs', ['user_id' => $alice->id])->assertOk();
+        $person = collect($response->json('chart.people'))->firstWhere('user_id', $alice->id);
+        $this->assertTrue($person['from_account']);
+        $this->assertSame('/storage/profiles/avatars/alice.jpg', $person['photo_url']);
+
+        // Rien n'est copié : un changement du compte se voit immédiatement.
+        $alice->update(['email' => 'alice.new@example.test']);
+        $alice->profile->update(['phone' => '+216 99 999 999']);
+        $fresh = collect($this->chart()['people'])->firstWhere('user_id', $alice->id);
+        $this->assertSame('alice.new@example.test', $fresh['email']);
+        $this->assertSame('+216 99 999 999', $fresh['phone']);
+
+        // La fiche ne peut pas contredire le compte : seuls fonction, visibilité et notes sont éditables.
+        $this->actingAs($editor)->patchJson('/organigramme/personnes/'.$person['id'], [
+            'full_name' => 'Autre Nom',
+            'email' => 'autre@example.test',
+            'phone' => '000',
+            'job_title' => 'Directrice',
+            'contact_visible' => 0,
+            'notes' => 'note',
+        ])->assertOk();
+
+        $after = collect($this->chart()['people'])->firstWhere('user_id', $alice->id);
+        $this->assertSame('Alice Ben Salah', $after['full_name']);
+        $this->assertSame('alice.new@example.test', $after['email']);
+        $this->assertSame('Directrice', $after['job_title']);
+        $this->assertFalse($after['contact_visible']);
+
+        // Coordonnées masquées aux lecteurs quand la visibilité est désactivée.
+        $reader = collect($this->chart(User::factory()->create())['people'])->firstWhere('id', $person['id']);
+        $this->assertNull($reader['email']);
+        $this->assertNull($reader['phone']);
+        $this->assertSame('Alice Ben Salah', $reader['full_name']);
+    }
+
+    public function test_account_links_survive_a_json_export_and_import(): void
+    {
+        $alice = User::factory()->create(['name' => 'Alice Ben Salah', 'email' => 'alice@example.test']);
+        $chart = $this->chart();
+        $editor = $this->editor();
+        $director = $this->bySystemKey($chart, 'executive-director');
+        $this->actingAs($editor)->postJson('/organigramme/blocs/'.$director['id'].'/utilisateurs', ['user_id' => $alice->id])->assertOk();
+
+        $json = $this->actingAs($editor)->get('/organigramme/export.json')->assertOk()->getContent();
+        $file = UploadedFile::fake()->createWithContent('organigramme.json', $json);
+        $this->actingAs($editor)->post('/organigramme/import', ['file' => $file, 'confirm' => 1], ['Accept' => 'application/json'])->assertOk();
+
+        $this->assertSame($alice->id, OrgPerson::query()->firstOrFail()->user_id);
+    }
+
     public function test_assigning_an_inactive_account_or_as_reader_is_refused(): void
     {
         $node = $this->bySystemKey($this->chart(), 'executive-director');

@@ -37,7 +37,6 @@
                 <div class="oc-menu-list" id="m-add" hidden>
                     <button type="button" data-act="add-node">Poste ou unité</button>
                     <button type="button" data-act="add-club">Club (régional, université, lycée)</button>
-                    <button type="button" data-act="add-person">Personne</button>
                     <button type="button" data-act="sync">Synchroniser avec les clubs</button>
                 </div>
             </div>
@@ -202,6 +201,7 @@
                 <div class="oc-field"><label for="p-photo">Photo (JPG, PNG, WebP — 2 Mo max)</label><input type="file" id="p-photo" name="photo" accept="image/jpeg,image/png,image/webp"></div>
             </div>
             <label class="oc-check" id="p-remove-wrap" hidden><input type="checkbox" id="p-remove" name="remove_photo"><span>Supprimer la photo actuelle</span></label>
+            <p class="oc-note" id="p-account" hidden>Nom, photo, e-mail et téléphone viennent du compte de l’utilisateur. <a id="p-account-link" href="#" hidden>Ouvrir le compte</a></p>
             <div class="oc-field"><label for="p-name">Nom complet *</label><input id="p-name" name="full_name" maxlength="255" required></div>
             <div class="oc-field"><label for="p-job">Fonction</label><input id="p-job" name="job_title" maxlength="255"></div>
             <div class="oc-grid2">

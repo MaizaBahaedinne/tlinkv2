@@ -10,6 +10,7 @@ use App\Models\Institution;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -64,13 +65,15 @@ class OrgChartTransfer
                 'sort_order' => $node->sort_order,
                 'system_key' => $node->system_key,
             ])->all(),
-            'people' => OrgPerson::query()->orderBy('id')->get()->map(fn (OrgPerson $person): array => [
+            'people' => OrgPerson::query()->with('user.profile')->orderBy('id')->get()->map(fn (OrgPerson $person): array => [
                 'id' => $person->id,
-                'full_name' => $person->full_name,
+                'full_name' => $person->displayName(),
                 'job_title' => $person->job_title,
-                'phone' => $person->phone,
-                'email' => $person->email,
-                'photo_path' => $person->photo_path,
+                'phone' => $person->displayPhone(),
+                'email' => $person->displayEmail(),
+                // Personne liee a un compte : le lien est restaure a l'import par l'e-mail du compte.
+                'user_email' => $person->user?->email,
+                'photo_path' => $person->user_id ? null : $person->photo_path,
                 'contact_visible' => $person->contact_visible,
                 'notes' => $person->notes,
             ])->all(),
@@ -92,7 +95,7 @@ class OrgChartTransfer
     {
         $nodes = OrgNode::query()->with(['club:id,name', 'governorate:id,name', 'entity:id,name', 'department:id,name', 'institution:id,name'])->orderBy('id')->get();
         $parents = $nodes->pluck('title', 'id');
-        $assignments = OrgAssignment::query()->with('person')->get()->groupBy('node_id');
+        $assignments = OrgAssignment::query()->with('person.user.profile')->get()->groupBy('node_id');
 
         $header = ['id', 'parent_id', 'responsable', 'relation', 'type', 'categorie', 'poste', 'complement', 'club', 'gouvernorat', 'entite', 'departement', 'institution', 'validation', 'occupants'];
 
@@ -121,12 +124,12 @@ class OrgChartTransfer
                 (string) $node->department?->name,
                 (string) $node->institution?->name,
                 OrgNode::VALIDATIONS[$node->validation_status] ?? $node->validation_status,
-                $people->pluck('full_name')->implode(' | '),
+                $people->map(fn (OrgPerson $person): string => $person->displayName())->implode(' | '),
             ];
 
             if ($includeContacts) {
-                $row[] = $people->pluck('email')->filter()->implode(' | ');
-                $row[] = $people->pluck('phone')->filter()->implode(' | ');
+                $row[] = $people->map(fn (OrgPerson $person): ?string => $person->displayEmail())->filter()->implode(' | ');
+                $row[] = $people->map(fn (OrgPerson $person): ?string => $person->displayPhone())->filter()->implode(' | ');
             }
 
             $rows[] = array_map([$this, 'neutralize'], $row);
@@ -177,6 +180,7 @@ class OrgChartTransfer
             'people.*.job_title' => ['nullable', 'string', 'max:255'],
             'people.*.phone' => ['nullable', 'string', 'max:40'],
             'people.*.email' => ['nullable', 'email', 'max:255'],
+            'people.*.user_email' => ['nullable', 'string', 'max:255'],
             'people.*.photo_path' => ['nullable', 'string', 'max:255', 'regex:#^orgchart/people/[A-Za-z0-9._-]+$#'],
             'people.*.contact_visible' => ['nullable', 'boolean'],
             'people.*.notes' => ['nullable', 'string', 'max:2000'],
@@ -210,6 +214,7 @@ class OrgChartTransfer
 
             foreach ($data['people'] as $person) {
                 $created = OrgPerson::query()->create([
+                    'user_id' => ! empty($person['user_email']) ? User::query()->where('email', $person['user_email'])->value('id') : null,
                     'full_name' => $person['full_name'],
                     'job_title' => $person['job_title'] ?? null,
                     'phone' => $person['phone'] ?? null,

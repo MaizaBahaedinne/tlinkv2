@@ -847,7 +847,7 @@
             free.forEach(function (p) { select.appendChild(h('option', { value: p.id, text: p.full_name + (p.job_title ? ' — ' + p.job_title : '') })); });
             select.disabled = !free.length;
             select.addEventListener('change', function () { if (select.value) { assign(n, Number(select.value)); } });
-            list.appendChild(h('div', { class: 'oc-assign' }, select, btn('Sans compte', function () { openPersonDialog({ assignTo: n.id }); }, 'oc-btn-sm')));
+            list.appendChild(h('div', { class: 'oc-assign' }, select));
         }
         body.appendChild(section('Personnes', list));
 
@@ -1234,8 +1234,19 @@
         $('#p-visible').checked = p ? !!p.contact_visible : true;
         $('#p-photo').value = '';
         $('#p-remove').checked = false;
-        $('#p-remove-wrap').hidden = !(p && p.photo_url);
+        $('#p-remove-wrap').hidden = !(p && p.photo_url) || !!(p && p.from_account);
         $('#p-delete').hidden = !p;
+        $('#p-delete').textContent = p && p.from_account ? 'Retirer de l\'organigramme' : 'Supprimer la personne';
+
+        // Personne issue d'un compte : identité et coordonnées se modifient dans le compte, pas ici.
+        var fromAccount = !!(p && p.from_account);
+        ['#p-name', '#p-phone', '#p-email', '#p-photo'].forEach(function (sel) { $(sel).disabled = fromAccount; });
+        $('#p-account').hidden = !fromAccount;
+        if (fromAccount) {
+            var link = $('#p-account-link');
+            link.hidden = !p.user_url;
+            if (p.user_url) { link.href = p.user_url; }
+        }
         setPreview(p, null);
         clearError('#p-error');
         openDialog($('#dlg-person'));
@@ -1281,7 +1292,7 @@
     $('#p-delete').addEventListener('click', function () {
         var p = personCtx && personCtx.person;
         if (!p) { return; }
-        askConfirm({ title: 'Supprimer la personne', body: 'Supprimer « ' + p.full_name + ' » et la retirer de tous ses postes ? Les postes deviendront vacants.', okLabel: 'Supprimer' }).then(function (r) {
+        askConfirm({ title: p.from_account ? 'Retirer de l\'organigramme' : 'Supprimer la personne', body: p.from_account ? 'Retirer « ' + p.full_name + ' » de tous ses postes ? Son compte n\'est pas supprimé.' : 'Supprimer « ' + p.full_name + ' » et la retirer de tous ses postes ? Les postes deviendront vacants.', okLabel: p.from_account ? 'Retirer' : 'Supprimer' }).then(function (r) {
             if (!r.ok) { return; }
             api('DELETE', '/personnes/' + p.id).then(function (res) {
                 $('#dlg-person').close();

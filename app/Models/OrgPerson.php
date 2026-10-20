@@ -37,6 +37,30 @@ class OrgPerson extends Model
 
     public function photoUrl(): ?string
     {
-        return $this->photo_path ? '/storage/'.ltrim($this->photo_path, '/') : null;
+        $path = $this->user_id ? $this->user?->profile?->photo_path : $this->photo_path;
+
+        return $path ? '/storage/'.ltrim($path, '/') : null;
+    }
+
+    /** Une personne liee a un compte est ce compte : nom, e-mail, telephone et photo sont lus a la source. */
+    public function displayName(): string
+    {
+        return $this->user?->name ?? $this->full_name;
+    }
+
+    public function displayEmail(): ?string
+    {
+        if (! $this->user_id) {
+            return $this->email;
+        }
+
+        $email = $this->user?->email;
+
+        return $email === null || str_ends_with($email, '@legacy.invalid') ? null : $email;
+    }
+
+    public function displayPhone(): ?string
+    {
+        return $this->user_id ? $this->user?->profile?->phone : $this->phone;
     }
 }
