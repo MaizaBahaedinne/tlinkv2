@@ -84,6 +84,7 @@ Voir la documentation detaillee:
 
 Page interactive `/organigramme` (lecture pour tous, edition pour les administrateurs globaux).
 Voir `docs/organigramme.md` (structure, utilisation, exports, import, deploiement).
+L'organigramme est relie aux entites, departements, institutions et clubs (`php artisan orgchart:sync` apres un import legacy).
 
 ## Migration des donnees de l'ancienne plateforme
 

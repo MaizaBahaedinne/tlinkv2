@@ -66,6 +66,7 @@
                                 <td>{{ $club->memberships_count }}</td>
                                 <td><x-admin.badge :status="$club->status" /></td>
                                 <td class="cell-actions">
+                                    <a href="{{ route('orgchart.locate', ['club', $club->id]) }}" class="btn btn-secondary btn-icon btn-sm" title="Voir dans l'organigramme" aria-label="Voir dans l'organigramme"><x-admin.icon name="network" :size="15" /></a>
                                     <a href="{{ route('admin.clubs.edit', $club) }}" class="btn btn-secondary btn-icon btn-sm" title="Modifier" aria-label="Modifier"><x-admin.icon name="edit" :size="15" /></a>
                                     <x-admin.delete-button :action="route('admin.clubs.destroy', $club)" :message="'« '.$club->name.' » sera supprimé définitivement.'" title="Supprimer ce club ?" />
                                 </td>

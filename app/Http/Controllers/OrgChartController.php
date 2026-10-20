@@ -3,16 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Club;
+use App\Models\Department;
+use App\Models\Entity;
 use App\Models\Governorate;
+use App\Models\Institution;
+use App\Models\Membership;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
 use App\Support\AdminContext;
 use App\Support\AuditLogger;
 use App\Support\OrgChart\OrgChartInstaller;
+use App\Support\OrgChart\OrgChartLinker;
 use App\Support\OrgChart\OrgChartRules;
 use App\Support\OrgChart\OrgChartTransfer;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +34,7 @@ class OrgChartController extends Controller
 {
     public function __construct(
         private readonly OrgChartInstaller $installer,
+        private readonly OrgChartLinker $linker,
         private readonly OrgChartRules $rules,
         private readonly OrgChartTransfer $transfer,
     ) {
@@ -165,8 +173,11 @@ class OrgChartController extends Controller
 
             $node->update($data);
 
-            if ($node->kind === 'club' && $node->club_id && $node->wasChanged('title')) {
-                $node->club()->update(['name' => $node->title]);
+            if ($node->kind === 'club' && $node->club_id && $node->club) {
+                // Le club reste la source de verite : titre, gouvernorat et liens y sont reportes
+                // (l'observateur de clubs realigne ensuite le bloc : branche, groupe...).
+                $node->club->update(Arr::only($data, ['entity_id', 'department_id', 'institution_id', 'governorate_id'])
+                    + ($node->wasChanged('title') ? ['name' => $node->title] : []));
             }
 
             if ($personIds !== null) {
@@ -294,6 +305,48 @@ class OrgChartController extends Controller
         $this->audit($request, 'orgchart.club.created', $node, ['name' => $node->title, 'category' => $category, 'template' => (bool) $data['apply_template']]);
 
         return $this->respond($request, $node->id, 201);
+    }
+
+    /**
+     * Rattrape les blocs manquants (clubs importes...) et relie les blocs a la structure de la plateforme.
+     */
+    public function sync(Request $request): JsonResponse
+    {
+        $this->requireEditor($request);
+
+        $stats = $this->linker->sync();
+
+        AuditLogger::record($request->user()->id, 'orgchart.synced', null, null, $stats, $request->ip());
+
+        return $this->respond($request, null, 200, ['sync' => $stats]);
+    }
+
+    /**
+     * Depuis l'administration : ouvre l'organigramme sur le bloc lie a une entite, un departement,
+     * une institution ou un club.
+     */
+    public function locate(Request $request, string $type, int $id): RedirectResponse
+    {
+        $column = match ($type) {
+            'entity' => 'entity_id',
+            'department' => 'department_id',
+            'institution' => 'institution_id',
+            'club' => 'club_id',
+            default => abort(404),
+        };
+
+        $node = OrgNode::query()->where($column, $id)->orderBy('id')->first();
+
+        if (! $node && $type === 'club' && $this->canEdit($request) && $this->linker->isActive()) {
+            $club = Club::query()->find($id);
+            $node = $club ? $this->linker->ensureClubNode($club) : null;
+        }
+
+        if (! $node) {
+            return back(fallback: route('orgchart.index'))->with('error', 'Aucun bloc de l’organigramme n’est lié à cet élément.');
+        }
+
+        return redirect()->to(route('orgchart.index').'?bloc='.$node->id);
     }
 
     public function applyTemplate(Request $request, OrgNode $node): JsonResponse
@@ -451,10 +504,49 @@ class OrgChartController extends Controller
             ->groupBy('node_id');
 
         $nodes = OrgNode::query()
-            ->with(['club:id,name', 'governorate:id,name'])
+            ->with(['club:id,name,status', 'governorate:id,name'])
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
+
+        $entities = Entity::query()->orderBy('name')->get(['id', 'name', 'slug']);
+        $departments = Department::query()->orderBy('name')->get(['id', 'name', 'entity_id']);
+        $institutions = Institution::query()->orderBy('name')->get(['id', 'name', 'entity_id', 'institution_type']);
+
+        $byId = $nodes->keyBy('id');
+
+        // Lien explicite du bloc, sinon celui du plus proche bloc parent : [id, herite ?].
+        $resolve = function (OrgNode $node, string $field) use ($byId): array {
+            $current = $node;
+
+            for ($guard = 0; $current !== null && $guard < 60; $guard++) {
+                if ($current->{$field} !== null) {
+                    return [$current->{$field}, $current->id !== $node->id];
+                }
+
+                $current = $current->parent_id ? ($byId[$current->parent_id] ?? null) : null;
+            }
+
+            return [null, false];
+        };
+
+        $entityNames = $entities->pluck('name', 'id');
+        $departmentNames = $departments->pluck('name', 'id');
+        $institutionNames = $institutions->pluck('name', 'id');
+
+        // Effectifs : donnees reservees aux administrateurs.
+        $clubMembers = collect();
+        $entityMembers = collect();
+        $institutionMembers = collect();
+
+        if ($canEdit) {
+            $approved = fn () => Membership::query()->where('memberships.status', 'approved');
+            $clubMembers = $approved()->whereNotNull('club_id')->groupBy('club_id')->selectRaw('club_id, count(distinct user_id) as total')->pluck('total', 'club_id');
+            $entityMembers = $approved()->groupBy('entity_id')->selectRaw('entity_id, count(distinct user_id) as total')->pluck('total', 'entity_id');
+            $institutionMembers = $approved()->join('clubs', 'clubs.id', '=', 'memberships.club_id')
+                ->whereNotNull('clubs.institution_id')->groupBy('clubs.institution_id')
+                ->selectRaw('clubs.institution_id as institution_id, count(distinct memberships.user_id) as total')->pluck('total', 'institution_id');
+        }
 
         return [
             'can_edit' => $canEdit,
@@ -465,30 +557,59 @@ class OrgChartController extends Controller
                 'validations' => OrgNode::VALIDATIONS,
                 'layouts' => OrgNode::LAYOUTS,
                 'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name'])->all(),
+                'entities' => $canEdit ? $entities->map(fn (Entity $entity): array => ['id' => $entity->id, 'name' => $entity->name])->all() : [],
+                'departments' => $canEdit ? $departments->map(fn (Department $department): array => ['id' => $department->id, 'name' => $department->name, 'entity_id' => $department->entity_id])->all() : [],
+                'institutions' => $canEdit ? $institutions->map(fn (Institution $institution): array => ['id' => $institution->id, 'name' => $institution->name, 'entity_id' => $institution->entity_id])->all() : [],
             ],
-            'nodes' => $nodes->map(fn (OrgNode $node): array => [
-                'id' => $node->id,
-                'parent_id' => $node->parent_id,
-                'relation_type' => $node->relation_type,
-                'kind' => $node->kind,
-                'category' => $node->category,
-                'title' => $node->title,
-                'subtitle' => $node->subtitle,
-                'description' => $node->description,
-                'club_id' => $node->club_id,
-                'club_name' => $node->club?->name,
-                'governorate_id' => $node->governorate_id,
-                'governorate_name' => $node->governorate?->name,
-                'validation_status' => $node->validation_status,
-                'validation_note' => $node->validation_note,
-                'children_layout' => $node->children_layout,
-                'is_collapsed' => $node->is_collapsed,
-                'dx' => $node->pos_dx,
-                'dy' => $node->pos_dy,
-                'sort_order' => $node->sort_order,
-                'system_key' => $node->system_key,
-                'person_ids' => ($assignments[$node->id] ?? collect())->pluck('person_id')->all(),
-            ])->all(),
+            'nodes' => $nodes->map(function (OrgNode $node) use ($assignments, $resolve, $entityNames, $departmentNames, $institutionNames, $clubMembers, $entityMembers, $institutionMembers, $canEdit): array {
+                [$entityId, $entityInherited] = $resolve($node, 'entity_id');
+                [$departmentId, $departmentInherited] = $resolve($node, 'department_id');
+
+                return [
+                    'id' => $node->id,
+                    'parent_id' => $node->parent_id,
+                    'relation_type' => $node->relation_type,
+                    'kind' => $node->kind,
+                    'category' => $node->category,
+                    'title' => $node->title,
+                    'subtitle' => $node->subtitle,
+                    'description' => $node->description,
+                    'club_id' => $node->club_id,
+                    'club_name' => $node->club?->name,
+                    'club_status' => $node->club?->status,
+                    'governorate_id' => $node->governorate_id,
+                    'governorate_name' => $node->governorate?->name,
+                    // Liens explicites (editables) puis liens effectifs (herites si absents).
+                    'entity_id' => $node->entity_id,
+                    'department_id' => $node->department_id,
+                    'institution_id' => $node->institution_id,
+                    'eff_entity_id' => $entityId,
+                    'eff_department_id' => $departmentId,
+                    'entity_name' => $entityId ? ($entityNames[$entityId] ?? null) : null,
+                    'department_name' => $departmentId ? ($departmentNames[$departmentId] ?? null) : null,
+                    'institution_name' => $node->institution_id ? ($institutionNames[$node->institution_id] ?? null) : null,
+                    'entity_inherited' => $entityInherited,
+                    'department_inherited' => $departmentInherited,
+                    'members_club' => $canEdit && $node->club_id ? (int) ($clubMembers[$node->club_id] ?? 0) : null,
+                    'members_entity' => $canEdit && $node->kind !== 'club' && $node->entity_id ? (int) ($entityMembers[$node->entity_id] ?? 0) : null,
+                    'members_institution' => $canEdit && $node->institution_id ? (int) ($institutionMembers[$node->institution_id] ?? 0) : null,
+                    'admin_urls' => $canEdit ? array_filter([
+                        'entity' => $entityId ? route('admin.entities.edit', $entityId) : null,
+                        'department' => $departmentId ? route('admin.departments.edit', $departmentId) : null,
+                        'institution' => $node->institution_id ? route('admin.institutions.edit', $node->institution_id) : null,
+                        'club' => $node->club_id ? route('admin.clubs.edit', $node->club_id) : null,
+                    ]) : [],
+                    'validation_status' => $node->validation_status,
+                    'validation_note' => $node->validation_note,
+                    'children_layout' => $node->children_layout,
+                    'is_collapsed' => $node->is_collapsed,
+                    'dx' => $node->pos_dx,
+                    'dy' => $node->pos_dy,
+                    'sort_order' => $node->sort_order,
+                    'system_key' => $node->system_key,
+                    'person_ids' => ($assignments[$node->id] ?? collect())->pluck('person_id')->all(),
+                ];
+            })->all(),
             'people' => OrgPerson::query()->orderBy('full_name')->get()->map(function (OrgPerson $person) use ($canEdit): array {
                 $showContact = $canEdit || $person->contact_visible;
 
@@ -525,11 +646,16 @@ class OrgChartController extends Controller
             'children_layout' => ['required', Rule::in(array_keys(OrgNode::LAYOUTS))],
             'is_collapsed' => ['required', 'boolean'],
             'governorate_id' => ['nullable', 'integer', 'exists:governorates,id'],
+            'entity_id' => ['nullable', 'integer', 'exists:entities,id'],
+            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'institution_id' => ['nullable', 'integer', 'exists:institutions,id'],
             'person_ids' => ['nullable', 'array', 'max:50'],
             'person_ids.*' => ['integer', 'distinct', 'exists:org_people,id'],
         ]);
 
         $data['is_collapsed'] = (bool) $data['is_collapsed'];
+
+        $this->assertConsistentLinks($data, $node);
 
         if ($node && empty($data['kind'])) {
             unset($data['kind']);
@@ -540,6 +666,47 @@ class OrgChartController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * Un departement et une institution doivent appartenir a l'entite du bloc (explicite ou heritee).
+     *
+     * @param array<string, mixed> $data
+     *
+     * @throws ValidationException
+     */
+    private function assertConsistentLinks(array $data, ?OrgNode $node): void
+    {
+        $departmentId = $data['department_id'] ?? null;
+        $institutionId = $data['institution_id'] ?? null;
+
+        if ($departmentId === null && $institutionId === null) {
+            return;
+        }
+
+        $entityId = array_key_exists('entity_id', $data) ? $data['entity_id'] : $node?->entity_id;
+        $parentId = array_key_exists('parent_id', $data) ? $data['parent_id'] : $node?->parent_id;
+
+        for ($guard = 0; $entityId === null && $parentId !== null && $guard < 60; $guard++) {
+            $ancestor = OrgNode::query()->find($parentId, ['id', 'parent_id', 'entity_id']);
+            $entityId = $ancestor?->entity_id;
+            $parentId = $ancestor?->parent_id;
+        }
+
+        $department = $departmentId ? Department::query()->find($departmentId, ['id', 'entity_id']) : null;
+        $institution = $institutionId ? Institution::query()->find($institutionId, ['id', 'entity_id']) : null;
+
+        if ($entityId === null) {
+            throw ValidationException::withMessages(['entity_id' => 'Choisissez d’abord l’entité à laquelle rattacher le département ou l’institution.']);
+        }
+
+        if ($department && $department->entity_id !== $entityId) {
+            throw ValidationException::withMessages(['department_id' => 'Ce département n’appartient pas à l’entité choisie.']);
+        }
+
+        if ($institution && $institution->entity_id !== null && $institution->entity_id !== $entityId) {
+            throw ValidationException::withMessages(['institution_id' => 'Cette institution n’appartient pas à l’entité choisie.']);
+        }
     }
 
     /**

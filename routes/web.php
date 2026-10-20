@@ -61,6 +61,8 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
     Route::get('historique', [OrgChartController::class, 'history'])->name('history');
     Route::get('export.json', [OrgChartController::class, 'exportJson'])->name('export.json');
     Route::get('export.csv', [OrgChartController::class, 'exportCsv'])->name('export.csv');
+    Route::get('lien/{type}/{id}', [OrgChartController::class, 'locate'])->whereNumber('id')->name('locate');
+    Route::post('synchroniser', [OrgChartController::class, 'sync'])->name('sync');
 
     Route::post('blocs', [OrgChartController::class, 'storeNode'])->name('nodes.store');
     Route::patch('blocs/{node}', [OrgChartController::class, 'updateNode'])->name('nodes.update');

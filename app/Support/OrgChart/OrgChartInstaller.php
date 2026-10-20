@@ -5,6 +5,7 @@ namespace App\Support\OrgChart;
 use App\Models\Club;
 use App\Models\Entity;
 use App\Models\Governorate;
+use App\Models\Institution;
 use App\Models\OrgNode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -26,6 +27,10 @@ class OrgChartInstaller
     ];
 
     private const TO_VALIDATE_NOTE = 'Rattachement déduit du descriptif : à confirmer par un administrateur.';
+
+    public function __construct(private readonly OrgChartLinker $linker)
+    {
+    }
 
     public function isInstalled(): bool
     {
@@ -110,6 +115,9 @@ class OrgChartInstaller
                 $this->createClub($network, 'We Are '.$governorateName, 'regional_club', $governorate, true, $key);
             }
         });
+
+        // Relie les blocs systeme a la structure et ajoute les clubs deja presents en base (import legacy...).
+        $this->linker->sync();
     }
 
     /**
@@ -117,11 +125,16 @@ class OrgChartInstaller
      */
     public function createClub(OrgNode $branch, string $name, string $category, ?Governorate $governorate, bool $withTemplate, ?string $systemKey = null): OrgNode
     {
-        return DB::transaction(function () use ($branch, $name, $category, $governorate, $withTemplate, $systemKey): OrgNode {
+        return OrgChartLinker::withoutSync(fn (): OrgNode => DB::transaction(function () use ($branch, $name, $category, $governorate, $withTemplate, $systemKey): OrgNode {
             $club = $this->clubModel($name, $category, $governorate);
 
+            // Les clubs d'universite / de lycee sont ranges par gouvernorat.
+            $parent = in_array($category, ['university_club', 'highschool_club'], true)
+                ? $this->linker->groupFor($branch, $governorate)
+                : $branch;
+
             $node = OrgNode::query()->create([
-                'parent_id' => $branch->id,
+                'parent_id' => $parent->id,
                 'relation_type' => 'hierarchy',
                 'kind' => 'club',
                 'category' => $category,
@@ -129,8 +142,11 @@ class OrgChartInstaller
                 'subtitle' => $governorate?->name,
                 'club_id' => $club->id,
                 'governorate_id' => $governorate?->id,
+                'entity_id' => $club->entity_id,
+                'department_id' => $club->department_id,
+                'institution_id' => $club->institution_id,
                 'is_collapsed' => true,
-                'sort_order' => $this->nextSort($branch->id),
+                'sort_order' => $this->nextSort($parent->id),
                 'system_key' => $systemKey,
             ]);
 
@@ -139,7 +155,7 @@ class OrgChartInstaller
             }
 
             return $node;
-        });
+        }));
     }
 
     /**
@@ -284,10 +300,24 @@ class OrgChartInstaller
             default => 'foundation',
         };
 
+        $entity = Entity::query()->where('slug', $entitySlug)->first();
+
+        // Un club d'universite / de lycee a son etablissement (institution) et son departement.
+        $institution = null;
+
+        if ($entity && in_array($category, ['university_club', 'highschool_club'], true)) {
+            $institution = Institution::query()->firstOrCreate(
+                ['institution_type' => $category === 'university_club' ? 'university' : 'high_school', 'slug' => $base],
+                ['entity_id' => $entity->id, 'name' => $name, 'is_active' => true]
+            );
+        }
+
         return Club::query()->create([
             'name' => $name,
             'slug' => $slug,
-            'entity_id' => Entity::query()->where('slug', $entitySlug)->value('id'),
+            'entity_id' => $entity?->id,
+            'department_id' => $entity ? $this->linker->department($entity)?->id : null,
+            'institution_id' => $institution?->id,
             'governorate_id' => $governorate?->id,
             'status' => 'active',
         ]);

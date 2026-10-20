@@ -55,6 +55,7 @@
                                 <td>{{ $department->clubs_count }}</td>
                                 <td class="hide-mobile">{{ $department->memberships_count }}</td>
                                 <td class="cell-actions">
+                                    <a href="{{ route('orgchart.locate', ['department', $department->id]) }}" class="btn btn-secondary btn-icon btn-sm" title="Voir dans l'organigramme" aria-label="Voir dans l'organigramme"><x-admin.icon name="network" :size="15" /></a>
                                     <a href="{{ route('admin.departments.edit', $department) }}" class="btn btn-secondary btn-icon btn-sm" title="Modifier" aria-label="Modifier"><x-admin.icon name="edit" :size="15" /></a>
                                     <x-admin.delete-button :action="route('admin.departments.destroy', $department)" :message="'« '.$department->name.' » sera supprimé définitivement.'" title="Supprimer ce département ?" />
                                 </td>

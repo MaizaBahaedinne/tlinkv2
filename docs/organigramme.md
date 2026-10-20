@@ -101,7 +101,23 @@ Un message avertit si l'on quitte la page avec des positions non enregistrées.
 
 Les exports reflètent **ce qui est affiché** (blocs repliés = non exportés) : dépliez avant d'exporter pour un document complet.
 
-## 5. Architecture
+## 5. Liens avec les entités, départements, institutions et clubs
+
+L'organigramme n'est pas un silo : ses blocs sont rattachés à la structure de la plateforme.
+
+| Bloc | Liens |
+| --- | --- |
+| Blocs système (présidence, bureaux nationaux University / High School, Alumni) | `entity_id` + `department_id` explicites (Fondation / Bureau national, University / Bureau universitaire, High School / Bureau lycée, Alumni / Bureau alumni) |
+| Sous-blocs (managers, postes…) | **héritent** de l'entité et du département du plus proche bloc parent (calculé à la lecture, affiché « hérité ») |
+| Bloc « club » | suit son **club** : entité, département, institution, gouvernorat, nom. Le club reste la source de vérité |
+
+- Chaque club d'université ou de lycée (donc les clubs importés de l'ancienne plateforme) a son bloc, rangé par gouvernorat : *University Clubs › Tunis › ESPRIT GCEM*. Un club créé, renommé, déplacé de gouvernorat ou d'entité, ou dont l'institution change (admin, import, organigramme) met à jour son bloc automatiquement (`App\Observers\ClubObserver`). Les clubs régionaux « We Are » restent directement sous le réseau régional.
+- Depuis la fiche d'un bloc : section **Liens avec la plateforme** (entité, département, institution, club, gouvernorat, nombre d'adhérents actifs — administrateurs uniquement — et liens vers les pages d'administration). Dans « Modifier le bloc », les listes Entité / Département / Institution sont filtrées par entité ; pour un bloc club, elles modifient le club.
+- Depuis l'administration : l'icône « Voir dans l'organigramme » des listes Entités, Départements, Institutions et Clubs ouvre l'organigramme sur le bloc lié (`/organigramme/lien/{entity|department|institution|club}/{id}` → `/organigramme?bloc=ID`).
+- **Synchroniser** (menu *Ajouter* › « Synchroniser avec les clubs », ou `php artisan orgchart:sync`) : relie les blocs système et crée les blocs des clubs qui n'en ont pas. Idempotent.
+- Les exports JSON / CSV incluent entité, département et institution (par *slug*) ; l'import les restaure.
+
+## 6. Architecture
 
 | Élément | Emplacement |
 | --- | --- |
@@ -110,10 +126,11 @@ Les exports reflètent **ce qui est affiché** (blocs repliés = non exportés) 
 | Gabarit initial | `app/Support/OrgChart/OrgChartInstaller.php` (clés `system_key` stables, idempotent) |
 | Règles (cycles, suppression) | `app/Support/OrgChart/OrgChartRules.php` |
 | Import / export | `app/Support/OrgChart/OrgChartTransfer.php` |
+| Liens plateforme | `app/Support/OrgChart/OrgChartLinker.php`, `app/Observers/ClubObserver.php`, migration `2026_10_21_100000_link_org_nodes_to_structure.php` |
 | Contrôleur / routes | `app/Http/Controllers/OrgChartController.php`, groupe `orgchart.*` de `routes/web.php` |
 | Page | `resources/views/orgchart/index.blade.php` |
 | Interface | `public/backoffice/orgchart.css`, `orgchart.js` (application), `orgchart-layout.js` (disposition pure), `orgchart-export.js` (SVG / PNG / PDF) |
-| Tests | `tests/Feature/OrgChartTest.php` |
+| Tests | `tests/Feature/OrgChartTest.php`, `tests/Feature/OrgChartLinksTest.php` |
 
 Choix techniques :
 
@@ -123,11 +140,12 @@ Choix techniques :
 - relations : `parent_id` + `relation_type` (`hierarchy` / `attachment`) ; chaque bloc a un identifiant unique et un `system_key` optionnel pour retrouver les blocs du gabarit ;
 - dispositions : `horizontal` (arbre classique) ou `vertical` (liste arborescente compacte, héritée par les descendants — utilisée sous les coordinateurs, les chefs de projet et les réseaux de clubs pour garder un diagramme lisible avec 24+ clubs).
 
-## 6. Déploiement
+## 7. Déploiement
 
 ```bash
 git pull origin main
 php artisan migrate --force
+php artisan orgchart:sync     # relie l'organigramme aux entités / clubs (après un import legacy notamment)
 php artisan storage:link      # une seule fois : photos des personnes (disque public)
 php artisan optimize:clear
 ```
@@ -137,7 +155,7 @@ Aucun seeder à lancer : l'organigramme initial est créé à la première ouver
 
 Les photos sont stockées dans `storage/app/public/orgchart/people`.
 
-## 7. Dépannage
+## 8. Dépannage
 
 - **Page blanche / « Impossible de charger »** : vérifier `php artisan migrate`, puis `storage/logs/laravel.log`.
 - **Photos en 404** : `php artisan storage:link` (si `rm public/storage` est nécessaire sur le serveur, utiliser `rm -f`).

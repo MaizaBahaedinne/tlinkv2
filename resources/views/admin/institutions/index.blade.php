@@ -63,6 +63,7 @@
                                 <td>{{ $institution->clubs_count }}</td>
                                 <td><x-admin.badge :status="$institution->is_active ? 'active' : 'inactive'" /></td>
                                 <td class="cell-actions">
+                                    <a href="{{ route('orgchart.locate', ['institution', $institution->id]) }}" class="btn btn-secondary btn-icon btn-sm" title="Voir dans l'organigramme" aria-label="Voir dans l'organigramme"><x-admin.icon name="network" :size="15" /></a>
                                     <a href="{{ route('admin.institutions.edit', $institution) }}" class="btn btn-secondary btn-icon btn-sm" title="Modifier" aria-label="Modifier"><x-admin.icon name="edit" :size="15" /></a>
                                     <x-admin.delete-button :action="route('admin.institutions.destroy', $institution)" :message="'« '.$institution->name.' » sera supprimée définitivement.'" title="Supprimer cette institution ?" />
                                 </td>

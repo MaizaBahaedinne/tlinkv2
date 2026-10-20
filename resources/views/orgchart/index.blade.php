@@ -38,6 +38,7 @@
                     <button type="button" data-act="add-node">Poste ou unité</button>
                     <button type="button" data-act="add-club">Club (régional, université, lycée)</button>
                     <button type="button" data-act="add-person">Personne</button>
+                    <button type="button" data-act="sync">Synchroniser avec les clubs</button>
                 </div>
             </div>
             <button type="button" class="oc-btn" data-act="toggle-edit" aria-pressed="false" title="Active le déplacement des blocs à la souris">Modifier</button>
@@ -153,6 +154,15 @@
                 <div class="oc-field" id="n-gov-wrap"><label for="n-gov">Gouvernorat</label><select id="n-gov" name="governorate_id"></select></div>
             </div>
             <label class="oc-check"><input type="checkbox" id="n-collapsed" name="is_collapsed"><span>Replié par défaut</span></label>
+            <fieldset class="oc-fieldset" id="n-structure">
+                <legend>Liens avec la plateforme</legend>
+                <div class="oc-field"><label for="n-entity">Entité</label><select id="n-entity" name="entity_id"></select></div>
+                <div class="oc-grid2">
+                    <div class="oc-field"><label for="n-department">Département</label><select id="n-department" name="department_id"></select></div>
+                    <div class="oc-field"><label for="n-institution">Institution</label><select id="n-institution" name="institution_id"></select></div>
+                </div>
+                <p class="oc-muted">Les sous-blocs héritent de l’entité et du département. Pour un club, ces liens modifient le club lui-même.</p>
+            </fieldset>
             <div class="oc-field"><label for="n-desc">Description</label><textarea id="n-desc" name="description" rows="3" maxlength="5000"></textarea></div>
             <p class="oc-form-error" id="n-error" role="alert" hidden></p>
         </div>

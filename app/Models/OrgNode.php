@@ -36,6 +36,9 @@ class OrgNode extends Model
         'description',
         'club_id',
         'governorate_id',
+        'entity_id',
+        'department_id',
+        'institution_id',
         'validation_status',
         'validation_note',
         'children_layout',
@@ -71,6 +74,21 @@ class OrgNode extends Model
     public function governorate(): BelongsTo
     {
         return $this->belongsTo(Governorate::class);
+    }
+
+    public function entity(): BelongsTo
+    {
+        return $this->belongsTo(Entity::class);
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
     }
 
     public function assignments(): HasMany

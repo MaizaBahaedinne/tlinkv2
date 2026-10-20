@@ -60,6 +60,7 @@
                                 <td class="hide-mobile">{{ $entity->memberships_count }}</td>
                                 <td><x-admin.badge :status="$entity->is_active ? 'active' : 'inactive'" /></td>
                                 <td class="cell-actions">
+                                    <a href="{{ route('orgchart.locate', ['entity', $entity->id]) }}" class="btn btn-secondary btn-icon btn-sm" title="Voir dans l'organigramme" aria-label="Voir dans l'organigramme"><x-admin.icon name="network" :size="15" /></a>
                                     <a href="{{ route('admin.entities.edit', $entity) }}" class="btn btn-secondary btn-icon btn-sm" title="Modifier" aria-label="Modifier"><x-admin.icon name="edit" :size="15" /></a>
                                     @if($canCreate)
                                         <x-admin.delete-button :action="route('admin.entities.destroy', $entity)" :message="'« '.$entity->name.' » sera supprimée définitivement.'" title="Supprimer cette entité ?" />

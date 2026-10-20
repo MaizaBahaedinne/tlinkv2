@@ -2,6 +2,8 @@
 
 use App\Support\LegacyClubImporter;
 use App\Support\Legacy\LegacyUserImporter;
+use App\Support\OrgChart\OrgChartInstaller;
+use App\Support\OrgChart\OrgChartLinker;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 
@@ -57,3 +59,19 @@ Artisan::command('legacy:import-users {path? : Chemin du dump SQL legacy} {--dry
     fclose($handle);
     $this->line('Rapport (donnees personnelles, ne pas publier): '.$reportPath);
 })->purpose('Migre tbl_users depuis un dump SQL legacy (utilisateurs, profils, adhesions)');
+
+Artisan::command('orgchart:sync', function () {
+    $installer = app(OrgChartInstaller::class);
+
+    if (! $installer->isInstalled()) {
+        $installer->install();
+        $this->info('Organigramme installe.');
+    }
+
+    $stats = app(OrgChartLinker::class)->sync();
+
+    $this->info('Organigramme synchronise avec les entites, departements, institutions et clubs.');
+    $this->line('Blocs systeme relies: '.$stats['linked']);
+    $this->line('Blocs de clubs crees: '.$stats['created'].' | mis a jour: '.$stats['updated']);
+    $this->line('Clubs sans branche dans l\'organigramme (ni University ni High School): '.$stats['skipped']);
+})->purpose('Relie l\'organigramme aux entites, departements, institutions et clubs');
