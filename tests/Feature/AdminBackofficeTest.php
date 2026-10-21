@@ -161,6 +161,47 @@ class AdminBackofficeTest extends TestCase
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('Nouveau-Mot-De-Passe-42', $member->password));
     }
 
+    public function test_global_admin_can_replace_and_remove_a_user_avatar(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $admin = $this->adminWith(self::ALL_PERMISSIONS);
+        $member = User::factory()->create();
+        $payload = fn (array $extra = []): array => ['name' => $member->name, 'email' => $member->email] + $extra;
+
+        $this->actingAs($admin)->get("/admin/utilisateurs/{$member->id}/modifier")
+            ->assertOk()->assertSee('data-avatar-field', false)->assertSee('backoffice/avatar-cropper.js', false);
+
+        // Photo recadree envoyee par le navigateur (JPEG).
+        $first = \Illuminate\Http\UploadedFile::fake()->image('avatar-1.jpg', 512, 512);
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$member->id}", $payload(['avatar' => $first]))
+            ->assertSessionHasNoErrors()->assertRedirect(route('admin.users.show', $member));
+
+        $path = $member->fresh()->profile->photo_path;
+        $this->assertStringStartsWith('profiles/avatars/', $path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($path);
+        $this->actingAs($admin)->get("/admin/utilisateurs/{$member->id}")->assertOk()->assertSee(basename($path), false);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'admin.user.updated', 'target_id' => $member->id]);
+
+        // Remplacement : l'ancien fichier est supprime.
+        $second = \Illuminate\Http\UploadedFile::fake()->image('avatar-2.jpg', 512, 512);
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$member->id}", $payload(['avatar' => $second]))->assertSessionHasNoErrors();
+        $newPath = $member->fresh()->profile->photo_path;
+        $this->assertNotSame($path, $newPath);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($newPath);
+
+        // Un fichier qui n'est pas une image est refuse.
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$member->id}", $payload(['avatar' => \Illuminate\Http\UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')]))
+            ->assertSessionHasErrors('avatar');
+        $this->assertSame($newPath, $member->fresh()->profile->photo_path);
+
+        // Suppression.
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$member->id}", $payload(['remove_avatar' => '1']))->assertSessionHasNoErrors();
+        $this->assertNull($member->fresh()->profile->photo_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($newPath);
+    }
+
     public function test_user_edit_validates_email_and_protects_the_own_account(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);

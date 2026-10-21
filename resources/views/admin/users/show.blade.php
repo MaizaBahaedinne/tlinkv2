@@ -65,7 +65,7 @@
         <div style="display:grid;gap:22px;align-content:start;min-width:0">
             <article class="card card-flush">
                 <div class="profile-head">
-                    <x-admin.avatar :name="$user->name" :size="64" />
+                    <x-admin.avatar :name="$user->name" :size="64" :src="$user->profile?->photoUrl()" />
                     <div>
                         <h2>{{ $user->name }}</h2>
                         <p class="text-muted">{{ $user->profile?->headline ?: 'Aucun titre renseigné' }}</p>

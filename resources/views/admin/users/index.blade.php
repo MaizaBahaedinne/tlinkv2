@@ -44,7 +44,7 @@
                             <tr>
                                 <td>
                                     <div class="cell-user">
-                                        <x-admin.avatar :name="$user->name" :size="38" />
+                                        <x-admin.avatar :name="$user->name" :size="38" :src="$user->profile?->photoUrl()" />
                                         <div>
                                             <a href="{{ route('admin.users.show', $user) }}" class="cell-main">{{ $user->name }}</a>
                                             <div class="cell-sub">{{ $user->email }}</div>

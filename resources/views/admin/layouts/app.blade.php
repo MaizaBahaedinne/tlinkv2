@@ -115,5 +115,6 @@
 </dialog>
 
 <script src="{{ asset('backoffice/admin.js') }}?v={{ @filemtime(public_path('backoffice/admin.js')) ?: 1 }}" defer></script>
+@stack('scripts')
 </body>
 </html>

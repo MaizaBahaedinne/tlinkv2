@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\AccessLevels;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -32,7 +33,7 @@ class UserController extends AdminController
 
         $users = User::query()
             ->with([
-                'profile:id,user_id,headline',
+                'profile:id,user_id,headline,photo_path',
                 'orgPerson.assignments' => fn ($query) => $query->where($current)->with('node:id,title,access_level'),
             ])
             ->withCount(['posts', 'memberships'])
@@ -111,6 +112,8 @@ class UserController extends AdminController
             'governorate_id' => ['nullable', 'integer', Rule::exists('governorates', 'id')],
             'delegation' => ['nullable', 'string', 'max:255'],
             'bio' => ['nullable', 'string', 'max:4000'],
+            'avatar' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_avatar' => ['nullable', 'boolean'],
         ]);
 
         $user->name = $data['name'];
@@ -140,6 +143,17 @@ class UserController extends AdminController
             'headline', 'phone', 'phone_secondary', 'gender', 'birth_date', 'address', 'governorate_id', 'delegation', 'bio',
         ])));
         $profile->user_id = $user->id;
+
+        if ($request->hasFile('avatar')) {
+            $this->deleteAvatarFile($profile->photo_path);
+            $profile->photo_path = $request->file('avatar')->store('profiles/avatars', 'public');
+            $changed[] = 'avatar';
+        } elseif ($request->boolean('remove_avatar') && $profile->photo_path) {
+            $this->deleteAvatarFile($profile->photo_path);
+            $profile->photo_path = null;
+            $changed[] = 'avatar';
+        }
+
         $profile->save();
 
         $this->audit($request, 'admin.user.updated', $user, ['fields' => $changed]);
@@ -153,6 +167,16 @@ class UserController extends AdminController
     private function authorizeEdit(Request $request): void
     {
         abort_unless($this->context($request)->isGlobal('entity.manage'), 403, 'Seuls les administrateurs globaux peuvent modifier un utilisateur.');
+    }
+
+    /**
+     * Supprime l'ancienne photo, uniquement si elle a ete stockee par l'application.
+     */
+    private function deleteAvatarFile(?string $path): void
+    {
+        if ($path && str_starts_with($path, 'profiles/avatars/')) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     /**
