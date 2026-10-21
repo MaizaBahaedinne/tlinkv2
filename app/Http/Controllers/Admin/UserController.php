@@ -39,7 +39,7 @@ class UserController extends AdminController
             ->withCount(['posts', 'memberships'])
             ->when($visible !== null, fn ($query) => $this->restrictToScopes($query, $visible))
             ->when($filters['q'] ?? null, function ($query, $needle): void {
-                $query->where(fn ($inner) => $inner->where('name', 'like', "%{$needle}%")->orWhere('email', 'like', "%{$needle}%"));
+                $query->where(fn ($inner) => $inner->where('name', 'like', "%{$needle}%")->orWhere('first_name', 'like', "%{$needle}%")->orWhere('last_name', 'like', "%{$needle}%")->orWhere('email', 'like', "%{$needle}%"));
             })
             ->when($filters['access'] ?? null, function ($query, $level) use ($current): void {
                 $query->whereHas('orgPerson.assignments', fn ($assignments) => $assignments->where($current)
@@ -98,7 +98,8 @@ class UserController extends AdminController
         $isSelf = $user->is($request->user());
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:120'],
+            'last_name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', Password::defaults()],
             'is_active' => ['nullable', 'boolean'],
@@ -116,10 +117,11 @@ class UserController extends AdminController
             'remove_avatar' => ['nullable', 'boolean'],
         ]);
 
-        $user->name = $data['name'];
+        $user->first_name = trim($data['first_name']);
+        $user->last_name = trim($data['last_name']);
         $user->email = $data['email'];
 
-        $changed = ['name', 'email'];
+        $changed = ['first_name', 'last_name', 'email'];
 
         if (! empty($data['password'])) {
             $user->password = $data['password'];

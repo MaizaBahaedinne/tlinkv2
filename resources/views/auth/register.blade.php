@@ -8,10 +8,17 @@
 
         <form class="mt-6 space-y-4" method="post" action="{{ route('register.store') }}">
             @csrf
-            <div>
-                <label class="mb-1 block text-sm font-medium text-slate-700" for="name">Nom complet</label>
-                <input id="name" name="name" type="text" value="{{ old('name') }}" required class="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-tlink-blue">
-                @error('name') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-slate-700" for="first_name">Prénom</label>
+                    <input id="first_name" name="first_name" type="text" value="{{ old('first_name') }}" required maxlength="120" autocomplete="given-name" class="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-tlink-blue">
+                    @error('first_name') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-slate-700" for="last_name">Nom de famille</label>
+                    <input id="last_name" name="last_name" type="text" value="{{ old('last_name') }}" required maxlength="120" autocomplete="family-name" class="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-tlink-blue">
+                    @error('last_name') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </div>
             </div>
             <div>
                 <label class="mb-1 block text-sm font-medium text-slate-700" for="email">Email</label>

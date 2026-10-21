@@ -23,13 +23,15 @@ class RegisterController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'first_name' => ['required', 'string', 'max:120'],
+            'last_name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         $user = User::query()->create([
-            'name' => $data['name'],
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
         ]);

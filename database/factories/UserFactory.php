@@ -25,7 +25,10 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+            'name' => fake()->firstName().' '.fake()->lastName(),
+            // Prénom / nom suivent le nom complet, y compris quand un test impose `name`.
+            'first_name' => fn (array $attributes): ?string => User::splitName($attributes['name'])[0],
+            'last_name' => fn (array $attributes): ?string => User::splitName($attributes['name'])[1],
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),

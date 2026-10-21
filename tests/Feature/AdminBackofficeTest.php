@@ -133,14 +133,16 @@ class AdminBackofficeTest extends TestCase
         $this->actingAs($admin)->get("/admin/utilisateurs/{$member->id}/modifier")->assertOk()->assertSee($member->email);
 
         $this->actingAs($admin)->put("/admin/utilisateurs/{$member->id}", [
-            'name' => 'Nouveau Nom', 'email' => 'apres@example.test', 'password' => '',
+            'first_name' => 'Nouveau', 'last_name' => 'Nom de Famille', 'email' => 'apres@example.test', 'password' => '',
             'is_active' => '0', 'deactivated_reason' => 'Compte en doublon',
             'headline' => 'Étudiant', 'phone' => '+216 20 000 000', 'gender' => 'female', 'birth_date' => '2000-05-01',
             'bio' => 'Bio',
         ])->assertRedirect(route('admin.users.show', $member))->assertSessionHas('status');
 
         $member->refresh();
-        $this->assertSame('Nouveau Nom', $member->name);
+        $this->assertSame('Nouveau', $member->first_name);
+        $this->assertSame('Nom de Famille', $member->last_name);
+        $this->assertSame('Nouveau Nom de Famille', $member->name, 'Le nom complet est recomposé.');
         $this->assertSame('apres@example.test', $member->email);
         $this->assertSame($oldHash, $member->password, 'Un mot de passe vide ne change rien.');
         $this->assertFalse($member->is_active);
@@ -152,7 +154,7 @@ class AdminBackofficeTest extends TestCase
 
         // Reactivation + nouveau mot de passe.
         $this->actingAs($admin)->put("/admin/utilisateurs/{$member->id}", [
-            'name' => 'Nouveau Nom', 'email' => 'apres@example.test', 'password' => 'Nouveau-Mot-De-Passe-42', 'is_active' => '1',
+            'first_name' => 'Nouveau', 'last_name' => 'Nom de Famille', 'email' => 'apres@example.test', 'password' => 'Nouveau-Mot-De-Passe-42', 'is_active' => '1',
         ])->assertSessionHasNoErrors();
 
         $member->refresh();
@@ -167,7 +169,7 @@ class AdminBackofficeTest extends TestCase
 
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
         $member = User::factory()->create();
-        $payload = fn (array $extra = []): array => ['name' => $member->name, 'email' => $member->email] + $extra;
+        $payload = fn (array $extra = []): array => ['first_name' => $member->first_name, 'last_name' => $member->last_name, 'email' => $member->email] + $extra;
 
         $this->actingAs($admin)->get("/admin/utilisateurs/{$member->id}/modifier")
             ->assertOk()->assertSee('data-avatar-field', false)->assertSee('backoffice/avatar-cropper.js', false);
@@ -208,16 +210,16 @@ class AdminBackofficeTest extends TestCase
         $other = User::factory()->create(['email' => 'pris@example.test']);
 
         $this->actingAs($admin)->put("/admin/utilisateurs/{$admin->id}", [
-            'name' => $admin->name, 'email' => 'pris@example.test',
+            'first_name' => $admin->first_name, 'last_name' => $admin->last_name, 'email' => 'pris@example.test',
         ])->assertSessionHasErrors('email');
 
         $this->actingAs($admin)->put("/admin/utilisateurs/{$admin->id}", [
-            'name' => $admin->name, 'email' => $admin->email, 'is_active' => '0',
+            'first_name' => $admin->first_name, 'last_name' => $admin->last_name, 'email' => $admin->email, 'is_active' => '0',
         ])->assertSessionHasNoErrors();
         $this->assertTrue($admin->fresh()->is_active, 'On ne peut pas désactiver son propre compte.');
 
         $this->actingAs($admin)->put("/admin/utilisateurs/{$other->id}", [
-            'name' => $other->name, 'email' => $other->email, 'password' => 'court',
+            'first_name' => $other->first_name, 'last_name' => $other->last_name, 'email' => $other->email, 'password' => 'court',
         ])->assertSessionHasErrors('password');
     }
 
@@ -229,7 +231,7 @@ class AdminBackofficeTest extends TestCase
 
         foreach ([$scoped, $moderator] as $actor) {
             $this->actingAs($actor)->get("/admin/utilisateurs/{$member->id}/modifier")->assertForbidden();
-            $this->actingAs($actor)->put("/admin/utilisateurs/{$member->id}", ['name' => 'X', 'email' => 'x@example.test'])->assertForbidden();
+            $this->actingAs($actor)->put("/admin/utilisateurs/{$member->id}", ['first_name' => 'X', 'last_name' => 'Y', 'email' => 'x@example.test'])->assertForbidden();
         }
     }
 

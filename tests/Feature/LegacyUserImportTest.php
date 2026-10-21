@@ -141,6 +141,7 @@ class LegacyUserImportTest extends TestCase
         $maiza = User::query()->where('legacy_id', 2)->firstOrFail();
         $this->assertSame($this->hash, DB::table('users')->where('id', $maiza->id)->value('password'));
         $this->assertSame('MAIZA Bahaedinne', $maiza->name);
+        $this->assertSame(['MAIZA', 'Bahaedinne'], [$maiza->first_name, $maiza->last_name], 'Prenom / nom decoupes depuis le nom complet.');
         $this->assertNotNull($maiza->email_verified_at);
         $this->assertTrue(Hash::check('secret123', $maiza->password));
         $this->post('/connexion', ['email' => 'maiza@example.test', 'password' => 'secret123'])->assertRedirect();

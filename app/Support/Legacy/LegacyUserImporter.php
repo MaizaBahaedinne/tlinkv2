@@ -3,6 +3,7 @@
 namespace App\Support\Legacy;
 
 use App\Models\OrgNode;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -236,6 +237,7 @@ final class LegacyUserImporter
 
         if ($userId !== null) {
             $this->stats['updated']++;
+            $this->refreshNames($userId, $row);
 
             return [$userId, false];
         }
@@ -250,9 +252,14 @@ final class LegacyUserImporter
         $createdAt = $this->datetime($row['createdDtm']) ?? $this->now;
         $updatedAt = $this->datetime($row['updatedDtm'] ?? null) ?? $createdAt;
 
+        $displayName = Str::limit($this->displayName($row, $email), 255, '');
+        [$firstName, $lastName] = $this->legacyNames($row, $displayName) ?? User::splitName($displayName);
+
         $userId = (int) DB::table('users')->insertGetId([
             'legacy_id' => $legacyId,
-            'name' => Str::limit($this->displayName($row, $email), 255, ''),
+            'name' => $displayName,
+            'first_name' => $firstName !== null ? Str::limit($firstName, 120, '') : null,
+            'last_name' => $lastName !== null ? Str::limit($lastName, 120, '') : null,
             'email' => $email,
             'email_verified_at' => $this->datetime($row['mailValid']),
             'password' => $password,
@@ -443,6 +450,48 @@ final class LegacyUserImporter
     private function placeholder(int $legacyId): string
     {
         return 'legacy-'.$legacyId.'@'.self::PLACEHOLDER_DOMAIN;
+    }
+
+    /**
+     * Prenom et nom exacts du dump (champs prenom / nom), null si l'un des deux manque
+     * ou s'ils ne correspondent pas au nom complet retenu (dans ce cas on decoupe le nom complet).
+     *
+     * @param array<string, mixed> $row
+     * @return array{0: string, 1: string}|null
+     */
+    private function legacyNames(array $row, string $displayName): ?array
+    {
+        $first = trim(preg_replace('/\s+/u', ' ', (string) $row['prenom']));
+        $last = trim(preg_replace('/\s+/u', ' ', (string) $row['nom']));
+
+        if ($first === '' || $last === '') {
+            return null;
+        }
+
+        $words = fn (string $value): array => collect(preg_split('/\s+/u', mb_strtolower(trim($value)), -1, PREG_SPLIT_NO_EMPTY))->sort()->values()->all();
+
+        return $words($first.' '.$last) === $words($displayName) ? [$first, $last] : null;
+    }
+
+    /**
+     * Rectifie le decoupage prenom / nom d'un compte deja importe, sans jamais ecraser une modification :
+     * seuls les comptes dont le nom complet est encore celui du dump sont touches.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function refreshNames(int $userId, array $row): void
+    {
+        $displayName = Str::limit($this->displayName($row, (string) $row['_email']), 255, '');
+        $names = $this->legacyNames($row, $displayName);
+
+        if ($names === null) {
+            return;
+        }
+
+        DB::table('users')
+            ->where('id', $userId)
+            ->where('name', $displayName)
+            ->update(['first_name' => Str::limit($names[0], 120, ''), 'last_name' => Str::limit($names[1], 120, '')]);
     }
 
     /** @param array<string, mixed> $row */

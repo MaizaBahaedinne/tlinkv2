@@ -61,8 +61,9 @@
 
             <h2 class="text-sm text-muted" style="margin:24px 0 12px">Compte</h2>
             <div class="form-grid">
-                <x-admin.input name="name" label="Nom" :value="$user->name" required :maxlength="255" />
-                <x-admin.input name="email" type="email" label="E-mail" :value="$user->email" required :maxlength="255" />
+                <x-admin.input name="first_name" label="Prénom" :value="$user->first_name" required :maxlength="120" />
+                <x-admin.input name="last_name" label="Nom de famille" :value="$user->last_name" required :maxlength="120" />
+                <x-admin.input name="email" type="email" label="E-mail" :value="$user->email" required :maxlength="255" :span="true" />
                 <x-admin.input name="password" type="password" label="Nouveau mot de passe" autocomplete="new-password" hint="Laisser vide pour conserver le mot de passe actuel." :span="true" />
 
                 <div class="field span-2">

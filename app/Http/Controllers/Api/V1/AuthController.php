@@ -15,14 +15,22 @@ class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
+        // Compatibilite : un client qui envoie encore `name` (nom complet) est decoupe en prenom / nom.
+        if (! $request->filled('first_name') && $request->filled('name')) {
+            [$first, $last] = User::splitName((string) $request->input('name'));
+            $request->merge(['first_name' => $first, 'last_name' => $last]);
+        }
+
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'first_name' => ['required', 'string', 'max:120'],
+            'last_name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         $user = User::query()->create([
-            'name' => $data['name'],
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
         ]);
@@ -39,6 +47,8 @@ class AuthController extends Controller
             'data' => [
                 'id' => $user->id,
                 'name' => $user->name,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
                 'email' => $user->email,
             ],
         ], 201);
