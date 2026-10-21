@@ -99,6 +99,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('feuille-de-route', [Admin\RoadmapController::class, 'index'])->name('roadmap.index');
             Route::post('feuille-de-route', [Admin\RoadmapController::class, 'update'])->name('roadmap.update');
             Route::get('journal', [Admin\AuditLogController::class, 'index'])->name('audit.index');
+            Route::get('utilisateurs/{user}/modifier', [Admin\UserController::class, 'edit'])->name('users.edit');
+            Route::put('utilisateurs/{user}', [Admin\UserController::class, 'update'])->name('users.update');
         });
 
         // Communaute

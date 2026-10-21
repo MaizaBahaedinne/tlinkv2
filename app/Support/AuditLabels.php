@@ -26,6 +26,7 @@ class AuditLabels
         'admin.club.created' => 'Club créé',
         'admin.club.updated' => 'Club modifié',
         'admin.club.deleted' => 'Club supprimé',
+        'admin.user.updated' => 'Utilisateur modifié',
         'admin.event.created' => 'Événement créé',
         'admin.event.updated' => 'Événement modifié',
         'admin.event.deleted' => 'Événement supprimé',

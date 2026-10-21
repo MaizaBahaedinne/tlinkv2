@@ -123,6 +123,75 @@ class AdminBackofficeTest extends TestCase
         $this->actingAs($admin)->post("/admin/utilisateurs/{$member->id}/roles", ['role_id' => 1])->assertNotFound();
     }
 
+    public function test_global_admin_can_edit_a_user_and_their_profile(): void
+    {
+        $admin = $this->adminWith(self::ALL_PERMISSIONS);
+        $member = User::factory()->create(['email' => 'avant@example.test']);
+        $oldHash = $member->password;
+
+        $this->actingAs($admin)->get("/admin/utilisateurs/{$member->id}")->assertOk()->assertSee('/modifier', false);
+        $this->actingAs($admin)->get("/admin/utilisateurs/{$member->id}/modifier")->assertOk()->assertSee($member->email);
+
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$member->id}", [
+            'name' => 'Nouveau Nom', 'email' => 'apres@example.test', 'password' => '',
+            'is_active' => '0', 'deactivated_reason' => 'Compte en doublon',
+            'headline' => 'Étudiant', 'phone' => '+216 20 000 000', 'gender' => 'female', 'birth_date' => '2000-05-01',
+            'bio' => 'Bio',
+        ])->assertRedirect(route('admin.users.show', $member))->assertSessionHas('status');
+
+        $member->refresh();
+        $this->assertSame('Nouveau Nom', $member->name);
+        $this->assertSame('apres@example.test', $member->email);
+        $this->assertSame($oldHash, $member->password, 'Un mot de passe vide ne change rien.');
+        $this->assertFalse($member->is_active);
+        $this->assertSame('Compte en doublon', $member->deactivated_reason);
+        $this->assertNotNull($member->deactivated_at);
+        $this->assertSame('Étudiant', $member->profile->headline);
+        $this->assertSame('2000-05-01', $member->profile->birth_date->toDateString());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'admin.user.updated', 'actor_id' => $admin->id, 'target_id' => $member->id]);
+
+        // Reactivation + nouveau mot de passe.
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$member->id}", [
+            'name' => 'Nouveau Nom', 'email' => 'apres@example.test', 'password' => 'Nouveau-Mot-De-Passe-42', 'is_active' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $member->refresh();
+        $this->assertTrue($member->is_active);
+        $this->assertNull($member->deactivated_at);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('Nouveau-Mot-De-Passe-42', $member->password));
+    }
+
+    public function test_user_edit_validates_email_and_protects_the_own_account(): void
+    {
+        $admin = $this->adminWith(self::ALL_PERMISSIONS);
+        $other = User::factory()->create(['email' => 'pris@example.test']);
+
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$admin->id}", [
+            'name' => $admin->name, 'email' => 'pris@example.test',
+        ])->assertSessionHasErrors('email');
+
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$admin->id}", [
+            'name' => $admin->name, 'email' => $admin->email, 'is_active' => '0',
+        ])->assertSessionHasNoErrors();
+        $this->assertTrue($admin->fresh()->is_active, 'On ne peut pas désactiver son propre compte.');
+
+        $this->actingAs($admin)->put("/admin/utilisateurs/{$other->id}", [
+            'name' => $other->name, 'email' => $other->email, 'password' => 'court',
+        ])->assertSessionHasErrors('password');
+    }
+
+    public function test_scoped_admin_and_moderator_cannot_edit_users(): void
+    {
+        $member = User::factory()->create();
+        $scoped = $this->adminWith(['entity.manage'], 'university');
+        $moderator = $this->adminWith(['post.moderate']);
+
+        foreach ([$scoped, $moderator] as $actor) {
+            $this->actingAs($actor)->get("/admin/utilisateurs/{$member->id}/modifier")->assertForbidden();
+            $this->actingAs($actor)->put("/admin/utilisateurs/{$member->id}", ['name' => 'X', 'email' => 'x@example.test'])->assertForbidden();
+        }
+    }
+
     public function test_user_page_shows_positions_and_their_access_level(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);

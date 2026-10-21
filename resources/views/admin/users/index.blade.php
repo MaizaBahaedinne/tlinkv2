@@ -63,6 +63,9 @@
                                 <td class="hide-mobile text-sm text-muted nowrap">{{ $user->created_at?->format('d/m/Y') }}</td>
                                 <td class="cell-actions">
                                     <a href="{{ route('admin.users.show', $user) }}" class="btn btn-secondary btn-sm">Voir la fiche</a>
+                                    @if($canEdit)
+                                        <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-secondary btn-sm">Modifier</a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach

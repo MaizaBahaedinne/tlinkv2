@@ -7,6 +7,9 @@
     <x-admin.page-header :title="$user->name" :subtitle="$user->email">
         <x-slot:actions>
             <a href="{{ route('admin.users.index') }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour à la liste</a>
+            @if($canEdit)
+                <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary"><x-admin.icon name="edit" :size="16" /> Modifier</a>
+            @endif
         </x-slot:actions>
     </x-admin.page-header>
 

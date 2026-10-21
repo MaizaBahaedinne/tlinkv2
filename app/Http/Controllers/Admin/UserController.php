@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Governorate;
 use App\Models\OrgAssignment;
+use App\Models\Profile;
 use App\Models\User;
 use App\Support\AccessLevels;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class UserController extends AdminController
@@ -48,6 +52,7 @@ class UserController extends AdminController
             'users' => $users,
             'filters' => $filters,
             'levels' => $levels,
+            'canEdit' => $this->context($request)->isGlobal('entity.manage'),
         ]);
     }
 
@@ -63,10 +68,91 @@ class UserController extends AdminController
 
         return view('admin.users.show', [
             'user' => $user,
+            'canEdit' => $this->context($request)->isGlobal('entity.manage'),
             'memberships' => $user->memberships()->with(['node:id,title'])->latest('id')->get(),
             'orgPositions' => $this->orgPositions($user),
             'recentPosts' => $user->posts()->latest('id')->limit(5)->get(['id', 'content', 'type', 'created_at']),
         ]);
+    }
+
+    public function edit(Request $request, User $user): View
+    {
+        $this->authorizeEdit($request);
+
+        $user->load('profile');
+
+        return view('admin.users.edit', [
+            'user' => $user,
+            'profile' => $user->profile ?? new Profile(),
+            'isSelf' => $user->is($request->user()),
+            'genders' => ['male' => 'Homme', 'female' => 'Femme'],
+            'governorates' => Governorate::query()->orderBy('name')->pluck('name', 'id')->all(),
+        ]);
+    }
+
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        $this->authorizeEdit($request);
+
+        $isSelf = $user->is($request->user());
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'password' => ['nullable', 'string', Password::defaults()],
+            'is_active' => ['nullable', 'boolean'],
+            'deactivated_reason' => ['nullable', 'string', 'max:1000'],
+            'headline' => ['nullable', 'string', 'max:160'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'phone_secondary' => ['nullable', 'string', 'max:20'],
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
+            'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'governorate_id' => ['nullable', 'integer', Rule::exists('governorates', 'id')],
+            'delegation' => ['nullable', 'string', 'max:255'],
+            'bio' => ['nullable', 'string', 'max:4000'],
+        ]);
+
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+
+        $changed = ['name', 'email'];
+
+        if (! empty($data['password'])) {
+            $user->password = $data['password'];
+            $changed[] = 'password';
+        }
+
+        // On ne peut pas desactiver son propre compte.
+        $active = $isSelf ? true : (bool) ($data['is_active'] ?? $user->is_active);
+
+        if ($active !== (bool) $user->is_active) {
+            $changed[] = 'is_active';
+        }
+
+        $user->is_active = $active;
+        $user->deactivated_at = $active ? null : ($user->deactivated_at ?? now());
+        $user->deactivated_reason = $active ? null : ($data['deactivated_reason'] ?? null);
+        $user->save();
+
+        $profile = $user->profile()->firstOrNew([]);
+        $profile->fill(array_intersect_key($data, array_flip([
+            'headline', 'phone', 'phone_secondary', 'gender', 'birth_date', 'address', 'governorate_id', 'delegation', 'bio',
+        ])));
+        $profile->user_id = $user->id;
+        $profile->save();
+
+        $this->audit($request, 'admin.user.updated', $user, ['fields' => $changed]);
+
+        return redirect()->route('admin.users.show', $user)->with('status', 'Utilisateur mis à jour.');
+    }
+
+    /**
+     * Modifier un compte (e-mail, mot de passe, activation) est reserve aux administrateurs globaux.
+     */
+    private function authorizeEdit(Request $request): void
+    {
+        abort_unless($this->context($request)->isGlobal('entity.manage'), 403, 'Seuls les administrateurs globaux peuvent modifier un utilisateur.');
     }
 
     /**
