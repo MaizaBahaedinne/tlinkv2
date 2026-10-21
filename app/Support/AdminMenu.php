@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\ApprovalRequest;
+use App\Models\ContactMessage;
 use App\Models\Membership;
 use App\Models\ModerationReport;
 
@@ -43,6 +44,8 @@ class AdminMenu
                 'items' => [
                     ['label' => 'Publications', 'route' => 'admin.posts.index', 'icon' => 'file-text', 'match' => 'admin.posts.*', 'perms' => ['post.moderate']],
                     ['label' => 'Modération', 'route' => 'admin.moderation.index', 'icon' => 'flag', 'match' => 'admin.moderation.*', 'perms' => ['post.moderate'], 'badge' => 'reports'],
+                    ['label' => 'Site public', 'route' => 'admin.site.edit', 'icon' => 'external', 'match' => 'admin.site.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Messages du site', 'route' => 'admin.messages.index', 'icon' => 'file-text', 'match' => 'admin.messages.*', 'perms' => ['entity.manage'], 'badge' => 'messages'],
                 ],
             ],
             [
@@ -95,6 +98,7 @@ class AdminMenu
                 })
                 ->count(),
             'reports' => ModerationReport::query()->where('status', 'pending')->count(),
+            'messages' => ContactMessage::query()->where('status', 'new')->count(),
             default => 0,
         };
 

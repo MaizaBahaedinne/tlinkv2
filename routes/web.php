@@ -10,6 +10,12 @@ use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
+// Site public de la Fondation : declare avant l'accueil de l'application pour prendre la racine de son domaine.
+Route::group(
+    config('site.domain') ? ['domain' => config('site.domain')] : ['prefix' => config('site.path')],
+    base_path('routes/site.php'),
+);
+
 Route::get('/', [FeedController::class, 'index'])->name('home');
 
 Route::middleware('guest')->group(function (): void {
@@ -101,6 +107,13 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('journal', [Admin\AuditLogController::class, 'index'])->name('audit.index');
             Route::get('utilisateurs/{user}/modifier', [Admin\UserController::class, 'edit'])->name('users.edit');
             Route::put('utilisateurs/{user}', [Admin\UserController::class, 'update'])->name('users.update');
+
+            // Site public de la Fondation
+            Route::get('site-public', [Admin\SiteSettingsController::class, 'edit'])->name('site.edit');
+            Route::put('site-public', [Admin\SiteSettingsController::class, 'update'])->name('site.update');
+            Route::get('messages', [Admin\ContactMessageController::class, 'index'])->name('messages.index');
+            Route::patch('messages/{message}', [Admin\ContactMessageController::class, 'update'])->name('messages.update');
+            Route::delete('messages/{message}', [Admin\ContactMessageController::class, 'destroy'])->name('messages.destroy');
         });
 
         // Communaute
