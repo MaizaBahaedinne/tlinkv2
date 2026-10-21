@@ -29,6 +29,10 @@ class OrgNode extends Model
     /** Types de blocs qu'un utilisateur peut creer a la main (le club suit la fiche Club). */
     public const MANUAL_KINDS = ['position', 'unit', 'department', 'club_department'];
 
+    public const CLUB_STATUSES = ['active' => 'Actif', 'inactive' => 'Inactif', 'archived' => 'Archivé', 'draft' => 'Brouillon'];
+
+    public const INSTITUTION_TYPES = ['university' => 'Université', 'high_school' => 'Lycée', 'other' => 'Autre'];
+
     public const CAPACITIES = ['single' => 'Un seul titulaire', 'multiple' => 'Plusieurs personnes'];
 
     public const RELATIONS = ['hierarchy' => 'Lien hiérarchique', 'attachment' => 'Rattachement (sans lien hiérarchique)'];
@@ -47,11 +51,16 @@ class OrgNode extends Model
         'title',
         'subtitle',
         'description',
-        'club_id',
         'governorate_id',
-        'entity_id',
-        'department_id',
-        'institution_id',
+        'scope',
+        'status',
+        'legacy_id',
+        'email',
+        'facebook_url',
+        'founded_on',
+        'charter_signed',
+        'institution_name',
+        'institution_type',
         'validation_status',
         'validation_note',
         'children_layout',
@@ -64,6 +73,8 @@ class OrgNode extends Model
 
     protected $casts = [
         'is_collapsed' => 'boolean',
+        'charter_signed' => 'boolean',
+        'founded_on' => 'date',
         'pos_dx' => 'integer',
         'pos_dy' => 'integer',
         'sort_order' => 'integer',
@@ -79,29 +90,9 @@ class OrgNode extends Model
         return $this->hasMany(self::class, 'parent_id')->orderBy('sort_order')->orderBy('id');
     }
 
-    public function club(): BelongsTo
-    {
-        return $this->belongsTo(Club::class);
-    }
-
     public function governorate(): BelongsTo
     {
         return $this->belongsTo(Governorate::class);
-    }
-
-    public function entity(): BelongsTo
-    {
-        return $this->belongsTo(Entity::class);
-    }
-
-    public function department(): BelongsTo
-    {
-        return $this->belongsTo(Department::class);
-    }
-
-    public function institution(): BelongsTo
-    {
-        return $this->belongsTo(Institution::class);
     }
 
     public function assignments(): HasMany

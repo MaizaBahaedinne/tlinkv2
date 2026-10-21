@@ -21,7 +21,7 @@
             <div class="form-grid">
                 <x-admin.input name="title" label="Titre" :value="$event->title" required :maxlength="255" :span="true" />
                 <x-admin.textarea name="description" label="Description" :value="$event->description" :maxlength="5000" />
-                <x-admin.select name="entity_id" label="Entité organisatrice" :options="$entities" :value="$event->entity_id" :required="! $canBeGlobal" :placeholder="$canBeGlobal ? 'Aucune (global)' : 'Sélectionner…'" />
+                <x-admin.select name="scope" label="Périmètre organisateur" :options="$scopes" :value="$event->scope" :required="! $canBeGlobal" :placeholder="$canBeGlobal ? 'Aucune (global)' : 'Sélectionner…'" />
                 <x-admin.select name="status" label="Statut" :options="$statuses" :value="$event->status" required :placeholder="null" />
                 <x-admin.input name="location" label="Lieu" :value="$event->location" :maxlength="255" :span="true" />
                 <x-admin.input name="starts_at" type="datetime-local" label="Début" :value="$dt($event->starts_at)" required />

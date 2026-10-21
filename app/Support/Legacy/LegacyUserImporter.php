@@ -2,8 +2,7 @@
 
 namespace App\Support\Legacy;
 
-use App\Models\Club;
-use App\Models\Entity;
+use App\Models\OrgNode;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -61,11 +60,8 @@ final class LegacyUserImporter
     /** @var array<string, array{id: int, legacy_id: int|null}> */
     private array $usersByEmail = [];
 
-    /** @var array<int, array{club: int, entity: int}> */
+    /** @var array<int, array{node: int, scope: string|null}> */
     private array $clubs = [];
-
-    /** @var array<string, int> */
-    private array $entities = [];
 
     /** @var array<int, array<string, mixed>> */
     private array $profileBuffer = [];
@@ -153,10 +149,9 @@ final class LegacyUserImporter
             }
         }
 
-        $this->entities = Entity::query()->pluck('id', 'slug')->map(fn ($id) => (int) $id)->all();
         $this->clubs = [];
-        foreach (Club::query()->whereNotNull('legacy_id')->get(['id', 'legacy_id', 'entity_id']) as $club) {
-            $this->clubs[(int) $club->legacy_id] = ['club' => (int) $club->id, 'entity' => (int) $club->entity_id];
+        foreach (OrgNode::query()->whereNotNull('legacy_id')->get(['id', 'legacy_id', 'scope']) as $club) {
+            $this->clubs[(int) $club->legacy_id] = ['node' => (int) $club->id, 'scope' => $club->scope];
         }
     }
 
@@ -191,8 +186,8 @@ final class LegacyUserImporter
             $existingMemberships = [];
         } else {
             $this->fillProfile($userId, $profile);
-            $existingMemberships = DB::table('memberships')->where('user_id', $userId)->get(['entity_id', 'club_id'])
-                ->mapWithKeys(fn ($m) => [$m->entity_id.'|'.($m->club_id ?? '0') => true])->all();
+            $existingMemberships = DB::table('memberships')->where('user_id', $userId)->get(['scope', 'node_id'])
+                ->mapWithKeys(fn ($m) => [$m->scope.'|'.($m->node_id ?? '0') => true])->all();
         }
 
         foreach ($group as $row) {
@@ -350,11 +345,11 @@ final class LegacyUserImporter
         $legacyClub = (int) $row['ClubID'];
 
         if (isset($this->clubs[$legacyClub])) {
-            $entityId = $this->clubs[$legacyClub]['entity'];
-            $clubId = $this->clubs[$legacyClub]['club'];
-        } elseif (isset(self::BRANCHES[$legacyClub], $this->entities[self::BRANCHES[$legacyClub]])) {
-            $entityId = $this->entities[self::BRANCHES[$legacyClub]];
-            $clubId = null;
+            $scope = $this->clubs[$legacyClub]['scope'];
+            $nodeId = $this->clubs[$legacyClub]['node'];
+        } elseif (isset(self::BRANCHES[$legacyClub])) {
+            $scope = self::BRANCHES[$legacyClub];
+            $nodeId = null;
         } else {
             $this->stats['skipped_clubs']++;
             $this->note((int) $row['userId'], 'club_unknown', 'ClubID '.$legacyClub.' introuvable (importer d\'abord les clubs)');
@@ -362,7 +357,7 @@ final class LegacyUserImporter
             return;
         }
 
-        $key = $entityId.'|'.($clubId ?? '0');
+        $key = $scope.'|'.($nodeId ?? '0');
         if (isset($existing[$key])) {
             return;
         }
@@ -374,9 +369,8 @@ final class LegacyUserImporter
 
         $this->membershipBuffer[] = [
             'user_id' => $userId,
-            'entity_id' => $entityId,
-            'department_id' => null,
-            'club_id' => $clubId,
+            'scope' => $scope,
+            'node_id' => $nodeId,
             'status' => $inactive ? 'archived' : 'approved',
             'membership_type' => self::ROLE_TYPES[(int) $row['roleId']] ?? 'member',
             'starts_at' => $created ? substr($created, 0, 10) : null,

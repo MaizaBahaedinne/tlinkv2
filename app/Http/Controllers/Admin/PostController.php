@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Post;
+use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,7 +26,7 @@ class PostController extends AdminController
     public const VISIBILITIES = [
         'public' => 'Public',
         'authenticated' => 'Membres connectés',
-        'entity' => 'Entité',
+        'entity' => 'Périmètre',
         'department' => 'Département',
         'club' => 'Club',
         'restricted' => 'Restreint',
@@ -37,11 +38,11 @@ class PostController extends AdminController
             'q' => ['nullable', 'string', 'max:100'],
             'type' => ['nullable', Rule::in(array_keys(self::TYPES))],
             'visibility' => ['nullable', Rule::in(array_keys(self::VISIBILITIES))],
-            'entity' => ['nullable', 'integer'],
+            'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
         ]);
 
         $posts = $this->scoped(Post::query(), $request, 'post.moderate')
-            ->with(['author:id,name', 'entity:id,name'])
+            ->with(['author:id,name'])
             ->withCount(['comments', 'reactions'])
             ->when($filters['q'] ?? null, function ($query, $needle): void {
                 $query->where(fn ($inner) => $inner->where('content', 'like', "%{$needle}%")
@@ -49,7 +50,7 @@ class PostController extends AdminController
             })
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
             ->when($filters['visibility'] ?? null, fn ($query, $visibility) => $query->where('visibility', $visibility))
-            ->when($filters['entity'] ?? null, fn ($query, $entity) => $query->where('entity_id', $entity))
+            ->when($filters['scope'] ?? null, fn ($query, $scope) => $query->where('scope', $scope))
             ->latest('id')
             ->paginate(15)
             ->withQueryString();
@@ -59,13 +60,13 @@ class PostController extends AdminController
             'filters' => $filters,
             'types' => self::TYPES,
             'visibilities' => self::VISIBILITIES,
-            'entities' => $this->entityOptions($request, 'post.moderate'),
+            'scopes' => $this->scopeOptions($request, 'post.moderate'),
         ]);
     }
 
     public function toggleComments(Request $request, Post $post): RedirectResponse
     {
-        $this->authorizeEntity($request, 'post.moderate', $post->entity_id);
+        $this->authorizeScope($request, 'post.moderate', $post->scope);
 
         $post->update(['comments_enabled' => ! $post->comments_enabled]);
 
@@ -76,7 +77,7 @@ class PostController extends AdminController
 
     public function destroy(Request $request, Post $post): RedirectResponse
     {
-        $this->authorizeEntity($request, 'post.moderate', $post->entity_id);
+        $this->authorizeScope($request, 'post.moderate', $post->scope);
 
         $this->audit($request, 'admin.post.deleted', $post, [
             'author_id' => $post->user_id,

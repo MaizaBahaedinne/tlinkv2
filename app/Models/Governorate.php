@@ -14,6 +14,6 @@ class Governorate extends Model
 
     public function clubs(): HasMany
     {
-        return $this->hasMany(Club::class);
+        return $this->hasMany(OrgNode::class)->where('kind', 'club');
     }
 }

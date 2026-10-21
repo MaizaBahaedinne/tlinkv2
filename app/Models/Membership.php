@@ -12,9 +12,8 @@ class Membership extends Model
 
     protected $fillable = [
         'user_id',
-        'entity_id',
-        'department_id',
-        'club_id',
+        'scope',
+        'node_id',
         'status',
         'membership_type',
         'starts_at',
@@ -35,18 +34,11 @@ class Membership extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function entity(): BelongsTo
+    /**
+     * Club (ou unite) de l'organigramme auquel l'adhesion est rattachee.
+     */
+    public function node(): BelongsTo
     {
-        return $this->belongsTo(Entity::class);
-    }
-
-    public function department(): BelongsTo
-    {
-        return $this->belongsTo(Department::class);
-    }
-
-    public function club(): BelongsTo
-    {
-        return $this->belongsTo(Club::class);
+        return $this->belongsTo(OrgNode::class, 'node_id');
     }
 }

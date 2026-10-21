@@ -32,7 +32,7 @@
         title: 'Intitulé', subtitle: 'Sous-titre', description: 'Description', category: 'Catégorie',
         relation_type: 'Nature du lien', parent_id: 'Rattachement', validation_status: 'Statut du lien',
         validation_note: 'Note de validation', children_layout: 'Disposition', is_collapsed: 'Repli par défaut',
-        governorate_id: 'Gouvernorat', kind: 'Type', entity_id: 'Entité', department_id: 'Département', institution_id: 'Institution'
+        governorate_id: 'Gouvernorat', kind: 'Type', scope: 'Périmètre', email: 'E-mail', facebook_url: 'Facebook'
     };
 
     var S = {
@@ -754,26 +754,33 @@
         return h('button', { type: 'button', class: 'oc-btn ' + (cls || ''), onclick: onclick, text: label });
     }
 
-    // Entité, département, institution, club, gouvernorat et effectifs rattachés au bloc.
+    // Perimetre, club (statut, etablissement, contact) et effectifs rattaches au bloc.
     function platformLinks(n) {
-        var urls = n.admin_urls || {};
         var rows = [];
 
         function row(label, text, url, extra) {
             if (!text) { return; }
             rows.push(h('div', { class: 'oc-link-row' },
                 h('span', { class: 'oc-muted', text: label }),
-                url ? h('a', { href: url, text: text }) : h('strong', { text: text }),
+                url ? h('a', { href: url, text: text, rel: 'noopener' }) : h('strong', { text: text }),
                 extra ? h('small', { class: 'oc-muted', text: extra }) : null
             ));
         }
 
         function plural(count, word) { return count + ' ' + word + (count > 1 ? 's' : ''); }
 
-        row('Entité', n.entity_name, urls.entity, n.entity_inherited ? 'hérité du bloc parent' : (n.members_entity != null ? plural(n.members_entity, 'adhérent') : null));
-        row('Département', n.department_name, urls.department, n.department_inherited ? 'hérité du bloc parent' : null);
-        row('Institution', n.institution_name, urls.institution, n.members_institution != null ? plural(n.members_institution, 'adhérent') : null);
-        row('Club', n.club_name, urls.club, [n.club_status && n.club_status !== 'active' ? 'statut : ' + n.club_status : null, n.members_club != null ? plural(n.members_club, 'adhérent') : null].filter(Boolean).join(' · '));
+        var meta = S.chart.meta || {};
+        var isClub = n.kind === 'club';
+
+        row('Périmètre', n.scope_name, null, n.scope_inherited ? 'hérité du bloc parent' : (n.members_scope != null ? plural(n.members_scope, 'adhérent') : null));
+        if (isClub) {
+            row('Statut', (meta.club_statuses || {})[n.status] || n.status, null, n.members_club != null ? plural(n.members_club, 'adhérent') : null);
+            row('Établissement', n.institution_name, null, (meta.institution_types || {})[n.institution_type] || null);
+            row('E-mail', n.email, n.email ? 'mailto:' + n.email : null);
+            row('Facebook', n.facebook_url, /^https?:\/\//i.test(n.facebook_url || '') ? n.facebook_url : null);
+            row('Fondé le', n.founded_on);
+            row('Charte', n.charter_signed ? 'signée' : null);
+        }
         row('Gouvernorat', n.governorate_name);
 
         return rows.length ? h('div', { class: 'oc-links' }, rows) : null;
@@ -966,7 +973,7 @@
         var matches = [];
         S.nodes.forEach(function (n) {
             var people = peopleOf(n);
-            var hay = norm([n.title, n.subtitle, n.club_name, n.governorate_name, n.entity_name, n.department_name, n.institution_name, n.description].concat(people.map(function (p) { return p.full_name + ' ' + (p.job_title || ''); })).join(' '));
+            var hay = norm([n.title, n.subtitle, n.governorate_name, n.scope_name, n.institution_name, n.description].concat(people.map(function (p) { return p.full_name + ' ' + (p.job_title || ''); })).join(' '));
             if (words.every(function (w) { return hay.indexOf(w) !== -1; })) { matches.push(n); }
         });
 
@@ -1111,11 +1118,17 @@
         fillSelect($('#n-gov'), meta.governorates.map(function (g) { return { value: g.id, label: g.name }; }), n ? n.governorate_id : '', '— Aucun —');
         $('#n-gov-wrap').hidden = !isClub;
         $('#n-structure').hidden = !S.canEdit;
-        fillStructureSelects({
-            entity: n ? n.entity_id : '',
-            department: n ? n.department_id : '',
-            institution: n ? n.institution_id : ''
-        }, !isClub);
+        fillSelect($('#n-scope'), mapOptions(meta.scopes || {}), n ? n.scope : '', isClub ? '\u2014 Aucun \u2014' : '\u2014 H\u00e9rit\u00e9 du bloc parent \u2014');
+        $('#n-club-fields').hidden = !isClub || !S.canEdit;
+        if (isClub) {
+            fillSelect($('#n-status'), mapOptions(meta.club_statuses || {}), n.status || 'active');
+            fillSelect($('#n-inst-type'), mapOptions(meta.institution_types || {}), n.institution_type || '', '\u2014 Aucun \u2014');
+            $('#n-email').value = n.email || '';
+            $('#n-facebook').value = n.facebook_url || '';
+            $('#n-founded').value = n.founded_on || '';
+            $('#n-charter').checked = !!n.charter_signed;
+            $('#n-inst-name').value = n.institution_name || '';
+        }
 
         var blocked = {};
         if (n) { blocked[n.id] = true; descendantIds(n.id).forEach(function (id) { blocked[id] = true; }); }
@@ -1137,33 +1150,11 @@
         $('#n-title').focus();
     }
 
-    // Entit\u00e9 > d\u00e9partement / institution : les listes suivent l'entit\u00e9 choisie.
-    function fillStructureSelects(vals, inheritable) {
-        var meta = S.chart.meta;
-        var entities = meta.entities || [];
-        fillSelect($('#n-entity'), entities.map(function (e) { return { value: e.id, label: e.name }; }), vals.entity, inheritable ? '\u2014 H\u00e9rit\u00e9e du bloc parent \u2014' : '\u2014 Aucune \u2014');
-        refillDependents(vals.department, vals.institution);
-    }
-
-    function refillDependents(departmentId, institutionId) {
-        var meta = S.chart.meta;
-        var entityId = Number($('#n-entity').value) || null;
-        var departments = (meta.departments || []).filter(function (d) { return !entityId || d.entity_id === entityId; });
-        var institutions = (meta.institutions || []).filter(function (i) { return !entityId || i.entity_id === entityId || i.entity_id == null; });
-        if (!departments.some(function (d) { return d.id === Number(departmentId); })) { departmentId = ''; }
-        if (!institutions.some(function (i) { return i.id === Number(institutionId); })) { institutionId = ''; }
-        fillSelect($('#n-department'), departments.map(function (d) { return { value: d.id, label: d.name }; }), departmentId, '\u2014 Aucun \u2014');
-        fillSelect($('#n-institution'), institutions.map(function (i) { return { value: i.id, label: i.name }; }), institutionId, '\u2014 Aucune \u2014');
-    }
-
-    $('#n-entity').addEventListener('change', function () {
-        refillDependents(Number($('#n-department').value) || '', Number($('#n-institution').value) || '');
-    });
-
     function syncWithPlatform() {
         api('POST', '/synchroniser', {}).then(function (res) {
             var s = res.sync || {};
-            applyResponse(res, s.created ? s.created + ' bloc' + (s.created > 1 ? 's' : '') + ' de club ajout\u00e9' + (s.created > 1 ? 's' : '') + '.' : 'L\u2019organigramme est d\u00e9j\u00e0 \u00e0 jour avec les clubs.');
+            var changed = (s.linked || 0) + (s.updated || 0) + (s.departments || 0);
+            applyResponse(res, changed ? changed + ' bloc' + (changed > 1 ? 's' : '') + ' mis \u00e0 jour.' : 'L\u2019organigramme est d\u00e9j\u00e0 align\u00e9.');
         }).catch(function (err) { toast(formatError(err), 'error'); });
     }
 
@@ -1191,10 +1182,17 @@
             children_layout: $('#n-layout').value,
             is_collapsed: $('#n-collapsed').checked ? 1 : 0,
             governorate_id: isClub ? (Number($('#n-gov').value) || null) : (n ? n.governorate_id : null),
-            entity_id: Number($('#n-entity').value) || null,
-            department_id: Number($('#n-department').value) || null,
-            institution_id: Number($('#n-institution').value) || null
+            scope: $('#n-scope').value || null
         };
+        if (isClub) {
+            body.status = $('#n-status').value;
+            body.email = $('#n-email').value.trim() || null;
+            body.facebook_url = $('#n-facebook').value.trim() || null;
+            body.founded_on = $('#n-founded').value || null;
+            body.charter_signed = $('#n-charter').checked ? 1 : 0;
+            body.institution_name = $('#n-inst-name').value.trim() || null;
+            body.institution_type = $('#n-inst-type').value || null;
+        }
         if (!isClub) {
             body.kind = $('#n-kind').value;
             body.capacity = body.kind === 'position' ? $('#n-capacity').value : 'single';
@@ -1465,7 +1463,7 @@
             title: n.title, subtitle: n.subtitle, description: n.description, category: n.category,
             relation_type: n.relation_type, parent_id: n.parent_id, validation_status: n.validation_status,
             validation_note: n.validation_note, children_layout: n.children_layout, is_collapsed: n.is_collapsed ? 1 : 0,
-            governorate_id: n.governorate_id, entity_id: n.entity_id, department_id: n.department_id, institution_id: n.institution_id
+            governorate_id: n.governorate_id, scope: n.scope
         }, n.kind === 'club' ? {} : { kind: n.kind }, over || {});
     }
 

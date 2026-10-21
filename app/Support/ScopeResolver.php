@@ -7,12 +7,12 @@ use App\Models\User;
 class ScopeResolver
 {
     /**
-     * Entites que l'utilisateur gere pour une permission. [] = perimetre global (ou aucune permission :
+     * Perimetres que l'utilisateur gere pour une permission. [] = perimetre global (ou aucune permission :
      * les appelants verifient d'abord AccessScope::can()).
      *
-     * @return array<int>
+     * @return array<int, string>
      */
-    public static function managedEntityIds(User $user, string $permissionSlug): array
+    public static function managedScopes(User $user, string $permissionSlug): array
     {
         $scopes = OrgAccess::grants($user)[$permissionSlug] ?? [];
 
@@ -20,6 +20,6 @@ class ScopeResolver
             return [];
         }
 
-        return array_values(array_unique(array_map('intval', $scopes)));
+        return array_values(array_unique(array_map('strval', $scopes)));
     }
 }

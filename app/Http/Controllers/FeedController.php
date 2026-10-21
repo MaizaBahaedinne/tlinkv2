@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
-use App\Models\Entity;
 use App\Models\Governorate;
+use App\Support\OrgScopes;
 use App\Models\Post;
 use App\Models\PostAttachment;
 use App\Models\PostReaction;
@@ -120,7 +120,7 @@ class FeedController extends Controller
             'posts' => $posts,
             'feedPayload' => $feedPayload,
             'user' => $request->user(),
-            'entities' => Entity::query()->orderBy('name')->get(['id', 'name', 'slug']),
+            'entities' => collect(OrgScopes::ALL)->map(fn (string $name, string $slug): array => ['id' => $slug, 'name' => $name, 'slug' => $slug])->values(),
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
     }

@@ -32,7 +32,7 @@ class AdminAccessTest extends TestCase
         $response->assertJsonStructure([
             'data' => [
                 'is_global',
-                'managed_entity_ids',
+                'managed_scopes',
                 'stats' => ['users', 'posts', 'memberships_pending', 'approvals_pending'],
             ],
         ]);

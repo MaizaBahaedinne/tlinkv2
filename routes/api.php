@@ -19,6 +19,7 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/posts', [FeedController::class, 'index']);
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/entities', [OrganizationController::class, 'entities']);
+    Route::get('/clubs', [OrganizationController::class, 'clubs']);
     Route::get('/governorates', [OrganizationController::class, 'governorates']);
 
     Route::middleware('auth')->group(function (): void {

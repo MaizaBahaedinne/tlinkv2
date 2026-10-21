@@ -3,8 +3,6 @@
 namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
-use App\Models\Club;
-use App\Observers\ClubObserver;
 use App\Support\AdminContext;
 use App\Support\AdminMenu;
 use Illuminate\Http\Request;
@@ -27,8 +25,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Club::observe(ClubObserver::class);
-
         RateLimiter::for('api', function (Request $request) {
             $key = $request->user()?->id ? 'user:'.$request->user()->id : 'ip:'.$request->ip();
 

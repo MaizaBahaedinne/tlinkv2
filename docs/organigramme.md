@@ -11,7 +11,7 @@ Titre affiché : **Organigramme de la Fondation We Are Carthage**.
 | Administrateur global (permission `entity.manage` en périmètre **global**) | Tout : ajouter / modifier / supprimer / déplacer / rattacher, gérer les personnes et leurs photos, enregistrer les positions, importer / exporter en JSON, consulter l'historique. |
 
 Aucune nouvelle permission n'est créée : la page réutilise `entity.manage` (donc aucun `db:seed` à rejouer).
-Un administrateur limité à une entité reste en lecture seule : l'organigramme est transversal à toute la fondation.
+Un administrateur limité à un périmètre reste en lecture seule : l'organigramme est transversal à toute la fondation.
 Toute écriture est contrôlée côté serveur (`403` sinon), pas seulement masquée dans l'interface.
 
 Les coordonnées (téléphone, e-mail) d'une personne dont « Coordonnées visibles par tous » est décoché ne sont **jamais envoyées** aux lecteurs.
@@ -33,7 +33,7 @@ Tous les postes sont **vacants** : aucun nom n'est inventé.
 - **24 clubs régionaux** « We Are <gouvernorat> », chacun avec une équipe type modifiable : Président du club régional, VP Marketing, VP RH, VP Events, VP R&D, Assistants et membres.
 - **University Clubs** et **High School Clubs** : branches distinctes, sans limite de nombre. Chaque club créé reçoit (au choix) l'équipe type : Président, VP Marketing / RH / Events / R&D, Assistant Marketing, Assistant RH, autres membres.
 
-Chaque club régional / université / lycée crée aussi (ou réutilise) une ligne de la table `clubs`, ce qui le relie au reste de la plateforme (rôles, publications, périmètres).
+Chaque club régional / université / lycée est un **bloc « club »** de l'organigramme : il porte lui-même ses informations (statut, e-mail, Facebook, date de fondation, charte, établissement). Il n'existe plus de table `clubs`.
 
 ### Relations confirmées ou « à valider »
 
@@ -68,7 +68,7 @@ Le filtre « Mettre en évidence les relations à valider » (panneau de gauche)
 | Poste | Seul type qui accueille des personnes (avatar affiché). |
 | Unité / branche | Regroupement (ex. branche des clubs) : sans avatar ni personne. |
 | Département de bureau national | Marketing, RH, Events, R&D d'un bureau national ; ne peut pas se trouver dans un club. |
-| Club | Suit sa fiche club (gouvernorat, entité, institution) ; sans avatar. |
+| Club | Porte ses informations (périmètre, statut, établissement, contacts, charte, gouvernorat) ; sans avatar. |
 | Département de club | Marketing, RH, Events, R&D d'un club ; uniquement dans un club. |
 
 **Capacité d'un poste** : *Un seul titulaire* (défaut) ou *Plusieurs personnes* (assistants, membres…). Vérifications côté serveur : un poste à titulaire unique refuse une deuxième personne (affectation, import), un poste ne peut pas repasser en titulaire unique s'il a déjà plusieurs personnes, et un bloc qui a des personnes ne peut pas changer pour un type autre que poste.
@@ -116,21 +116,28 @@ Un message avertit si l'on quitte la page avec des positions non enregistrées.
 
 Les exports reflètent **ce qui est affiché** (blocs repliés = non exportés) : dépliez avant d'exporter pour un document complet.
 
-## 5. Liens avec les entités, départements, institutions et clubs
+## 5. Périmètres et clubs
 
-L'organigramme n'est pas un silo : ses blocs sont rattachés à la structure de la plateforme.
+L'organigramme est l'unique source de la structure : les anciennes tables `entities`, `departments`, `institutions` et `clubs` ont été supprimées.
 
-| Bloc | Liens |
+**Périmètre.** Chaque bloc appartient à un périmètre : `foundation` (Fondation), `university` (University), `high-school` (High School) ou `alumni` (Alumni), défini dans `App\Support\OrgScopes`. Les adhésions, publications et événements portent ce périmètre (`scope`) et, le cas échéant, le club concerné (`node_id`, bloc de type club).
+
+| Bloc | Périmètre |
 | --- | --- |
-| Blocs système (présidence, bureaux nationaux University / High School, Alumni) | `entity_id` + `department_id` explicites (Fondation / Bureau national, University / Bureau universitaire, High School / Bureau lycée, Alumni / Bureau alumni) |
-| Sous-blocs (managers, postes…) | **héritent** de l'entité et du département du plus proche bloc parent (calculé à la lecture, affiché « hérité ») |
-| Bloc « club » | suit son **club** : entité, département, institution, gouvernorat, nom. Le club reste la source de vérité |
+| Blocs système (présidence, bureaux nationaux University / High School, Alumni) | explicite (`scope`) |
+| Sous-blocs (managers, postes…) | **hérité** du plus proche bloc parent (calculé à la lecture, affiché « hérité ») |
+| Bloc « club » | son propre périmètre, utilisé pour le rangement par branche et pour les droits |
 
-- Chaque club d'université ou de lycée (donc les clubs importés de l'ancienne plateforme) a son bloc, rangé par gouvernorat : *University Clubs › Tunis › ESPRIT GCEM*. Un club créé, renommé, déplacé de gouvernorat ou d'entité, ou dont l'institution change (admin, import, organigramme) met à jour son bloc automatiquement (`App\Observers\ClubObserver`). Les clubs régionaux « We Are » restent directement sous le réseau régional.
-- Depuis la fiche d'un bloc : section **Liens avec la plateforme** (entité, département, institution, club, gouvernorat, nombre d'adhérents actifs — administrateurs uniquement — et liens vers les pages d'administration). Dans « Modifier le bloc », les listes Entité / Département / Institution sont filtrées par entité ; pour un bloc club, elles modifient le club.
-- Depuis l'administration : l'icône « Voir dans l'organigramme » des listes Entités, Départements, Institutions et Clubs ouvre l'organigramme sur le bloc lié (`/organigramme/lien/{entity|department|institution|club}/{id}` → `/organigramme?bloc=ID`).
-- **Synchroniser** (menu *Ajouter* › « Synchroniser avec les clubs », ou `php artisan orgchart:sync`) : relie les blocs système et crée les blocs des clubs qui n'en ont pas. Idempotent.
-- Les exports JSON / CSV incluent entité, département et institution (par *slug*) ; l'import les restaure.
+- Droits : un poste à accès limité (voir `AccessLevels`) agit sur son périmètre, propre ou hérité. `OrgAccess::grants()` renvoie, par permission, la liste des périmètres (`null` = global). L'API expose `managed_scopes`.
+- Club : dans « Modifier le bloc », la section *Club* regroupe le statut (actif, inactif, archivé, brouillon), la date de fondation, l'établissement (nom et type), l'e-mail, la page Facebook et la charte signée. Ces champs sont ignorés pour les autres types de blocs.
+- Chaque club d'université ou de lycée (donc les clubs importés de l'ancienne plateforme) est rangé par gouvernorat : *University Clubs › Tunis › ESPRIT GCEM*. Un club rangé à la main hors d'un groupe de gouvernorat n'est jamais déplacé. Les clubs régionaux « We Are » restent directement sous le réseau régional.
+- **Synchroniser** (menu *Ajouter* › « Réaligner les clubs et périmètres », ou `php artisan orgchart:sync`) : pose le périmètre des blocs système et range les clubs dans leur groupe de gouvernorat. Idempotent.
+- Les exports JSON / CSV incluent périmètre, statut, établissement et identifiant legacy ; l'import les restaure. L'import reconstruit les blocs mais conserve les liens des adhésions, publications et événements avec les clubs (par identifiant legacy, clé système, sinon titre et gouvernorat).
+- API : `GET /api/v1/entities` renvoie les périmètres, `GET /api/v1/clubs` les clubs (blocs de type club). Une adhésion se demande avec `scope` (et `node_id` optionnel).
+
+### Migration depuis les anciennes tables
+
+La migration `2026_10_23_100000_fold_structure_into_org_chart` reprend les données puis supprime les tables. **Elle est irréversible** : une sauvegarde JSON complète (tables supprimées et liens des adhésions / publications / événements) est écrite dans `storage/app/backups/structure-*.json`. Faites une sauvegarde de la base avant de la lancer.
 
 ## 6. Architecture
 
@@ -160,13 +167,13 @@ Choix techniques :
 ```bash
 git pull origin main
 php artisan migrate --force
-php artisan orgchart:sync     # relie l'organigramme aux entités / clubs (après un import legacy notamment)
+php artisan orgchart:sync     # périmètres des blocs système et rangement des clubs (après un import legacy notamment)
 php artisan storage:link      # une seule fois : photos des personnes (disque public)
 php artisan optimize:clear
 ```
 
 Aucun seeder à lancer : l'organigramme initial est créé à la première ouverture de `/organigramme`
-(les gouvernorats manquants sont créés si besoin ; les clubs « We Are … » déjà présents dans `clubs` sont réutilisés).
+(les gouvernorats manquants sont créés si besoin).
 
 Les photos sont stockées dans `storage/app/public/orgchart/people`.
 

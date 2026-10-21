@@ -31,7 +31,7 @@ class ApprovalDecisionService
         if ($approvalRequest->approvable_type === Membership::class) {
             $membership = Membership::query()->findOrFail($approvalRequest->approvable_id);
 
-            if (! AccessScope::can($actor, 'approval.review', $membership->entity_id)) {
+            if (! AccessScope::can($actor, 'approval.review', $membership->scope)) {
                 return new ApprovalDecisionException('Permission insuffisante.', 403);
             }
         }

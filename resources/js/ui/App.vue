@@ -36,7 +36,7 @@ type RootData = {
     user?: { id: number; name: string; email: string };
   };
   feed: FeedPost[];
-  entities: Array<{ id: number; name: string; slug: string }>;
+  entities: Array<{ id: number | string; name: string; slug: string }>;
   governorates: Array<{ id: number; name: string; slug: string }>;
   csrf: string;
 };

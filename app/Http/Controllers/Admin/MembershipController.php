@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Membership;
+use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -32,7 +33,7 @@ class MembershipController extends AdminController
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in(array_keys(self::STATUSES))],
-            'entity' => ['nullable', 'integer'],
+            'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
         ]);
 
         $base = $this->scoped(Membership::query(), $request, 'membership.manage');
@@ -40,9 +41,9 @@ class MembershipController extends AdminController
         $counts = (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all();
 
         $memberships = (clone $base)
-            ->with(['user:id,name,email', 'entity:id,name', 'department:id,name', 'club:id,name'])
+            ->with(['user:id,name,email', 'node:id,title'])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['entity'] ?? null, fn ($query, $entity) => $query->where('entity_id', $entity))
+            ->when($filters['scope'] ?? null, fn ($query, $scope) => $query->where('scope', $scope))
             ->when($filters['q'] ?? null, function ($query, $needle): void {
                 $query->whereHas('user', fn ($user) => $user->where('name', 'like', "%{$needle}%")->orWhere('email', 'like', "%{$needle}%"));
             })
@@ -57,13 +58,13 @@ class MembershipController extends AdminController
             'transitions' => self::TRANSITIONS,
             'counts' => $counts,
             'canReview' => $this->context($request)->can('approval.review'),
-            'entities' => $this->entityOptions($request, 'membership.manage'),
+            'scopes' => $this->scopeOptions($request, 'membership.manage'),
         ]);
     }
 
     public function update(Request $request, Membership $membership): RedirectResponse
     {
-        $this->authorizeEntity($request, 'membership.manage', $membership->entity_id);
+        $this->authorizeScope($request, 'membership.manage', $membership->scope);
 
         $data = $request->validate([
             'status' => ['required', Rule::in(['approved', 'suspended', 'archived'])],

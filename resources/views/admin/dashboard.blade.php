@@ -7,7 +7,7 @@
     <x-admin.page-header :title="'Bonjour, '.$firstName" :subtitle='ucfirst($today)." — voici l’état de la plateforme."'>
         <x-slot:actions>
             @if($ctx->can('entity.manage'))
-                <a href="{{ route('admin.clubs.create') }}" class="btn btn-secondary"><x-admin.icon name="plus" :size="16" /> Nouveau club</a>
+                <a href="{{ route('orgchart.index') }}" class="btn btn-secondary"><x-admin.icon name="network" :size="16" /> Organigramme</a>
             @endif
             @if($ctx->can('event.manage'))
                 <a href="{{ route('admin.events.create') }}" class="btn btn-primary"><x-admin.icon name="plus" :size="16" /> Nouvel événement</a>
@@ -57,10 +57,7 @@
                 <div class="card-head"><h2>Accès rapides</h2></div>
                 <div class="quick">
                     @if($ctx->can('entity.manage'))
-                        <a href="{{ route('admin.entities.index') }}"><x-admin.icon name="building" /> Entités</a>
-                        <a href="{{ route('admin.departments.index') }}"><x-admin.icon name="layers" /> Départements</a>
-                        <a href="{{ route('admin.institutions.index') }}"><x-admin.icon name="graduation" /> Institutions</a>
-                        <a href="{{ route('admin.clubs.index') }}"><x-admin.icon name="users" /> Clubs</a>
+                        <a href="{{ route('orgchart.index') }}"><x-admin.icon name="network" /> Organigramme</a>
                     @endif
                     @if($ctx->canAny(['entity.manage', 'membership.manage']))
                         <a href="{{ route('admin.users.index') }}"><x-admin.icon name="user" /> Utilisateurs</a>
@@ -91,7 +88,7 @@
                         <x-admin.avatar :name="$membership->user?->name ?? '?'" :size="38" />
                         <div class="grow">
                             <strong>{{ $membership->user?->name ?? 'Utilisateur supprimé' }}</strong>
-                            <span class="cell-sub">{{ $membership->entity?->name ?? '—' }} · {{ $membership->membership_type }}</span>
+                            <span class="cell-sub">{{ \App\Support\OrgScopes::label($membership->scope) ?? '—' }} · {{ $membership->membership_type }}</span>
                         </div>
                         <span class="text-sm text-muted nowrap">{{ $membership->created_at?->diffForHumans() }}</span>
                     </a>
@@ -128,20 +125,19 @@
             @if($organization !== null)
                 <article class="card card-flush">
                     <div class="card-head">
-                        <div><h2>Organisation</h2><p class="sub">Répartition par entité</p></div>
-                        <a href="{{ route('admin.entities.index') }}" class="btn btn-ghost btn-sm">Gérer <x-admin.icon name="arrow-right" :size="14" /></a>
+                        <div><h2>Organisation</h2><p class="sub">Répartition par périmètre</p></div>
+                        <a href="{{ route('orgchart.index') }}" class="btn btn-ghost btn-sm">Gérer <x-admin.icon name="arrow-right" :size="14" /></a>
                     </div>
-                    @forelse($organization as $entity)
-                        <a href="{{ route('admin.entities.edit', $entity) }}" class="list-item">
+                    @forelse($organization as $scopeRow)
+                        <a href="{{ route('orgchart.index') }}" class="list-item">
                             <span class="stat-icon tone-blue" style="width:38px;height:38px;border-radius:11px"><x-admin.icon name="building" :size="18" /></span>
                             <div class="grow">
-                                <strong>{{ $entity->name }}</strong>
-                                <span class="cell-sub">{{ $entity->departments_count }} dép. · {{ $entity->institutions_count }} inst. · {{ $entity->clubs_count }} clubs</span>
+                                <strong>{{ $scopeRow['name'] }}</strong>
+                                <span class="cell-sub">{{ $scopeRow['clubs'] }} clubs · {{ $scopeRow['memberships'] }} adhésions</span>
                             </div>
-                            <x-admin.badge :status="$entity->is_active ? 'active' : 'inactive'" />
                         </a>
                     @empty
-                        <x-admin.empty icon="building" title="Aucune entité" text="Commencez par créer votre première entité." />
+                        <x-admin.empty icon="building" title="Aucun périmètre" text="Aucun périmètre n’est géré par votre compte." />
                     @endforelse
                 </article>
             @endif

@@ -3,12 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalRequest;
-use App\Models\Department;
-use App\Models\Entity;
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Models\Membership;
 use App\Models\ModerationReport;
+use App\Models\OrgNode;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,28 +29,18 @@ class AdminBackofficeTest extends TestCase
     ];
 
     /**
-     * Les droits viennent du niveau d'accès du poste : global, entité (si une entité est donnée) ou modérateur seul.
+     * Les droits viennent du niveau d'accès du poste : global, périmètre (si un périmètre est donné) ou modérateur seul.
      *
      * @param array<int, string> $permissions
      */
-    private function adminWith(array $permissions, ?Entity $entity = null): User
+    private function adminWith(array $permissions, ?string $scope = null): User
     {
         $user = User::factory()->create();
-        $level = $entity ? 'entity_admin' : (in_array('entity.manage', $permissions, true) ? 'global_admin' : 'moderator');
+        $level = $scope ? 'entity_admin' : (in_array('entity.manage', $permissions, true) ? 'global_admin' : 'moderator');
 
-        $this->grantAccess($user, $level, $entity);
+        $this->grantAccess($user, $level, $scope);
 
         return $user;
-    }
-
-    private function entity(string $name = 'Fondation'): Entity
-    {
-        return Entity::query()->create([
-            'name' => $name,
-            'slug' => str($name)->slug()->toString(),
-            'category' => 'Fondation',
-            'is_active' => true,
-        ]);
     }
 
     public function test_guest_is_redirected_to_login(): void
@@ -67,15 +56,10 @@ class AdminBackofficeTest extends TestCase
     public function test_global_admin_can_open_every_section(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
-        $entity = $this->entity();
-        $event = FoundationEvent::query()->create(['title' => 'Assemblée', 'status' => 'published', 'entity_id' => $entity->id]);
+        $event = FoundationEvent::query()->create(['title' => 'Assemblée', 'status' => 'published', 'scope' => 'foundation']);
 
         $urls = [
             '/admin', '/admin/feuille-de-route', '/admin/journal',
-            '/admin/entites', '/admin/entites/creer', "/admin/entites/{$entity->id}/modifier",
-            '/admin/departements', '/admin/departements/creer',
-            '/admin/institutions', '/admin/institutions/creer',
-            '/admin/clubs', '/admin/clubs/creer',
             '/admin/utilisateurs', "/admin/utilisateurs/{$admin->id}",
             '/admin/adhesions',
             '/admin/publications', '/admin/moderation', '/admin/approbations',
@@ -93,69 +77,41 @@ class AdminBackofficeTest extends TestCase
 
         $this->actingAs($moderator)->get('/admin')->assertOk();
         $this->actingAs($moderator)->get('/admin/publications')->assertOk();
-        $this->actingAs($moderator)->get('/admin/entites')->assertForbidden();
+        $this->actingAs($moderator)->get('/admin/journal')->assertForbidden();
         $this->actingAs($moderator)->get('/admin/evenements')->assertForbidden();
     }
 
-    public function test_global_admin_manages_the_organisation_structure(): void
+    public function test_structure_screens_are_replaced_by_the_org_chart(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
 
-        $this->actingAs($admin)->post('/admin/entites', [
-            'name' => 'Branche Tunis', 'category' => 'Branche', 'is_active' => '1',
-        ])->assertRedirect(route('admin.entities.index'));
-
-        $entity = Entity::query()->where('name', 'Branche Tunis')->firstOrFail();
-        $this->assertSame('branche-tunis', $entity->slug);
-
-        $this->actingAs($admin)->post('/admin/departements', [
-            'entity_id' => $entity->id, 'name' => 'Informatique',
-        ])->assertRedirect(route('admin.departments.index'));
-
-        $department = Department::query()->where('name', 'Informatique')->firstOrFail();
-
-        $this->actingAs($admin)->post('/admin/clubs', [
-            'name' => 'Club Robotique', 'entity_id' => $entity->id, 'department_id' => $department->id, 'status' => 'active',
-        ])->assertRedirect(route('admin.clubs.index'));
-
-        $this->assertDatabaseHas('clubs', ['slug' => 'club-robotique', 'entity_id' => $entity->id]);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'admin.club.created', 'actor_id' => $admin->id]);
-
-        // L'entite contient des elements : suppression refusee.
-        $this->actingAs($admin)->delete("/admin/entites/{$entity->id}")->assertSessionHas('error');
-        $this->assertDatabaseHas('entities', ['id' => $entity->id]);
+        foreach (['entites', 'departements', 'institutions', 'clubs'] as $section) {
+            $this->actingAs($admin)->get("/admin/{$section}")->assertNotFound();
+        }
     }
 
-    public function test_club_rejects_department_from_another_entity(): void
+    public function test_scoped_admin_is_limited_to_their_scope(): void
+    {
+        $admin = $this->adminWith(['event.manage'], 'university');
+        $own = FoundationEvent::query()->create(['title' => 'Événement fac', 'status' => 'published', 'scope' => 'university']);
+        $other = FoundationEvent::query()->create(['title' => 'Événement lycée', 'status' => 'published', 'scope' => 'high-school']);
+
+        $this->actingAs($admin)->get('/admin/evenements')->assertOk()->assertSee('Événement fac')->assertDontSee('Événement lycée');
+        $this->actingAs($admin)->get("/admin/evenements/{$own->id}/modifier")->assertOk();
+        $this->actingAs($admin)->get("/admin/evenements/{$other->id}/modifier")->assertForbidden();
+
+        $this->actingAs($admin)->post('/admin/evenements', [
+            'title' => 'Intrus', 'scope' => 'high-school', 'approval_required' => '0', 'status' => 'draft',
+        ])->assertSessionHasErrors('scope');
+    }
+
+    public function test_club_nodes_are_counted_in_the_organisation_overview(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
-        $first = $this->entity('Première');
-        $second = $this->entity('Seconde');
-        $department = Department::query()->create(['entity_id' => $second->id, 'name' => 'Droit', 'slug' => 'droit']);
+        $parent = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'unit', 'category' => 'education', 'title' => 'Branche', 'sort_order' => 0]);
+        OrgNode::query()->create(['parent_id' => $parent->id, 'relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'education', 'title' => 'Club Robotique', 'scope' => 'university', 'sort_order' => 0]);
 
-        $this->actingAs($admin)->post('/admin/clubs', [
-            'name' => 'Club X', 'entity_id' => $first->id, 'department_id' => $department->id, 'status' => 'active',
-        ])->assertSessionHasErrors('department_id');
-
-        $this->assertDatabaseMissing('clubs', ['name' => 'Club X']);
-    }
-
-    public function test_scoped_admin_is_limited_to_their_entity(): void
-    {
-        $own = $this->entity('Mon entité');
-        $other = $this->entity('Autre entité');
-        $admin = $this->adminWith(['entity.manage'], $own);
-
-        $this->actingAs($admin)->get('/admin/entites')->assertOk()->assertSee('Mon entité')->assertDontSee('Autre entité');
-        $this->actingAs($admin)->get("/admin/entites/{$own->id}/modifier")->assertOk();
-        $this->actingAs($admin)->get("/admin/entites/{$other->id}/modifier")->assertForbidden();
-        $this->actingAs($admin)->get('/admin/entites/creer')->assertForbidden();
-        $this->actingAs($admin)->delete("/admin/entites/{$own->id}")->assertForbidden();
-
-        $this->actingAs($admin)->post('/admin/departements', ['entity_id' => $other->id, 'name' => 'Intrus'])
-            ->assertSessionHasErrors('entity_id');
-        $this->actingAs($admin)->post('/admin/departements', ['entity_id' => $own->id, 'name' => 'Légitime'])
-            ->assertRedirect(route('admin.departments.index'));
+        $this->actingAs($admin)->get('/admin')->assertOk();
     }
 
     public function test_roles_screen_and_manual_role_routes_no_longer_exist(): void
@@ -183,9 +139,8 @@ class AdminBackofficeTest extends TestCase
     public function test_membership_status_transitions_are_enforced(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
-        $entity = $this->entity();
-        $approved = Membership::query()->create(['user_id' => User::factory()->create()->id, 'entity_id' => $entity->id, 'status' => 'approved']);
-        $pending = Membership::query()->create(['user_id' => User::factory()->create()->id, 'entity_id' => $entity->id, 'status' => 'pending']);
+        $approved = Membership::query()->create(['user_id' => User::factory()->create()->id, 'scope' => 'foundation', 'status' => 'approved']);
+        $pending = Membership::query()->create(['user_id' => User::factory()->create()->id, 'scope' => 'foundation', 'status' => 'pending']);
 
         $this->actingAs($admin)->patch("/admin/adhesions/{$approved->id}", ['status' => 'suspended'])->assertSessionHas('status');
         $this->assertSame('suspended', $approved->fresh()->status);
@@ -197,9 +152,8 @@ class AdminBackofficeTest extends TestCase
     public function test_approval_can_be_decided_from_the_back_office(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
-        $entity = $this->entity();
         $requester = User::factory()->create();
-        $membership = Membership::query()->create(['user_id' => $requester->id, 'entity_id' => $entity->id, 'status' => 'pending']);
+        $membership = Membership::query()->create(['user_id' => $requester->id, 'scope' => 'foundation', 'status' => 'pending']);
         $approval = ApprovalRequest::query()->create([
             'request_type' => 'membership', 'requester_id' => $requester->id,
             'approvable_type' => Membership::class, 'approvable_id' => $membership->id,
@@ -243,10 +197,9 @@ class AdminBackofficeTest extends TestCase
     public function test_events_can_be_created_and_registrations_updated(): void
     {
         $admin = $this->adminWith(self::ALL_PERMISSIONS);
-        $entity = $this->entity();
 
         $this->actingAs($admin)->post('/admin/evenements', [
-            'title' => 'Journée portes ouvertes', 'entity_id' => $entity->id, 'starts_at' => '2030-05-10T09:00',
+            'title' => 'Journée portes ouvertes', 'scope' => 'foundation', 'starts_at' => '2030-05-10T09:00',
             'capacity' => 50, 'approval_required' => '0', 'status' => 'published',
         ])->assertSessionHasNoErrors();
 

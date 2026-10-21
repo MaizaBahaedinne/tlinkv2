@@ -8,9 +8,11 @@ use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Support\AccessScope;
 use App\Support\AuditLogger;
+use App\Support\OrgScopes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class EventController extends Controller
 {
@@ -28,7 +30,7 @@ class EventController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'entity_id' => ['nullable', 'integer', 'exists:entities,id'],
+            'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'location' => ['nullable', 'string', 'max:255'],
@@ -36,7 +38,7 @@ class EventController extends Controller
             'approval_required' => ['nullable', 'boolean'],
         ]);
 
-        if (! AccessScope::can($request->user(), 'event.manage', $data['entity_id'] ?? null)) {
+        if (! AccessScope::can($request->user(), 'event.manage', $data['scope'] ?? null)) {
             return response()->json(['message' => 'Permission insuffisante.'], 403);
         }
 
@@ -44,7 +46,7 @@ class EventController extends Controller
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'organizer_id' => $request->user()->id,
-            'entity_id' => $data['entity_id'] ?? null,
+            'scope' => $data['scope'] ?? null,
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'location' => $data['location'] ?? null,
@@ -58,7 +60,7 @@ class EventController extends Controller
             action: 'event.created',
             targetType: FoundationEvent::class,
             targetId: $event->id,
-            metadata: ['entity_id' => $event->entity_id, 'capacity' => $event->capacity],
+            metadata: ['scope' => $event->scope, 'capacity' => $event->capacity],
             ip: $request->ip(),
         );
 

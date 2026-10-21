@@ -8,15 +8,17 @@ use App\Models\ApprovalRequest;
 use App\Models\Membership;
 use App\Support\ApprovalResolver;
 use App\Support\AuditLogger;
+use App\Support\OrgScopes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MembershipController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
         $memberships = Membership::query()
-            ->with(['user:id,name,email', 'entity:id,name,slug'])
+            ->with(['user:id,name,email', 'node:id,title'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')->toString()))
             ->latest('id')
             ->paginate(min((int) $request->integer('per_page', 15), 50));
@@ -27,24 +29,22 @@ class MembershipController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'entity_id' => ['required', 'integer', 'exists:entities,id'],
-            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
-            'club_id' => ['nullable', 'integer', 'exists:clubs,id'],
+            'scope' => ['required', Rule::in(OrgScopes::slugs())],
+            'node_id' => ['nullable', 'integer', Rule::exists('org_nodes', 'id')->where('kind', 'club')],
             'membership_type' => ['required', 'string', 'max:60'],
             'starts_at' => ['nullable', 'date'],
         ]);
 
         $membership = Membership::query()->create([
             'user_id' => $request->user()->id,
-            'entity_id' => $data['entity_id'],
-            'department_id' => $data['department_id'] ?? null,
-            'club_id' => $data['club_id'] ?? null,
+            'scope' => $data['scope'],
+            'node_id' => $data['node_id'] ?? null,
             'status' => 'pending',
             'membership_type' => $data['membership_type'],
             'starts_at' => $data['starts_at'] ?? null,
         ]);
 
-        $reviewerId = ApprovalResolver::resolveMembershipReviewer((int) $data['entity_id'], $request->user()->id);
+        $reviewerId = ApprovalResolver::resolveMembershipReviewer($data['scope'], $request->user()->id);
 
         $approval = ApprovalRequest::query()->create([
             'request_type' => 'membership',
@@ -61,7 +61,7 @@ class MembershipController extends Controller
             action: 'membership.request.created',
             targetType: Membership::class,
             targetId: $membership->id,
-            metadata: ['approval_request_id' => $approval->id, 'entity_id' => $membership->entity_id],
+            metadata: ['approval_request_id' => $approval->id, 'scope' => $membership->scope],
             ip: $request->ip(),
         );
 

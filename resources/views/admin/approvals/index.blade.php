@@ -28,7 +28,7 @@
                             </div>
                             <div class="text-sm">
                                 @if($membership)
-                                    Demande d’adhésion à <strong>{{ $membership->entity?->name ?? '—' }}</strong>@if($membership->club) · {{ $membership->club->name }}@endif
+                                    Demande d’adhésion à <strong>{{ \App\Support\OrgScopes::label($membership->scope) ?? '—' }}</strong>@if($membership->node) · {{ $membership->node->title }}@endif
                                 @else
                                     {{ $approval->request_type }}
                                 @endif

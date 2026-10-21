@@ -28,11 +28,7 @@ class AdminMenu
             [
                 'title' => 'Organisation',
                 'items' => [
-                    ['label' => 'Entités', 'route' => 'admin.entities.index', 'icon' => 'building', 'match' => 'admin.entities.*', 'perms' => ['entity.manage']],
                     ['label' => 'Organigramme', 'route' => 'orgchart.index', 'icon' => 'network', 'match' => 'orgchart.*', 'perms' => ['entity.manage']],
-                    ['label' => 'Départements', 'route' => 'admin.departments.index', 'icon' => 'layers', 'match' => 'admin.departments.*', 'perms' => ['entity.manage']],
-                    ['label' => 'Institutions', 'route' => 'admin.institutions.index', 'icon' => 'graduation', 'match' => 'admin.institutions.*', 'perms' => ['entity.manage']],
-                    ['label' => 'Clubs', 'route' => 'admin.clubs.index', 'icon' => 'users', 'match' => 'admin.clubs.*', 'perms' => ['entity.manage']],
                 ],
             ],
             [
@@ -90,7 +86,7 @@ class AdminMenu
         $count = match ($type) {
             'memberships' => Membership::query()
                 ->where('status', 'pending')
-                ->when($context->scope('membership.manage') ?? [], fn ($query, array $ids) => $query->whereIn('entity_id', $ids))
+                ->when($context->scope('membership.manage') ?? [], fn ($query, array $scopes) => $query->whereIn('scope', $scopes))
                 ->count(),
             'approvals' => ApprovalRequest::query()
                 ->where('status', 'pending')

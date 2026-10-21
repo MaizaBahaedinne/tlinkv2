@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Entity;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
@@ -19,26 +18,20 @@ class OrgAccessTest extends TestCase
     use GrantsAccess;
     use RefreshDatabase;
 
-    private function entity(string $slug): Entity
-    {
-        return Entity::query()->create(['slug' => $slug, 'name' => ucfirst($slug), 'category' => 'test']);
-    }
-
     public function test_user_without_position_has_no_rights(): void
     {
         $this->assertSame([], OrgAccess::grants(User::factory()->create()));
     }
 
-    public function test_position_level_grants_its_permissions_in_its_entity_only(): void
+    public function test_position_level_grants_its_permissions_in_its_scope_only(): void
     {
         $user = User::factory()->create();
-        $entity = $this->entity('alpha');
-        $this->grantAccess($user, 'manager', $entity);
+        $this->grantAccess($user, 'manager', 'alumni');
 
         $grants = OrgAccess::grants($user);
 
         $this->assertEqualsCanonicalizing(AccessLevels::permissions('manager'), array_keys($grants));
-        $this->assertSame([$entity->id], $grants['membership.manage']);
+        $this->assertSame(['alumni'], $grants['membership.manage']);
         $this->assertArrayNotHasKey('entity.manage', $grants);
     }
 
@@ -50,14 +43,13 @@ class OrgAccessTest extends TestCase
         $this->assertSame([null], OrgAccess::grants($user)['entity.manage']);
     }
 
-    public function test_entity_is_inherited_from_the_nearest_parent(): void
+    public function test_scope_is_inherited_from_the_nearest_parent(): void
     {
         $user = User::factory()->create();
-        $entity = $this->entity('beta');
 
         $parent = OrgNode::query()->create([
             'relation_type' => 'hierarchy', 'kind' => 'unit', 'category' => 'direction',
-            'title' => 'Bureau', 'entity_id' => $entity->id, 'sort_order' => 0,
+            'title' => 'Bureau', 'scope' => 'high-school', 'sort_order' => 0,
         ]);
         $child = OrgNode::query()->create([
             'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'access_level' => 'moderator',
@@ -65,10 +57,10 @@ class OrgAccessTest extends TestCase
         ]);
         $this->placeOn($child, $user);
 
-        $this->assertSame([$entity->id], OrgAccess::grants($user)['post.moderate']);
+        $this->assertSame(['high-school'], OrgAccess::grants($user)['post.moderate']);
     }
 
-    public function test_scoped_level_without_any_entity_grants_nothing(): void
+    public function test_scoped_level_without_any_scope_grants_nothing(): void
     {
         $user = User::factory()->create();
         $node = OrgNode::query()->create([
@@ -117,19 +109,18 @@ class OrgAccessTest extends TestCase
         $this->assertDatabaseHas('org_assignments', ['node_id' => $node->id, 'person_id' => $person->id]);
     }
 
-    public function test_membership_reviewer_is_the_entity_admin_then_a_global_admin(): void
+    public function test_membership_reviewer_is_the_scope_admin_then_a_global_admin(): void
     {
-        $entity = $this->entity('gamma');
         $requester = User::factory()->create();
         $global = User::factory()->create();
         $local = User::factory()->create();
 
         $this->grantAccess($global, 'global_admin');
-        $this->assertSame($global->id, ApprovalResolver::resolveMembershipReviewer($entity->id, $requester->id));
+        $this->assertSame($global->id, ApprovalResolver::resolveMembershipReviewer('alumni', $requester->id));
 
-        $this->grantAccess($local, 'entity_admin', $entity);
-        $this->assertSame($local->id, ApprovalResolver::resolveMembershipReviewer($entity->id, $requester->id));
+        $this->grantAccess($local, 'entity_admin', 'alumni');
+        $this->assertSame($local->id, ApprovalResolver::resolveMembershipReviewer('alumni', $requester->id));
 
-        $this->assertSame($global->id, ApprovalResolver::resolveMembershipReviewer($entity->id, $local->id));
+        $this->assertSame($global->id, ApprovalResolver::resolveMembershipReviewer('alumni', $local->id));
     }
 }

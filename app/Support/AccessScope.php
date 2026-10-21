@@ -6,7 +6,7 @@ use App\Models\User;
 
 class AccessScope
 {
-    public static function can(User $user, string $permissionSlug, ?int $entityId = null): bool
+    public static function can(User $user, string $permissionSlug, ?string $scope = null): bool
     {
         $scopes = OrgAccess::grants($user)[$permissionSlug] ?? null;
 
@@ -14,10 +14,10 @@ class AccessScope
             return false;
         }
 
-        if ($entityId === null || in_array(null, $scopes, true)) {
+        if ($scope === null || in_array(null, $scopes, true)) {
             return true;
         }
 
-        return in_array($entityId, $scopes, true);
+        return in_array($scope, $scopes, true);
     }
 }

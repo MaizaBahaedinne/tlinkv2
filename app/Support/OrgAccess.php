@@ -13,10 +13,10 @@ use App\Models\User;
 class OrgAccess
 {
     /**
-     * Permissions de l'utilisateur et leur perimetre : slug => liste d'identifiants d'entite (null = global).
-     * Un poste sans entite (explicite ou heritee) n'accorde jamais de droit : pas d'elevation par defaut.
+     * Permissions de l'utilisateur et leur perimetre : slug => liste de perimetres (null = global).
+     * Un poste sans perimetre (explicite ou herite) n'accorde jamais de droit : pas d'elevation par defaut.
      *
-     * @return array<string, array<int, int|null>>
+     * @return array<string, array<int, string|null>>
      */
     public static function grants(User $user): array
     {
@@ -28,11 +28,11 @@ class OrgAccess
     }
 
     /**
-     * Utilisateurs qui detiennent une permission pour une entite, dans l'ordre d'attribution.
+     * Utilisateurs qui detiennent une permission pour un perimetre, dans l'ordre d'attribution.
      *
      * @return array<int, int>
      */
-    public static function userIdsWith(string $permission, int $entityId, int $exceptUserId, ?string $level = null): array
+    public static function userIdsWith(string $permission, string $scope, int $exceptUserId, ?string $level = null): array
     {
         $assignments = self::currentAssignments()
             ->when($level !== null, fn ($query) => $query->whereHas('node', fn ($node) => $node->where('access_level', $level)))
@@ -46,7 +46,7 @@ class OrgAccess
         foreach ($assignments as $assignment) {
             $scopes = self::collect(collect([$assignment]))[$permission] ?? [];
 
-            if (in_array(null, $scopes, true) || in_array($entityId, $scopes, true)) {
+            if (in_array(null, $scopes, true) || in_array($scope, $scopes, true)) {
                 $ids[] = (int) $assignment->person->user_id;
             }
         }
@@ -55,14 +55,14 @@ class OrgAccess
     }
 
     /**
-     * Entite effective d'un bloc : la sienne, sinon celle du plus proche parent.
+     * Perimetre effectif d'un bloc : le sien, sinon celui du plus proche parent.
      */
-    public static function entityOf(OrgNode $node): ?int
+    public static function scopeOf(OrgNode $node): ?string
     {
         $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
-        $entities = OrgNode::query()->whereNotNull('entity_id')->pluck('entity_id', 'id')->all();
+        $scopes = OrgNode::query()->whereNotNull('scope')->pluck('scope', 'id')->all();
 
-        return self::resolveEntity($node->id, $parents, $entities);
+        return self::resolveScope($node->id, $parents, $scopes);
     }
 
     /**
@@ -75,12 +75,12 @@ class OrgAccess
         return OrgAssignment::query()
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
             ->whereHas('node', fn ($query) => $query->where('kind', 'position')->where('access_level', '!=', AccessLevels::NONE))
-            ->with('node:id,parent_id,access_level,entity_id');
+            ->with('node:id,parent_id,access_level,scope');
     }
 
     /**
      * @param \Illuminate\Support\Collection<int, OrgAssignment> $assignments
-     * @return array<string, array<int, int|null>>
+     * @return array<string, array<int, string|null>>
      */
     private static function collect($assignments): array
     {
@@ -89,7 +89,7 @@ class OrgAccess
         }
 
         $parents = null;
-        $entities = null;
+        $scopes = null;
         $grants = [];
 
         foreach ($assignments as $assignment) {
@@ -105,8 +105,8 @@ class OrgAccess
                 $scope = null;
             } else {
                 $parents ??= OrgNode::query()->pluck('parent_id', 'id')->all();
-                $entities ??= OrgNode::query()->whereNotNull('entity_id')->pluck('entity_id', 'id')->all();
-                $scope = self::resolveEntity($node->id, $parents, $entities);
+                $scopes ??= OrgNode::query()->whereNotNull('scope')->pluck('scope', 'id')->all();
+                $scope = self::resolveScope($node->id, $parents, $scopes);
 
                 if ($scope === null) {
                     continue;
@@ -123,13 +123,13 @@ class OrgAccess
 
     /**
      * @param array<int, int|null> $parents
-     * @param array<int, int> $entities
+     * @param array<int, string> $scopes
      */
-    private static function resolveEntity(int $nodeId, array $parents, array $entities): ?int
+    private static function resolveScope(int $nodeId, array $parents, array $scopes): ?string
     {
         for ($guard = 0; $guard < 80 && $nodeId !== null; $guard++) {
-            if (isset($entities[$nodeId])) {
-                return (int) $entities[$nodeId];
+            if (isset($scopes[$nodeId])) {
+                return (string) $scopes[$nodeId];
             }
 
             $nodeId = $parents[$nodeId] ?? null;

@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Entity;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
@@ -33,13 +32,11 @@ class DemoContentSeeder extends Seeder
             ]
         );
 
-        $entity = Entity::query()->where('slug', 'foundation')->first();
-
         Post::query()->updateOrCreate(
             ['content' => 'Bienvenue sur T.Link, le reseau de Fondation Tunivisions.'],
             [
                 'user_id' => $user->id,
-                'entity_id' => $entity?->id,
+                'scope' => 'foundation',
                 'visibility' => 'authenticated',
                 'type' => 'announcement',
                 'published_at' => now(),

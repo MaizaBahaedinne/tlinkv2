@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\OrgNode;
 use App\Models\User;
 use App\Support\OrgChart\OrgChartInstaller;
-use Database\Seeders\EntitySeeder;
 use Database\Seeders\GovernorateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\GrantsAccess;
@@ -26,7 +25,7 @@ class OrgChartStructureTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed([GovernorateSeeder::class, EntitySeeder::class]);
+        $this->seed(GovernorateSeeder::class);
     }
 
     private function editor(): User

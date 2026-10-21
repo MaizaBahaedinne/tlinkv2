@@ -2,16 +2,13 @@
 
 namespace App\Support\OrgChart;
 
-use App\Models\Club;
-use App\Models\Department;
-use App\Models\Entity;
 use App\Models\Governorate;
-use App\Models\Institution;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
 use App\Models\User;
 use App\Support\AccessLevels;
+use App\Support\OrgScopes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -31,11 +28,7 @@ class OrgChartTransfer
      */
     public function exportJson(): array
     {
-        $clubs = Club::query()->get(['id', 'name', 'slug'])->keyBy('id');
         $governorates = Governorate::query()->get(['id', 'name', 'slug'])->keyBy('id');
-        $entities = Entity::query()->get(['id', 'slug'])->keyBy('id');
-        $departments = Department::query()->get(['id', 'slug'])->keyBy('id');
-        $institutions = Institution::query()->get(['id', 'slug', 'institution_type'])->keyBy('id');
 
         return [
             'version' => self::VERSION,
@@ -51,14 +44,17 @@ class OrgChartTransfer
                 'title' => $node->title,
                 'subtitle' => $node->subtitle,
                 'description' => $node->description,
-                'club_slug' => $node->club_id ? ($clubs[$node->club_id]->slug ?? null) : null,
-                'club_name' => $node->club_id ? ($clubs[$node->club_id]->name ?? null) : null,
                 'governorate_slug' => $node->governorate_id ? ($governorates[$node->governorate_id]->slug ?? null) : null,
                 'governorate_name' => $node->governorate_id ? ($governorates[$node->governorate_id]->name ?? null) : null,
-                'entity_slug' => $node->entity_id ? ($entities[$node->entity_id]->slug ?? null) : null,
-                'department_slug' => $node->department_id ? ($departments[$node->department_id]->slug ?? null) : null,
-                'institution_slug' => $node->institution_id ? ($institutions[$node->institution_id]->slug ?? null) : null,
-                'institution_type' => $node->institution_id ? ($institutions[$node->institution_id]->institution_type ?? null) : null,
+                'scope' => $node->scope,
+                'status' => $node->status,
+                'legacy_id' => $node->legacy_id,
+                'email' => $node->email,
+                'facebook_url' => $node->facebook_url,
+                'founded_on' => $node->founded_on?->toDateString(),
+                'charter_signed' => $node->charter_signed,
+                'institution_name' => $node->institution_name,
+                'institution_type' => $node->institution_type,
                 'validation_status' => $node->validation_status,
                 'validation_note' => $node->validation_note,
                 'children_layout' => $node->children_layout,
@@ -96,11 +92,11 @@ class OrgChartTransfer
      */
     public function csvRows(bool $includeContacts): array
     {
-        $nodes = OrgNode::query()->with(['club:id,name', 'governorate:id,name', 'entity:id,name', 'department:id,name', 'institution:id,name'])->orderBy('id')->get();
+        $nodes = OrgNode::query()->with(['governorate:id,name'])->orderBy('id')->get();
         $parents = $nodes->pluck('title', 'id');
         $assignments = OrgAssignment::query()->with('person.user.profile')->get()->groupBy('node_id');
 
-        $header = ['id', 'parent_id', 'responsable', 'relation', 'type', 'categorie', 'poste', 'complement', 'club', 'gouvernorat', 'entite', 'departement', 'institution', 'validation', 'occupants'];
+        $header = ['id', 'parent_id', 'responsable', 'relation', 'type', 'categorie', 'poste', 'complement', 'gouvernorat', 'perimetre', 'etablissement', 'validation', 'occupants'];
 
         if ($includeContacts) {
             $header[] = 'emails';
@@ -121,11 +117,9 @@ class OrgChartTransfer
                 OrgNode::CATEGORIES[$node->category] ?? $node->category,
                 $node->title,
                 (string) $node->subtitle,
-                (string) $node->club?->name,
                 (string) $node->governorate?->name,
-                (string) $node->entity?->name,
-                (string) $node->department?->name,
-                (string) $node->institution?->name,
+                (string) OrgScopes::label($node->scope),
+                (string) $node->institution_name,
                 OrgNode::VALIDATIONS[$node->validation_status] ?? $node->validation_status,
                 $people->map(fn (OrgPerson $person): string => $person->displayName())->implode(' | '),
             ];
@@ -164,13 +158,18 @@ class OrgChartTransfer
             'nodes.*.title' => ['required', 'string', 'max:255'],
             'nodes.*.subtitle' => ['nullable', 'string', 'max:255'],
             'nodes.*.description' => ['nullable', 'string', 'max:5000'],
-            'nodes.*.club_slug' => ['nullable', 'string', 'max:255'],
-            'nodes.*.club_name' => ['nullable', 'string', 'max:255'],
             'nodes.*.governorate_slug' => ['nullable', 'string', 'max:255'],
+            'nodes.*.scope' => ['nullable', Rule::in(OrgScopes::slugs())],
+            // Anciens exports : le perimetre s'appelait « entite ».
             'nodes.*.entity_slug' => ['nullable', 'string', 'max:255'],
-            'nodes.*.department_slug' => ['nullable', 'string', 'max:255'],
-            'nodes.*.institution_slug' => ['nullable', 'string', 'max:255'],
-            'nodes.*.institution_type' => ['nullable', 'string', 'max:40'],
+            'nodes.*.status' => ['nullable', Rule::in(array_keys(OrgNode::CLUB_STATUSES))],
+            'nodes.*.legacy_id' => ['nullable', 'integer', 'min:1', 'distinct'],
+            'nodes.*.email' => ['nullable', 'email', 'max:255'],
+            'nodes.*.facebook_url' => ['nullable', 'url', 'max:500'],
+            'nodes.*.founded_on' => ['nullable', 'date'],
+            'nodes.*.charter_signed' => ['nullable', 'boolean'],
+            'nodes.*.institution_name' => ['nullable', 'string', 'max:255'],
+            'nodes.*.institution_type' => ['nullable', Rule::in(array_keys(OrgNode::INSTITUTION_TYPES))],
             'nodes.*.validation_status' => ['required', Rule::in(array_keys(OrgNode::VALIDATIONS))],
             'nodes.*.validation_note' => ['nullable', 'string', 'max:500'],
             'nodes.*.children_layout' => ['required', Rule::in(array_keys(OrgNode::LAYOUTS))],
@@ -211,7 +210,11 @@ class OrgChartTransfer
 
         $data['nodes'] = $this->checkedCapacities($data['nodes'], $data['assignments']);
 
-        return OrgChartLinker::withoutSync(fn (): array => DB::transaction(function () use ($data): array {
+        return DB::transaction(function () use ($data): array {
+            // Les adhesions, publications et evenements pointent vers des clubs (blocs) : on memorise leurs liens
+            // pour les restaurer sur les nouveaux blocs.
+            $links = $this->snapshotNodeLinks();
+
             OrgAssignment::query()->delete();
             OrgNode::query()->update(['parent_id' => null]);
             OrgNode::query()->delete();
@@ -236,8 +239,10 @@ class OrgChartTransfer
             $nodeMap = [];
 
             foreach ($this->orderedByDepth($data['nodes']) as $node) {
-                [$clubId, $governorateId] = $this->resolveLinks($node);
-                [$entityId, $departmentId, $institutionId] = $this->resolveStructure($node);
+                $governorateId = ! empty($node['governorate_slug'])
+                    ? Governorate::query()->where('slug', $node['governorate_slug'])->value('id')
+                    : null;
+                $scope = $node['scope'] ?? (OrgScopes::valid($node['entity_slug'] ?? null) ? $node['entity_slug'] : null);
 
                 $created = OrgNode::query()->create([
                     'parent_id' => $node['parent_id'] !== null ? $nodeMap[$node['parent_id']] : null,
@@ -249,11 +254,16 @@ class OrgChartTransfer
                     'title' => $node['title'],
                     'subtitle' => $node['subtitle'] ?? null,
                     'description' => $node['description'] ?? null,
-                    'club_id' => $clubId,
                     'governorate_id' => $governorateId,
-                    'entity_id' => $entityId,
-                    'department_id' => $departmentId,
-                    'institution_id' => $institutionId,
+                    'scope' => $scope,
+                    'status' => $node['status'] ?? 'active',
+                    'legacy_id' => $node['legacy_id'] ?? null,
+                    'email' => $node['email'] ?? null,
+                    'facebook_url' => $node['facebook_url'] ?? null,
+                    'founded_on' => $node['founded_on'] ?? null,
+                    'charter_signed' => (bool) ($node['charter_signed'] ?? false),
+                    'institution_name' => $node['institution_name'] ?? null,
+                    'institution_type' => $node['institution_type'] ?? null,
                     'validation_status' => $node['validation_status'],
                     'validation_note' => $node['validation_note'] ?? null,
                     'children_layout' => $node['children_layout'],
@@ -278,12 +288,73 @@ class OrgChartTransfer
                 app(OrgChartInstaller::class)->applyDefaultAccess();
             }
 
+            $this->restoreNodeLinks($links);
+
             return [
                 'nodes' => count($nodeMap),
                 'people' => count($personMap),
                 'assignments' => count($data['assignments']),
             ];
-        }));
+        });
+    }
+
+    /** Tables dont les lignes pointent vers un club / une unite de l'organigramme. */
+    private const LINKED_TABLES = ['memberships', 'posts', 'events'];
+
+    /**
+     * Cle stable d'un bloc d'un export a l'autre : identifiant legacy, cle systeme, sinon titre et gouvernorat.
+     */
+    private function nodeKey(object $node): string
+    {
+        return match (true) {
+            $node->legacy_id !== null => 'legacy:'.$node->legacy_id,
+            $node->system_key !== null => 'sys:'.$node->system_key,
+            default => 'title:'.Str::lower($node->title).'|'.($node->governorate_id ?? ''),
+        };
+    }
+
+    /**
+     * @return array<string, array<string, array<int, int>>> table => cle de bloc => identifiants de lignes
+     */
+    private function snapshotNodeLinks(): array
+    {
+        $keys = DB::table('org_nodes')->get(['id', 'legacy_id', 'system_key', 'title', 'governorate_id'])
+            ->mapWithKeys(fn ($node): array => [$node->id => $this->nodeKey($node)])->all();
+
+        $links = [];
+
+        foreach (self::LINKED_TABLES as $table) {
+            foreach (DB::table($table)->whereNotNull('node_id')->get(['id', 'node_id']) as $row) {
+                if (isset($keys[$row->node_id])) {
+                    $links[$table][$keys[$row->node_id]][] = (int) $row->id;
+                }
+            }
+        }
+
+        return $links;
+    }
+
+    /**
+     * @param array<string, array<string, array<int, int>>> $links
+     */
+    private function restoreNodeLinks(array $links): void
+    {
+        if ($links === []) {
+            return;
+        }
+
+        $ids = DB::table('org_nodes')->get(['id', 'legacy_id', 'system_key', 'title', 'governorate_id'])
+            ->mapWithKeys(fn ($node): array => [$this->nodeKey($node) => (int) $node->id])->all();
+
+        foreach ($links as $table => $byKey) {
+            foreach ($byKey as $key => $rowIds) {
+                if (isset($ids[$key])) {
+                    foreach (array_chunk($rowIds, 500) as $chunk) {
+                        DB::table($table)->whereIn('id', $chunk)->update(['node_id' => $ids[$key]]);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -397,57 +468,6 @@ class OrgChartTransfer
         usort($nodes, static fn (array $a, array $b): int => [$depth($a['id']), $a['sort_order'] ?? 0, $a['id']] <=> [$depth($b['id']), $b['sort_order'] ?? 0, $b['id']]);
 
         return $nodes;
-    }
-
-    /**
-     * Entite, departement et institution retrouves par leur slug (absents : lien ignore).
-     *
-     * @param array<string, mixed> $node
-     * @return array{0: int|null, 1: int|null, 2: int|null}
-     */
-    private function resolveStructure(array $node): array
-    {
-        $entityId = ! empty($node['entity_slug'])
-            ? Entity::query()->where('slug', $node['entity_slug'])->value('id')
-            : null;
-
-        $departmentId = ! empty($node['department_slug'])
-            ? Department::query()->where('slug', $node['department_slug'])->when($entityId, fn ($query) => $query->where('entity_id', $entityId))->value('id')
-            : null;
-
-        $institutionId = ! empty($node['institution_slug'])
-            ? Institution::query()->where('slug', $node['institution_slug'])->when(! empty($node['institution_type']), fn ($query) => $query->where('institution_type', $node['institution_type']))->value('id')
-            : null;
-
-        return [$entityId, $departmentId, $institutionId];
-    }
-
-    /**
-     * @param array<string, mixed> $node
-     * @return array{0: int|null, 1: int|null}
-     */
-    private function resolveLinks(array $node): array
-    {
-        $governorateId = ! empty($node['governorate_slug'])
-            ? Governorate::query()->where('slug', $node['governorate_slug'])->value('id')
-            : null;
-
-        $clubId = null;
-
-        if (! empty($node['club_slug'])) {
-            $clubId = Club::query()->where('slug', $node['club_slug'])->value('id');
-
-            if ($clubId === null && ! empty($node['club_name'])) {
-                $clubId = Club::query()->create([
-                    'name' => $node['club_name'],
-                    'slug' => Str::slug($node['club_slug']) ?: Str::slug($node['club_name']),
-                    'governorate_id' => $governorateId,
-                    'status' => 'active',
-                ])->id;
-            }
-        }
-
-        return [$clubId, $governorateId];
     }
 
     private function neutralize(string $value): string

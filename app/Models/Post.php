@@ -13,9 +13,8 @@ class Post extends Model
 
     protected $fillable = [
         'user_id',
-        'entity_id',
-        'department_id',
-        'club_id',
+        'scope',
+        'node_id',
         'governorate_id',
         'type',
         'visibility',

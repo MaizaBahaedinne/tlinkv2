@@ -13,13 +13,13 @@ class AdminContext
 {
     public const ATTRIBUTE = 'admin.context';
 
-    /** @var array<string, array<int, int|null>> */
-    private array $entityScopes = [];
+    /** @var array<string, array<int, string|null>> */
+    private array $permissionScopes = [];
 
     public function __construct(public readonly User $user)
     {
         // Les droits viennent des postes occupés dans l'organigramme (niveau d'accès du poste).
-        $this->entityScopes = OrgAccess::grants($user);
+        $this->permissionScopes = OrgAccess::grants($user);
     }
 
     public static function of(Request $request): self
@@ -36,7 +36,7 @@ class AdminContext
 
     public function can(string $permission): bool
     {
-        return isset($this->entityScopes[$permission]);
+        return isset($this->permissionScopes[$permission]);
     }
 
     /**
@@ -55,10 +55,10 @@ class AdminContext
 
     /**
      * null  => permission absente
-     * []    => perimetre global (toutes les entites)
-     * [ids] => limite aux entites listees
+     * []    => perimetre global (tous les perimetres)
+     * [slugs] => limite aux perimetres listes
      *
-     * @return array<int, int>|null
+     * @return array<int, string>|null
      */
     public function scope(string $permission): ?array
     {
@@ -66,11 +66,11 @@ class AdminContext
             return null;
         }
 
-        if (in_array(null, $this->entityScopes[$permission], true)) {
+        if (in_array(null, $this->permissionScopes[$permission], true)) {
             return [];
         }
 
-        return array_values(array_unique($this->entityScopes[$permission]));
+        return array_values(array_unique($this->permissionScopes[$permission]));
     }
 
     public function isGlobal(string $permission): bool
@@ -78,7 +78,7 @@ class AdminContext
         return $this->scope($permission) === [];
     }
 
-    public function canManageEntity(string $permission, ?int $entityId): bool
+    public function canManageScope(string $permission, ?string $scopeSlug): bool
     {
         $scope = $this->scope($permission);
 
@@ -90,6 +90,6 @@ class AdminContext
             return true;
         }
 
-        return $entityId !== null && in_array($entityId, $scope, true);
+        return $scopeSlug !== null && in_array($scopeSlug, $scope, true);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
+use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -33,27 +34,24 @@ class EventController extends AdminController
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in(array_keys(self::STATUSES))],
-            'entity' => ['nullable', 'integer'],
+            'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
         ]);
 
         $events = $this->scoped(FoundationEvent::query(), $request, 'event.manage')
             ->withCount('registrations')
             ->when($filters['q'] ?? null, fn ($query, $needle) => $query->where(fn ($inner) => $inner->where('title', 'like', "%{$needle}%")->orWhere('location', 'like', "%{$needle}%")))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['entity'] ?? null, fn ($query, $entity) => $query->where('entity_id', $entity))
+            ->when($filters['scope'] ?? null, fn ($query, $scope) => $query->where('scope', $scope))
             ->orderByDesc('starts_at')
             ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
 
-        $entityNames = \App\Models\Entity::query()->whereIn('id', $events->getCollection()->pluck('entity_id')->filter())->pluck('name', 'id');
-
         return view('admin.events.index', [
             'events' => $events,
-            'entityNames' => $entityNames,
-            'filters' => $filters,
+                        'filters' => $filters,
             'statuses' => self::STATUSES,
-            'entities' => $this->entityOptions($request, 'event.manage'),
+            'scopes' => $this->scopeOptions($request, 'event.manage'),
         ]);
     }
 
@@ -66,20 +64,20 @@ class EventController extends AdminController
     {
         $event = FoundationEvent::query()->create($this->validated($request) + ['organizer_id' => $request->user()->id]);
 
-        $this->audit($request, 'admin.event.created', $event, ['title' => $event->title, 'entity_id' => $event->entity_id]);
+        $this->audit($request, 'admin.event.created', $event, ['title' => $event->title, 'scope' => $event->scope]);
 
         return redirect()->route('admin.events.show', $event)->with('status', "Événement « {$event->title} » créé.");
     }
 
     public function show(Request $request, FoundationEvent $event): View
     {
-        $this->authorizeEntity($request, 'event.manage', $event->entity_id);
+        $this->authorizeScope($request, 'event.manage', $event->scope);
 
         $registrations = $event->registrations()->with('user:id,name,email')->latest('id')->get();
 
         return view('admin.events.show', [
             'event' => $event,
-            'entityName' => $event->entity_id ? \App\Models\Entity::query()->whereKey($event->entity_id)->value('name') : null,
+            'scopeName' => OrgScopes::label($event->scope),
             'organizerName' => $event->organizer_id ? \App\Models\User::query()->whereKey($event->organizer_id)->value('name') : null,
             'registrations' => $registrations,
             'statuses' => self::STATUSES,
@@ -90,14 +88,14 @@ class EventController extends AdminController
 
     public function edit(Request $request, FoundationEvent $event): View
     {
-        $this->authorizeEntity($request, 'event.manage', $event->entity_id);
+        $this->authorizeScope($request, 'event.manage', $event->scope);
 
         return view('admin.events.form', $this->formData($request, $event));
     }
 
     public function update(Request $request, FoundationEvent $event): RedirectResponse
     {
-        $this->authorizeEntity($request, 'event.manage', $event->entity_id);
+        $this->authorizeScope($request, 'event.manage', $event->scope);
 
         $event->update($this->validated($request));
 
@@ -108,7 +106,7 @@ class EventController extends AdminController
 
     public function destroy(Request $request, FoundationEvent $event): RedirectResponse
     {
-        $this->authorizeEntity($request, 'event.manage', $event->entity_id);
+        $this->authorizeScope($request, 'event.manage', $event->scope);
 
         if ($event->registrations()->exists()) {
             return back()->with('error', 'Suppression impossible : des inscriptions existent. Annulez plutôt l’événement.');
@@ -123,7 +121,7 @@ class EventController extends AdminController
 
     public function updateRegistration(Request $request, FoundationEvent $event, EventRegistration $registration): RedirectResponse
     {
-        $this->authorizeEntity($request, 'event.manage', $event->entity_id);
+        $this->authorizeScope($request, 'event.manage', $event->scope);
         abort_unless($registration->event_id === $event->id, 404);
 
         $data = $request->validate([
@@ -151,7 +149,7 @@ class EventController extends AdminController
         return [
             'event' => $event,
             'statuses' => self::STATUSES,
-            'entities' => $this->entityOptions($request, 'event.manage'),
+            'scopes' => $this->scopeOptions($request, 'event.manage'),
             'canBeGlobal' => $this->context($request)->isGlobal('event.manage'),
         ];
     }
@@ -166,7 +164,7 @@ class EventController extends AdminController
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'entity_id' => [$scope === [] ? 'nullable' : 'required', 'integer', Rule::in(array_keys($this->entityOptions($request, 'event.manage')))],
+            'scope' => [$scope === [] ? 'nullable' : 'required', Rule::in(array_keys($this->scopeOptions($request, 'event.manage')))],
             'location' => ['nullable', 'string', 'max:255'],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],

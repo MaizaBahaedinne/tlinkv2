@@ -40,7 +40,7 @@ class ApprovalController extends AdminController
             ->withQueryString();
 
         $memberships = Membership::query()
-            ->with(['user:id,name,email', 'entity:id,name', 'club:id,name'])
+            ->with(['user:id,name,email', 'node:id,title'])
             ->whereIn('id', $approvals->getCollection()->where('approvable_type', Membership::class)->pluck('approvable_id'))
             ->get()
             ->keyBy('id');
@@ -99,9 +99,9 @@ class ApprovalController extends AdminController
             return $query;
         }
 
-        // Un validateur limite a certaines entites ne voit que les adhesions de son perimetre.
+        // Un validateur limite a certains perimetres ne voit que les adhesions de son perimetre.
         return $query
             ->where('approvable_type', Membership::class)
-            ->whereIn('approvable_id', Membership::query()->whereIn('entity_id', $scope)->select('id'));
+            ->whereIn('approvable_id', Membership::query()->whereIn('scope', $scope)->select('id'));
     }
 }

@@ -39,14 +39,13 @@
                     <div class="table-wrap">
                         <table class="tbl">
                             <thead>
-                                <tr><th>Entité</th><th>Département</th><th>Club</th><th>Type</th><th>Statut</th></tr>
+                                <tr><th>Périmètre</th><th>Club</th><th>Type</th><th>Statut</th></tr>
                             </thead>
                             <tbody>
                                 @foreach($memberships as $membership)
                                     <tr>
-                                        <td class="cell-main">{{ $membership->entity?->name ?? '—' }}</td>
-                                        <td>{{ $membership->department?->name ?? '—' }}</td>
-                                        <td>{{ $membership->club?->name ?? '—' }}</td>
+                                        <td class="cell-main">{{ \App\Support\OrgScopes::label($membership->scope) ?? '—' }}</td>
+                                        <td>{{ $membership->node?->title ?? '—' }}</td>
                                         <td class="text-sm">{{ $membership->membership_type }}</td>
                                         <td><x-admin.badge :status="$membership->status" /></td>
                                     </tr>

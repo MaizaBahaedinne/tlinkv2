@@ -2,11 +2,9 @@
 
 namespace App\Support\OrgChart;
 
-use App\Models\Club;
-use App\Models\Entity;
 use App\Models\Governorate;
-use App\Models\Institution;
 use App\Models\OrgNode;
+use App\Support\OrgScopes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -259,12 +257,19 @@ class OrgChartInstaller
         return $count;
     }
 
-    /**     * Cree un club (modele `clubs`) et son bloc dans l'organigramme, avec l'equipe type.
+    /**
+     * Cree un club (bloc de l'organigramme) avec l'equipe type.
+     * Un club d'universite ou de lycee est range par gouvernorat et porte son etablissement.
      */
     public function createClub(OrgNode $branch, string $name, string $category, ?Governorate $governorate, bool $withTemplate, ?string $systemKey = null): OrgNode
     {
-        return OrgChartLinker::withoutSync(fn (): OrgNode => DB::transaction(function () use ($branch, $name, $category, $governorate, $withTemplate, $systemKey): OrgNode {
-            $club = $this->clubModel($name, $category, $governorate);
+        return DB::transaction(function () use ($branch, $name, $category, $governorate, $withTemplate, $systemKey): OrgNode {
+            $scope = match ($category) {
+                'university_club' => 'university',
+                'highschool_club' => 'high-school',
+                default => 'foundation',
+            };
+            $institutionType = OrgScopes::institutionType($scope);
 
             // Les clubs d'universite / de lycee sont ranges par gouvernorat.
             $parent = in_array($category, ['university_club', 'highschool_club'], true)
@@ -278,11 +283,11 @@ class OrgChartInstaller
                 'category' => $category,
                 'title' => $name,
                 'subtitle' => $governorate?->name,
-                'club_id' => $club->id,
                 'governorate_id' => $governorate?->id,
-                'entity_id' => $club->entity_id,
-                'department_id' => $club->department_id,
-                'institution_id' => $club->institution_id,
+                'scope' => $scope,
+                'status' => 'active',
+                'institution_name' => $institutionType !== null ? $name : null,
+                'institution_type' => $institutionType,
                 'is_collapsed' => true,
                 'sort_order' => $this->nextSort($parent->id),
                 'system_key' => $systemKey,
@@ -293,7 +298,7 @@ class OrgChartInstaller
             }
 
             return $node;
-        }));
+        });
     }
 
     /**
@@ -418,50 +423,5 @@ class OrgChartInstaller
             ['slug' => Str::slug($name)],
             ['name' => $name, 'is_active' => true]
         );
-    }
-
-    private function clubModel(string $name, string $category, ?Governorate $governorate): Club
-    {
-        $base = Str::slug($name) ?: 'club';
-        $slug = $base;
-        $counter = 1;
-
-        // Un club deja present dans la base (meme nom) et non relie a l'organigramme est reutilise.
-        while ($existing = Club::query()->where('slug', $slug)->first()) {
-            if (! OrgNode::query()->where('club_id', $existing->id)->exists()) {
-                return $existing;
-            }
-
-            $counter++;
-            $slug = $base.'-'.$counter;
-        }
-
-        $entitySlug = match ($category) {
-            'university_club' => 'university',
-            'highschool_club' => 'high-school',
-            default => 'foundation',
-        };
-
-        $entity = Entity::query()->where('slug', $entitySlug)->first();
-
-        // Un club d'universite / de lycee a son etablissement (institution) et son departement.
-        $institution = null;
-
-        if ($entity && in_array($category, ['university_club', 'highschool_club'], true)) {
-            $institution = Institution::query()->firstOrCreate(
-                ['institution_type' => $category === 'university_club' ? 'university' : 'high_school', 'slug' => $base],
-                ['entity_id' => $entity->id, 'name' => $name, 'is_active' => true]
-            );
-        }
-
-        return Club::query()->create([
-            'name' => $name,
-            'slug' => $slug,
-            'entity_id' => $entity?->id,
-            'department_id' => $entity ? $this->linker->department($entity)?->id : null,
-            'institution_id' => $institution?->id,
-            'governorate_id' => $governorate?->id,
-            'status' => 'active',
-        ]);
     }
 }

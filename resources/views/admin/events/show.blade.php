@@ -67,7 +67,7 @@
                 <dl class="kv">
                     <div><dt>Début</dt><dd>{{ $event->starts_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
                     <div><dt>Fin</dt><dd>{{ $event->ends_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
-                    <div><dt>Entité</dt><dd>{{ $entityName ?? 'Global' }}</dd></div>
+                    <div><dt>Périmètre</dt><dd>{{ $scopeName ?? 'Global' }}</dd></div>
                     <div><dt>Organisateur</dt><dd>{{ $organizerName ?? '—' }}</dd></div>
                     <div><dt>Ouverture inscr.</dt><dd>{{ $event->registration_starts_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
                     <div><dt>Clôture inscr.</dt><dd>{{ $event->registration_ends_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>

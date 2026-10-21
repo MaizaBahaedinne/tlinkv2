@@ -8,7 +8,7 @@
 
     <article class="card card-flush">
         <div class="tabs">
-            @php($query = array_filter(['q' => $filters['q'] ?? null, 'entity' => $filters['entity'] ?? null]))
+            @php($query = array_filter(['q' => $filters['q'] ?? null, 'scope' => $filters['scope'] ?? null]))
             <a href="{{ route('admin.memberships.index', $query) }}" class="tab {{ empty($filters['status']) ? 'is-active' : '' }}">Toutes <span class="n">{{ array_sum($counts) }}</span></a>
             @foreach($statuses as $code => $label)
                 <a href="{{ route('admin.memberships.index', $query + ['status' => $code]) }}" class="tab {{ ($filters['status'] ?? '') === $code ? 'is-active' : '' }}">{{ $label }} <span class="n">{{ $counts[$code] ?? 0 }}</span></a>
@@ -22,14 +22,14 @@
                     <x-admin.icon name="search" :size="16" />
                     <input type="search" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Rechercher un membre…">
                 </div>
-                <select name="entity" aria-label="Entité">
+                <select name="scope" aria-label="Périmètre">
                     <option value="">Toutes les entités</option>
-                    @foreach($entities as $id => $name)
-                        <option value="{{ $id }}" @selected((string) ($filters['entity'] ?? '') === (string) $id)>{{ $name }}</option>
+                    @foreach($scopes as $id => $name)
+                        <option value="{{ $id }}" @selected((string) ($filters['scope'] ?? '') === (string) $id)>{{ $name }}</option>
                     @endforeach
                 </select>
                 <button class="btn btn-primary btn-sm" type="submit">Filtrer</button>
-                @if(! empty($filters['q']) || ! empty($filters['entity']))
+                @if(! empty($filters['q']) || ! empty($filters['scope']))
                     <a href="{{ route('admin.memberships.index', array_filter(['status' => $filters['status'] ?? null])) }}" class="btn btn-ghost btn-sm">Réinitialiser</a>
                 @endif
             </form>
@@ -65,9 +65,9 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <div>{{ $membership->entity?->name ?? '—' }}</div>
-                                    @if($membership->department || $membership->club)
-                                        <div class="cell-sub">{{ collect([$membership->department?->name, $membership->club?->name])->filter()->implode(' · ') }}</div>
+                                    <div>{{ \App\Support\OrgScopes::label($membership->scope) ?? '—' }}</div>
+                                    @if($membership->node)
+                                        <div class="cell-sub">{{ $membership->node->title }}</div>
                                     @endif
                                 </td>
                                 <td class="hide-mobile text-sm">{{ $membership->membership_type }}</td>

@@ -22,7 +22,7 @@ class UserController extends AdminController
             'access' => ['nullable', Rule::in(array_keys($levels))],
         ]);
 
-        $visible = $this->visibleEntityIds($request);
+        $visible = $this->visibleScopes($request);
         $today = now()->toDateString();
         $current = fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today);
 
@@ -32,7 +32,7 @@ class UserController extends AdminController
                 'orgPerson.assignments' => fn ($query) => $query->where($current)->with('node:id,title,access_level'),
             ])
             ->withCount(['posts', 'memberships'])
-            ->when($visible !== null, fn ($query) => $this->restrictToEntities($query, $visible))
+            ->when($visible !== null, fn ($query) => $this->restrictToScopes($query, $visible))
             ->when($filters['q'] ?? null, function ($query, $needle): void {
                 $query->where(fn ($inner) => $inner->where('name', 'like', "%{$needle}%")->orWhere('email', 'like', "%{$needle}%"));
             })
@@ -53,28 +53,28 @@ class UserController extends AdminController
 
     public function show(Request $request, User $user): View
     {
-        $visible = $this->visibleEntityIds($request);
+        $visible = $this->visibleScopes($request);
 
         if ($visible !== null) {
-            abort_unless($this->restrictToEntities(User::query()->whereKey($user->id), $visible)->exists(), 403, 'Cet utilisateur est hors de votre périmètre.');
+            abort_unless($this->restrictToScopes(User::query()->whereKey($user->id), $visible)->exists(), 403, 'Cet utilisateur est hors de votre périmètre.');
         }
 
         $user->load('profile');
 
         return view('admin.users.show', [
             'user' => $user,
-            'memberships' => $user->memberships()->with(['entity:id,name', 'department:id,name', 'club:id,name'])->latest('id')->get(),
+            'memberships' => $user->memberships()->with(['node:id,title'])->latest('id')->get(),
             'orgPositions' => $this->orgPositions($user),
             'recentPosts' => $user->posts()->latest('id')->limit(5)->get(['id', 'content', 'type', 'created_at']),
         ]);
     }
 
     /**
-     * Entites visibles pour la gestion des utilisateurs. null = aucune restriction (perimetre global).
+     * Perimetres visibles pour la gestion des utilisateurs. null = aucune restriction (perimetre global).
      *
-     * @return array<int, int>|null
+     * @return array<int, string>|null
      */
-    private function visibleEntityIds(Request $request): ?array
+    private function visibleScopes(Request $request): ?array
     {
         $context = $this->context($request);
         $ids = [];
@@ -102,12 +102,12 @@ class UserController extends AdminController
 
     /**
      * @param \Illuminate\Database\Eloquent\Builder<User> $query
-     * @param array<int, int> $entityIds
+     * @param array<int, string> $scopes
      * @return \Illuminate\Database\Eloquent\Builder<User>
      */
-    private function restrictToEntities($query, array $entityIds)
+    private function restrictToScopes($query, array $scopes)
     {
-        return $query->whereHas('memberships', fn ($memberships) => $memberships->whereIn('entity_id', $entityIds));
+        return $query->whereHas('memberships', fn ($memberships) => $memberships->whereIn('scope', $scopes));
     }
 
     /**

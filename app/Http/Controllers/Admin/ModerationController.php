@@ -60,7 +60,7 @@ class ModerationController extends AdminController
         $post = $report->reportable_type === Post::class ? Post::query()->find($report->reportable_id) : null;
 
         // Un signalement dont la publication a disparu reste traitable par un administrateur global.
-        $this->authorizeEntity($request, 'post.moderate', $post?->entity_id);
+        $this->authorizeScope($request, 'post.moderate', $post?->scope);
 
         $data = $request->validate([
             'status' => ['required', Rule::in(['reviewed', 'rejected'])],
@@ -94,6 +94,6 @@ class ModerationController extends AdminController
             return ModerationReport::query();
         }
 
-        return $query->whereIn('reportable_id', Post::query()->whereIn('entity_id', $scope)->select('id'));
+        return $query->whereIn('reportable_id', Post::query()->whereIn('scope', $scope)->select('id'));
     }
 }

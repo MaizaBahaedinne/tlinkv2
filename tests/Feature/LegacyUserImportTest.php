@@ -2,14 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\Club;
-use App\Models\Entity;
 use App\Models\Membership;
+use App\Models\OrgNode;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\Legacy\LegacyUserImporter;
 use App\Support\Legacy\SqlDumpReader;
-use Database\Seeders\EntitySeeder;
 use Database\Seeders\GovernorateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -34,15 +32,18 @@ class LegacyUserImportTest extends TestCase
         parent::setUp();
 
         $this->hash = password_hash('secret123', PASSWORD_BCRYPT, ['cost' => 10]);
-        $this->seed([EntitySeeder::class, GovernorateSeeder::class]);
+        $this->seed(GovernorateSeeder::class);
 
         foreach ([143 => 'university', 299 => 'high-school'] as $legacyId => $slug) {
-            Club::query()->create([
-                'name' => 'Club '.$legacyId,
-                'slug' => 'legacy-'.$legacyId,
+            OrgNode::query()->create([
+                'relation_type' => 'hierarchy',
+                'kind' => 'club',
+                'category' => 'education',
+                'title' => 'Club '.$legacyId,
                 'legacy_id' => $legacyId,
-                'entity_id' => Entity::query()->where('slug', $slug)->value('id'),
+                'scope' => $slug,
                 'status' => 'active',
+                'sort_order' => 0,
             ]);
         }
     }
@@ -172,8 +173,8 @@ class LegacyUserImportTest extends TestCase
         $this->assertNull(User::query()->where('legacy_id', 10)->first());
         $memberships = Membership::query()->where('user_id', $dup->id)->get();
         $this->assertCount(2, $memberships);
-        $old = $memberships->firstWhere('club_id', Club::query()->where('legacy_id', 143)->value('id'));
-        $current = $memberships->firstWhere('club_id', Club::query()->where('legacy_id', 299)->value('id'));
+        $old = $memberships->firstWhere('node_id', OrgNode::query()->where('legacy_id', 143)->value('id'));
+        $current = $memberships->firstWhere('node_id', OrgNode::query()->where('legacy_id', 299)->value('id'));
         $this->assertSame(['archived', 'president'], [$old->status, $old->membership_type]);
         $this->assertSame(['approved', 'member'], [$current->status, $current->membership_type]);
 
@@ -188,9 +189,9 @@ class LegacyUserImportTest extends TestCase
         $this->post('/connexion', ['email' => 'exclu@example.test', 'password' => 'secret123'])->assertSessionHasErrors('email');
         $this->assertGuest();
         $branch = Membership::query()->where('user_id', $excluded->id)->firstOrFail();
-        $this->assertNull($branch->club_id);
+        $this->assertNull($branch->node_id);
         $this->assertSame('archived', $branch->status);
-        $this->assertSame(Entity::query()->where('slug', 'high-school')->value('id'), $branch->entity_id);
+        $this->assertSame('high-school', $branch->scope);
 
         // Securite : aucun droit n'est attribue (meme au super admin legacy SA=1) : pas de poste dans l'organigramme.
         $this->assertSame(0, \App\Models\OrgAssignment::query()->count());

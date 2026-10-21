@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalRequest;
-use App\Models\Entity;
 use App\Models\Membership;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,27 +16,20 @@ class MembershipApprovalTest extends TestCase
 
     public function test_membership_submission_creates_approval_request(): void
     {
-        $entity = Entity::query()->firstOrCreate([
-            'slug' => 'university',
-        ], [
-            'name' => 'University',
-            'category' => 'education',
-        ]);
-
         $reviewer = User::factory()->create();
         $requester = User::factory()->create();
 
-        $this->grantAccess($reviewer, 'entity_admin', $entity);
+        $this->grantAccess($reviewer, 'entity_admin', 'university');
 
         $response = $this->actingAs($requester)->postJson('/api/v1/memberships', [
-            'entity_id' => $entity->id,
+            'scope' => 'university',
             'membership_type' => 'member',
         ]);
 
         $response->assertCreated();
         $this->assertDatabaseHas('memberships', [
             'user_id' => $requester->id,
-            'entity_id' => $entity->id,
+            'scope' => 'university',
             'status' => 'pending',
         ]);
 
@@ -55,20 +47,13 @@ class MembershipApprovalTest extends TestCase
 
     public function test_requester_cannot_self_approve_membership(): void
     {
-        $entity = Entity::query()->firstOrCreate([
-            'slug' => 'high-school',
-        ], [
-            'name' => 'High School',
-            'category' => 'education',
-        ]);
-
         $user = User::factory()->create();
 
         $this->grantAccess($user, 'global_admin');
 
         $membership = Membership::query()->create([
             'user_id' => $user->id,
-            'entity_id' => $entity->id,
+            'scope' => 'high-school',
             'status' => 'pending',
             'membership_type' => 'member',
         ]);

@@ -49,21 +49,21 @@ class AdminExportController extends Controller
             return $denied;
         }
 
-        $entityIds = ScopeResolver::managedEntityIds($request->user(), 'entity.manage');
-        $isGlobal = $entityIds === [];
+        $scopes = ScopeResolver::managedScopes($request->user(), 'entity.manage');
+        $isGlobal = $scopes === [];
 
         $query = Membership::query()
-            ->with(['user:id,name,email', 'entity:id,name'])
-            ->when(! $isGlobal, fn ($q) => $q->whereIn('entity_id', $entityIds))
-            ->select(['id', 'user_id', 'entity_id', 'status', 'membership_type', 'approved_at', 'created_at']);
+            ->with(['user:id,name,email'])
+            ->when(! $isGlobal, fn ($q) => $q->whereIn('scope', $scopes))
+            ->select(['id', 'user_id', 'scope', 'node_id', 'status', 'membership_type', 'approved_at', 'created_at']);
 
         AuditLogger::record($request->user()->id, 'admin.export.memberships', Membership::class, null, ['is_global' => $isGlobal], $request->ip());
 
-        return $this->streamCsv('memberships_export.csv', ['id', 'user', 'email', 'entity', 'status', 'membership_type', 'approved_at', 'created_at'], $query->cursor()->map(fn ($m) => [
+        return $this->streamCsv('memberships_export.csv', ['id', 'user', 'email', 'scope', 'status', 'membership_type', 'approved_at', 'created_at'], $query->cursor()->map(fn ($m) => [
             $m->id,
             $m->user?->name,
             $m->user?->email,
-            $m->entity?->name,
+            \App\Support\OrgScopes::label($m->scope),
             $m->status,
             $m->membership_type,
             optional($m->approved_at)->toDateTimeString(),
@@ -77,11 +77,11 @@ class AdminExportController extends Controller
             return $denied;
         }
 
-        $entityIds = ScopeResolver::managedEntityIds($request->user(), 'entity.manage');
-        $isGlobal = $entityIds === [];
+        $scopes = ScopeResolver::managedScopes($request->user(), 'entity.manage');
+        $isGlobal = $scopes === [];
 
         $query = FoundationEvent::query()
-            ->when(! $isGlobal, fn ($q) => $q->whereIn('entity_id', $entityIds))
+            ->when(! $isGlobal, fn ($q) => $q->whereIn('scope', $scopes))
             ->select(['id', 'title', 'status', 'capacity', 'starts_at', 'ends_at', 'created_at']);
 
         AuditLogger::record($request->user()->id, 'admin.export.events', FoundationEvent::class, null, ['is_global' => $isGlobal], $request->ip());
@@ -123,13 +123,13 @@ class AdminExportController extends Controller
             return $denied;
         }
 
-        $entityIds = ScopeResolver::managedEntityIds($request->user(), 'entity.manage');
-        $isGlobal = $entityIds === [];
+        $scopes = ScopeResolver::managedScopes($request->user(), 'entity.manage');
+        $isGlobal = $scopes === [];
 
         $query = EventRegistration::query()
-            ->with(['event:id,title,entity_id', 'user:id,name,email'])
-            ->when(! $isGlobal, function ($q) use ($entityIds): void {
-                $q->whereHas('event', fn ($ev) => $ev->whereIn('entity_id', $entityIds));
+            ->with(['event:id,title,scope', 'user:id,name,email'])
+            ->when(! $isGlobal, function ($q) use ($scopes): void {
+                $q->whereHas('event', fn ($ev) => $ev->whereIn('scope', $scopes));
             })
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')->toString()))
             ->select(['id', 'event_id', 'user_id', 'status', 'registered_at', 'created_at']);

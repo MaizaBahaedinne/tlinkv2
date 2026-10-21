@@ -25,10 +25,10 @@
                         <option value="{{ $code }}" @selected(($filters['visibility'] ?? '') === $code)>{{ $label }}</option>
                     @endforeach
                 </select>
-                <select name="entity" aria-label="Entité">
+                <select name="scope" aria-label="Périmètre">
                     <option value="">Toutes les entités</option>
-                    @foreach($entities as $id => $name)
-                        <option value="{{ $id }}" @selected((string) ($filters['entity'] ?? '') === (string) $id)>{{ $name }}</option>
+                    @foreach($scopes as $id => $name)
+                        <option value="{{ $id }}" @selected((string) ($filters['scope'] ?? '') === (string) $id)>{{ $name }}</option>
                     @endforeach
                 </select>
                 <button class="btn btn-primary btn-sm" type="submit">Filtrer</button>
@@ -60,7 +60,7 @@
                                 </td>
                                 <td>{{ $post->author?->name ?? '—' }}</td>
                                 <td class="hide-mobile">
-                                    <div>{{ $post->entity?->name ?? 'Global' }}</div>
+                                    <div>{{ \App\Support\OrgScopes::label($post->scope) ?? 'Global' }}</div>
                                     <div class="cell-sub">{{ $visibilities[$post->visibility] ?? $post->visibility }}</div>
                                 </td>
                                 <td class="hide-mobile text-sm">{{ $post->comments_count }} com. · {{ $post->reactions_count }} réact.</td>

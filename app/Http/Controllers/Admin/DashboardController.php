@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\ApprovalRequest;
 use App\Models\AuditLog;
-use App\Models\Club;
-use App\Models\Entity;
 use App\Models\FoundationEvent;
 use App\Models\Membership;
+use App\Models\OrgNode;
 use App\Models\ModerationReport;
 use App\Models\Post;
 use App\Models\User;
@@ -46,11 +45,11 @@ class DashboardController extends AdminController
         if ($canPlatform) {
             $stats[] = [
                 'label' => 'Clubs',
-                'value' => $this->scoped(Club::query(), $request, 'entity.manage')->count(),
+                'value' => $this->scoped(OrgNode::query()->where('kind', 'club'), $request, 'entity.manage')->count(),
                 'icon' => 'users',
                 'tone' => 'cyan',
-                'hint' => 'Actifs : '.$this->scoped(Club::query(), $request, 'entity.manage')->where('status', 'active')->count(),
-                'href' => route('admin.clubs.index'),
+                'hint' => 'Actifs : '.$this->scoped(OrgNode::query()->where('kind', 'club'), $request, 'entity.manage')->where('status', 'active')->count(),
+                'href' => route('orgchart.index'),
             ];
         }
 
@@ -106,7 +105,7 @@ class DashboardController extends AdminController
             'chart' => $canPlatform ? $this->activityChart() : null,
             'pendingMemberships' => $canMemberships
                 ? $this->scoped(Membership::query(), $request, 'membership.manage')
-                    ->with(['user:id,name,email', 'entity:id,name'])
+                    ->with(['user:id,name,email'])
                     ->where('status', 'pending')
                     ->latest('id')
                     ->limit(5)
@@ -116,10 +115,7 @@ class DashboardController extends AdminController
                 ? ModerationReport::query()->where('status', 'pending')->latest('id')->limit(5)->get()
                 : null,
             'organization' => $canPlatform
-                ? $this->scoped(Entity::query(), $request, 'entity.manage', 'id')
-                    ->withCount(['departments', 'institutions', 'clubs', 'memberships'])
-                    ->orderBy('name')
-                    ->get()
+                ? $this->organization($request)
                 : null,
             'recentAudit' => $canPlatform
                 ? AuditLog::query()->with('actor:id,name')->latest('id')->limit(7)->get()
@@ -128,6 +124,25 @@ class DashboardController extends AdminController
             'firstName' => explode(' ', trim($user->name))[0] ?? $user->name,
             'ctx' => $ctx,
         ]);
+    }
+
+    /**
+     * Perimetres geres avec leurs effectifs : clubs de l'organigramme et adhesions.
+     *
+     * @return array<int, array{slug: string, name: string, clubs: int, memberships: int}>
+     */
+    private function organization(Request $request): array
+    {
+        $options = $this->scopeOptions($request, 'entity.manage');
+        $clubs = OrgNode::query()->where('kind', 'club')->whereIn('scope', array_keys($options))->groupBy('scope')->selectRaw('scope, count(*) as total')->pluck('total', 'scope');
+        $members = Membership::query()->whereIn('scope', array_keys($options))->groupBy('scope')->selectRaw('scope, count(*) as total')->pluck('total', 'scope');
+
+        return collect($options)->map(fn (string $name, string $slug): array => [
+            'slug' => $slug,
+            'name' => $name,
+            'clubs' => (int) ($clubs[$slug] ?? 0),
+            'memberships' => (int) ($members[$slug] ?? 0),
+        ])->values()->all();
     }
 
     private function pendingApprovalsQuery(int $userId)

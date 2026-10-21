@@ -23,10 +23,10 @@
                         <option value="{{ $code }}" @selected(($filters['status'] ?? '') === $code)>{{ $label }}</option>
                     @endforeach
                 </select>
-                <select name="entity" aria-label="Entité">
+                <select name="scope" aria-label="Périmètre">
                     <option value="">Toutes les entités</option>
-                    @foreach($entities as $id => $name)
-                        <option value="{{ $id }}" @selected((string) ($filters['entity'] ?? '') === (string) $id)>{{ $name }}</option>
+                    @foreach($scopes as $id => $name)
+                        <option value="{{ $id }}" @selected((string) ($filters['scope'] ?? '') === (string) $id)>{{ $name }}</option>
                     @endforeach
                 </select>
                 <button class="btn btn-primary btn-sm" type="submit">Filtrer</button>
@@ -57,7 +57,7 @@
                                     <div class="cell-sub">{{ $event->location ?? 'Lieu non précisé' }}</div>
                                 </td>
                                 <td class="nowrap text-sm">{{ $event->starts_at?->format('d/m/Y H:i') ?? '—' }}</td>
-                                <td class="hide-mobile">{{ $entityNames[$event->entity_id] ?? 'Global' }}</td>
+                                <td class="hide-mobile">{{ \App\Support\OrgScopes::label($event->scope) ?? 'Global' }}</td>
                                 <td>{{ $event->registrations_count }}@if($event->capacity) <span class="text-muted">/ {{ $event->capacity }}</span>@endif</td>
                                 <td><x-admin.badge :status="$event->status" /></td>
                                 <td class="cell-actions">

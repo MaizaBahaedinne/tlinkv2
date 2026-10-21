@@ -31,11 +31,11 @@ class AdminController extends Controller
             return $denied;
         }
 
-        $entityIds = ScopeResolver::managedEntityIds($request->user(), 'entity.manage');
-        $isGlobal = $entityIds === [];
+        $scopes = ScopeResolver::managedScopes($request->user(), 'entity.manage');
+        $isGlobal = $scopes === [];
 
         $membershipsPending = Membership::query()
-            ->when(! $isGlobal, fn ($q) => $q->whereIn('entity_id', $entityIds))
+            ->when(! $isGlobal, fn ($q) => $q->whereIn('scope', $scopes))
             ->where('status', 'pending')
             ->count();
 
@@ -44,7 +44,7 @@ class AdminController extends Controller
             ->count();
 
         $postsCount = Post::query()
-            ->when(! $isGlobal, fn ($q) => $q->whereIn('entity_id', $entityIds))
+            ->when(! $isGlobal, fn ($q) => $q->whereIn('scope', $scopes))
             ->count();
 
         $usersCount = User::query()->count();
@@ -55,7 +55,7 @@ class AdminController extends Controller
         return response()->json([
             'data' => [
                 'is_global' => $isGlobal,
-                'managed_entity_ids' => $entityIds,
+                'managed_scopes' => $scopes,
                 'stats' => [
                     'users' => $usersCount,
                     'posts' => $postsCount,

@@ -2,7 +2,6 @@
 
 namespace Tests\Concerns;
 
-use App\Models\Entity;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
@@ -16,12 +15,12 @@ trait GrantsAccess
 {
     /**
      * Place l'utilisateur sur un poste isole qui porte le niveau d'acces voulu.
-     * Hors administrateur global, le poste est rattache a une entite (celle donnee, sinon une entite de test).
+     * Hors administrateur global, le poste est rattache a un perimetre (celui donne, sinon `university`).
      */
-    protected function grantAccess(User $user, string $level = 'global_admin', ?Entity $entity = null): OrgNode
+    protected function grantAccess(User $user, string $level = 'global_admin', ?string $scope = null): OrgNode
     {
-        if ($level !== 'global_admin' && $entity === null) {
-            $entity = Entity::query()->firstOrCreate(['slug' => 'test-entity'], ['name' => 'Entité de test', 'category' => 'test']);
+        if ($level !== 'global_admin') {
+            $scope ??= 'university';
         }
 
         $node = OrgNode::query()->create([
@@ -31,7 +30,7 @@ trait GrantsAccess
             'access_level' => $level,
             'category' => 'direction',
             'title' => 'Poste de test '.$level,
-            'entity_id' => $level === 'global_admin' ? null : $entity?->id,
+            'scope' => $level === 'global_admin' ? null : $scope,
             'sort_order' => 0,
         ]);
 

@@ -37,7 +37,7 @@
                 <div class="oc-menu-list" id="m-add" hidden>
                     <button type="button" data-act="add-node">Poste, unité ou département</button>
                     <button type="button" data-act="add-club">Club (régional, université, lycée)</button>
-                    <button type="button" data-act="sync">Synchroniser avec les clubs</button>
+                    <button type="button" data-act="sync">Réaligner les clubs et périmètres</button>
                 </div>
             </div>
             <button type="button" class="oc-btn" data-act="toggle-edit" aria-pressed="false" title="Active le déplacement des blocs à la souris">Modifier</button>
@@ -143,7 +143,7 @@
                 <div class="oc-field"><label for="n-category">Catégorie (couleur)</label><select id="n-category" name="category"></select></div>
             </div>
             <div class="oc-field" id="n-capacity-wrap"><label for="n-capacity">Titulaires du poste</label><select id="n-capacity" name="capacity"></select><small class="oc-muted">Seuls les postes accueillent des personnes ; un poste à titulaire unique refuse une deuxième personne.</small></div>
-            <div class="oc-field" id="n-access-wrap"><label for="n-access">Niveau d'accès (droits de la personne en poste)</label><select id="n-access" name="access_level"></select><small class="oc-muted">Les droits d'administration viennent uniquement des postes. Ils s'appliquent à l'entité du poste (ou héritée du bloc parent), sauf l'administrateur global.</small></div>
+            <div class="oc-field" id="n-access-wrap"><label for="n-access">Niveau d'accès (droits de la personne en poste)</label><select id="n-access" name="access_level"></select><small class="oc-muted">Les droits d'administration viennent uniquement des postes. Ils s'appliquent au périmètre du poste (ou hérité du bloc parent), sauf l'administrateur global.</small></div>
             <div class="oc-field"><label for="n-parent">Rattaché à</label><select id="n-parent" name="parent_id"></select></div>
             <div class="oc-grid2">
                 <div class="oc-field"><label for="n-relation">Nature du lien</label><select id="n-relation" name="relation_type"></select></div>
@@ -156,13 +156,25 @@
             </div>
             <label class="oc-check"><input type="checkbox" id="n-collapsed" name="is_collapsed"><span>Replié par défaut</span></label>
             <fieldset class="oc-fieldset" id="n-structure">
-                <legend>Liens avec la plateforme</legend>
-                <div class="oc-field"><label for="n-entity">Entité</label><select id="n-entity" name="entity_id"></select></div>
+                <legend>Périmètre</legend>
+                <div class="oc-field"><label for="n-scope">Périmètre (fondation, University, High School, Alumni)</label><select id="n-scope" name="scope"></select></div>
+                <p class="oc-muted">Les sous-blocs héritent du périmètre. Il détermine les droits des postes, les adhésions, les publications et les événements concernés.</p>
+            </fieldset>
+            <fieldset class="oc-fieldset" id="n-club-fields" hidden>
+                <legend>Informations du club</legend>
                 <div class="oc-grid2">
-                    <div class="oc-field"><label for="n-department">Département</label><select id="n-department" name="department_id"></select></div>
-                    <div class="oc-field"><label for="n-institution">Institution</label><select id="n-institution" name="institution_id"></select></div>
+                    <div class="oc-field"><label for="n-status">Statut</label><select id="n-status" name="status"></select></div>
+                    <div class="oc-field"><label for="n-founded">Date de fondation</label><input type="date" id="n-founded" name="founded_on"></div>
                 </div>
-                <p class="oc-muted">Les sous-blocs héritent de l’entité et du département. Pour un club, ces liens modifient le club lui-même.</p>
+                <div class="oc-grid2">
+                    <div class="oc-field"><label for="n-inst-name">Établissement</label><input id="n-inst-name" name="institution_name" maxlength="255"></div>
+                    <div class="oc-field"><label for="n-inst-type">Type d’établissement</label><select id="n-inst-type" name="institution_type"></select></div>
+                </div>
+                <div class="oc-grid2">
+                    <div class="oc-field"><label for="n-email">E-mail du club</label><input type="email" id="n-email" name="email" maxlength="255"></div>
+                    <div class="oc-field"><label for="n-facebook">Page Facebook</label><input type="url" id="n-facebook" name="facebook_url" maxlength="500" placeholder="https://"></div>
+                </div>
+                <label class="oc-check"><input type="checkbox" id="n-charter" name="charter_signed"><span>Charte signée</span></label>
             </fieldset>
             <div class="oc-field"><label for="n-desc">Description</label><textarea id="n-desc" name="description" rows="3" maxlength="5000"></textarea></div>
             <p class="oc-form-error" id="n-error" role="alert" hidden></p>

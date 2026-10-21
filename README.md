@@ -12,14 +12,13 @@ Cette base inclut:
 - Profil utilisateur modifiable.
 - Homepage sociale responsive avec fil d'actualites persistant.
 - Schema initial de base de donnees pour:
-  - organisation (entites, departements, institutions, gouvernorats, clubs)
+  - organisation (gouvernorats ; perimetres et clubs portes par l'organigramme)
   - memberships
   - RBAC (roles, permissions, assignments)
   - social (posts, reactions, commentaires)
   - operations (projects, activities, events, registrations)
   - approbations, notifications, audit et settings
 - Seeders initiaux:
-  - 4 entites Fondation Tunivisions
   - 24 gouvernorats tunisiens
   - templates roles/permissions
   - contenu demo uniquement en local/development
@@ -84,7 +83,7 @@ Voir la documentation detaillee:
 
 Page interactive `/organigramme` (lecture pour tous, edition pour les administrateurs globaux).
 Voir `docs/organigramme.md` (structure, utilisation, exports, import, deploiement).
-L'organigramme est relie aux entites, departements, institutions et clubs (`php artisan orgchart:sync` apres un import legacy).
+L'organigramme est l'unique base de la structure (perimetres foundation / university / high-school / alumni et clubs) : `php artisan orgchart:sync` apres un import legacy.
 
 ## Migration des donnees de l'ancienne plateforme
 
@@ -92,7 +91,7 @@ Les fichiers sources (`database/legacy/*.sql`, ignores par git car ils contienne
 
 ```bash
 php artisan migrate --force
-php artisan legacy:import-clubs                       # clubs + institutions (tbl_club)
+php artisan legacy:import-clubs                       # clubs de l'organigramme (tbl_club)
 php artisan legacy:import-users --dry-run             # simulation + rapport CSV
 php artisan legacy:import-users                       # utilisateurs, profils, adhesions (tbl_users)
 ```

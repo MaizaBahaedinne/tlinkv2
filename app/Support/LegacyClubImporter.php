@@ -2,15 +2,21 @@
 
 namespace App\Support;
 
-use App\Models\Club;
-use App\Models\Department;
-use App\Models\Entity;
 use App\Models\Governorate;
-use App\Models\Institution;
+use App\Models\OrgNode;
+use App\Support\OrgChart\OrgChartInstaller;
+use App\Support\OrgChart\OrgChartLinker;
 use Illuminate\Support\Str;
 
+/**
+ * Importe les clubs du dump legacy (tbl_club) comme blocs « club » de l'organigramme.
+ */
 class LegacyClubImporter
 {
+    public function __construct(private readonly OrgChartInstaller $installer, private readonly OrgChartLinker $linker)
+    {
+    }
+
     /** Noms de clubs rattaches a un etablissement different de leur propre nom. */
     private const INSTITUTION_ALIASES = [
         'esprit tic' => 'ESPRIT',
@@ -35,6 +41,10 @@ class LegacyClubImporter
         ];
 
         $inClubTable = false;
+
+        if (! $this->installer->isInstalled()) {
+            $this->installer->install();
+        }
 
         $handle = fopen($dumpPath, 'rb');
         if ($handle === false) {
@@ -64,7 +74,6 @@ class LegacyClubImporter
             if ($row === null) {
                 $stats['skipped']++;
             } elseif (in_array($row['club_id'], [-1, 0, 1, 2], true)) {
-                $this->syncBranch($row);
                 $stats['branches']++;
             } else {
                 $result = $this->syncClub($row);
@@ -86,63 +95,12 @@ class LegacyClubImporter
         return $stats;
     }
 
-    private function syncBranch(array $row): void
-    {
-        $branchMap = [
-            -1 => ['slug' => 'foundation', 'name' => 'Fondation', 'category' => 'foundation', 'department' => 'Bureau national'],
-            0 => ['slug' => 'university', 'name' => 'University', 'category' => 'education', 'department' => 'Bureau universitaire'],
-            1 => ['slug' => 'high-school', 'name' => 'High School', 'category' => 'education', 'department' => 'Bureau lycée'],
-            2 => ['slug' => 'alumni', 'name' => 'Alumni', 'category' => 'alumni', 'department' => 'Bureau alumni'],
-        ];
-
-        $meta = $branchMap[$row['club_id']];
-
-        $entity = Entity::query()->updateOrCreate(
-            ['slug' => $meta['slug']],
-            [
-                'name' => $meta['name'],
-                'category' => $meta['category'],
-                'description' => 'Import legacy du club '.$meta['name'].' depuis tbl_club.',
-                'is_active' => ($row['is_active'] ?? '0') === '1',
-            ]
-        );
-
-        Department::query()->updateOrCreate(
-            [
-                'entity_id' => $entity->id,
-                'slug' => Str::slug($meta['department']),
-            ],
-            [
-                'name' => $meta['department'],
-                'description' => 'Bureau hérité du dump legacy tbl_club.',
-            ]
-        );
-    }
-
     /** @return array{created: bool, governorate: bool} */
     private function syncClub(array $row): array
     {
-        $entitySlug = $this->resolveEntitySlug($row);
-        $entity = Entity::query()->where('slug', $entitySlug)->first();
-
-        if (! $entity) {
-            $entity = Entity::query()->where('slug', 'university')->first() ?? Entity::query()->first();
-        }
-
-        $departmentSlug = match ($entity?->slug) {
-            'high-school' => 'bureau-lycee',
-            'alumni' => 'bureau-alumni',
-            'foundation' => 'bureau-national',
-            default => 'bureau-universitaire',
-        };
-
-        $department = null;
-        if ($entity) {
-            $department = Department::query()->where('entity_id', $entity->id)->where('slug', $departmentSlug)->first();
-        }
-
+        $scope = $this->resolveScope($row);
         $governorate = $this->resolveGovernorate($row['city']);
-        $institution = $entity ? $this->syncInstitution($row, $entity) : null;
+        [$institutionName, $institutionType] = $this->institutionOf($row, $scope);
 
         // Dans l'ancienne base, les colonnes `facebook` et `email` sont inversees
         // sur de nombreuses lignes : on classe chaque valeur selon son contenu.
@@ -164,19 +122,31 @@ class LegacyClubImporter
             $founded = $row['birthday'];
         }
 
-        $slug = 'legacy-'.$row['club_id'].'-'.Str::slug($row['name']);
-        $club = Club::query()->where('legacy_id', $row['club_id'])->first()
-            ?? Club::query()->where('slug', $slug)->first()
-            ?? new Club();
+        $club = OrgNode::query()->where('legacy_id', $row['club_id'])->first() ?? new OrgNode();
         $created = ! $club->exists;
 
+        if ($created) {
+            $resolved = $this->linker->branchFor($scope);
+            $parent = $resolved ? $this->linker->groupFor($resolved[0], $governorate) : $this->fallbackParent($scope);
+
+            $max = OrgNode::query()->where('parent_id', $parent->id)->max('sort_order');
+            $club->fill([
+                'parent_id' => $parent->id,
+                'relation_type' => 'hierarchy',
+                'kind' => 'club',
+                'category' => $resolved[1] ?? $parent->category,
+                'is_collapsed' => true,
+                'sort_order' => $max === null ? 0 : ((int) $max) + 1,
+            ]);
+        }
+
         $club->fill([
-            'name' => $row['name'],
-            'slug' => $club->slug ?: $slug,
+            'title' => $row['name'],
+            'subtitle' => $created ? $governorate?->name : $club->subtitle,
             'legacy_id' => $row['club_id'],
-            'entity_id' => $entity?->id,
-            'department_id' => $department?->id,
-            'institution_id' => $institution?->id,
+            'scope' => $scope,
+            'institution_name' => $institutionName,
+            'institution_type' => $institutionType,
             'governorate_id' => $governorate?->id,
             'email' => $email,
             'facebook_url' => $facebook,
@@ -188,39 +158,27 @@ class LegacyClubImporter
         return ['created' => $created, 'governorate' => $governorate !== null];
     }
 
-    /**
-     * Une institution (universite / lycee) par etablissement. Le club legacy porte
-     * le nom de son etablissement ; plusieurs clubs d'un meme etablissement
-     * (ex. ESPRIT TIC et ESPRIT GCEM) partagent la meme institution.
-     */
-    private function syncInstitution(array $row, Entity $entity): ?Institution
+    private function fallbackParent(string $scope): OrgNode
     {
-        $type = match ($entity->slug) {
-            'university' => 'university',
-            'high-school' => 'high_school',
-            default => null,
-        };
+        $key = array_search($scope, OrgChartLinker::SYSTEM_SCOPES, true);
 
+        return ($key ? OrgNode::query()->where('system_key', $key)->first() : null)
+            ?? OrgNode::query()->whereNull('parent_id')->orderBy('id')->firstOrFail();
+    }
+
+    /**
+     * Etablissement (universite / lycee) du club : le club legacy porte le nom de son etablissement ;
+     * plusieurs clubs d'un meme etablissement (ex. ESPRIT TIC et ESPRIT GCEM) partagent le meme nom.
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function institutionOf(array $row, string $scope): array
+    {
+        $type = OrgScopes::institutionType($scope);
         $name = preg_replace('/\s+/u', ' ', $row['name']);
         $name = self::INSTITUTION_ALIASES[mb_strtolower($name)] ?? $name;
-        $slug = Str::slug($name);
 
-        if ($type === null || $slug === '') {
-            return null;
-        }
-
-        $institution = Institution::query()->firstOrNew(['institution_type' => $type, 'slug' => $slug]);
-        if (! $institution->exists) {
-            $institution->name = $name;
-            $institution->description = 'Etablissement importe depuis tbl_club.';
-        }
-
-        $institution->entity_id = $entity->id;
-        // Une institution reste active des qu'un de ses clubs l'est.
-        $institution->is_active = $row['is_active'] === '1' || ($institution->exists && $institution->is_active);
-        $institution->save();
-
-        return $institution;
+        return $type === null || Str::slug($name) === '' ? [null, null] : [$name, $type];
     }
 
     private function resolveGovernorate(string $city): ?Governorate
@@ -244,7 +202,7 @@ class LegacyClubImporter
         return Governorate::query()->where('slug', $slug)->first();
     }
 
-    private function resolveEntitySlug(array $row): string
+    private function resolveScope(array $row): string
     {
         // SenJun : 3 = club universitaire, 4 = club lycee (fiable, contrairement au nom).
         if ($row['sen_jun'] === '4') {

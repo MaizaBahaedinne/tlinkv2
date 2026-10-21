@@ -61,7 +61,6 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
     Route::get('historique', [OrgChartController::class, 'history'])->name('history');
     Route::get('export.json', [OrgChartController::class, 'exportJson'])->name('export.json');
     Route::get('export.csv', [OrgChartController::class, 'exportCsv'])->name('export.csv');
-    Route::get('lien/{type}/{id}', [OrgChartController::class, 'locate'])->whereNumber('id')->name('locate');
     Route::post('synchroniser', [OrgChartController::class, 'sync'])->name('sync');
 
     Route::post('blocs', [OrgChartController::class, 'storeNode'])->name('nodes.store');
@@ -87,7 +86,7 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
 | Espace d'administration
 |--------------------------------------------------------------------------
 | Chaque section est protegee par `admin.can:<permissions>` (au moins une).
-| Le perimetre (global ou limite a des entites) est ensuite applique dans les controleurs.
+| Le perimetre (global ou limite a des perimetres) est ensuite applique dans les controleurs.
 */
 Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.review,post.moderate,event.manage'])
     ->prefix('admin')
@@ -100,20 +99,6 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('feuille-de-route', [Admin\RoadmapController::class, 'index'])->name('roadmap.index');
             Route::post('feuille-de-route', [Admin\RoadmapController::class, 'update'])->name('roadmap.update');
             Route::get('journal', [Admin\AuditLogController::class, 'index'])->name('audit.index');
-
-            $crud = function (string $uri, string $name, string $controller, string $param): void {
-                Route::get($uri, [$controller, 'index'])->name("{$name}.index");
-                Route::get("{$uri}/creer", [$controller, 'create'])->name("{$name}.create");
-                Route::post($uri, [$controller, 'store'])->name("{$name}.store");
-                Route::get("{$uri}/{{$param}}/modifier", [$controller, 'edit'])->name("{$name}.edit");
-                Route::put("{$uri}/{{$param}}", [$controller, 'update'])->name("{$name}.update");
-                Route::delete("{$uri}/{{$param}}", [$controller, 'destroy'])->name("{$name}.destroy");
-            };
-
-            $crud('entites', 'entities', Admin\EntityController::class, 'entity');
-            $crud('departements', 'departments', Admin\DepartmentController::class, 'department');
-            $crud('institutions', 'institutions', Admin\InstitutionController::class, 'institution');
-            $crud('clubs', 'clubs', Admin\ClubController::class, 'club');
         });
 
         // Communaute
