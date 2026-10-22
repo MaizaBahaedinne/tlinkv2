@@ -155,6 +155,11 @@ class LegacyClubImporter
             'status' => $row['is_active'] === '1' ? 'active' : 'inactive',
         ])->save();
 
+        // Un club University / High School importé reçoit l'équipe type (identique pour tous).
+        if ($created && in_array($club->category, ClubRoles::CATEGORIES, true)) {
+            $this->installer->applyTemplate($club);
+        }
+
         return ['created' => $created, 'governorate' => $governorate !== null];
     }
 

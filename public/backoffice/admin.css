@@ -263,3 +263,20 @@ dialog.confirm::backdrop { background: rgba(42, 7, 16, 0.55); backdrop-filter: b
     .form-grid, .kv { grid-template-columns: 1fr; }
     .hide-mobile { display: none; }
 }
+
+/* ------------------------------------------------------------ Equipe d'un club */
+.team-tree { list-style: none; margin: 0; padding: 0 0 0 22px; position: relative; }
+.team-tree.team-root { padding-left: 0; }
+.team-node { position: relative; padding: 6px 0 0 18px; }
+.team-root > .team-node { padding-left: 0; }
+.team-tree:not(.team-root) > .team-node::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; border-left: 2px solid var(--line); }
+.team-tree:not(.team-root) > .team-node:last-child::before { bottom: auto; height: 24px; }
+.team-tree:not(.team-root) > .team-node::after { content: ""; position: absolute; left: 0; top: 24px; width: 14px; border-top: 2px solid var(--line); }
+.team-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; justify-content: space-between; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.team-card.is-club { background: var(--cyan-soft); border-color: transparent; font-weight: 700; }
+.team-card.is-dept { background: var(--bg, #f7f5f6); border-left: 4px solid var(--cyan); }
+.team-head { display: flex; align-items: center; gap: 8px; }
+.team-title { font-weight: 700; color: inherit; text-decoration: none; }
+a.team-title:hover { color: var(--cyan); }
+.team-holders { display: flex; flex-wrap: wrap; gap: 8px; }
+.team-holder { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }

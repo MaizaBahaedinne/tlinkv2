@@ -69,6 +69,7 @@ class OrgNode extends Model
         'pos_dy',
         'sort_order',
         'system_key',
+        'role_key',
     ];
 
     protected $casts = [

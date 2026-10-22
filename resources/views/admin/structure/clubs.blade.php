@@ -4,13 +4,13 @@
 @section('section', 'Organisation')
 
 @section('content')
-    <x-admin.page-header title="Clubs" subtitle="Chaque club University / High School suit la même équipe : un Président et 4 départements (VP, Assistant, membres).">
+    <x-admin.page-header title="Clubs" subtitle="Chaque club University / High School a la même équipe : un Président et 4 départements (VP, Assistant, membres). Elle est créée automatiquement.">
         <x-slot:actions>
-            <a href="{{ route('admin.postes.index') }}" class="btn btn-secondary"><x-admin.icon name="key" :size="16" /> Postes et droits</a>
+            <a href="{{ route('admin.roles.index') }}" class="btn btn-secondary"><x-admin.icon name="shield" :size="16" /> Droits des clubs</a>
             @if($canEdit)
-                <form method="post" action="{{ route('admin.clubs.align') }}" data-confirm="Les clubs University et High School existants seront complétés : assistants et membres manquants créés dans chaque département." data-confirm-title="Aligner les clubs sur l’équipe type ?">
+                <form method="post" action="{{ route('admin.clubs.align') }}" data-confirm="Les clubs University et High School qui n’ont pas encore l’équipe standard (ou dont elle est incomplète) seront complétés. Les personnes déjà affectées ne bougent pas." data-confirm-title="Compléter les équipes des clubs ?">
                     @csrf
-                    <button type="submit" class="btn btn-secondary"><x-admin.icon name="layers" :size="16" /> Aligner sur l’équipe type</button>
+                    <button type="submit" class="btn btn-secondary"><x-admin.icon name="layers" :size="16" /> Compléter les équipes</button>
                 </form>
             @endif
         </x-slot:actions>
@@ -99,7 +99,7 @@
                             @endphp
                             <tr>
                                 <td>
-                                    <a href="{{ route('admin.postes.edit', $club) }}" class="cell-main">{{ $club->title }}</a>
+                                    <a href="{{ route('admin.clubs.show', $club) }}" class="cell-main">{{ $club->title }}</a>
                                     <div class="cell-sub">{{ \App\Models\OrgNode::CATEGORIES[$club->category] ?? $club->category }}</div>
                                 </td>
                                 <td class="hide-mobile">{{ $club->governorate?->name ?? '—' }}</td>
@@ -122,13 +122,8 @@
                                     @endif
                                 </td>
                                 <td class="cell-actions">
-                                    @if($canEdit && $row['positions'] === 0)
-                                        <form method="post" action="{{ route('admin.postes.template', $club) }}">
-                                            @csrf
-                                            <button type="submit" class="btn btn-secondary btn-sm">Équipe type</button>
-                                        </form>
-                                    @endif
-                                    <a href="{{ route('admin.postes.edit', $club) }}" class="btn btn-secondary btn-sm">{{ $canEdit ? 'Modifier' : 'Voir' }}</a>
+                                    <a href="{{ route('admin.clubs.show', $club) }}" class="btn btn-secondary btn-sm">Ouvrir</a>
+                                    <a href="{{ route('admin.postes.edit', $club) }}" class="btn btn-ghost btn-sm">{{ $canEdit ? 'Modifier' : 'Fiche' }}</a>
                                 </td>
                             </tr>
                         @endforeach

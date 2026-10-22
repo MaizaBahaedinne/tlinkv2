@@ -4,6 +4,7 @@ namespace App\Support\OrgChart;
 
 use App\Models\Governorate;
 use App\Models\OrgNode;
+use App\Support\ClubRoles;
 use App\Support\OrgScopes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -351,6 +352,7 @@ class OrgChartInstaller
         $regional = $clubNode->category === 'regional_club';
         $created = [];
         $count = 0;
+        $levels = $regional ? [] : ClubRoles::levels();
 
         foreach ($this->clubTemplate($regional) as $slot => $definition) {
             $parentId = $definition['parent'] === null ? $clubNode->id : (isset($created[$definition['parent']]) ? $created[$definition['parent']]->id : $clubNode->id);
@@ -360,7 +362,8 @@ class OrgChartInstaller
                 'relation_type' => 'hierarchy',
                 'kind' => $definition['kind'],
                 'capacity' => $definition['capacity'],
-                'access_level' => $definition['access'],
+                'access_level' => $regional ? $definition['access'] : ($levels[$slot] ?? 'none'),
+                'role_key' => $regional ? null : $slot,
                 'category' => $clubNode->category,
                 'title' => $definition['title'],
                 'subtitle' => $clubNode->title,
@@ -407,7 +410,7 @@ class OrgChartInstaller
      * Met les clubs University / High School existants au modele : dans chaque departement, un VP, un Assistant
      * et des membres. Les assistants places sous le VP remontent au niveau du departement, les postes manquants
      * sont crees, et l'ancien bloc vide « Autres membres et responsables » disparait. Idempotent.
-     * Un club sans aucun departement n'est pas touche : l'equipe type s'y applique a la demande.
+     * Un club sans aucun bloc recoit l'equipe type ; chaque poste prend le niveau d'acces de son role.
      *
      * @return int nombre de blocs crees, deplaces ou retires
      */
@@ -437,6 +440,13 @@ class OrgChartInstaller
 
             foreach ($clubs as $club) {
                 $team = $descendants($club);
+
+                // Club sans equipe (ex. importe de l'ancienne base) : il recoit l'equipe type.
+                if ($team->isEmpty()) {
+                    $changes += $this->applyTemplate(OrgNode::query()->findOrFail($club->id));
+
+                    continue;
+                }
 
                 foreach ($team->where('kind', 'club_department') as $department) {
                     foreach (self::DEPARTMENT_SLOTS as $label) {
@@ -487,8 +497,58 @@ class OrgChartInstaller
                 }
             }
 
-            return $changes;
+            return $changes + $this->tagClubRoles();
         });
+    }
+
+    /**
+     * Pose le role (cle de l'equipe type) sur les blocs des clubs University / High School qui n'en ont pas encore,
+     * et aligne le niveau d'acces des postes sur celui defini pour leur role.
+     *
+     * @return int nombre de blocs etiquetes
+     */
+    public function tagClubRoles(): int
+    {
+        $keys = ClubRoles::keysByTitle();
+        $levels = ClubRoles::levels();
+        $nodes = OrgNode::query()->get(['id', 'parent_id', 'kind', 'title', 'category', 'role_key'])->keyBy('id');
+        $count = 0;
+
+        foreach ($nodes as $node) {
+            if ($node->role_key !== null || ! in_array($node->kind, ['position', 'club_department'], true) || ! isset($keys[$node->title])) {
+                continue;
+            }
+
+            // Le bloc doit se trouver dans un club University / High School.
+            $inside = false;
+
+            for ($id = $node->parent_id, $guard = 0; $id && $guard < 80; $guard++) {
+                $parent = $nodes[$id] ?? null;
+
+                if (! $parent) {
+                    break;
+                }
+
+                if ($parent->kind === 'club') {
+                    $inside = in_array($parent->category, ClubRoles::CATEGORIES, true);
+                    break;
+                }
+
+                $id = $parent->parent_id;
+            }
+
+            if (! $inside) {
+                continue;
+            }
+
+            $key = $keys[$node->title];
+            $attributes = ['role_key' => $key];
+            $node->kind === 'position' && $attributes['access_level'] = $levels[$key] ?? 'none';
+            OrgNode::query()->whereKey($node->id)->update($attributes);
+            $count++;
+        }
+
+        return $count;
     }
 
     private function installNationalOffice(OrgNode $director, string $key, string $coordinatorTitle, string $office, string $clubsBranchTitle, string $clubCategory): void

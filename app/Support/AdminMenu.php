@@ -32,6 +32,7 @@ class AdminMenu
                     ['label' => 'Organigramme', 'route' => 'orgchart.index', 'icon' => 'network', 'match' => 'orgchart.*', 'perms' => ['entity.manage']],
                     ['label' => 'Postes et droits', 'route' => 'admin.postes.index', 'icon' => 'key', 'match' => 'admin.postes.*', 'perms' => ['entity.manage']],
                     ['label' => 'Clubs', 'route' => 'admin.clubs.index', 'icon' => 'building', 'match' => 'admin.clubs.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Droits des clubs', 'route' => 'admin.roles.index', 'icon' => 'shield', 'match' => 'admin.roles.*', 'perms' => ['entity.manage']],
                 ],
             ],
             [

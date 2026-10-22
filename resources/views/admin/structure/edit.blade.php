@@ -16,6 +16,9 @@
             @if($node->parent_id)
                 <a href="{{ route('admin.postes.edit', $node->parent_id) }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Bloc parent</a>
             @endif
+            @if($isClub)
+                <a href="{{ route('admin.clubs.show', $node) }}" class="btn btn-secondary"><x-admin.icon name="eye" :size="16" /> Page du club</a>
+            @endif
             <a href="{{ $back }}" class="btn btn-secondary">Retour au tableau</a>
         </x-slot:actions>
     </x-admin.page-header>
@@ -54,7 +57,13 @@
                             @if($isPosition)
                                 <x-admin.select name="capacity" label="Titulaires" :options="$capacities" :value="$node->capacity" :required="true" :placeholder="null" />
                                 <div class="span-2">
-                                    <x-admin.select name="access_level" label="Niveau d’accès sur T.Link" :options="$levels" :value="$node->access_level" :required="true" :placeholder="null" />
+                                    @if($node->role_key)
+                                        <label>Niveau d’accès sur T.Link</label>
+                                        <p style="margin:4px 0 0"><span class="badge badge-{{ \App\Support\AccessLevels::BADGES[$node->access_level][1] ?? 'neutral' }}">{{ $levels[$node->access_level] ?? $node->access_level }}</span></p>
+                                        <p class="hint" style="margin-top:6px">Poste de l’équipe standard des clubs : le niveau est le même dans tous les clubs et se règle dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p>
+                                    @else
+                                        <x-admin.select name="access_level" label="Niveau d’accès sur T.Link" :options="$levels" :value="$node->access_level" :required="true" :placeholder="null" />
+                                    @endif
                                     <div class="chips" style="margin-top:8px" data-level-perms>
                                         @forelse($levelPermissions[old('access_level', $node->access_level)] ?? [] as $permission)
                                             <span class="chip">{{ $permission }}</span>
@@ -237,7 +246,7 @@
                         @if($isClub && ! $hasChildren)
                             <form method="post" action="{{ route('admin.postes.template', $node) }}">
                                 @csrf
-                                <button type="submit" class="btn btn-secondary" style="width:100%">Appliquer l’équipe type</button>
+                                <button type="submit" class="btn btn-secondary" style="width:100%">Créer l’équipe standard</button>
                             </form>
                         @endif
                         <a href="{{ route('orgchart.index') }}" class="btn btn-ghost" style="width:100%">Voir dans l’organigramme</a>

@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\AuditLog;
+use App\Models\FoundationEvent;
 use App\Models\Governorate;
+use App\Models\Membership;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
+use App\Models\Post;
 use App\Models\User;
 use App\Support\AccessLevels;
 use App\Support\AdminContext;
 use App\Support\AuditLogger;
+use App\Support\ClubRoles;
 use App\Support\OrgAccess;
 use App\Support\OrgChart\OrgChartInstaller;
 use App\Support\OrgChart\OrgChartLinker;
@@ -116,8 +121,9 @@ class StructureController extends AdminController
             'access_level' => ['required', Rule::in(array_keys(AccessLevels::LEVELS))],
         ], ['nodes.required' => 'Cochez au moins un poste.']);
 
+        // Les postes d'une equipe type de club prennent le niveau de leur role (ecran « Roles des clubs »).
         $count = $this->keepingAdminAccess($request, fn (): int => OrgNode::query()
-            ->whereIn('id', $data['nodes'])->where('kind', 'position')
+            ->whereIn('id', $data['nodes'])->where('kind', 'position')->whereNull('role_key')
             ->update(['access_level' => $data['access_level']]));
 
         AuditLogger::record($request->user()->id, 'orgchart.access.bulk_updated', null, null, ['level' => $data['access_level'], 'positions' => $count], $request->ip());
@@ -247,6 +253,92 @@ class StructureController extends AdminController
             : $changes.' bloc(s) créé(s), déplacé(s) ou retiré(s) pour suivre le modèle.');
     }
 
+    /* ------------------------------------------------------------------ Page d'un club */
+
+    public function showClub(Request $request, OrgNode $node): View
+    {
+        abort_unless($node->kind === 'club', 404);
+
+        $node->load('governorate:id,name');
+        $current = $this->currentAssignments();
+
+        $team = collect();
+        $queue = [$node->id];
+
+        while ($queue !== []) {
+            $children = OrgNode::query()->where('parent_id', array_shift($queue))->orderBy('sort_order')->orderBy('id')->get();
+
+            foreach ($children as $child) {
+                $team->push($child);
+                $queue[] = $child->id;
+            }
+        }
+
+        $assignments = OrgAssignment::query()->whereIn('node_id', $team->pluck('id'))->where($current)
+            ->with('person.user:id,name')->get()->groupBy('node_id');
+        $positions = $team->where('kind', 'position');
+        $filled = $positions->filter(fn (OrgNode $position): bool => isset($assignments[$position->id]))->count();
+        $nodeIds = $team->pluck('id')->push($node->id);
+
+        $memberships = Membership::query()->where('node_id', $node->id);
+        $events = FoundationEvent::query()->where('node_id', $node->id);
+        $posts = Post::query()->where('node_id', $node->id);
+
+        return view('admin.structure.club', [
+            'club' => $node,
+            'canEdit' => $this->canEdit($request),
+            'tree' => $team->groupBy('parent_id'),
+            'assignments' => $assignments,
+            'positions' => $positions,
+            'filled' => $filled,
+            'memberStats' => (clone $memberships)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(),
+            'recentMembers' => (clone $memberships)->with('user:id,name')->latest('id')->limit(6)->get(),
+            'postCount' => (clone $posts)->count(),
+            'recentPosts' => (clone $posts)->with('author:id,name')->latest('id')->limit(5)->get(),
+            'eventCount' => (clone $events)->count(),
+            'upcomingEvents' => (clone $events)->where('starts_at', '>=', now())->orderBy('starts_at')->limit(5)->get(),
+            'pastEvents' => (clone $events)->where('starts_at', '<', now())->count(),
+            'logs' => AuditLog::query()->where('target_type', OrgNode::class)->whereIn('target_id', $nodeIds)
+                ->with('actor:id,name')->latest('id')->limit(8)->get(),
+            'levels' => AccessLevels::LEVELS,
+        ]);
+    }
+
+    /* ------------------------------------------------------------------ Roles des clubs */
+
+    public function roles(Request $request): View
+    {
+        $counts = OrgNode::query()->whereNotNull('role_key')->whereIn('category', ClubRoles::CATEGORIES)
+            ->selectRaw('role_key, count(*) as total')->groupBy('role_key')->pluck('total', 'role_key')->all();
+
+        return view('admin.structure.roles', [
+            'canEdit' => $this->canEdit($request),
+            'roles' => ClubRoles::all(),
+            'current' => ClubRoles::levels(),
+            'counts' => $counts,
+            'levels' => array_intersect_key(AccessLevels::LEVELS, array_flip(ClubRoles::ALLOWED_LEVELS)),
+            'levelPermissions' => collect(AccessLevels::LEVELS)->map(fn ($label, $level): array => array_map(
+                fn (string $permission): string => AccessLevels::PERMISSIONS[$permission],
+                AccessLevels::permissions($level)
+            ))->all(),
+        ]);
+    }
+
+    public function updateRoles(Request $request): RedirectResponse
+    {
+        $this->requireEditor($request);
+
+        $data = $request->validate([
+            'levels' => ['required', 'array'],
+            'levels.*' => ['required', Rule::in(ClubRoles::ALLOWED_LEVELS)],
+        ]);
+
+        $updated = ClubRoles::save($data['levels']);
+        AuditLogger::record($request->user()->id, 'orgchart.club_roles.updated', null, null, ['levels' => ClubRoles::levels(), 'positions' => $updated], $request->ip());
+
+        return back()->with('status', 'Droits enregistrés : '.$updated.' poste(s) de club mis à jour.');
+    }
+
     /* ------------------------------------------------------------------ Fiche d'un bloc */
 
     public function edit(Request $request, OrgNode $node): View
@@ -345,7 +437,8 @@ class StructureController extends AdminController
 
         if ($kind === 'position') {
             $attributes['capacity'] = $data['capacity'] ?? $node->capacity ?? 'single';
-            $attributes['access_level'] = $data['access_level'] ?? $node->access_level;
+            // Poste d'une equipe type de club : le niveau vient du role, pas de la fiche.
+            $attributes['access_level'] = $node->role_key !== null ? $node->access_level : ($data['access_level'] ?? $node->access_level);
         } else {
             $attributes['capacity'] = 'single';
             $attributes['access_level'] = 'none';
