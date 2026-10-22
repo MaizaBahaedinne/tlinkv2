@@ -31,6 +31,11 @@ class OrgChartInstaller
 
     private const CLUB_CATEGORIES = ['regional_club', 'university_club', 'highschool_club'];
 
+    /** Sommet de l'organigramme : la fondation elle-meme (aucune personne), au-dessus de la presidence. */
+    public const ROOT_KEY = 'foundation';
+
+    public const ROOT_TITLE = 'Tunivisions Foundation';
+
     public function __construct(private readonly OrgChartLinker $linker)
     {
     }
@@ -43,7 +48,8 @@ class OrgChartInstaller
     public function install(): void
     {
         DB::transaction(function (): void {
-            $president = $this->node('presidency', null, 'presidency', 'Président de la fondation', ['access_level' => 'global_admin']);
+            $root = $this->ensureRoot();
+            $president = $this->node('presidency', $root, 'presidency', 'Président de la fondation', ['access_level' => 'global_admin']);
             $this->ensureAdministrators($president);
 
             // Rattachements a la presidence : pas de lien hierarchique avec le directeur executif.
@@ -141,6 +147,8 @@ class OrgChartInstaller
         return DB::transaction(function (): int {
             $created = 0;
 
+            $this->ensureRoot();
+
             if ($president = OrgNode::query()->where('system_key', 'presidency')->first()) {
                 $this->ensureAdministrators($president);
             }
@@ -212,7 +220,39 @@ class OrgChartInstaller
         });
     }
 
-    /**     * Poste des administrateurs de la plateforme : la place des anciens rôles « administrateur national ».
+    /**
+     * Garantit le sommet « Tunivisions Foundation » : un bloc unite, sans personne, qui porte le perimetre
+     * Fondation. L'ancien sommet (la presidence) est rattache dessous. Idempotent.
+     */
+    public function ensureRoot(): OrgNode
+    {
+        $root = OrgNode::query()->where('system_key', self::ROOT_KEY)->first();
+
+        if (! $root) {
+            $root = OrgNode::query()->create([
+                'parent_id' => null,
+                'relation_type' => 'hierarchy',
+                'kind' => 'unit',
+                'category' => 'presidency',
+                'title' => self::ROOT_TITLE,
+                'scope' => 'foundation',
+                'sort_order' => 0,
+                'system_key' => self::ROOT_KEY,
+            ]);
+        }
+
+        // Tout ancien sommet (la presidence) passe sous la fondation.
+        OrgNode::query()
+            ->whereNull('parent_id')
+            ->where('id', '!=', $root->id)
+            ->get()
+            ->each(fn (OrgNode $old) => $old->update(['parent_id' => $root->id, 'relation_type' => 'hierarchy']));
+
+        return $root;
+    }
+
+    /**
+     * Poste des administrateurs de la plateforme : la place des anciens rôles « administrateur national ».
      * Seul niveau d'accès global : on y affecte les personnes qui administrent toute la plateforme.
      */
     public function ensureAdministrators(OrgNode $president): OrgNode

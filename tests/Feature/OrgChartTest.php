@@ -97,6 +97,13 @@ class OrgChartTest extends TestCase
         // Aucune personne inventee : seul l'administrateur de test (un compte réel) figure dans l'organigramme.
         $this->assertSame([$this->editor()->id], collect($chart['people'])->pluck('user_id')->all());
 
+        // Le sommet est la fondation, pas la presidence.
+        $root = $this->node($chart, 'foundation');
+        $this->assertSame('Tunivisions Foundation', $root['title']);
+        $this->assertNull($root['parent_id']);
+        $this->assertSame($root['id'], $this->node($chart, 'presidency')['parent_id']);
+        $this->assertSame(1, OrgNode::query()->whereNull('parent_id')->count());
+
         // Presidence : conseillers et ancien president rattaches, sans lien hierarchique avec le directeur.
         $presidency = $this->node($chart, 'presidency');
         $director = $this->node($chart, 'executive-director');

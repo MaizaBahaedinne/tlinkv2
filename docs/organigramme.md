@@ -22,7 +22,8 @@ Les notes internes ne sont visibles que des administrateurs.
 Le premier accès à la page crée automatiquement l'organigramme initial (idempotent, rien n'est recréé ensuite).
 Tous les postes sont **vacants** : aucun nom n'est inventé.
 
-- **Présidence** : Président de la fondation.
+- **Sommet : Tunivisions Foundation** (bloc « unité », sans personne, périmètre Fondation).
+- **Présidence** (sous la fondation) : Président de la fondation.
   - *Conseillers du président* et *Ancien président* : **rattachements** (trait pointillé gris), sans lien hiérarchique avec le directeur exécutif.
 - **Directeur exécutif**.
   - **Bureau national University** : Coordinateur national → Manager Marketing (+ Assistant Marketing), Manager RH (+ Assistant RH), Manager Events, Manager R&D, branche **University Clubs**.
