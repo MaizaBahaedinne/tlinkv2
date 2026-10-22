@@ -36,6 +36,7 @@
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/site.css'])
     @endif
+    @stack('head')
 </head>
 <body class="min-h-screen bg-brand-50 font-sans text-slate-800 antialiased">
     <a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">{{ __('site.skip') }}</a>

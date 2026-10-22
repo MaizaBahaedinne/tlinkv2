@@ -108,6 +108,10 @@ return [
         'founded' => 'Fondé en :year',
         'page' => 'Page du club',
         'count' => '{0} Aucun club|{1} :count club|[2,*] :count clubs',
+        'map' => 'Carte des clubs en Tunisie',
+        'map_clubs' => 'club(s)',
+        'map_view' => 'Voir les clubs',
+        'map_hint' => 'Cliquez sur un gouvernorat pour afficher ses clubs.',
     ],
 
     'contact' => [

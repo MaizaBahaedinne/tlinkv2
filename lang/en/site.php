@@ -108,6 +108,10 @@ return [
         'founded' => 'Founded in :year',
         'page' => 'Club page',
         'count' => '{0} No clubs|{1} :count club|[2,*] :count clubs',
+        'map' => 'Map of clubs in Tunisia',
+        'map_clubs' => 'club(s)',
+        'map_view' => 'View clubs',
+        'map_hint' => 'Click a governorate to list its clubs.',
     ],
 
     'contact' => [

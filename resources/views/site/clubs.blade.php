@@ -31,29 +31,51 @@
 
         <p class="mt-4 text-sm font-semibold text-slate-600">{{ trans_choice('site.clubs.count', $clubs->total()) }}</p>
 
-        @if($clubs->isNotEmpty())
-            <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach($clubs as $club)
-                    <article class="site-card flex flex-col p-5">
-                        <span class="w-fit rounded bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-800">
-                            {{ \Illuminate\Support\Facades\Lang::has('site.clubs.categories.'.$club->category) ? __('site.clubs.categories.'.$club->category) : __('site.nav.clubs') }}
-                        </span>
-                        <h3 class="mt-2 font-display text-lg font-bold text-brand-900">{{ $club->title }}</h3>
-                        @if($club->institution_name)
-                            <p class="text-sm text-slate-600">{{ $club->institution_name }}</p>
-                        @endif
-                        <p class="mt-1 text-xs text-slate-500">
-                            {{ $club->governorate?->name }}
-                            @if($club->founded_on) · {{ __('site.clubs.founded', ['year' => $club->founded_on->year]) }} @endif
-                        </p>
-                        @php($facebook = preg_match('#^https?://#i', (string) $club->facebook_url) === 1 ? $club->facebook_url : null)
-                        @if($facebook)
-                            <a href="{{ $facebook }}" target="_blank" rel="noopener noreferrer" class="mt-3 text-sm font-bold text-brand-600 hover:text-brand-800">{{ __('site.clubs.page') }} →</a>
-                        @endif
-                    </article>
-                @endforeach
+        <div class="mt-4 grid items-start gap-6 lg:grid-cols-2">
+            {{-- Liste à gauche --}}
+            <div>
+                @if($clubs->isNotEmpty())
+                    <div class="grid gap-3">
+                        @foreach($clubs as $club)
+                            <article class="site-card flex items-start justify-between gap-3 p-4 {{ (int) ($filters['gov'] ?? 0) === (int) $club->governorate_id ? 'ring-2 ring-brand-600' : '' }}">
+                                <div class="min-w-0">
+                                    <span class="w-fit rounded bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-800">
+                                        {{ \Illuminate\Support\Facades\Lang::has('site.clubs.categories.'.$club->category) ? __('site.clubs.categories.'.$club->category) : __('site.nav.clubs') }}
+                                    </span>
+                                    <h3 class="mt-2 font-display text-lg font-bold text-brand-900">{{ $club->title }}</h3>
+                                    @if($club->institution_name)
+                                        <p class="text-sm text-slate-600">{{ $club->institution_name }}</p>
+                                    @endif
+                                    <p class="mt-1 text-xs text-slate-500">
+                                        {{ $club->governorate?->name }}
+                                        @if($club->founded_on) · {{ __('site.clubs.founded', ['year' => $club->founded_on->year]) }} @endif
+                                    </p>
+                                </div>
+                                @php($facebook = preg_match('#^https?://#i', (string) $club->facebook_url) === 1 ? $club->facebook_url : null)
+                                @if($facebook)
+                                    <a href="{{ $facebook }}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-sm font-bold text-brand-600 hover:text-brand-800">{{ __('site.clubs.page') }} →</a>
+                                @endif
+                            </article>
+                        @endforeach
+                    </div>
+                    <div class="mt-6">{{ $clubs->links() }}</div>
+                @endif
             </div>
-            <div class="mt-8">{{ $clubs->links() }}</div>
-        @endif
+
+            {{-- Carte de la Tunisie à droite --}}
+            <aside class="lg:sticky lg:top-24" aria-label="{{ __('site.clubs.map') }}">
+                <div id="clubs-map" class="clubs-map site-card overflow-hidden"
+                     data-markers="{{ json_encode($markers, JSON_UNESCAPED_UNICODE) }}"
+                     data-clubs-label="{{ __('site.clubs.map_clubs') }}"
+                     data-view-label="{{ __('site.clubs.map_view') }}"></div>
+                <p class="mt-2 text-xs text-slate-500">{{ __('site.clubs.map_hint') }}</p>
+            </aside>
+        </div>
     </section>
 @endsection
+
+@push('head')
+    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite(['resources/js/site-map.js'])
+    @endif
+@endpush

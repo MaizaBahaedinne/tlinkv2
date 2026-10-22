@@ -111,22 +111,48 @@ class SiteController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $clubs = $this->activeClubs()
-            ->with('governorate:id,name')
-            ->when($filters['scope'] ?? null, fn (Builder $query, string $scope) => $query->where('scope', $scope))
-            ->when($filters['gov'] ?? null, fn (Builder $query, $gov) => $query->where('governorate_id', $gov))
-            ->when($filters['q'] ?? null, fn (Builder $query, string $needle) => $query->where(
+        $search = $filters;
+        $applyFilters = fn (Builder $query, array $only): Builder => $query
+            ->when(in_array('scope', $only, true) ? ($search['scope'] ?? null) : null, fn (Builder $query, string $scope) => $query->where('scope', $scope))
+            ->when(in_array('gov', $only, true) ? ($search['gov'] ?? null) : null, fn (Builder $query, $gov) => $query->where('governorate_id', $gov))
+            ->when(in_array('q', $only, true) ? ($search['q'] ?? null) : null, fn (Builder $query, string $needle) => $query->where(
                 fn (Builder $inner) => $inner->where('title', 'like', "%{$needle}%")->orWhere('institution_name', 'like', "%{$needle}%")
-            ))
+            ));
+
+        $clubs = $applyFilters($this->activeClubs()->with('governorate:id,name'), ['scope', 'gov', 'q'])
             ->orderBy('title')
-            ->paginate(24)
+            ->paginate(12)
             ->withQueryString();
+
+        // La carte montre tous les gouvernorats concernés par la recherche (hors filtre gouvernorat),
+        // pour pouvoir passer de l'un à l'autre ; le gouvernorat choisi est mis en évidence.
+        $perGovernorate = $applyFilters($this->activeClubs()->whereNotNull('governorate_id'), ['scope', 'q'])
+            ->selectRaw('governorate_id, count(*) as total')
+            ->groupBy('governorate_id')
+            ->pluck('total', 'governorate_id');
+
+        $markers = Governorate::query()
+            ->whereIn('id', $perGovernorate->keys())
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get(['id', 'name', 'latitude', 'longitude'])
+            ->map(fn (Governorate $governorate): array => [
+                'name' => $governorate->name,
+                'lat' => $governorate->latitude,
+                'lng' => $governorate->longitude,
+                'count' => (int) $perGovernorate[$governorate->id],
+                'active' => (int) ($filters['gov'] ?? 0) === $governorate->id,
+                'url' => route('site.clubs', array_filter(['gov' => $governorate->id, 'scope' => $filters['scope'] ?? null, 'q' => $filters['q'] ?? null])),
+            ])
+            ->values()
+            ->all();
 
         $clubScopes = $this->activeClubs()->whereNotNull('scope')->distinct()->pluck('scope')->all();
 
         return $this->render('site.clubs', [
             'clubs' => $clubs,
             'filters' => $filters,
+            'markers' => $markers,
             'governorates' => Governorate::query()
                 ->whereIn('id', $this->activeClubs()->whereNotNull('governorate_id')->select('governorate_id'))
                 ->orderBy('name')

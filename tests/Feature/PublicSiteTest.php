@@ -147,6 +147,31 @@ class PublicSiteTest extends TestCase
         $this->get('/fr/clubs?scope=bogus')->assertSessionHasErrors('scope');
     }
 
+    public function test_clubs_page_exposes_governorate_markers_for_the_map(): void
+    {
+        $tunis = \App\Models\Governorate::query()->create(['name' => 'Tunis', 'slug' => 'tunis', 'is_active' => true]);
+        $sfax = \App\Models\Governorate::query()->create(['name' => 'Sfax', 'slug' => 'sfax', 'is_active' => true]);
+        $this->assertEqualsWithDelta(36.8065, $tunis->latitude, 0.0001); // coordonnées posées à la création
+
+        foreach ([['A', $tunis], ['B', $tunis], ['C', $sfax]] as [$name, $governorate]) {
+            OrgNode::query()->create(['kind' => 'club', 'category' => 'university_club', 'title' => 'Club '.$name, 'scope' => 'university', 'status' => 'active', 'governorate_id' => $governorate->id]);
+        }
+
+        $response = $this->get('/fr/clubs')->assertOk()->assertSee('id="clubs-map"', false);
+        preg_match('/data-markers="([^"]*)"/', $response->getContent(), $m);
+        $markers = json_decode(html_entity_decode($m[1]), true);
+
+        $this->assertCount(2, $markers);
+        $this->assertSame(2, collect($markers)->firstWhere('name', 'Tunis')['count']);
+
+        // Filtrer sur un gouvernorat garde tous les marqueurs et met le choisi en évidence.
+        $filtered = $this->get('/fr/clubs?gov='.$sfax->id)->assertOk()->assertSee('Club C')->assertDontSee('Club A');
+        preg_match('/data-markers="([^"]*)"/', $filtered->getContent(), $m);
+        $markers = json_decode(html_entity_decode($m[1]), true);
+        $this->assertCount(2, $markers);
+        $this->assertTrue(collect($markers)->firstWhere('name', 'Sfax')['active']);
+    }
+
     public function test_team_is_grouped_by_inherited_scope_in_org_chart_order(): void
     {
         $node = fn (array $attributes) => OrgNode::query()->create($attributes + ['kind' => 'position', 'access_level' => 'none']);
