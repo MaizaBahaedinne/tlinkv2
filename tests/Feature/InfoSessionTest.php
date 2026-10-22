@@ -47,11 +47,12 @@ class InfoSessionTest extends TestCase
 
     public function test_page_shows_the_video_and_a_locked_quiz_button(): void
     {
-        $this->actingAs(User::factory()->create())->get('/info-session')
+        $page = $this->actingAs(User::factory()->create())->get('/info-session')
             ->assertOk()
             ->assertSee('Info session et quiz')
-            ->assertSee('QwrBWK07RnU')
-            ->assertSee('id="start-quiz" disabled', false);
+            ->assertSee('QwrBWK07RnU');
+
+        $this->assertMatchesRegularExpression('/id="start-quiz"\s+disabled/', $page->getContent());
     }
 
     public function test_unvalidated_members_see_a_banner_until_they_pass_the_quiz(): void
