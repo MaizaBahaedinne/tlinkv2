@@ -45,14 +45,18 @@ class SocialAuthController extends Controller
 
     public function redirect(string $provider): RedirectResponse
     {
-        $this->assertEnabled($provider);
+        if ($unavailable = $this->unavailable($provider)) {
+            return $unavailable;
+        }
 
         return Socialite::driver($provider)->redirect();
     }
 
     public function callback(Request $request, string $provider): RedirectResponse
     {
-        $this->assertEnabled($provider);
+        if ($unavailable = $this->unavailable($provider)) {
+            return $unavailable;
+        }
 
         try {
             $socialUser = Socialite::driver($provider)->user();
@@ -162,9 +166,16 @@ class SocialAuthController extends Controller
         return [Str::limit((string) $first, 120, ''), Str::limit((string) $last, 120, '')];
     }
 
-    private function assertEnabled(string $provider): void
+    /**
+     * 404 pour un reseau inconnu ; retour a la connexion avec un message si ses identifiants manquent.
+     */
+    private function unavailable(string $provider): ?RedirectResponse
     {
-        abort_unless(array_key_exists($provider, self::enabled()), 404);
+        abort_unless(array_key_exists($provider, self::PROVIDERS), 404);
+
+        return array_key_exists($provider, self::enabled())
+            ? null
+            : $this->fail('La connexion avec '.self::PROVIDERS[$provider].' n\'est pas encore activee. Utilise ton email pour le moment.');
     }
 
     private function fail(string $message): RedirectResponse

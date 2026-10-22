@@ -1,20 +1,12 @@
 @php
-    $socialProviders = \App\Http\Controllers\Auth\SocialAuthController::enabled();
+    $socialProviders = \App\Http\Controllers\Auth\SocialAuthController::PROVIDERS;
     $socialVerb = $socialVerb ?? 'Continuer';
 @endphp
 
-@if ($socialProviders !== [])
-    <div class="mt-6">
-        <div class="flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
-            <span class="h-px flex-1 bg-slate-200"></span>
-            <span>ou</span>
-            <span class="h-px flex-1 bg-slate-200"></span>
-        </div>
-
-        <div class="mt-4 space-y-3">
+<div class="mt-7 space-y-3">
             @foreach ($socialProviders as $key => $label)
                 <a href="{{ route('social.redirect', ['provider' => $key]) }}" rel="nofollow"
-                   class="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                   class="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-md">
                     @if ($key === 'google')
                         <svg class="h-5 w-5" viewBox="0 0 48 48" aria-hidden="true">
                             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -34,6 +26,10 @@
                     <span>{{ $socialVerb }} avec {{ $label }}</span>
                 </a>
             @endforeach
-        </div>
-    </div>
-@endif
+</div>
+
+<div class="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
+    <span class="h-px flex-1 bg-slate-200"></span>
+    <span>ou avec ton email</span>
+    <span class="h-px flex-1 bg-slate-200"></span>
+</div>

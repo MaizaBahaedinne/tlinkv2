@@ -40,12 +40,8 @@ class SocialAuthTest extends TestCase
         $this->app->instance(Factory::class, $factory);
     }
 
-    public function test_login_and_register_pages_show_only_configured_networks(): void
+    public function test_login_and_register_pages_show_the_network_buttons(): void
     {
-        $this->get('/connexion')->assertOk()->assertDontSee('avec Google');
-
-        $this->enable('google', 'facebook', 'linkedin-openid');
-
         $this->get('/connexion')->assertOk()
             ->assertSee('Se connecter avec Google')
             ->assertSee('Se connecter avec Facebook')
@@ -55,9 +51,16 @@ class SocialAuthTest extends TestCase
         $this->get('/inscription')->assertOk()->assertSee("avec Facebook");
     }
 
-    public function test_disabled_or_unknown_provider_is_not_found(): void
+    public function test_unconfigured_provider_returns_to_login_with_a_message(): void
     {
-        $this->get('/auth/google/redirect')->assertNotFound();
+        $this->get('/auth/google/redirect')
+            ->assertRedirect('/connexion')
+            ->assertSessionHasErrors('email');
+        $this->get('/auth/google/callback')->assertRedirect('/connexion');
+    }
+
+    public function test_unknown_provider_is_not_found(): void
+    {
         $this->get('/auth/twitter/redirect')->assertNotFound();
     }
 
