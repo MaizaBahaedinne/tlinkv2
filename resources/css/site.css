@@ -8,11 +8,12 @@
     --font-sans: 'Manrope', 'Cairo', ui-sans-serif, system-ui, sans-serif;
     --font-display: 'Space Grotesk', 'Cairo', ui-sans-serif, system-ui, sans-serif;
 
-    --color-brand-900: #0b2348;
-    --color-brand-800: #0f2e5f;
-    --color-brand-600: #0b7fab;
-    --color-brand-100: #dff1f8;
-    --color-brand-50: #f5f9fc;
+    /* Couleur principale de la vitrine : #D00031 */
+    --color-brand-900: #6e0019;
+    --color-brand-800: #a30027;
+    --color-brand-600: #d00031;
+    --color-brand-100: #fde1e7;
+    --color-brand-50: #fff5f7;
     --color-accent: #f5a623;
 }
 
@@ -33,5 +34,5 @@ html {
     border: 1px solid #e4e8f0;
     border-radius: 1rem;
     background: #fff;
-    box-shadow: 0 18px 35px rgba(15, 46, 95, 0.06);
+    box-shadow: 0 18px 35px rgba(80, 10, 25, 0.06);
 }

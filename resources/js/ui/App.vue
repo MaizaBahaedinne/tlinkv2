@@ -310,7 +310,7 @@ function formatCommentAt(value: string | null): string {
                 type="button"
                 :title="item.title"
                 class="rounded-lg px-2 py-1 text-sm"
-                :class="form.sentiment === item.value ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'"
+                :class="form.sentiment === item.value ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-50'"
                 @click="form.sentiment = item.value"
               >
                 <i class="fa-regular" :class="item.icon"></i>
@@ -318,7 +318,7 @@ function formatCommentAt(value: string | null): string {
             </div>
           </div>
           <div class="mt-3 flex justify-end">
-            <button class="rounded-xl bg-tlink-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-600" type="submit">
+            <button class="rounded-xl bg-tlink-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700" type="submit">
               <i class="fa-solid fa-paper-plane mr-1"></i>
               Publier
             </button>
@@ -353,7 +353,7 @@ function formatCommentAt(value: string | null): string {
               <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-600" :title="post.visibility">
                 <i class="fa-solid" :class="iconForVisibility(post.visibility)"></i>
               </span>
-              <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs text-blue-700" :title="post.sentiment">
+              <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-50 text-xs text-tlink-blue" :title="post.sentiment">
                 <i class="fa-regular" :class="iconForSentiment(post.sentiment)"></i>
               </span>
               <details v-if="post.can_manage" class="relative">
@@ -416,7 +416,7 @@ function formatCommentAt(value: string | null): string {
           </div>
 
           <div v-if="Object.keys(post.reactions).length" class="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
-            <span v-for="(count, key) in post.reactions" :key="key" class="rounded-full bg-blue-50 px-2 py-1 text-blue-700" :title="reactionLabels[key] ?? key">
+            <span v-for="(count, key) in post.reactions" :key="key" class="rounded-full bg-rose-50 px-2 py-1 text-tlink-blue" :title="reactionLabels[key] ?? key">
               <i class="fa-regular mr-1" :class="iconForReaction(key)"></i>{{ count }}
             </span>
           </div>
@@ -556,7 +556,7 @@ function formatCommentAt(value: string | null): string {
         <aside class="hidden lg:col-span-3 lg:block">
           <div class="sticky top-24 space-y-4">
             <section class="card overflow-hidden p-0">
-              <div class="bg-gradient-to-r from-cyan-600 to-blue-700 px-4 py-3 text-white">
+              <div class="bg-gradient-to-r from-tlink-blue to-tlink-blue-700 px-4 py-3 text-white">
                 <p class="text-xs font-semibold uppercase tracking-wide">Publicite</p>
                 <h3 class="mt-1 text-sm font-semibold">Formation Leadership</h3>
               </div>

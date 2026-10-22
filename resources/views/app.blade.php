@@ -3,7 +3,7 @@
 @section('content')
     <div id="tlink-app">
         <main style="max-width:960px;margin:32px auto;padding:24px;font-family:system-ui,sans-serif;line-height:1.5;">
-            <h1 style="margin:0 0 8px;color:#0f2e5f;">T.Link</h1>
+            <h1 style="margin:0 0 8px;color:#d00031;">T.Link</h1>
             <p style="margin:0 0 12px;color:#334155;">Fondation Tunivisions</p>
             <p style="margin:0 0 18px;color:#475569;">Le contenu interactif est en cours de chargement.</p>
             <p style="margin:0;">

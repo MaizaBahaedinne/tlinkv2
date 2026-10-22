@@ -20,7 +20,7 @@
         <div class="card overflow-hidden">
             <div class="divide-y divide-slate-100">
                 @forelse($notifications as $notification)
-                    <div class="flex items-start justify-between gap-3 p-4 {{ $notification->read_at ? 'bg-white' : 'bg-blue-50/40' }}">
+                    <div class="flex items-start justify-between gap-3 p-4 {{ $notification->read_at ? 'bg-white' : 'bg-rose-50/60' }}">
                         <div>
                             <p class="font-semibold text-slate-800">{{ $notification->title }}</p>
                             <p class="mt-1 text-sm text-slate-600">{{ $notification->body }}</p>

@@ -1,7 +1,7 @@
 @extends('layouts.base', ['title' => 'Mon profil | T.Link'])
 
 @section('content')
-<div class="min-h-screen bg-[#eef3fb] px-4 py-8">
+<div class="min-h-screen bg-[#fbf3f5] px-4 py-8">
     <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
             <div class="flex items-center gap-3">
@@ -210,7 +210,7 @@
                     </div>
                     <div class="mt-3 space-y-2">
                         @forelse ($languageItems as $language)
-                            <div class="flex items-center justify-between rounded-xl bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+                            <div class="flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-medium text-tlink-blue">
                                 <span>{{ $language['name'] ?? 'Langue' }}</span>
                                 <span>{{ $language['level'] ?? '-' }}</span>
                             </div>

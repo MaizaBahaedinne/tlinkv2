@@ -33,7 +33,7 @@
                 <label class="mb-1 block text-sm font-medium text-slate-700" for="password_confirmation">Confirmation</label>
                 <input id="password_confirmation" name="password_confirmation" type="password" required class="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-tlink-blue">
             </div>
-            <button type="submit" class="w-full rounded-xl bg-tlink-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-600">Creer un compte</button>
+            <button type="submit" class="w-full rounded-xl bg-tlink-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700">Creer un compte</button>
         </form>
 
         <p class="mt-4 text-center text-sm text-slate-600">
