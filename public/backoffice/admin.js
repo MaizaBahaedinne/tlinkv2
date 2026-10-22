@@ -10,6 +10,16 @@
         });
     });
 
+    // Tout cocher / décocher (case [data-check-all] et cases [data-check-item] du même formulaire)
+    document.querySelectorAll('[data-check-all]').forEach(function (master) {
+        master.addEventListener('change', function () {
+            var scope = master.closest('form') || document;
+            scope.querySelectorAll('input[data-check-item]:not(:disabled)').forEach(function (box) {
+                box.checked = master.checked;
+            });
+        });
+    });
+
     // Dialogue de confirmation (formulaires portant data-confirm)
     var dialog = document.getElementById('confirm-dialog');
     var pendingForm = null;

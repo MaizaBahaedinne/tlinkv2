@@ -115,6 +115,20 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('messages', [Admin\ContactMessageController::class, 'index'])->name('messages.index');
             Route::patch('messages/{message}', [Admin\ContactMessageController::class, 'update'])->name('messages.update');
             Route::delete('messages/{message}', [Admin\ContactMessageController::class, 'destroy'])->name('messages.destroy');
+
+            // Structure : tableaux et fiches (postes, droits, titulaires, clubs)
+            Route::get('postes', [Admin\StructureController::class, 'index'])->name('postes.index');
+            Route::post('postes', [Admin\StructureController::class, 'store'])->name('postes.store');
+            Route::post('postes/acces', [Admin\StructureController::class, 'bulkAccess'])->name('postes.access');
+            Route::get('postes/{node}/modifier', [Admin\StructureController::class, 'edit'])->name('postes.edit');
+            Route::put('postes/{node}', [Admin\StructureController::class, 'update'])->name('postes.update');
+            Route::delete('postes/{node}', [Admin\StructureController::class, 'destroy'])->name('postes.destroy');
+            Route::post('postes/{node}/modele', [Admin\StructureController::class, 'applyTemplate'])->name('postes.template');
+            Route::post('postes/{node}/titulaires', [Admin\StructureController::class, 'assign'])->name('postes.assign');
+            Route::delete('postes/{node}/titulaires/{person}', [Admin\StructureController::class, 'unassign'])->name('postes.unassign');
+            Route::get('clubs', [Admin\StructureController::class, 'clubs'])->name('clubs.index');
+            Route::post('clubs', [Admin\StructureController::class, 'storeClub'])->name('clubs.store');
+            Route::post('clubs/aligner', [Admin\StructureController::class, 'alignClubs'])->name('clubs.align');
         });
 
         // Communaute

@@ -22,6 +22,16 @@ final class AccessLevels
         'moderator' => 'Modérateur (modération des publications)',
     ];
 
+    /** Libelles courts et tons de badge pour les tableaux : niveau => [libelle, ton]. */
+    public const BADGES = [
+        'none' => ['Aucun droit', 'neutral'],
+        'global_admin' => ['Admin global', 'danger'],
+        'entity_admin' => ['Admin d’entité', 'warning'],
+        'manager' => ['Responsable', 'info'],
+        'club_president' => ['Président de club', 'info'],
+        'moderator' => ['Modérateur', 'neutral'],
+    ];
+
     public const PERMISSIONS = [
         'entity.manage' => 'Piloter l’organisation (entités, clubs, organigramme)',
         'membership.manage' => 'Gérer les adhésions',
