@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\FeedController;
+use App\Http\Controllers\InfoSessionController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
 use App\Http\Controllers\PrivateMediaController;
@@ -40,6 +41,12 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Info session (video) puis quiz : reussir le quiz valide le compte.
+    Route::get('/info-session', [InfoSessionController::class, 'show'])->name('info-session.show');
+    Route::post('/info-session/quiz', [InfoSessionController::class, 'start'])->middleware('throttle:8,10')->name('info-session.start');
+    Route::get('/info-session/quiz/{attempt}', [InfoSessionController::class, 'quiz'])->name('info-session.quiz');
+    Route::post('/info-session/quiz/{attempt}', [InfoSessionController::class, 'submit'])->middleware('throttle:20,10')->name('info-session.submit');
     Route::post('/posts', [FeedController::class, 'storePost'])->name('posts.store');
     Route::patch('/posts/{post}', [FeedController::class, 'updatePost'])->name('posts.update');
     Route::delete('/posts/{post}', [FeedController::class, 'destroyPost'])->name('posts.destroy');
@@ -112,6 +119,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             // Site public de la Fondation
             Route::get('site-public', [Admin\SiteSettingsController::class, 'edit'])->name('site.edit');
             Route::put('site-public', [Admin\SiteSettingsController::class, 'update'])->name('site.update');
+            Route::get('info-session', [Admin\InfoSessionController::class, 'edit'])->name('info-session.edit');
+            Route::put('info-session', [Admin\InfoSessionController::class, 'update'])->name('info-session.update');
             Route::get('messages', [Admin\ContactMessageController::class, 'index'])->name('messages.index');
             Route::patch('messages/{message}', [Admin\ContactMessageController::class, 'update'])->name('messages.update');
             Route::delete('messages/{message}', [Admin\ContactMessageController::class, 'destroy'])->name('messages.destroy');
