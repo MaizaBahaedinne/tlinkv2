@@ -185,7 +185,7 @@ class InfoSessionTest extends TestCase
         $attempt = InfoSession::start($user);
         $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => []]);
 
-        $this->actingAs($user)->get('/info-session')->assertSee('Tu n&#039;as pas répondu à cette question.', false)->assertSee('0 / 6');
+        $this->actingAs($user)->get('/info-session')->assertSee('Tu n\'as pas répondu à cette question.', false)->assertSee('0 / 6');
 
         $late = InfoSession::start($user);
         $late->update(['expires_at' => now()->subSeconds(InfoSession::GRACE_SECONDS + 5)]);
