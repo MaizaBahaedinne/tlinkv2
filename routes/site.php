@@ -28,7 +28,8 @@ Route::prefix('{locale}')
         Route::get('actualites/{post}', [SiteController::class, 'newsShow'])->whereNumber('post')->name('news.show');
         Route::get('evenements', [SiteController::class, 'events'])->name('events');
         Route::get('evenements/{event}', [SiteController::class, 'eventShow'])->whereNumber('event')->name('events.show');
-        Route::get('equipe', [SiteController::class, 'team'])->name('team');
+        // L'équipe est désormais une section de « À propos » : on garde l'ancienne adresse valide.
+        Route::get('equipe', fn () => redirect(route('site.about').'#equipe', 301));
         Route::get('clubs', [SiteController::class, 'clubs'])->name('clubs');
         Route::get('contact', [SiteController::class, 'contact'])->name('contact');
         Route::post('contact', [SiteController::class, 'contactStore'])

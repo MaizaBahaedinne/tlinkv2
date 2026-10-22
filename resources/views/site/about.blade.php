@@ -40,4 +40,10 @@
             @endforeach
         </div>
     </section>
+
+    <section id="equipe" class="mx-auto mt-14 max-w-6xl scroll-mt-24 px-4" aria-labelledby="equipe-title">
+        <h2 id="equipe-title" class="font-display text-2xl font-bold text-brand-900">{{ __('site.team.title') }}</h2>
+        <p class="mt-1 text-sm text-slate-600">{{ __('site.team.intro') }}</p>
+        @include('site.partials.team', ['groups' => $groups])
+    </section>
 @endsection

@@ -61,7 +61,7 @@ class PublicSiteTest extends TestCase
         $event = FoundationEvent::query()->create(['title' => 'Assemblée', 'status' => 'published', 'starts_at' => now()->addWeek()]);
 
         foreach (['fr', 'en', 'ar'] as $locale) {
-            foreach (['', '/a-propos', '/actualites', "/actualites/{$post->id}", '/evenements', "/evenements/{$event->id}", '/equipe', '/clubs', '/contact'] as $path) {
+            foreach (['', '/a-propos', '/actualites', "/actualites/{$post->id}", '/evenements', "/evenements/{$event->id}", '/clubs', '/contact'] as $path) {
                 $this->get("/{$locale}{$path}")->assertOk();
             }
         }
@@ -129,7 +129,7 @@ class PublicSiteTest extends TestCase
             OrgAssignment::query()->create(['node_id' => $node->id, 'person_id' => $person->id]);
         }
 
-        $this->get('/fr/equipe')
+        $this->get('/fr/a-propos')
             ->assertSee('Amel Ben Salah')
             ->assertDontSee('Technicien Caché')
             ->assertDontSee('secret@example.test')
@@ -172,6 +172,31 @@ class PublicSiteTest extends TestCase
         $this->assertTrue(collect($markers)->firstWhere('name', 'Sfax')['active']);
     }
 
+    public function test_team_is_a_section_of_the_about_page_and_not_in_the_menu(): void
+    {
+        foreach (['fr' => 'Équipe', 'en' => 'Team'] as $locale => $label) {
+            $page = $this->get("/{$locale}/a-propos")->assertOk()->assertSee('id="equipe"', false);
+            $this->assertStringNotContainsString("/{$locale}/equipe", $page->getContent());
+            $this->assertStringNotContainsString('>'.$label.'</a>', $page->getContent());
+        }
+
+        // L'ancienne adresse redirige vers la section.
+        $this->get('/fr/equipe')->assertStatus(301)->assertRedirect('/fr/a-propos#equipe');
+    }
+
+    public function test_language_switcher_is_a_dropdown_list(): void
+    {
+        $html = $this->get('/fr/clubs?scope=university')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="lang-switcher"', $html);
+        foreach (['Français', 'العربية', 'English'] as $name) {
+            $this->assertStringContainsString('>'.$name.'</span>', $html);
+        }
+        // Le changement de langue conserve la page et les filtres.
+        $this->assertStringContainsString('/en/clubs?scope=university', $html);
+        $this->assertStringContainsString('/ar/clubs?scope=university', $html);
+    }
+
     public function test_team_is_grouped_by_inherited_scope_in_org_chart_order(): void
     {
         $node = fn (array $attributes) => OrgNode::query()->create($attributes + ['kind' => 'position', 'access_level' => 'none']);
@@ -192,7 +217,7 @@ class PublicSiteTest extends TestCase
         $person($highschool, 'Leila Lycée');
         $person($clubPresident, 'Membre De Club');
 
-        $html = $this->get('/fr/equipe')->assertOk()->getContent();
+        $html = $this->get('/fr/a-propos')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('Membre De Club', $html); // les clubs ont leur page
 

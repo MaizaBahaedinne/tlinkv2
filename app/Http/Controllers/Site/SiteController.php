@@ -52,6 +52,7 @@ class SiteController extends Controller
         return $this->render('site.about', [
             'stats' => $this->stats(),
             'scopes' => OrgScopes::ALL,
+            'groups' => PublicOrgChart::teamByScope(),
         ]);
     }
 
@@ -96,11 +97,6 @@ class SiteController extends Controller
         $event = $this->publicEvents()->findOrFail($event);
 
         return $this->render('site.events.show', ['event' => $event]);
-    }
-
-    public function team(): View
-    {
-        return $this->render('site.team', ['groups' => PublicOrgChart::teamByScope()]);
     }
 
     public function clubs(Request $request): View

@@ -9,7 +9,6 @@
         'site.about' => __('site.nav.about'),
         'site.news' => __('site.nav.news'),
         'site.events' => __('site.nav.events'),
-        'site.team' => __('site.nav.team'),
         'site.clubs' => __('site.nav.clubs'),
         'site.contact' => __('site.nav.contact'),
     ];
@@ -57,13 +56,26 @@
             </nav>
 
             <div class="flex items-center gap-2">
-                <div class="flex items-center rounded-lg border border-slate-200 p-0.5 text-xs font-bold" aria-label="{{ __('site.language') }}">
-                    @foreach($locales as $code => $meta)
-                        <a href="{{ $routeName ? route($routeName, ['locale' => $code] + $route->parameters() + request()->query()) : route('site.home', ['locale' => $code]) }}"
-                           hreflang="{{ $code }}" lang="{{ $code }}" title="{{ $meta['name'] }}"
-                           class="rounded-md px-2 py-1 uppercase {{ $code === $locale ? 'bg-brand-800 text-white' : 'text-slate-600 hover:bg-slate-100' }}">{{ $code }}</a>
-                    @endforeach
-                </div>
+                <details class="relative" id="lang-switcher">
+                    <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" aria-label="{{ __('site.language') }}">
+                        <span aria-hidden="true">🌐</span>
+                        <span>{{ $locales[$locale]['name'] }}</span>
+                        <span aria-hidden="true" class="text-xs">▾</span>
+                    </summary>
+                    <ul class="absolute end-0 z-50 mt-2 min-w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                        @foreach($locales as $code => $meta)
+                            <li>
+                                <a href="{{ $routeName ? route($routeName, ['locale' => $code] + $route->parameters() + request()->query()) : route('site.home', ['locale' => $code]) }}"
+                                   hreflang="{{ $code }}" lang="{{ $code }}"
+                                   class="flex items-center justify-between gap-3 px-4 py-2 text-sm {{ $code === $locale ? 'bg-brand-50 font-bold text-brand-800' : 'text-slate-700 hover:bg-slate-100' }}"
+                                   @if($code === $locale) aria-current="true" @endif>
+                                    <span>{{ $meta['name'] }}</span>
+                                    @if($code === $locale)<span aria-hidden="true">✓</span>@endif
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </details>
                 <a href="{{ route('register') }}" class="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 sm:inline-block">{{ __('site.nav.join') }}</a>
                 <a href="{{ route('home') }}" class="hidden rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 md:inline-block">{{ __('site.nav.members') }}</a>
             </div>
@@ -117,5 +129,14 @@
             © {{ now()->year }} {{ __('site.name') }}. {{ __('site.footer.rights') }} · {{ __('site.footer.powered') }}
         </div>
     </footer>
+    <script>
+        // Ferme la liste des langues au clic ailleurs ou avec Échap.
+        (function () {
+            var menu = document.getElementById('lang-switcher');
+            if (!menu) { return; }
+            document.addEventListener('click', function (event) { if (!menu.contains(event.target)) { menu.removeAttribute('open'); } });
+            document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { menu.removeAttribute('open'); } });
+        })();
+    </script>
 </body>
 </html>
