@@ -64,7 +64,7 @@
                     @endforeach
                 </div>
                 <a href="{{ route('register') }}" class="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 sm:inline-block">{{ __('site.nav.join') }}</a>
-                <a href="{{ route('login') }}" class="hidden rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 md:inline-block">{{ __('site.nav.members') }}</a>
+                <a href="{{ route('home') }}" class="hidden rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 md:inline-block">{{ __('site.nav.members') }}</a>
             </div>
         </div>
 
@@ -75,7 +75,7 @@
                     <a href="{{ route($name) }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">{{ $label }}</a>
                 @endforeach
                 <a href="{{ route('register') }}" class="rounded-lg px-3 py-2 text-sm font-bold text-brand-600">{{ __('site.nav.join') }}</a>
-                <a href="{{ route('login') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700">{{ __('site.nav.members') }}</a>
+                <a href="{{ route('home') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700">{{ __('site.nav.members') }}</a>
             </nav>
         </details>
     </header>

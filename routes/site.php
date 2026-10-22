@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Site public de la Fondation (charge depuis routes/web.php)
+| Site vitrine de la Fondation (charge depuis routes/web.php, a la racine)
 |--------------------------------------------------------------------------
 */
 $locales = implode('|', array_keys(config('site.locales')));

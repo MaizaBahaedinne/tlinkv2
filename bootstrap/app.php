@@ -16,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
+        // Un utilisateur deja connecte qui ouvre /connexion ou /inscription arrive sur le fil, pas sur la vitrine.
+        $middleware->redirectUsersTo(fn () => route('home'));
         $middleware->alias([
             'admin.can' => EnsureAdminAccess::class,
         ]);

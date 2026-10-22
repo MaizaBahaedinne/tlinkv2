@@ -7,14 +7,10 @@
 | Le site lit les donnees de T.Link (publications publiques, evenements, organigramme, clubs).
 | Les textes editables (accroche, contacts, reseaux) sont en base : Admin > Site public.
 |
-| - SITE_DOMAIN renseigne : le site est servi a la racine de ce domaine (ex. www.tunivisions.org).
-| - SITE_DOMAIN vide : le site est servi sous le prefixe SITE_PATH (ex. /fondation).
+| Le site est servi a la racine : `/` redirige vers `/fr`, `/ar` ou `/en`.
+| Le fil d'actualite de l'application T.Link est sur `/feed`.
 */
 return [
-    'domain' => env('SITE_DOMAIN') ?: null,
-
-    'path' => trim((string) env('SITE_PATH', 'fondation'), '/'),
-
     'locales' => [
         'fr' => ['name' => 'Français', 'dir' => 'ltr'],
         'ar' => ['name' => 'العربية', 'dir' => 'rtl'],

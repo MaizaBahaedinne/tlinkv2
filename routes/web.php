@@ -10,13 +10,11 @@ use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-// Site public de la Fondation : declare avant l'accueil de l'application pour prendre la racine de son domaine.
-Route::group(
-    config('site.domain') ? ['domain' => config('site.domain')] : ['prefix' => config('site.path')],
-    base_path('routes/site.php'),
-);
+// Site vitrine de la Fondation : racine du site (/ puis /fr, /ar, /en).
+require base_path('routes/site.php');
 
-Route::get('/', [FeedController::class, 'index'])->name('home');
+// Fil d'actualite de l'application T.Link.
+Route::get('/feed', [FeedController::class, 'index'])->name('home');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/connexion', [LoginController::class, 'show'])->name('login');

@@ -224,7 +224,7 @@ function formatCommentAt(value: string | null): string {
               <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Menu</p>
               <ul class="space-y-2 text-sm">
                 <li>
-                  <a href="/" class="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-slate-800">
+                  <a href="/feed" class="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-slate-800">
                     <i class="fa-solid fa-house text-slate-500"></i>
                     <span>Accueil</span>
                   </a>
