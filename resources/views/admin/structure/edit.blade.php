@@ -128,16 +128,40 @@
                     <x-admin.empty icon="layers" title="Aucun sous-bloc" />
                 @endif
 
-                @if($canEdit && ! $isPosition || $canEdit && $isPosition)
+                @if($canEdit)
                     <form method="post" action="{{ route('admin.postes.store') }}" class="card-body" style="border-top:1px solid var(--line)">
                         @csrf
                         <input type="hidden" name="parent_id" value="{{ $node->id }}">
                         <h3 class="text-sm text-muted" style="margin-bottom:12px">Ajouter un sous-bloc</h3>
                         <div class="form-grid">
-                            <x-admin.input name="new_title" label="Intitulé" required :maxlength="255" x-title="1" />
-                            <x-admin.select name="new_kind" label="Type" :options="$kinds" value="position" :placeholder="null" />
-                            <x-admin.select name="new_capacity" label="Titulaires" :options="$capacities" value="single" :placeholder="null" />
-                            <x-admin.select name="new_access" label="Niveau d’accès" :options="$levels" value="none" :placeholder="null" />
+                            <div class="field span-2">
+                                <label for="add-title">Intitulé <span class="req">*</span></label>
+                                <input id="add-title" name="title" type="text" required maxlength="255">
+                            </div>
+                            <div class="field">
+                                <label for="add-kind">Type</label>
+                                <select id="add-kind" name="kind">
+                                    @foreach($kinds as $id => $name)
+                                        <option value="{{ $id }}" @selected($id === 'position')>{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="add-capacity">Titulaires</label>
+                                <select id="add-capacity" name="capacity">
+                                    @foreach($capacities as $id => $name)
+                                        <option value="{{ $id }}">{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="field span-2">
+                                <label for="add-access">Niveau d’accès</label>
+                                <select id="add-access" name="access_level">
+                                    @foreach($levels as $id => $name)
+                                        <option value="{{ $id }}" @selected($id === 'none')>{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                         <div style="margin-top:14px"><button type="submit" class="btn btn-secondary"><x-admin.icon name="plus" :size="16" /> Ajouter</button></div>
                     </form>
@@ -231,3 +255,31 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        (function () {
+            var select = document.getElementById('f-access_level');
+            var box = document.querySelector('[data-level-perms]');
+            if (!select || !box) return;
+            var perms = @json($levelPermissions);
+            select.addEventListener('change', function () {
+                var list = perms[select.value] || [];
+                box.textContent = '';
+                if (!list.length) {
+                    var none = document.createElement('span');
+                    none.className = 'text-sm text-muted';
+                    none.textContent = 'Ce niveau ne donne aucun droit d’administration.';
+                    box.appendChild(none);
+                    return;
+                }
+                list.forEach(function (label) {
+                    var chip = document.createElement('span');
+                    chip.className = 'chip';
+                    chip.textContent = label;
+                    box.appendChild(chip);
+                });
+            });
+        })();
+    </script>
+@endpush

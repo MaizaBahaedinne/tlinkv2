@@ -32,7 +32,7 @@ Tous les postes sont **vacants** : aucun nom n'est inventé.
   - **Projet We Are Campers** : Chef de projet, Managers, Équipe opérationnelle.
   - **Réseau Alumni** : Coordinateur national, Managers, Équipe opérationnelle.
 - **24 clubs régionaux** « We Are <gouvernorat> », chacun avec une équipe type modifiable : Président du club régional, VP Marketing, VP RH, VP Events, VP R&D, Assistants et membres.
-- **University Clubs** et **High School Clubs** : branches distinctes, sans limite de nombre. Chaque club créé reçoit (au choix) l'équipe type : Président, VP Marketing / RH / Events / R&D, Assistant Marketing, Assistant RH, autres membres.
+- **University Clubs** et **High School Clubs** : branches distinctes, sans limite de nombre. Chaque club créé reçoit (au choix) l'équipe type, **identique pour toutes les unités** : un **Président** et **4 départements** (Marketing, RH, Events, R&D), chacun avec **1 VP, 1 Assistant et des Membres** (plusieurs personnes), soit 13 postes. La structure des clubs régionaux We Are est différente et sera précisée séparément.
 
 Chaque club régional / université / lycée est un **bloc « club »** de l'organigramme : il porte lui-même ses informations (statut, e-mail, Facebook, date de fondation, charte, établissement). Il n'existe plus de table `clubs`.
 
