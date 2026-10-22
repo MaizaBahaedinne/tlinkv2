@@ -129,6 +129,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('structure/clubs', [Admin\StructureController::class, 'clubs'])->name('clubs.index');
             Route::post('structure/clubs', [Admin\StructureController::class, 'storeClub'])->name('clubs.store');
             Route::post('structure/clubs/aligner', [Admin\StructureController::class, 'alignClubs'])->name('clubs.align');
+            Route::post('structure/clubs/statut', [Admin\StructureController::class, 'bulkClubStatus'])->name('clubs.status');
             Route::get('structure/clubs/{node}', [Admin\StructureController::class, 'showClub'])->name('clubs.show');
             Route::get('structure/roles', [Admin\StructureController::class, 'roles'])->name('roles.index');
             Route::put('structure/roles', [Admin\StructureController::class, 'updateRoles'])->name('roles.update');

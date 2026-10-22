@@ -16,6 +16,18 @@
         </x-slot:actions>
     </x-admin.page-header>
 
+    @php $inactiveCount = ($statusCounts['inactive'] ?? 0) + ($statusCounts['draft'] ?? 0) + ($statusCounts['archived'] ?? 0); @endphp
+    <div class="chips" style="margin-bottom:14px">
+        @foreach($statuses as $id => $name)
+            <a href="{{ route('admin.clubs.index', ['status' => $id]) }}" class="chip">{{ $name }} : {{ $statusCounts[$id] ?? 0 }}</a>
+        @endforeach
+    </div>
+    @if($inactiveCount > 0)
+        <div class="alert alert-info" role="status">
+            <x-admin.icon name="eye" />
+            <span>Seuls les clubs <strong>Actifs</strong> apparaissent sur le site public, dans l’application et dans les statistiques. {{ $canEdit ? 'Cochez des clubs ci-dessous, ou tous ceux de la liste, pour changer leur statut.' : '' }}</span>
+        </div>
+    @endif
     @if($canEdit)
         <details class="card card-flush" style="margin-bottom:18px" @if($errors->has('name') || $errors->has('type') || $errors->has('governorate_id')) open @endif>
             <summary class="card-head" style="cursor:pointer">
@@ -78,10 +90,34 @@
         </div>
 
         @if($clubs->count())
+            <form method="post" action="{{ route('admin.clubs.status') }}">
+            @csrf
+            @foreach(['q', 'category', 'governorate_id'] as $field)
+                <input type="hidden" name="{{ $field }}" value="{{ $filters[$field] ?? '' }}">
+            @endforeach
+            <input type="hidden" name="filter_status" value="{{ $filters['status'] ?? '' }}">
+            @if($canEdit)
+                <div class="toolbar" style="border-bottom:1px solid var(--line)">
+                    <span class="text-sm text-muted">Statut des clubs :</span>
+                    <select name="status" aria-label="Statut à appliquer" required>
+                        <option value="">Choisir…</option>
+                        @foreach($statuses as $id => $name)
+                            <option value="{{ $id }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                    <label class="check"><input type="checkbox" name="all_filtered" value="1"> Tous les {{ $total }} clubs de la liste (pas seulement cette page)</label>
+                    <button class="btn btn-secondary btn-sm" type="submit">Appliquer</button>
+                    @error('nodes')<span class="text-sm" style="color:var(--danger)">{{ $message }}</span>@enderror
+                    @error('status')<span class="text-sm" style="color:var(--danger)">{{ $message }}</span>@enderror
+                </div>
+            @endif
             <div class="table-wrap">
                 <table class="tbl">
                     <thead>
                         <tr>
+                            @if($canEdit)
+                                <th style="width:36px"><input type="checkbox" data-check-all aria-label="Tout cocher"></th>
+                            @endif
                             <th>Club</th>
                             <th class="hide-mobile">Gouvernorat</th>
                             <th>Statut</th>
@@ -98,6 +134,9 @@
                                 $percent = $row['positions'] > 0 ? (int) round($row['filled'] / $row['positions'] * 100) : 0;
                             @endphp
                             <tr>
+                                @if($canEdit)
+                                    <td><input type="checkbox" name="nodes[]" value="{{ $club->id }}" data-check-item aria-label="Sélectionner {{ $club->title }}"></td>
+                                @endif
                                 <td>
                                     <a href="{{ route('admin.clubs.show', $club) }}" class="cell-main">{{ $club->title }}</a>
                                     <div class="cell-sub">{{ \App\Models\OrgNode::CATEGORIES[$club->category] ?? $club->category }}</div>
@@ -130,6 +169,7 @@
                     </tbody>
                 </table>
             </div>
+            </form>
             {{ $clubs->links('admin.partials.pagination') }}
         @else
             <x-admin.empty icon="building" title="Aucun club" text="Aucun club ne correspond à ces critères." />

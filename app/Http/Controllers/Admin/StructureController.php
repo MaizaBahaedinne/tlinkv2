@@ -142,16 +142,8 @@ class StructureController extends AdminController
             'governorate_id' => ['nullable', 'integer'],
         ]);
 
-        $clubs = OrgNode::query()
+        $clubs = $this->clubQuery($filters)
             ->with('governorate:id,name')
-            ->where('kind', 'club')
-            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($filters['governorate_id'] ?? null, fn ($query, $id) => $query->where('governorate_id', $id))
-            ->when($filters['q'] ?? null, function ($query, $needle): void {
-                $like = '%'.addcslashes($needle, '\\%_').'%';
-                $query->where(fn ($inner) => $inner->where('title', 'like', $like)->orWhere('institution_name', 'like', $like));
-            })
             ->orderBy('title')
             ->paginate(20)
             ->withQueryString();
@@ -198,7 +190,59 @@ class StructureController extends AdminController
             'canEdit' => $this->canEdit($request),
             'governorates' => Governorate::query()->orderBy('name')->pluck('name', 'id')->all(),
             'statuses' => OrgNode::CLUB_STATUSES,
+            'statusCounts' => OrgNode::query()->where('kind', 'club')->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(),
+            'total' => $clubs->total(),
         ]);
+    }
+
+    /**
+     * Change le statut de clubs cochés, ou de tous les clubs du filtre en cours.
+     * Un club inactif n'apparaît ni sur le site, ni dans l'API, ni dans les statistiques.
+     */
+    public function bulkClubStatus(Request $request): RedirectResponse
+    {
+        $this->requireEditor($request);
+
+        $data = $request->validate([
+            'status' => ['required', Rule::in(array_keys(OrgNode::CLUB_STATUSES))],
+            'nodes' => ['nullable', 'array', 'max:500'],
+            'nodes.*' => ['integer', 'exists:org_nodes,id'],
+            'all_filtered' => ['nullable', 'boolean'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'category' => ['nullable', Rule::in(['university_club', 'highschool_club', 'regional_club'])],
+            'filter_status' => ['nullable', Rule::in(array_keys(OrgNode::CLUB_STATUSES))],
+            'governorate_id' => ['nullable', 'integer'],
+        ]);
+
+        if ($request->boolean('all_filtered')) {
+            $query = $this->clubQuery(['q' => $data['q'] ?? null, 'category' => $data['category'] ?? null, 'status' => $data['filter_status'] ?? null, 'governorate_id' => $data['governorate_id'] ?? null]);
+        } elseif (! empty($data['nodes'])) {
+            $query = OrgNode::query()->where('kind', 'club')->whereIn('id', $data['nodes']);
+        } else {
+            throw ValidationException::withMessages(['nodes' => 'Cochez au moins un club, ou appliquez à tous les clubs du filtre.']);
+        }
+
+        $count = $query->where('status', '!=', $data['status'])->update(['status' => $data['status']]);
+        AuditLogger::record($request->user()->id, 'orgchart.club.status_bulk', null, null, ['status' => $data['status'], 'clubs' => $count], $request->ip());
+
+        return back()->with('status', $count.' club(s) passé(s) en « '.OrgNode::CLUB_STATUSES[$data['status']].' ».');
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return \Illuminate\Database\Eloquent\Builder<OrgNode>
+     */
+    private function clubQuery(array $filters): \Illuminate\Database\Eloquent\Builder
+    {
+        return OrgNode::query()
+            ->where('kind', 'club')
+            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['governorate_id'] ?? null, fn ($query, $id) => $query->where('governorate_id', $id))
+            ->when($filters['q'] ?? null, function ($query, $needle): void {
+                $like = '%'.addcslashes($needle, '\\%_').'%';
+                $query->where(fn ($inner) => $inner->where('title', 'like', $like)->orWhere('institution_name', 'like', $like));
+            });
     }
 
     public function storeClub(Request $request): RedirectResponse

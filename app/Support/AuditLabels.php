@@ -49,6 +49,7 @@ class AuditLabels
         'orgchart.club.created' => 'Organigramme : club créé',
         'orgchart.club.template_applied' => 'Organigramme : équipe type appliquée',
         'orgchart.club_roles.updated' => 'Organigramme : droits des rôles de club modifiés',
+        'orgchart.club.status_bulk' => 'Organigramme : statut de plusieurs clubs modifié',
         'orgchart.club.aligned' => 'Organigramme : clubs alignés sur l’équipe type',
         'orgchart.access.bulk_updated' => 'Organigramme : niveau d’accès de plusieurs postes modifié',
         'orgchart.assignments.updated' => 'Organigramme : affectations modifiées',

@@ -152,7 +152,8 @@ class LegacyClubImporter
             'facebook_url' => $facebook,
             'founded_on' => $founded,
             'charter_signed' => $row['charte'] === '1',
-            'status' => $row['is_active'] === '1' ? 'active' : 'inactive',
+            // Le drapeau legacy ne sert qu'a la creation : ensuite, le statut appartient a l'administrateur.
+            'status' => $created ? ($row['is_active'] === '1' ? 'active' : 'inactive') : ($club->status ?? 'active'),
         ])->save();
 
         // Un club University / High School importé reçoit l'équipe type (identique pour tous).
