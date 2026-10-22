@@ -48,10 +48,11 @@ class PublicSiteTest extends TestCase
 
     public function test_feed_lives_on_feed_and_logged_in_users_land_there(): void
     {
-        $this->get('/feed')->assertOk();
+        $this->get('/feed')->assertRedirect('/connexion');
         $this->assertSame('/feed', route('home', [], false));
 
         $user = User::factory()->create();
+        $this->actingAs($user)->get('/feed')->assertOk();
         $this->actingAs($user)->get('/connexion')->assertRedirect('/feed');
     }
 

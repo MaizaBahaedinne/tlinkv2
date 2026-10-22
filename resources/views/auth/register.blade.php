@@ -36,6 +36,8 @@
             <button type="submit" class="w-full rounded-xl bg-tlink-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700">Creer un compte</button>
         </form>
 
+        @include('auth.partials.social-buttons', ['socialVerb' => 'S\'inscrire'])
+
         <p class="mt-4 text-center text-sm text-slate-600">
             Deja inscrit ?
             <a class="font-medium text-tlink-blue hover:underline" href="{{ route('login') }}">Connexion</a>

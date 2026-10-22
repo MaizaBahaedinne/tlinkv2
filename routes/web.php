@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
@@ -13,28 +14,30 @@ use Illuminate\Support\Facades\Route;
 // Site vitrine de la Fondation : racine du site (/ puis /fr, /ar, /en).
 require base_path('routes/site.php');
 
-// Fil d'actualite de l'application T.Link.
-Route::get('/feed', [FeedController::class, 'index'])->name('home');
-
 Route::middleware('guest')->group(function (): void {
     Route::get('/connexion', [LoginController::class, 'show'])->name('login');
     Route::post('/connexion', [LoginController::class, 'store'])->name('login.store');
 
     Route::get('/inscription', [RegisterController::class, 'show'])->name('register');
     Route::post('/inscription', [RegisterController::class, 'store'])->name('register.store');
+
+    // Connexion / inscription via un reseau social (Google, Facebook, LinkedIn).
+    Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])->name('social.redirect');
+    Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])->name('social.callback');
 });
 
 Route::post('/deconnexion', [LoginController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
-Route::post('/posts/{post}/view', [FeedController::class, 'view'])
-    ->name('posts.view');
-
 Route::get('/posts/attachments/{attachment}', [FeedController::class, 'showAttachment'])
     ->name('posts.attachments.show');
 
 Route::middleware('auth')->group(function (): void {
+    // Fil d'actualite de l'application T.Link (reserve aux membres connectes).
+    Route::get('/feed', [FeedController::class, 'index'])->name('home');
+    Route::post('/posts/{post}/view', [FeedController::class, 'view'])->name('posts.view');
+
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/posts', [FeedController::class, 'storePost'])->name('posts.store');

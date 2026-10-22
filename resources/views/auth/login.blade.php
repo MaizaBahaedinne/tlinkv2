@@ -20,6 +20,8 @@
             <button type="submit" class="w-full rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700">Se connecter</button>
         </form>
 
+        @include('auth.partials.social-buttons', ['socialVerb' => 'Se connecter'])
+
         <p class="mt-4 text-center text-sm text-slate-600">
             Pas encore de compte ?
             <a class="font-medium text-tlink-blue hover:underline" href="{{ route('register') }}">Inscription</a>
