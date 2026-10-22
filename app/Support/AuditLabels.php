@@ -48,6 +48,8 @@ class AuditLabels
         'orgchart.layout.saved' => 'Organigramme : positions enregistrées',
         'orgchart.club.created' => 'Organigramme : club créé',
         'orgchart.club.template_applied' => 'Organigramme : équipe type appliquée',
+        'orgchart.club.aligned' => 'Organigramme : clubs alignés sur l’équipe type',
+        'orgchart.access.bulk_updated' => 'Organigramme : niveau d’accès de plusieurs postes modifié',
         'orgchart.assignments.updated' => 'Organigramme : affectations modifiées',
         'orgchart.person.created' => 'Organigramme : personne ajoutée',
         'orgchart.person.updated' => 'Organigramme : personne modifiée',

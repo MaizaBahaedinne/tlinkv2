@@ -216,6 +216,8 @@ class OrgChartInstaller
                 $created++;
             }
 
+            $this->alignClubTeams();
+
             return $created;
         });
     }
@@ -386,19 +388,107 @@ class OrgChartInstaller
         foreach (self::DEPARTMENT_SLOTS as $slug => $label) {
             $slots['dept-'.$slug] = $slot('Département '.$label, 'president', false, 'club_department');
             $slots['vp-'.$slug] = $slot(($regional ? 'Vice-président ' : 'VP ').$label, 'dept-'.$slug);
+
+            // University / High School : chaque departement = 1 VP + 1 Assistant + des membres.
+            if (! $regional) {
+                $slots['assistant-'.$slug] = $slot('Assistant '.$label, 'dept-'.$slug);
+                $slots['members-'.$slug] = $slot('Membres '.$label, 'dept-'.$slug, false, 'position', 'multiple');
+            }
         }
 
         if ($regional) {
             $slots['members'] = $slot('Assistants et membres', 'president', true, 'position', 'multiple');
-
-            return $slots;
         }
 
-        $slots['assistant-marketing'] = $slot('Assistant Marketing', 'vp-marketing', true, 'position', 'multiple');
-        $slots['assistant-hr'] = $slot('Assistant RH', 'vp-hr', true, 'position', 'multiple');
-        $slots['others'] = $slot('Autres membres et responsables', 'president', true, 'position', 'multiple');
-
         return $slots;
+    }
+
+    /**
+     * Met les clubs University / High School existants au modele : dans chaque departement, un VP, un Assistant
+     * et des membres. Les assistants places sous le VP remontent au niveau du departement, les postes manquants
+     * sont crees, et l'ancien bloc vide « Autres membres et responsables » disparait. Idempotent.
+     * Un club sans aucun departement n'est pas touche : l'equipe type s'y applique a la demande.
+     *
+     * @return int nombre de blocs crees, deplaces ou retires
+     */
+    public function alignClubTeams(): int
+    {
+        return DB::transaction(function (): int {
+            $changes = 0;
+            $nodes = OrgNode::query()->get(['id', 'parent_id', 'kind', 'title', 'category', 'subtitle']);
+            $children = $nodes->groupBy('parent_id');
+            $held = \App\Models\OrgAssignment::query()->distinct()->pluck('node_id')->flip();
+
+            $descendants = function (OrgNode $root) use ($children): \Illuminate\Support\Collection {
+                $found = collect();
+                $queue = [$root->id];
+
+                while ($queue !== []) {
+                    foreach ($children[array_shift($queue)] ?? [] as $child) {
+                        $found->push($child);
+                        $queue[] = $child->id;
+                    }
+                }
+
+                return $found;
+            };
+
+            $clubs = $nodes->where('kind', 'club')->whereIn('category', ['university_club', 'highschool_club']);
+
+            foreach ($clubs as $club) {
+                $team = $descendants($club);
+
+                foreach ($team->where('kind', 'club_department') as $department) {
+                    foreach (self::DEPARTMENT_SLOTS as $label) {
+                        if ($department->title !== 'Département '.$label) {
+                            continue;
+                        }
+
+                        $direct = $children[$department->id] ?? collect();
+
+                        // Assistant place sous le VP : il remonte au niveau du departement.
+                        foreach ($direct->where('kind', 'position') as $vp) {
+                            foreach ($children[$vp->id] ?? [] as $below) {
+                                if ($below->kind === 'position' && $below->title === 'Assistant '.$label) {
+                                    OrgNode::query()->whereKey($below->id)->update(['parent_id' => $department->id, 'sort_order' => $this->nextSort($department->id)]);
+                                    $direct->push($below);
+                                    $changes++;
+                                }
+                            }
+                        }
+
+                        foreach ([['Assistant '.$label, 'single'], ['Membres '.$label, 'multiple']] as [$title, $capacity]) {
+                            if ($direct->contains(fn (OrgNode $child): bool => $child->kind === 'position' && $child->title === $title)) {
+                                continue;
+                            }
+
+                            OrgNode::query()->create([
+                                'parent_id' => $department->id,
+                                'relation_type' => 'hierarchy',
+                                'kind' => 'position',
+                                'capacity' => $capacity,
+                                'access_level' => 'none',
+                                'category' => $club->category,
+                                'title' => $title,
+                                'subtitle' => $club->title,
+                                'sort_order' => $this->nextSort($department->id),
+                            ]);
+                            $changes++;
+                        }
+                    }
+                }
+
+                // Ancien bloc fourre-tout du modele precedent, sans personne ni sous-bloc.
+                foreach ($team->where('title', 'Autres membres et responsables') as $others) {
+                    if (! isset($held[$others->id]) && ! isset($children[$others->id])) {
+                        OrgNode::query()->whereKey($others->id)->delete();
+                        $changes++;
+                    }
+                }
+            }
+
+            return $changes;
+        });
     }
 
     private function installNationalOffice(OrgNode $director, string $key, string $coordinatorTitle, string $office, string $clubsBranchTitle, string $clubCategory): void
