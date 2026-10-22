@@ -164,6 +164,45 @@ class InfoSessionTest extends TestCase
         $this->assertNotNull($user->fresh()->onboarding_completed_at);
     }
 
+    public function test_the_correction_marks_each_answer_true_or_false(): void
+    {
+        $user = User::factory()->create();
+        $attempt = InfoSession::start($user);
+        $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => $this->answersFor($attempt, 0)]);
+
+        $page = $this->actingAs($user)->get('/info-session')->assertOk()->assertSee('Ta correction')->assertSee('5 / 6');
+
+        $content = $page->getContent();
+        $this->assertSame(5, substr_count($content, '>VRAI<'));
+        $this->assertSame(1, substr_count($content, '>FAUX<'));
+        $this->assertStringContainsString('Ta réponse : fausse', $content);
+        $this->assertStringContainsString('Bonne réponse', $content);
+    }
+
+    public function test_an_unanswered_question_is_false_and_an_expired_attempt_has_no_correction(): void
+    {
+        $user = User::factory()->create();
+        $attempt = InfoSession::start($user);
+        $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => []]);
+
+        $this->actingAs($user)->get('/info-session')->assertSee('Tu n&#039;as pas répondu à cette question.', false)->assertSee('0 / 6');
+
+        $late = InfoSession::start($user);
+        $late->update(['expires_at' => now()->subSeconds(InfoSession::GRACE_SECONDS + 5)]);
+        $this->actingAs($user)->post('/info-session/quiz/'.$late->id, ['answers' => $this->answersFor($late)]);
+
+        $this->actingAs($user)->get('/info-session')->assertDontSee('Ta correction');
+    }
+
+    public function test_a_correction_is_only_shown_to_its_owner(): void
+    {
+        $owner = User::factory()->create();
+        $attempt = InfoSession::start($owner);
+        $this->actingAs($owner)->post('/info-session/quiz/'.$attempt->id, ['answers' => $this->answersFor($attempt)]);
+
+        $this->actingAs(User::factory()->create())->get('/info-session')->assertDontSee('Ta correction');
+    }
+
     public function test_a_late_submission_is_not_graded(): void
     {
         $user = User::factory()->create();
