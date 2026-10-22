@@ -102,6 +102,22 @@ Un message avertit si l'on quitte la page avec des positions non enregistrées.
 - téléphone : chiffres, espaces, `+ - ( )` uniquement ; e-mail valide ; photo : image 2 Mo max ;
 - chaque modification est tracée dans le journal d'audit (`orgchart.*`).
 
+### Gestion par tableaux et fiches (back-office)
+
+Le diagramme reste la vue d'ensemble ; le quotidien se fait dans **Admin > Organisation** (lecture pour qui a `entity.manage`, écriture réservée aux administrateurs globaux).
+
+| Écran | Rôle |
+| --- | --- |
+| **Postes et droits** (`/admin/structure/postes`) | Tableau de tous les blocs : poste, club, type, périmètre (propre ou hérité), niveau d'accès, titulaires (ou « Vacant »). Filtres : recherche (poste, club, titulaire), type, catégorie, périmètre, niveau d'accès, pourvus / vacants. **Action groupée** : cocher des postes (par exemple tous ceux d'un département, après filtrage) puis appliquer un niveau d'accès. Rappel des droits de chaque niveau en haut de page. |
+| **Fiche d'un bloc** (`/admin/structure/postes/{id}/modifier`) | Intitulé, type, rattachement, périmètre, capacité, **niveau d'accès** (avec la liste des droits qu'il donne), champs du club, **titulaires** (recherche d'un compte puis « Affecter » / « Retirer »), sous-blocs et ajout d'un sous-bloc, suppression. |
+| **Clubs** (`/admin/structure/clubs`) | Tableau des clubs : gouvernorat, statut, président, postes pourvus / total. Création d'un club avec l'équipe type, « Équipe type » pour un club vide, **Aligner sur l'équipe type** pour mettre tous les clubs University / High School existants au modèle. |
+
+**Chaque poste est un rôle.** Le niveau d'accès du poste (`AccessLevels`) donne ses permissions à la personne qui l'occupe, **dans le périmètre du poste** (University, High School, Alumni, Fondation), propre ou hérité du bloc parent. Seul l'administrateur global agit sur toute la plateforme. Pour donner les mêmes droits à tout un département, filtrer le tableau puis utiliser l'action groupée.
+
+Garde-fou : une modification (niveau d'accès, retrait d'un titulaire, suppression) qui retirerait à son auteur ses propres droits d'administrateur global est annulée.
+
+L'alignement des clubs existants est aussi lancé par `php artisan migrate` (migration `2026_10_25_200000_align_club_teams_with_template`) et par `php artisan orgchart:sync`. Il est idempotent : assistants placés sous le VP remontés au niveau du département, assistants et membres manquants créés, ancien bloc vide « Autres membres et responsables » retiré. Les personnes déjà affectées ne sont jamais déplacées ni retirées.
+
 ## 4. Exports, impression, import
 
 | Format | Contenu |
