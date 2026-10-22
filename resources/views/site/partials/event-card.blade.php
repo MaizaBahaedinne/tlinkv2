@@ -5,6 +5,9 @@
     </div>
     <div class="min-w-0">
         <h3 class="font-display font-bold text-brand-900">{{ $event->title }}</h3>
+        @if(\App\Support\OrgScopes::valid($event->scope))
+            <span class="mt-1 inline-block rounded bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-800">{{ __('site.scopes.'.$event->scope.'.name') }}</span>
+        @endif
         @if($event->location)
             <p class="mt-1 text-sm text-slate-600">{{ $event->location }}</p>
         @endif

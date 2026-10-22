@@ -66,6 +66,24 @@ class OrgAccess
     }
 
     /**
+     * Perimetre effectif de chaque bloc (id => perimetre ou null), calcule en une seule passe.
+     *
+     * @return array<int, string|null>
+     */
+    public static function scopeMap(): array
+    {
+        $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
+        $scopes = OrgNode::query()->whereNotNull('scope')->pluck('scope', 'id')->all();
+        $map = [];
+
+        foreach (array_keys($parents) as $id) {
+            $map[$id] = self::resolveScope((int) $id, $parents, $scopes);
+        }
+
+        return $map;
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Builder<OrgAssignment>
      */
     private static function currentAssignments()

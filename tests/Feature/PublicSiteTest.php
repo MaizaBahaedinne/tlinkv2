@@ -143,8 +143,67 @@ class PublicSiteTest extends TestCase
         OrgNode::query()->create(['kind' => 'club', 'category' => 'university_club', 'title' => 'Club Inactif', 'scope' => 'university', 'status' => 'inactive']);
 
         $this->get('/fr/clubs')->assertSee('Club Alpha')->assertSee('Club Beta')->assertDontSee('Club Inactif');
-        $this->get('/fr/clubs?type=university')->assertSee('Club Alpha')->assertDontSee('Club Beta');
-        $this->get('/fr/clubs?type=bogus')->assertSessionHasErrors('type');
+        $this->get('/fr/clubs?scope=university')->assertSee('Club Alpha')->assertDontSee('Club Beta');
+        $this->get('/fr/clubs?scope=bogus')->assertSessionHasErrors('scope');
+    }
+
+    public function test_team_is_grouped_by_inherited_scope_in_org_chart_order(): void
+    {
+        $node = fn (array $attributes) => OrgNode::query()->create($attributes + ['kind' => 'position', 'access_level' => 'none']);
+        $person = function (OrgNode $position, string $name): void {
+            $person = OrgPerson::query()->create(['full_name' => $name]);
+            OrgAssignment::query()->create(['node_id' => $position->id, 'person_id' => $person->id]);
+        };
+
+        $root = $node(['category' => 'presidency', 'title' => 'Président', 'scope' => 'foundation', 'sort_order' => 0]);
+        $office = $node(['category' => 'national_office', 'title' => 'Coordinateur University', 'parent_id' => $root->id, 'scope' => 'university', 'sort_order' => 2]);
+        $manager = $node(['category' => 'national_office', 'title' => 'Manager RH', 'parent_id' => $office->id, 'sort_order' => 0]); // hérite de university
+        $highschool = $node(['category' => 'national_office', 'title' => 'Coordinateur Highschool', 'parent_id' => $root->id, 'scope' => 'high-school', 'sort_order' => 1]);
+        $clubPresident = $node(['category' => 'university_club', 'title' => 'Président de club', 'parent_id' => $office->id, 'sort_order' => 1]);
+
+        $person($manager, 'Sonia Univ');
+        $person($office, 'Coordo Univ');
+        $person($root, 'Karim Fondation');
+        $person($highschool, 'Leila Lycée');
+        $person($clubPresident, 'Membre De Club');
+
+        $html = $this->get('/fr/equipe')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('Membre De Club', $html); // les clubs ont leur page
+
+        // Sections dans l'ordre des périmètres : Fondation, University, High School.
+        $foundation = strpos($html, 'id="foundation"');
+        $university = strpos($html, 'id="university"');
+        $highSchool = strpos($html, 'id="high-school"');
+        $this->assertIsInt($foundation);
+        $this->assertLessThan($university, $foundation);
+        $this->assertLessThan($highSchool, $university);
+
+        $this->assertTrue(strpos($html, 'Karim Fondation') > $foundation && strpos($html, 'Karim Fondation') < $university);
+        $this->assertTrue(strpos($html, 'Sonia Univ') > $university && strpos($html, 'Sonia Univ') < $highSchool); // héritage du périmètre
+        $this->assertTrue(strpos($html, 'Leila Lycée') > $highSchool);
+
+        // Dans un périmètre, l'ordre suit l'arbre : le coordinateur avant son manager.
+        $this->assertLessThan(strpos($html, 'Sonia Univ'), strpos($html, 'Coordo Univ'));
+    }
+
+    public function test_news_and_events_can_be_filtered_by_scope(): void
+    {
+        $univ = $this->makePost('Annonce des clubs universitaires');
+        $univ->update(['scope' => 'university']);
+        $lycee = $this->makePost('Annonce des clubs lycéens');
+        $lycee->update(['scope' => 'high-school']);
+        $general = $this->makePost('Annonce générale de la fondation');
+
+        $this->get('/fr/actualites?scope=university')->assertSee('Annonce des clubs universitaires')->assertDontSee('Annonce des clubs lycéens')->assertDontSee('Annonce générale');
+        $this->get('/fr/actualites?scope=foundation')->assertSee('Annonce générale de la fondation')->assertDontSee('Annonce des clubs universitaires');
+        $this->get('/fr/actualites?scope=bogus')->assertSessionHasErrors('scope');
+
+        FoundationEvent::query()->create(['title' => 'Forum University', 'status' => 'published', 'starts_at' => now()->addDays(3), 'scope' => 'university']);
+        FoundationEvent::query()->create(['title' => 'Camp High School', 'status' => 'published', 'starts_at' => now()->addDays(4), 'scope' => 'high-school']);
+
+        $this->get('/fr/evenements?scope=high-school')->assertSee('Camp High School')->assertDontSee('Forum University');
+        $this->get('/fr/evenements')->assertSee('Forum University')->assertSee('Camp High School');
     }
 
     public function test_unsafe_club_link_is_not_rendered(): void

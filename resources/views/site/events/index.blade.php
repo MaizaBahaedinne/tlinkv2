@@ -5,8 +5,10 @@
 @section('content')
     @include('site.partials.page-header', ['title' => __('site.events.title'), 'intro' => __('site.events.intro')])
 
-    <section class="mx-auto mt-10 max-w-6xl px-4">
-        <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.events.upcoming') }}</h2>
+    <section class="mx-auto max-w-6xl px-4">
+        @include('site.partials.scope-filter', ['routeName' => 'site.events', 'scope' => $scope])
+
+        <h2 class="mt-8 font-display text-2xl font-bold text-brand-900">{{ __('site.events.upcoming') }}</h2>
         @if($upcoming->isNotEmpty())
             <div class="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 @foreach($upcoming as $event)

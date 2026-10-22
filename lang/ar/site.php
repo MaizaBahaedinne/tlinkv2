@@ -10,6 +10,7 @@ return [
     'language' => 'اللغة',
     'by' => 'بقلم',
     'empty' => 'لا يوجد محتوى للعرض حاليا.',
+    'all_scopes' => 'الكل',
 
     'nav' => [
         'home' => 'الرئيسية',
@@ -88,25 +89,21 @@ return [
 
     'team' => [
         'title' => 'فريقنا',
-        'intro' => 'المسؤولون الذين يديرون المؤسسة.',
-        'categories' => [
-            'presidency' => 'الرئاسة',
-            'direction' => 'الإدارة التنفيذية',
-            'national_office' => 'المكاتب الوطنية',
-        ],
+        'intro' => 'مسؤولو المؤسسة حسب الفضاء.',
     ],
 
     'clubs' => [
         'title' => 'نوادينا',
         'intro' => 'النوادي النشطة للمؤسسة حسب النوع والولاية.',
-        'all_types' => 'كل الأنواع',
+        'all_types' => 'كل الفضاءات',
         'all_governorates' => 'كل الولايات',
         'search' => 'ابحث عن نادٍ أو مؤسسة',
         'filter' => 'تصفية',
         'reset' => 'إعادة التعيين',
-        'types' => [
-            'university' => 'نادٍ جامعي',
-            'high-school' => 'نادٍ ثانوي',
+        'categories' => [
+            'regional_club' => 'نادٍ جهوي We Are',
+            'university_club' => 'نادٍ جامعي',
+            'highschool_club' => 'نادٍ ثانوي',
         ],
         'founded' => 'تأسس سنة :year',
         'page' => 'صفحة النادي',

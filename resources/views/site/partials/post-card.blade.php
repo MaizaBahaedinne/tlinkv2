@@ -12,7 +12,12 @@
         </a>
     @endif
     <div class="flex flex-1 flex-col p-5">
-        <time datetime="{{ $post->published_at->toDateString() }}" class="text-xs font-semibold text-brand-600">{{ $post->published_at->translatedFormat('d F Y') }}</time>
+        <div class="flex flex-wrap items-center gap-2">
+            <time datetime="{{ $post->published_at->toDateString() }}" class="text-xs font-semibold text-brand-600">{{ $post->published_at->translatedFormat('d F Y') }}</time>
+            @if(\App\Support\OrgScopes::valid($post->scope))
+                <span class="rounded bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-800">{{ __('site.scopes.'.$post->scope.'.name') }}</span>
+            @endif
+        </div>
         <h3 class="mt-1 font-display text-lg font-bold text-brand-900">
             <a href="{{ route('site.news.show', ['post' => $post->id]) }}" class="hover:text-brand-600">{{ $firstLine }}</a>
         </h3>

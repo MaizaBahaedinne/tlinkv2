@@ -10,6 +10,7 @@ return [
     'language' => 'Langue',
     'by' => 'Par',
     'empty' => 'Rien à afficher pour le moment.',
+    'all_scopes' => 'Tous',
 
     'nav' => [
         'home' => 'Accueil',
@@ -88,25 +89,21 @@ return [
 
     'team' => [
         'title' => 'Notre équipe',
-        'intro' => 'Les responsables qui animent la Fondation.',
-        'categories' => [
-            'presidency' => 'Présidence',
-            'direction' => 'Direction exécutive',
-            'national_office' => 'Bureaux nationaux',
-        ],
+        'intro' => 'Les responsables de la Fondation, par périmètre.',
     ],
 
     'clubs' => [
         'title' => 'Nos clubs',
         'intro' => 'Les clubs actifs de la Fondation, par type et par gouvernorat.',
-        'all_types' => 'Tous les types',
+        'all_types' => 'Tous les périmètres',
         'all_governorates' => 'Tous les gouvernorats',
         'search' => 'Rechercher un club ou un établissement',
         'filter' => 'Filtrer',
         'reset' => 'Réinitialiser',
-        'types' => [
-            'university' => 'University Club',
-            'high-school' => 'High School Club',
+        'categories' => [
+            'regional_club' => 'Club régional We Are',
+            'university_club' => 'University Club',
+            'highschool_club' => 'High School Club',
         ],
         'founded' => 'Fondé en :year',
         'page' => 'Page du club',

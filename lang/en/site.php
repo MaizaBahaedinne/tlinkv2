@@ -10,6 +10,7 @@ return [
     'language' => 'Language',
     'by' => 'By',
     'empty' => 'Nothing to show yet.',
+    'all_scopes' => 'All',
 
     'nav' => [
         'home' => 'Home',
@@ -88,25 +89,21 @@ return [
 
     'team' => [
         'title' => 'Our team',
-        'intro' => 'The people who run the Foundation.',
-        'categories' => [
-            'presidency' => 'Presidency',
-            'direction' => 'Executive management',
-            'national_office' => 'National offices',
-        ],
+        'intro' => 'The Foundation\'s leaders, by scope.',
     ],
 
     'clubs' => [
         'title' => 'Our clubs',
         'intro' => 'The Foundation\'s active clubs, by type and governorate.',
-        'all_types' => 'All types',
+        'all_types' => 'All scopes',
         'all_governorates' => 'All governorates',
         'search' => 'Search a club or institution',
         'filter' => 'Filter',
         'reset' => 'Reset',
-        'types' => [
-            'university' => 'University Club',
-            'high-school' => 'High School Club',
+        'categories' => [
+            'regional_club' => 'We Are regional club',
+            'university_club' => 'University Club',
+            'highschool_club' => 'High School Club',
         ],
         'founded' => 'Founded in :year',
         'page' => 'Club page',

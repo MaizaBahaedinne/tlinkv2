@@ -7,11 +7,11 @@ use App\Models\ContactMessage;
 use App\Models\FoundationEvent;
 use App\Models\Governorate;
 use App\Models\Membership;
-use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\Post;
 use App\Models\PostAttachment;
 use App\Support\OrgScopes;
+use App\Support\PublicOrgChart;
 use App\Support\SiteSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -27,9 +27,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class SiteController extends Controller
 {
-    /** Categories de l'organigramme presentees sur la page « Equipe ». */
-    private const TEAM_CATEGORIES = ['presidency', 'direction', 'national_office'];
-
     public function root(Request $request): RedirectResponse
     {
         $locale = $request->getPreferredLanguage(array_keys(config('site.locales'))) ?? config('site.default_locale');
@@ -58,10 +55,13 @@ class SiteController extends Controller
         ]);
     }
 
-    public function news(): View
+    public function news(Request $request): View
     {
+        $scope = $this->scopeFilter($request);
+
         return $this->render('site.news.index', [
-            'posts' => $this->publicPosts()->paginate(9),
+            'posts' => $this->inScope($this->publicPosts(), $scope)->paginate(9)->withQueryString(),
+            'scope' => $scope,
         ]);
     }
 
@@ -76,14 +76,18 @@ class SiteController extends Controller
         ]);
     }
 
-    public function events(): View
+    public function events(Request $request): View
     {
+        $scope = $this->scopeFilter($request);
+
         return $this->render('site.events.index', [
-            'upcoming' => $this->upcomingEvents()->get(),
-            'past' => $this->publicEvents()
+            'upcoming' => $this->inScope($this->upcomingEvents(), $scope)->get(),
+            'past' => $this->inScope($this->publicEvents(), $scope)
                 ->where('starts_at', '<', now()->startOfDay())
                 ->orderByDesc('starts_at')
-                ->paginate(9),
+                ->paginate(9)
+                ->withQueryString(),
+            'scope' => $scope,
         ]);
     }
 
@@ -96,45 +100,20 @@ class SiteController extends Controller
 
     public function team(): View
     {
-        $today = now()->startOfDay();
-
-        $nodes = OrgNode::query()
-            ->whereIn('category', self::TEAM_CATEGORIES)
-            ->where('validation_status', 'confirmed')
-            // Les administrateurs techniques de la plateforme ne sont pas presentes au public.
-            ->where(fn (Builder $query) => $query->whereNull('system_key')->orWhere('system_key', '!=', 'national-administrators'))
-            ->with(['assignments.person.user.profile'])
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->map(function (OrgNode $node) use ($today): OrgNode {
-                $node->setRelation('assignments', $node->assignments->filter(
-                    fn (OrgAssignment $assignment): bool => ($assignment->starts_at === null || $assignment->starts_at <= $today)
-                        && ($assignment->ends_at === null || $assignment->ends_at >= $today)
-                )->values());
-
-                return $node;
-            })
-            ->filter(fn (OrgNode $node): bool => $node->assignments->isNotEmpty())
-            ->groupBy('category');
-
-        return $this->render('site.team', [
-            'groups' => collect(self::TEAM_CATEGORIES)->filter(fn (string $category) => $nodes->has($category))
-                ->mapWithKeys(fn (string $category) => [$category => $nodes->get($category)]),
-        ]);
+        return $this->render('site.team', ['groups' => PublicOrgChart::teamByScope()]);
     }
 
     public function clubs(Request $request): View
     {
         $filters = $request->validate([
-            'type' => ['nullable', Rule::in(array_keys(OrgScopes::CLUB_BRANCHES))],
+            'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
             'gov' => ['nullable', 'integer', 'exists:governorates,id'],
             'q' => ['nullable', 'string', 'max:100'],
         ]);
 
         $clubs = $this->activeClubs()
             ->with('governorate:id,name')
-            ->when($filters['type'] ?? null, fn (Builder $query, string $type) => $query->where('scope', $type))
+            ->when($filters['scope'] ?? null, fn (Builder $query, string $scope) => $query->where('scope', $scope))
             ->when($filters['gov'] ?? null, fn (Builder $query, $gov) => $query->where('governorate_id', $gov))
             ->when($filters['q'] ?? null, fn (Builder $query, string $needle) => $query->where(
                 fn (Builder $inner) => $inner->where('title', 'like', "%{$needle}%")->orWhere('institution_name', 'like', "%{$needle}%")
@@ -143,6 +122,8 @@ class SiteController extends Controller
             ->paginate(24)
             ->withQueryString();
 
+        $clubScopes = $this->activeClubs()->whereNotNull('scope')->distinct()->pluck('scope')->all();
+
         return $this->render('site.clubs', [
             'clubs' => $clubs,
             'filters' => $filters,
@@ -150,7 +131,7 @@ class SiteController extends Controller
                 ->whereIn('id', $this->activeClubs()->whereNotNull('governorate_id')->select('governorate_id'))
                 ->orderBy('name')
                 ->get(['id', 'name']),
-            'types' => array_keys(OrgScopes::CLUB_BRANCHES),
+            'scopes' => array_values(array_filter(OrgScopes::slugs(), fn (string $slug): bool => in_array($slug, $clubScopes, true))),
         ]);
     }
 
@@ -213,6 +194,28 @@ class SiteController extends Controller
     private function render(string $view, array $data): View
     {
         return view($view, $data + ['site' => new SiteSettings()]);
+    }
+
+    /**
+     * Perimetre demande dans l'URL (?scope=university), ou null pour tout afficher.
+     */
+    private function scopeFilter(Request $request): ?string
+    {
+        return $request->validate(['scope' => ['nullable', Rule::in(OrgScopes::slugs())]])['scope'] ?? null;
+    }
+
+    /**
+     * Restreint une liste a un perimetre. Un contenu sans perimetre est un contenu de la Fondation elle-meme.
+     */
+    private function inScope(Builder $query, ?string $scope): Builder
+    {
+        if ($scope === null) {
+            return $query;
+        }
+
+        return $scope === 'foundation'
+            ? $query->where(fn (Builder $inner) => $inner->whereNull('scope')->orWhere('scope', 'foundation'))
+            : $query->where('scope', $scope);
     }
 
     private function publicPosts(): Builder
