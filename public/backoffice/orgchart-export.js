@@ -77,10 +77,10 @@
         svg.appendChild(defs);
 
         svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h, fill: '#ffffff' }));
-        svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: 8, fill: '#0f2e5f' }));
+        svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: 8, fill: '#7d0020' }));
 
-        svg.appendChild(el('text', { x: margin, y: margin + 14, 'font-family': FONT, 'font-size': 26, 'font-weight': 800, fill: '#0a2147' }, o.title));
-        svg.appendChild(el('text', { x: margin, y: margin + 38, 'font-family': FONT, 'font-size': 13, fill: '#62708a' }, o.subtitle));
+        svg.appendChild(el('text', { x: margin, y: margin + 14, 'font-family': FONT, 'font-size': 26, 'font-weight': 800, fill: '#4a0a1c' }, o.title));
+        svg.appendChild(el('text', { x: margin, y: margin + 38, 'font-family': FONT, 'font-size': 13, fill: '#806c71' }, o.subtitle));
 
         var offsetX = margin + (w - margin * 2 - contentW) / 2 - o.bounds.minX;
         var offsetY = margin + headerH - o.bounds.minY;
@@ -96,7 +96,7 @@
 
         // Légende
         var ly = margin + headerH + contentH + 36;
-        svg.appendChild(el('text', { x: margin, y: ly, 'font-family': FONT, 'font-size': 13, 'font-weight': 800, fill: '#0a2147' }, 'Légende'));
+        svg.appendChild(el('text', { x: margin, y: ly, 'font-family': FONT, 'font-size': 13, 'font-weight': 800, fill: '#4a0a1c' }, 'Légende'));
         var col = 0;
         var row = 0;
         o.legend.forEach(function (item) {
@@ -104,7 +104,7 @@
             var y = ly + 16 + row * 24;
             svg.appendChild(el('rect', { x: x, y: y, width: 16, height: 16, rx: 4, fill: '#fff', stroke: item.color, 'stroke-width': 2 }));
             svg.appendChild(el('rect', { x: x, y: y, width: 5, height: 16, rx: 2, fill: item.color }));
-            svg.appendChild(el('text', { x: x + 24, y: y + 12, 'font-family': FONT, 'font-size': 12, fill: '#0e1a33' }, item.label));
+            svg.appendChild(el('text', { x: x + 24, y: y + 12, 'font-family': FONT, 'font-size': 12, fill: '#1f1217' }, item.label));
             col++;
             if (col === legendCols) { col = 0; row++; }
         });
@@ -114,7 +114,7 @@
             var attrs = { x1: x, y1: y + 8, x2: x + 18, y2: y + 8, stroke: item.color, 'stroke-width': 2 };
             if (item.dash) { attrs['stroke-dasharray'] = item.dash; }
             svg.appendChild(el('line', attrs));
-            svg.appendChild(el('text', { x: x + 26, y: y + 12, 'font-family': FONT, 'font-size': 12, fill: '#0e1a33' }, item.label));
+            svg.appendChild(el('text', { x: x + 26, y: y + 12, 'font-family': FONT, 'font-size': 12, fill: '#1f1217' }, item.label));
             col++;
             if (col === legendCols) { col = 0; row++; }
         });
