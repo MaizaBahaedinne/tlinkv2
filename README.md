@@ -85,6 +85,14 @@ Page interactive `/organigramme` (lecture pour tous, edition pour les administra
 Voir `docs/organigramme.md` (structure, utilisation, exports, import, deploiement).
 L'organigramme est l'unique base de la structure (perimetres foundation / university / high-school / alumni et clubs) : `php artisan orgchart:sync` apres un import legacy.
 
+## Info session et validation du compte
+
+Page `/info-session` (membres connectes) : video YouTube a regarder jusqu'au bout, puis quiz chronometre. Reussir le quiz renseigne `users.onboarding_completed_at` (compte valide) ; tant que ce n'est pas fait, un bandeau invite a valider le compte, sans bloquer l'acces.
+
+- Questions, reponses, duree et seuil de reussite se reglent dans **Admin > Contenu > Info session et quiz** (stockes en base, table `settings`, groupe `onboarding`). Sans reglage enregistre, les valeurs par defaut de `App\Support\InfoSession` s'appliquent.
+- Mode aleatoire : l'ordre des questions et des reponses change a chaque tentative. Les bonnes reponses restent cote serveur (instantane dans `quiz_attempts.snapshot`) ; le chronometre est controle par le serveur (echeance + 30 s de grace).
+- Une question a choix multiple n'est juste que si toutes les bonnes reponses, et elles seules, sont cochees.
+
 ## Migration des donnees de l'ancienne plateforme
 
 Les fichiers sources (`database/legacy/*.sql`, ignores par git car ils contiennent des donnees personnelles) s'importent dans cet ordre :
