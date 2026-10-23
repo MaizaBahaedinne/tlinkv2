@@ -1,10 +1,6 @@
 @extends('site.layouts.site')
 
 @section('content')
-    <section class="mx-auto mt-8 flex max-w-6xl justify-center px-4">
-        <img src="{{ asset('logoFondation.png') }}" alt="Tunivisions Foundation" class="h-20 w-auto md:h-24" loading="eager">
-    </section>
-
     <section class="bg-gradient-to-br from-brand-900 via-brand-800 to-brand-600 text-white">
         <div class="mx-auto max-w-6xl px-4 py-16 md:py-24">
             <p class="text-sm font-bold uppercase tracking-widest text-accent">{{ __('site.tagline') }}</p>
@@ -15,15 +11,6 @@
                 <a href="{{ route('site.clubs') }}" class="rounded-xl border border-white/40 px-6 py-3 font-bold hover:bg-white/10">{{ __('site.home.cta_clubs') }}</a>
             </div>
         </div>
-    </section>
-
-    <section class="mx-auto mt-16 max-w-6xl px-4">
-        <div class="rounded-2xl bg-brand-800 p-8 text-center text-white md:p-12">
-            <h2 class="font-display text-2xl font-bold">{{ __('site.home.join_title') }}</h2>
-            <p class="mx-auto mt-3 max-w-xl text-slate-200">{{ __('site.home.join_text') }}</p>
-                        <a href="{{ route('register') }}" class="mt-6 inline-block rounded-xl bg-accent px-6 py-3 font-bold text-brand-900 hover:brightness-110">{{ __('site.nav.contact') }}</a>
-        </div>
-    </section>
     </section>
 
     <section class="mx-auto mt-16 max-w-6xl px-4">
@@ -40,7 +27,7 @@
 
     <section class="mx-auto mt-16 max-w-6xl px-4">
         <div class="flex items-end justify-between gap-4">
-                <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.news_title') }}</h2>
+            <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.news_title') }}</h2>
             <a href="{{ route('site.news') }}" class="text-sm font-bold text-brand-600 hover:text-brand-800">{{ __('site.see_all') }} →</a>
         </div>
         @if($news->isNotEmpty())
@@ -62,7 +49,7 @@
         @if($events->isNotEmpty())
             <div class="mt-6 grid gap-4 md:grid-cols-3">
                 @foreach($events as $event)
-                        @include('site.partials.event-card', ['event' => $event])
+                    @include('site.partials.event-card', ['event' => $event])
                 @endforeach
             </div>
         @else
@@ -74,7 +61,7 @@
         <div class="rounded-2xl bg-brand-800 p-8 text-center text-white md:p-12">
             <h2 class="font-display text-2xl font-bold">{{ __('site.home.join_title') }}</h2>
             <p class="mx-auto mt-3 max-w-xl text-slate-200">{{ __('site.home.join_text') }}</p>
-                <a href="{{ route('register') }}" class="mt-6 inline-block rounded-xl bg-accent px-6 py-3 font-bold text-brand-900 hover:brightness-110">{{ __('site.nav.join') }}</a>
+            <a href="{{ route('register') }}" class="mt-6 inline-block rounded-xl bg-accent px-6 py-3 font-bold text-brand-900 hover:brightness-110">{{ __('site.nav.join') }}</a>
         </div>
     </section>
 @endsection

@@ -21,6 +21,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-white-32x32.png') }}" media="(prefers-color-scheme: dark)">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-white-16x16.png') }}" media="(prefers-color-scheme: dark)">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     <title>{{ $pageTitle }}</title>
     <meta name="description" content="{{ \Illuminate\Support\Str::limit(strip_tags($metaDescription), 160) }}">
     <meta property="og:title" content="{{ $pageTitle }}">
@@ -42,9 +48,11 @@
 
     <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-            <a href="{{ route('site.home') }}" class="flex items-center gap-3">
-                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-800 font-display text-lg font-bold text-white">T</span>
-                <span class="font-display text-lg font-bold leading-tight text-brand-900">{{ __('site.name') }}</span>
+            <a href="{{ route('site.home') }}" class="flex items-center gap-3" aria-label="{{ __('site.name') }}">
+                <picture>
+                    <source srcset="{{ asset('logoFondation.webp') }}" type="image/webp">
+                    <img src="{{ asset('logoFondation.png') }}" alt="{{ __('site.name') }}" class="h-10 w-auto sm:h-11" loading="eager" decoding="async">
+                </picture>
             </a>
 
             <nav class="hidden items-center gap-1 lg:flex" aria-label="{{ __('site.footer.navigation') }}">
@@ -100,7 +108,10 @@
     <footer class="mt-16 bg-brand-900 text-slate-300">
         <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-3">
             <div>
-                <p class="font-display text-lg font-bold text-white">{{ __('site.name') }}</p>
+                <picture>
+                    <source srcset="{{ asset('logoFondation-white.webp') }}" type="image/webp">
+                    <img src="{{ asset('logoFondation-white.png') }}" alt="{{ __('site.name') }}" class="h-11 w-auto" loading="lazy" decoding="async">
+                </picture>
                 <p class="mt-2 text-sm">{{ __('site.tagline') }}</p>
             </div>
             <div>
