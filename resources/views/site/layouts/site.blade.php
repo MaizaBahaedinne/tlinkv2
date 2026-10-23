@@ -51,7 +51,7 @@
             <a href="{{ route('site.home') }}" class="flex items-center gap-3" aria-label="{{ __('site.name') }}">
                 <picture>
                     <source srcset="{{ asset('logoFondation.webp') }}" type="image/webp">
-                    <img src="{{ asset('logoFondation.png') }}" alt="{{ __('site.name') }}" class="h-10 w-auto sm:h-11" loading="eager" decoding="async">
+                    <img src="{{ asset('logoFondation.png') }}" alt="{{ __('site.name') }}" class="h-14 w-auto sm:h-16" loading="eager" decoding="async">
                 </picture>
             </a>
 
@@ -67,7 +67,7 @@
                 <details class="relative" id="lang-switcher">
                     <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" aria-label="{{ __('site.language') }}">
                         <span aria-hidden="true">🌐</span>
-                        <span>{{ $locales[$locale]['name'] }}</span>
+                        <span>{{ strtoupper($locale) }}</span>
                         <span aria-hidden="true" class="text-xs">▾</span>
                     </summary>
                     <ul class="absolute end-0 z-50 mt-2 min-w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
@@ -77,15 +77,14 @@
                                    hreflang="{{ $code }}" lang="{{ $code }}"
                                    class="flex items-center justify-between gap-3 px-4 py-2 text-sm {{ $code === $locale ? 'bg-brand-50 font-bold text-brand-800' : 'text-slate-700 hover:bg-slate-100' }}"
                                    @if($code === $locale) aria-current="true" @endif>
-                                    <span>{{ $meta['name'] }}</span>
+                                    <span>{{ strtoupper($code) }}</span>
                                     @if($code === $locale)<span aria-hidden="true">✓</span>@endif
                                 </a>
                             </li>
                         @endforeach
                     </ul>
                 </details>
-                <a href="{{ route('register') }}" class="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 sm:inline-block">{{ __('site.nav.join') }}</a>
-                <a href="{{ route('home') }}" class="hidden rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 md:inline-block">{{ __('site.nav.members') }}</a>
+                <a href="{{ auth()->check() ? route('home') : route('register') }}" class="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 sm:inline-block">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
             </div>
         </div>
 
@@ -95,8 +94,7 @@
                 @foreach($nav as $name => $label)
                     <a href="{{ route($name) }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">{{ $label }}</a>
                 @endforeach
-                <a href="{{ route('register') }}" class="rounded-lg px-3 py-2 text-sm font-bold text-brand-600">{{ __('site.nav.join') }}</a>
-                <a href="{{ route('home') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700">{{ __('site.nav.members') }}</a>
+                <a href="{{ auth()->check() ? route('home') : route('register') }}" class="rounded-lg px-3 py-2 text-sm font-bold text-brand-600">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
             </nav>
         </details>
     </header>
