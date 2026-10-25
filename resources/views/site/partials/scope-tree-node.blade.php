@@ -15,7 +15,10 @@
     </div>
 
     @if(!empty($childrenByParent[$scopeSlug]))
-        <ul class="scope-tree-children">
+        @php
+            $onlyLeaves = collect($childrenByParent[$scopeSlug])->every(fn ($child) => empty($childrenByParent[$child]));
+        @endphp
+        <ul class="scope-tree-children{{ $onlyLeaves ? ' scope-tree-children--stack' : '' }}">
             @foreach($childrenByParent[$scopeSlug] as $childSlug)
                 @include('site.partials.scope-tree-node', [
                     'scopeSlug' => $childSlug,
