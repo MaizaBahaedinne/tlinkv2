@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ScopeSettingsController extends AdminController
@@ -16,6 +17,8 @@ class ScopeSettingsController extends AdminController
     private const CATALOG_KEY = 'scopes_catalog';
     private const HIERARCHY_KEY = 'scope_hierarchy';
     private const DESCRIPTIONS_KEY = 'scopes_descriptions';
+    private const LOGOS_KEY = 'scopes_logos';
+    private const LOGO_RULES = ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:1024'];
 
     public function edit(): View
     {
@@ -23,6 +26,10 @@ class ScopeSettingsController extends AdminController
             'scopes' => OrgScopes::all(),
             'hierarchy' => OrgScopes::hierarchy(),
             'descriptions' => OrgScopes::descriptions(),
+            'logos' => collect(OrgScopes::logos())
+                ->filter(fn (string $path) => Storage::disk('public')->exists($path))
+                ->map(fn (string $path) => Storage::disk('public')->url($path))
+                ->all(),
             'coreScopes' => OrgScopes::CORE,
         ]);
     }
@@ -39,7 +46,11 @@ class ScopeSettingsController extends AdminController
             $rules['description.'.$slug] = ['nullable', 'string', 'max:300'];
             $rules['parent.'.$slug] = ['nullable', 'in:'.$allowedParents];
             $rules['delete.'.$slug] = ['nullable', 'boolean'];
+            $rules['logo.'.$slug] = self::LOGO_RULES;
+            $rules['remove_logo.'.$slug] = ['nullable', 'boolean'];
         }
+
+        $rules['new_logo'] = self::LOGO_RULES;
 
         $rules['new_slug'] = ['nullable', 'string', 'max:50', 'regex:/^[a-z0-9][a-z0-9\-]{1,48}[a-z0-9]$/'];
         $rules['new_label'] = ['nullable', 'string', 'max:60'];
@@ -117,6 +128,13 @@ class ScopeSettingsController extends AdminController
             return back()->withErrors(['parent' => 'La hiérarchie contient une boucle.'])->withInput();
         }
 
+        $logos = $this->syncLogos($request, array_keys($catalog), $newSlug, $data['remove_logo'] ?? []);
+
+        Setting::query()->updateOrCreate(
+            ['group' => self::GROUP, 'key' => self::LOGOS_KEY],
+            ['value' => json_encode($logos, JSON_UNESCAPED_UNICODE)]
+        );
+
         Setting::query()->updateOrCreate(
             ['group' => self::GROUP, 'key' => self::CATALOG_KEY],
             ['value' => json_encode($catalog, JSON_UNESCAPED_UNICODE)]
@@ -138,6 +156,44 @@ class ScopeSettingsController extends AdminController
         $this->audit($request, 'admin.scopes.updated', $setting, ['catalog' => $catalog, 'hierarchy' => $hierarchy, 'descriptions' => $descriptions]);
 
         return back()->with('status', 'Périmètres et héritages mis à jour.');
+    }
+
+    /**
+     * @param array<int, string> $keptSlugs
+     * @param array<string, mixed> $removeFlags
+     * @return array<string, string>
+     */
+    private function syncLogos(Request $request, array $keptSlugs, string $newSlug, array $removeFlags): array
+    {
+        $existing = OrgScopes::logos();
+        $disk = Storage::disk('public');
+        $logos = [];
+
+        foreach ($existing as $slug => $path) {
+            if (! in_array($slug, $keptSlugs, true)) {
+                $disk->delete($path);
+            }
+        }
+
+        foreach ($keptSlugs as $slug) {
+            $path = $existing[$slug] ?? null;
+            $file = $slug === $newSlug ? $request->file('new_logo') : $request->file('logo.'.$slug);
+
+            if ($path && (! empty($removeFlags[$slug]) || $file)) {
+                $disk->delete($path);
+                $path = null;
+            }
+
+            if ($file) {
+                $path = $file->store('scopes/logos', 'public');
+            }
+
+            if ($path) {
+                $logos[$slug] = $path;
+            }
+        }
+
+        return $logos;
     }
 
     private function usageCount(string $slug): int

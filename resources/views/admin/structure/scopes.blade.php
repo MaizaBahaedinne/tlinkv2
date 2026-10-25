@@ -29,7 +29,7 @@
             </div>
         </div>
 
-        <form method="post" action="{{ route('admin.scopes.update') }}" style="padding: 0 16px 16px;">
+        <form method="post" action="{{ route('admin.scopes.update') }}" enctype="multipart/form-data" style="padding: 0 16px 16px;">
             @csrf
             @method('PUT')
             <div class="table-wrap">
@@ -37,6 +37,7 @@
                     <thead>
                         <tr>
                             <th>Slug</th>
+                            <th>Logo</th>
                             <th>Libellé</th>
                             <th>Description</th>
                             <th>Périmètre</th>
@@ -48,6 +49,19 @@
                         @foreach($scopes as $slug => $label)
                             <tr>
                                 <td><code>{{ $slug }}</code></td>
+                                <td>
+                                    @if(!empty($logos[$slug]))
+                                        <img src="{{ $logos[$slug] }}" alt="Logo {{ $label }}" style="display:block; height:40px; max-width:120px; object-fit:contain; margin-bottom:6px;">
+                                        <label style="display:flex; align-items:center; gap:6px;">
+                                            <input type="checkbox" name="remove_logo[{{ $slug }}]" value="1">
+                                            <span class="text-sm">Retirer</span>
+                                        </label>
+                                    @endif
+                                    <input type="file" name="logo[{{ $slug }}]" accept="image/png,image/jpeg,image/webp">
+                                    @error('logo.'.$slug)
+                                        <p class="text-sm" style="color:#b91c1c; margin-top:4px;">{{ $message }}</p>
+                                    @enderror
+                                </td>
                                 <td>
                                     <input type="text" name="label[{{ $slug }}]" value="{{ old('label.'.$slug, $label) }}" maxlength="60" required>
                                     @error('label.'.$slug)
@@ -96,6 +110,12 @@
                         @endforeach
                         <tr>
                             <td><input type="text" name="new_slug" value="{{ old('new_slug') }}" maxlength="50" placeholder="nouveau-scope"></td>
+                            <td>
+                                <input type="file" name="new_logo" accept="image/png,image/jpeg,image/webp">
+                                @error('new_logo')
+                                    <p class="text-sm" style="color:#b91c1c; margin-top:4px;">{{ $message }}</p>
+                                @enderror
+                            </td>
                             <td><input type="text" name="new_label" value="{{ old('new_label') }}" maxlength="60" placeholder="Nouveau périmètre"></td>
                             <td><textarea name="new_description" rows="2" maxlength="300" placeholder="Description du nouveau périmètre">{{ old('new_description') }}</textarea></td>
                             <td><span class="cell-sub">Nouveau périmètre</span></td>
@@ -111,7 +131,7 @@
                         </tr>
                         @if($errors->has('new_slug') || $errors->has('new_label') || $errors->has('new_description') || $errors->has('new_parent') || $errors->has('parent'))
                             <tr>
-                                <td colspan="6" style="color:#b91c1c;">
+                                <td colspan="7" style="color:#b91c1c;">
                                     @error('new_slug')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
                                     @error('new_label')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
                                     @error('new_description')<p style="margin: 4px 0;">{{ $message }}</p>@enderror

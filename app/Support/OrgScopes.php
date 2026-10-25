@@ -36,6 +36,9 @@ final class OrgScopes
     /** @var array<string, string>|null */
     private static ?array $descriptionsCache = null;
 
+    /** @var array<string, string>|null */
+    private static ?array $logosCache = null;
+
     /**
      * @return array<string, string>
      */
@@ -134,6 +137,41 @@ final class OrgScopes
     }
 
     /**
+     * Chemins (disque public) des logos par perimetre.
+     *
+     * @return array<string, string>
+     */
+    public static function logos(): array
+    {
+        if (self::$logosCache !== null) {
+            return self::$logosCache;
+        }
+
+        if (!Schema::hasTable('settings')) {
+            self::$logosCache = [];
+
+            return self::$logosCache;
+        }
+
+        $setting = Setting::query()->where('group', 'org')->where('key', 'scopes_logos')->value('value');
+        $decoded = is_string($setting) ? json_decode($setting, true) : null;
+        $out = [];
+
+        if (is_array($decoded)) {
+            foreach (self::slugs() as $slug) {
+                $path = trim((string) ($decoded[$slug] ?? ''));
+                if ($path !== '' && str_starts_with($path, 'scopes/logos/')) {
+                    $out[$slug] = $path;
+                }
+            }
+        }
+
+        self::$logosCache = $out;
+
+        return self::$logosCache;
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function slugs(): array
@@ -212,6 +250,7 @@ final class OrgScopes
         self::$hierarchyCache = null;
         self::$catalogCache = null;
         self::$descriptionsCache = null;
+        self::$logosCache = null;
     }
 
     /**

@@ -59,6 +59,7 @@
                         'scopeSlug' => $root,
                         'scopes' => $scopes,
                         'scopeDescriptions' => $scopeDescriptions,
+                        'scopeLogos' => $scopeLogos,
                         'childrenByParent' => $childrenByParent,
                     ])
                 @endforeach

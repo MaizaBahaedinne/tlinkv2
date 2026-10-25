@@ -7,6 +7,9 @@
         }
     @endphp
     <div class="scope-tree-card">
+        @if(!empty($scopeLogos[$scopeSlug]))
+            <img class="scope-tree-logo" src="{{ $scopeLogos[$scopeSlug] }}" alt="Logo {{ $scopes[$scopeSlug] ?? $scopeSlug }}" loading="lazy">
+        @endif
         <p class="scope-tree-title">{{ $scopes[$scopeSlug] ?? $scopeSlug }}</p>
         @if($description !== '')
             <p class="scope-tree-desc">{{ $description }}</p>
@@ -15,15 +18,13 @@
     </div>
 
     @if(!empty($childrenByParent[$scopeSlug]))
-        @php
-            $onlyLeaves = collect($childrenByParent[$scopeSlug])->every(fn ($child) => empty($childrenByParent[$child]));
-        @endphp
-        <ul class="scope-tree-children{{ $onlyLeaves ? ' scope-tree-children--stack' : '' }}">
+        <ul class="scope-tree-children">
             @foreach($childrenByParent[$scopeSlug] as $childSlug)
                 @include('site.partials.scope-tree-node', [
                     'scopeSlug' => $childSlug,
                     'scopes' => $scopes,
                     'scopeDescriptions' => $scopeDescriptions,
+                    'scopeLogos' => $scopeLogos,
                     'childrenByParent' => $childrenByParent,
                 ])
             @endforeach

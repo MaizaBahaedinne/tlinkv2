@@ -46,6 +46,10 @@ class SiteController extends Controller
             'scopes' => OrgScopes::all(),
             'scopeHierarchy' => OrgScopes::hierarchy(),
             'scopeDescriptions' => OrgScopes::descriptions(),
+            'scopeLogos' => collect(OrgScopes::logos())
+                ->filter(fn (string $path) => Storage::disk('public')->exists($path))
+                ->map(fn (string $path) => Storage::disk('public')->url($path))
+                ->all(),
         ]);
     }
 
