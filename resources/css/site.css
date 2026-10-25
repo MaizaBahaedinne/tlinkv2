@@ -60,14 +60,14 @@ html {
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
-    opacity: 0;
+    opacity: 1;
     transform: scale(1.06);
-    animation: heroCarousel 18s ease-in-out infinite;
+    animation: heroCarousel 18s linear infinite;
 }
 
 .hero-slide-1 { animation-delay: 0s; }
-.hero-slide-2 { animation-delay: 6s; }
-.hero-slide-3 { animation-delay: 12s; }
+.hero-slide-2 { animation-delay: -12s; }
+.hero-slide-3 { animation-delay: -6s; }
 
 .hero-overlay {
     background:
@@ -112,13 +112,10 @@ html {
 
 @keyframes heroCarousel {
     0% {
-        opacity: 0;
+        opacity: 1;
         transform: scale(1.06);
     }
-    6% {
-        opacity: 1;
-    }
-    27% {
+    30% {
         opacity: 1;
         transform: scale(1.02);
     }
