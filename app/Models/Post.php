@@ -21,12 +21,14 @@ class Post extends Model
         'sentiment',
         'content',
         'comments_enabled',
+        'is_site_news',
         'published_at',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
         'comments_enabled' => 'boolean',
+        'is_site_news' => 'boolean',
     ];
 
     public function author(): BelongsTo

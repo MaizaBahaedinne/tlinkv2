@@ -36,6 +36,7 @@ class AuditLabels
         'admin.membership.status_changed' => 'Statut d\'adhésion modifié',
         'admin.post.deleted' => 'Publication supprimée',
         'admin.post.comments_toggled' => 'Commentaires activés/désactivés',
+        'admin.post.site_news_toggled' => 'Publication autorisée/refusée pour le site vitrine',
         'admin.moderation.reviewed' => 'Signalement traité (admin)',
         'admin.roadmap.updated' => 'Feuille de route mise à jour',
         'admin.site.updated' => 'Site public mis à jour',

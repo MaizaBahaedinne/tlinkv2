@@ -75,6 +75,34 @@ class PostController extends AdminController
         return back()->with('status', $post->comments_enabled ? 'Commentaires réactivés.' : 'Commentaires désactivés.');
     }
 
+    public function toggleSiteNews(Request $request, Post $post): RedirectResponse
+    {
+        $this->authorizeScope($request, 'post.moderate', $post->scope);
+
+        $enabled = ! $post->is_site_news;
+        $post->is_site_news = $enabled;
+
+        if ($enabled) {
+            // Une actualité vitrine doit être publique et datée.
+            $post->visibility = 'public';
+            if ($post->published_at === null) {
+                $post->published_at = now();
+            }
+        }
+
+        $post->save();
+
+        $this->audit($request, 'admin.post.site_news_toggled', $post, [
+            'is_site_news' => $post->is_site_news,
+            'visibility' => $post->visibility,
+            'published_at' => optional($post->published_at)?->toIso8601String(),
+        ]);
+
+        return back()->with('status', $post->is_site_news
+            ? 'Publication autorisée pour les actualités vitrine.'
+            : 'Publication retirée des actualités vitrine.');
+    }
+
     public function destroy(Request $request, Post $post): RedirectResponse
     {
         $this->authorizeScope($request, 'post.moderate', $post->scope);

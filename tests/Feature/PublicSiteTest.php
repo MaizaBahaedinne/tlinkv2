@@ -30,6 +30,7 @@ class PublicSiteTest extends TestCase
             'type' => 'text',
             'visibility' => $visibility,
             'content' => $content,
+            'is_site_news' => true,
             'published_at' => now()->subHour(),
         ]);
     }

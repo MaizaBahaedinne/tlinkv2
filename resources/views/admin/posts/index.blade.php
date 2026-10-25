@@ -48,6 +48,7 @@
                             <th class="hide-mobile">Portée</th>
                             <th class="hide-mobile">Interactions</th>
                             <th>Commentaires</th>
+                            <th>Vitrine</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -69,6 +70,13 @@
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="btn btn-secondary btn-sm">{{ $post->comments_enabled ? 'Activés' : 'Désactivés' }}</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="post" action="{{ route('admin.posts.site-news', $post) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn-sm {{ $post->is_site_news ? 'btn-primary' : 'btn-secondary' }}">{{ $post->is_site_news ? 'Autorisé' : 'Non autorisé' }}</button>
                                     </form>
                                 </td>
                                 <td class="cell-actions">

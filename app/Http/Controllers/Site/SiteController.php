@@ -244,6 +244,7 @@ class SiteController extends Controller
     {
         return Post::query()
             ->with(['author:id,name', 'attachments:id,post_id,disk,path,mime_type'])
+            ->where('is_site_news', true)
             ->where('visibility', 'public')
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())

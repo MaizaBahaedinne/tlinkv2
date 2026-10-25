@@ -159,6 +159,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
         Route::middleware('admin.can:post.moderate')->group(function (): void {
             Route::get('publications', [Admin\PostController::class, 'index'])->name('posts.index');
             Route::patch('publications/{post}/commentaires', [Admin\PostController::class, 'toggleComments'])->name('posts.comments');
+            Route::patch('publications/{post}/vitrine', [Admin\PostController::class, 'toggleSiteNews'])->name('posts.site-news');
             Route::delete('publications/{post}', [Admin\PostController::class, 'destroy'])->name('posts.destroy');
             Route::get('moderation', [Admin\ModerationController::class, 'index'])->name('moderation.index');
             Route::patch('moderation/{report}', [Admin\ModerationController::class, 'update'])->name('moderation.update');
