@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Mandate;
+use App\Models\OrgNode;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -27,6 +28,9 @@ class MandateController extends AdminController
             Mandate::query()->update(['is_current' => false]);
         }
 
+        $root = $this->createMandateRootNode($data['bureau_name'], $data['label']);
+        $data['root_node_id'] = $root->id;
+
         $mandate = Mandate::query()->create($data);
 
         $this->audit($request, 'admin.mandate.created', $mandate, [
@@ -46,6 +50,16 @@ class MandateController extends AdminController
             Mandate::query()->whereKeyNot($mandate->id)->update(['is_current' => false]);
         }
 
+        if ($mandate->root_node_id) {
+            OrgNode::query()->whereKey($mandate->root_node_id)->update([
+                'title' => $data['bureau_name'],
+                'subtitle' => 'Mandat '.$data['label'],
+            ]);
+        } else {
+            $root = $this->createMandateRootNode($data['bureau_name'], $data['label']);
+            $data['root_node_id'] = $root->id;
+        }
+
         $mandate->update($data);
 
         $this->audit($request, 'admin.mandate.updated', $mandate, [
@@ -62,6 +76,7 @@ class MandateController extends AdminController
         $snapshot = [
             'label' => $mandate->label,
             'bureau_name' => $mandate->bureau_name,
+            'root_node_id' => $mandate->root_node_id,
             'is_current' => $mandate->is_current,
         ];
 
@@ -126,14 +141,39 @@ class MandateController extends AdminController
         $currentYear = (int) now()->year;
 
         for ($year = 2016; $year <= $currentYear; $year++) {
+            $label = $year.'-'.($year + 1);
+            $bureau = 'Bureau Tunivisions';
+            $root = $this->createMandateRootNode($bureau, $label);
+
             Mandate::query()->create([
-                'label' => $year.'-'.($year + 1),
+                'label' => $label,
                 'start_year' => $year,
                 'end_year' => $year + 1,
-                'bureau_name' => 'Bureau Tunivisions',
+                'bureau_name' => $bureau,
+                'root_node_id' => $root->id,
                 'notes' => '',
                 'is_current' => $year === $currentYear,
             ]);
         }
+    }
+
+    private function createMandateRootNode(string $bureauName, string $label): OrgNode
+    {
+        return OrgNode::query()->create([
+            'parent_id' => null,
+            'relation_type' => 'hierarchy',
+            'kind' => 'unit',
+            'capacity' => 'single',
+            'access_level' => 'none',
+            'category' => 'direction',
+            'title' => $bureauName,
+            'subtitle' => 'Mandat '.$label,
+            'description' => 'Organigramme du mandat '.$label,
+            'sort_order' => 0,
+            'scope' => 'foundation',
+            'validation_status' => 'confirmed',
+            'children_layout' => 'horizontal',
+            'is_collapsed' => false,
+        ]);
     }
 }

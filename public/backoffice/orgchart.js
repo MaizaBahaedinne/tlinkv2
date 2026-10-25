@@ -167,6 +167,7 @@
     }
 
     function api(method, path, body, isForm) {
+        var q = cfg.mandateId ? (path.indexOf('?') === -1 ? '?mandate_id=' + encodeURIComponent(cfg.mandateId) : '&mandate_id=' + encodeURIComponent(cfg.mandateId)) : '';
         var opts = {
             method: method, credentials: 'same-origin',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' }
@@ -174,7 +175,7 @@
         if (body && isForm) { opts.body = body; }
         else if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
 
-        return fetch(cfg.base + path, opts).then(function (r) {
+        return fetch(cfg.base + path + q, opts).then(function (r) {
             return r.json().catch(function () { return null; }).then(function (data) {
                 if (!r.ok) { throw { status: r.status, message: data && data.message, errors: data && data.errors }; }
                 return data;

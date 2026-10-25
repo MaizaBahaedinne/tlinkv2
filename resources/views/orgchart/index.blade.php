@@ -20,6 +20,16 @@
         </a>
         <h1 class="oc-title">Organigramme de la Fondation We Are Carthage</h1>
         <div class="oc-top-actions">
+            @if(($mandates ?? collect())->count() > 0)
+                <label class="oc-link" for="oc-mandate" style="display:flex; align-items:center; gap:6px;">
+                    <span>Mandat</span>
+                    <select id="oc-mandate" onchange="window.location.href='{{ route('orgchart.index') }}?mandate_id='+this.value" style="border:1px solid #d6dbe3; border-radius:8px; padding:4px 8px; background:#fff;">
+                        @foreach($mandates as $mandate)
+                            <option value="{{ $mandate->id }}" @selected(($activeMandate?->id ?? null) === $mandate->id)>{{ $mandate->label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
             <span class="oc-user" title="Compte connecté">{{ $userName }}</span>
             <span class="oc-role {{ $canEdit ? 'is-admin' : '' }}">{{ $canEdit ? 'Administrateur' : 'Lecture seule' }}</span>
             @if($adminUrl)
@@ -269,7 +279,7 @@
     </form>
 </dialog>
 
-<script type="application/json" id="oc-config">{!! json_encode(['base' => rtrim(route('orgchart.index'), '/'), 'canEdit' => $canEdit], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) !!}</script>
+<script type="application/json" id="oc-config">{!! json_encode(['base' => rtrim(route('orgchart.index'), '/'), 'canEdit' => $canEdit, 'mandateId' => $activeMandate?->id], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) !!}</script>
 <script src="{{ asset('backoffice/orgchart-layout.js') }}?v={{ $ocv }}" defer></script>
 <script src="{{ asset('backoffice/orgchart-export.js') }}?v={{ $ocv }}" defer></script>
 <script src="{{ asset('backoffice/orgchart.js') }}?v={{ $ocv }}" defer></script>

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Mandate;
+use App\Models\OrgNode;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\GrantsAccess;
@@ -120,5 +121,68 @@ class MandateAdminTest extends TestCase
         $this->assertSame(1, Mandate::query()->where('is_current', true)->count());
         $this->assertTrue($second->fresh()->is_current);
         $this->assertFalse(Mandate::query()->where('label', '2024-2025')->firstOrFail()->is_current);
+    }
+
+    public function test_org_chart_payload_is_scoped_to_selected_mandate_root(): void
+    {
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'global_admin');
+
+        $rootA = OrgNode::query()->create([
+            'relation_type' => 'hierarchy',
+            'kind' => 'unit',
+            'capacity' => 'single',
+            'access_level' => 'none',
+            'category' => 'direction',
+            'title' => 'Bureau A',
+            'subtitle' => 'Mandat A',
+            'scope' => 'foundation',
+            'validation_status' => 'confirmed',
+            'children_layout' => 'horizontal',
+            'sort_order' => 0,
+        ]);
+        $childA = OrgNode::query()->create([
+            'parent_id' => $rootA->id,
+            'relation_type' => 'hierarchy',
+            'kind' => 'position',
+            'capacity' => 'single',
+            'access_level' => 'none',
+            'category' => 'direction',
+            'title' => 'Président A',
+            'validation_status' => 'confirmed',
+            'children_layout' => 'horizontal',
+            'sort_order' => 0,
+        ]);
+        $rootB = OrgNode::query()->create([
+            'relation_type' => 'hierarchy',
+            'kind' => 'unit',
+            'capacity' => 'single',
+            'access_level' => 'none',
+            'category' => 'direction',
+            'title' => 'Bureau B',
+            'subtitle' => 'Mandat B',
+            'scope' => 'foundation',
+            'validation_status' => 'confirmed',
+            'children_layout' => 'horizontal',
+            'sort_order' => 1,
+        ]);
+
+        $mandate = Mandate::query()->create([
+            'label' => '2026-2027',
+            'start_year' => 2026,
+            'end_year' => 2027,
+            'bureau_name' => 'Bureau A',
+            'root_node_id' => $rootA->id,
+            'is_current' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/organigramme/donnees?mandate_id='.$mandate->id)->assertOk();
+
+        $response->assertJsonPath('active_mandate.id', $mandate->id);
+        $ids = collect($response->json('nodes'))->pluck('id')->all();
+
+        $this->assertContains($rootA->id, $ids);
+        $this->assertContains($childA->id, $ids);
+        $this->assertNotContains($rootB->id, $ids);
     }
 }

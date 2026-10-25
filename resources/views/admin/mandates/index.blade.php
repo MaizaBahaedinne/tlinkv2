@@ -72,6 +72,9 @@
                             </td>
                             <td style="max-width:320px;">{{ $mandate->notes ?: '—' }}</td>
                             <td>
+                                <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+                                    <a href="{{ route('orgchart.index', ['mandate_id' => $mandate->id]) }}" class="btn btn-secondary btn-sm">Voir l’organigramme</a>
+                                </div>
                                 <details>
                                     <summary class="btn btn-secondary btn-sm" style="cursor:pointer;">Modifier</summary>
                                     <form method="post" action="{{ route('admin.mandates.update', $mandate) }}" class="inline-form" style="margin-top:8px; display:grid; gap:8px; min-width: 280px;">

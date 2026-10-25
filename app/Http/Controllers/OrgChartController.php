@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Governorate;
 use App\Models\Membership;
+use App\Models\Mandate;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
@@ -46,9 +47,13 @@ class OrgChartController extends Controller
 
     public function index(Request $request): View
     {
+        $activeMandate = $this->resolveMandate($request);
+
         return view('orgchart.index', [
             'canEdit' => $this->canEdit($request),
             'userName' => $request->user()->name,
+            'mandates' => Mandate::query()->orderByDesc('start_year')->get(['id', 'label']),
+            'activeMandate' => $activeMandate,
             'adminUrl' => AdminContext::of($request)->canAny(['entity.manage', 'membership.manage', 'approval.review', 'post.moderate', 'event.manage'])
                 ? route('admin.dashboard')
                 : null,
@@ -126,8 +131,15 @@ class OrgChartController extends Controller
     public function storeNode(Request $request): JsonResponse
     {
         $this->requireEditor($request);
+        $mandate = $this->resolveMandate($request);
 
         $data = $this->validatedNode($request, null);
+
+        if (! empty($data['parent_id'])) {
+            $this->assertNodeInMandate((int) $data['parent_id'], $mandate);
+        } elseif ($mandate?->root_node_id) {
+            $data['parent_id'] = $mandate->root_node_id;
+        }
 
         $parent = OrgNode::query()->find($data['parent_id'] ?? null);
         $data['category'] = $data['category'] ?? $parent?->category ?? 'direction';
@@ -160,8 +172,14 @@ class OrgChartController extends Controller
     public function updateNode(Request $request, OrgNode $node): JsonResponse
     {
         $this->requireEditor($request);
+        $mandate = $this->resolveMandate($request);
+        $this->assertNodeInMandate($node->id, $mandate);
 
         $data = $this->validatedNode($request, $node);
+
+        if (! empty($data['parent_id'])) {
+            $this->assertNodeInMandate((int) $data['parent_id'], $mandate);
+        }
 
         if ($node->kind === 'club') {
             $data['kind'] = 'club';
@@ -218,6 +236,8 @@ class OrgChartController extends Controller
     public function destroyNode(Request $request, OrgNode $node): JsonResponse
     {
         $this->requireEditor($request);
+        $mandate = $this->resolveMandate($request);
+        $this->assertNodeInMandate($node->id, $mandate);
 
         $cascade = $request->boolean('cascade');
         $plan = $this->rules->deletionPlan($node, $cascade);
@@ -237,6 +257,8 @@ class OrgChartController extends Controller
     public function reorder(Request $request, OrgNode $node): JsonResponse
     {
         $this->requireEditor($request);
+        $mandate = $this->resolveMandate($request);
+        $this->assertNodeInMandate($node->id, $mandate);
 
         $direction = $request->validate(['direction' => ['required', Rule::in(['up', 'down'])]])['direction'];
 
@@ -287,6 +309,7 @@ class OrgChartController extends Controller
     public function storeClub(Request $request): JsonResponse
     {
         $this->requireEditor($request);
+        $mandate = $this->resolveMandate($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -302,6 +325,10 @@ class OrgChartController extends Controller
         };
 
         $branch = OrgNode::query()->where('system_key', $branchKey)->first();
+
+        if ($mandate?->root_node_id) {
+            $this->assertNodeInMandate($branch?->id, $mandate);
+        }
 
         if (! $branch) {
             throw ValidationException::withMessages(['type' => 'La branche de destination est introuvable : ajoutez-la ou restaurez le gabarit.']);
@@ -342,6 +369,7 @@ class OrgChartController extends Controller
     public function applyTemplate(Request $request, OrgNode $node): JsonResponse
     {
         $this->requireEditor($request);
+        $this->assertNodeInMandate($node->id, $this->resolveMandate($request));
 
         if ($node->kind !== 'club') {
             throw ValidationException::withMessages(['node' => 'Le modèle d’équipe ne s’applique qu’à un club.']);
@@ -360,6 +388,7 @@ class OrgChartController extends Controller
     public function syncAssignments(Request $request, OrgNode $node): JsonResponse
     {
         $this->requireEditor($request);
+        $this->assertNodeInMandate($node->id, $this->resolveMandate($request));
 
         $data = $request->validate([
             'person_ids' => ['present', 'array', 'max:50'],
@@ -588,6 +617,7 @@ class OrgChartController extends Controller
      */
     private function payload(Request $request): array
     {
+        $activeMandate = $this->resolveMandate($request);
         $canEdit = $this->canEdit($request);
         $today = now()->toDateString();
 
@@ -601,6 +631,11 @@ class OrgChartController extends Controller
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
+
+        if ($activeMandate?->root_node_id) {
+            $visibleIds = $this->subtreeIds($nodes, (int) $activeMandate->root_node_id);
+            $nodes = $nodes->whereIn('id', $visibleIds)->values();
+        }
 
         $byId = $nodes->keyBy('id');
 
@@ -631,6 +666,7 @@ class OrgChartController extends Controller
 
         return [
             'can_edit' => $canEdit,
+            'active_mandate' => $activeMandate ? ['id' => $activeMandate->id, 'label' => $activeMandate->label] : null,
             'meta' => [
                 'categories' => OrgNode::CATEGORIES,
                 'kinds' => OrgNode::KINDS,
@@ -825,5 +861,62 @@ class OrgChartController extends Controller
     private function audit(Request $request, string $action, object $target, array $metadata = []): void
     {
         AuditLogger::record($request->user()->id, $action, $target::class, $target->getKey(), $metadata, $request->ip());
+    }
+
+    private function resolveMandate(Request $request): ?Mandate
+    {
+        $mandateId = $request->integer('mandate_id');
+
+        if ($mandateId) {
+            return Mandate::query()->find($mandateId);
+        }
+
+        return Mandate::query()->where('is_current', true)->first()
+            ?? Mandate::query()->orderByDesc('start_year')->first();
+    }
+
+    private function assertNodeInMandate(?int $nodeId, ?Mandate $mandate): void
+    {
+        if (! $nodeId || ! $mandate?->root_node_id) {
+            return;
+        }
+
+        $all = OrgNode::query()->get(['id', 'parent_id']);
+        $ids = $this->subtreeIds($all, (int) $mandate->root_node_id);
+
+        abort_unless(in_array($nodeId, $ids, true), 403, 'Ce bloc n’appartient pas à l’organigramme du mandat sélectionné.');
+    }
+
+    /**
+     * @param \Illuminate\Support\Collection<int, OrgNode> $nodes
+     * @return array<int, int>
+     */
+    private function subtreeIds($nodes, int $rootId): array
+    {
+        $children = [];
+
+        foreach ($nodes as $node) {
+            if ($node->parent_id !== null) {
+                $children[$node->parent_id][] = (int) $node->id;
+            }
+        }
+
+        $stack = [$rootId];
+        $ids = [];
+
+        while ($stack !== []) {
+            $id = array_pop($stack);
+            if (in_array($id, $ids, true)) {
+                continue;
+            }
+
+            $ids[] = $id;
+
+            foreach ($children[$id] ?? [] as $childId) {
+                $stack[] = $childId;
+            }
+        }
+
+        return $ids;
     }
 }
