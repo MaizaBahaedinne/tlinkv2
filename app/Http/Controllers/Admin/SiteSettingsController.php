@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Support\SiteSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -45,6 +46,12 @@ class SiteSettingsController extends AdminController
             'instagram_url' => ['nullable', 'url:http,https', 'max:255'],
             'linkedin_url' => ['nullable', 'url:http,https', 'max:255'],
             'youtube_url' => ['nullable', 'url:http,https', 'max:255'],
+            'hero_bg_main_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'hero_bg_mark_a_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'hero_bg_mark_b_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'hero_bg_main_remove' => ['nullable', 'boolean'],
+            'hero_bg_mark_a_remove' => ['nullable', 'boolean'],
+            'hero_bg_mark_b_remove' => ['nullable', 'boolean'],
         ];
 
         $data = $request->validate($rules);
@@ -61,6 +68,26 @@ class SiteSettingsController extends AdminController
         }
 
         $site = new SiteSettings();
+        $current = $site->raw();
+        foreach (['hero_bg_main', 'hero_bg_mark_a', 'hero_bg_mark_b'] as $key) {
+            $existing = (string) ($current[$key] ?? '');
+
+            if ($request->boolean($key.'_remove')) {
+                $this->deletePublicImage($existing);
+                $values[$key] = '';
+                continue;
+            }
+
+            if ($request->hasFile($key.'_file')) {
+                $path = $request->file($key.'_file')->store('site/hero', 'public');
+                $this->deletePublicImage($existing);
+                $values[$key] = $path;
+                continue;
+            }
+
+            $values[$key] = $existing;
+        }
+
         $site->save($values);
 
         $setting = \App\Models\Setting::query()->where('group', SiteSettings::GROUP)->where('key', SiteSettings::KEY)->first();
@@ -72,5 +99,14 @@ class SiteSettingsController extends AdminController
     private function authorizeGlobal(Request $request): void
     {
         abort_unless($this->context($request)->scope('entity.manage') === [], 403, 'Réservé à l\'administration globale.');
+    }
+
+    private function deletePublicImage(string $path): void
+    {
+        $normalized = ltrim($path, '/');
+
+        if ($normalized !== '' && str_starts_with($normalized, 'site/hero/')) {
+            Storage::disk('public')->delete($normalized);
+        }
     }
 }

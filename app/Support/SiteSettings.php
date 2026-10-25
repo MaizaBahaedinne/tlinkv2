@@ -30,6 +30,9 @@ class SiteSettings
         'instagram_url' => 'url',
         'linkedin_url' => 'url',
         'youtube_url' => 'url',
+        'hero_bg_main' => 'text',
+        'hero_bg_mark_a' => 'text',
+        'hero_bg_mark_b' => 'text',
     ];
 
     /** @var array<string, mixed>|null */
@@ -87,6 +90,17 @@ class SiteSettings
         $url = $this->stored($key);
 
         return preg_match('#^https?://#i', $url) === 1 ? $url : null;
+    }
+
+    /**
+     * URL absolue d'une image Hero envoyee depuis l'admin (stockee sur le disque public),
+     * ou URL de secours si aucune image n'est configuree.
+     */
+    public function heroImage(string $key, string $fallback): string
+    {
+        $path = ltrim($this->stored($key), '/');
+
+        return $path !== '' ? asset('storage/'.$path) : $fallback;
     }
 
     /**

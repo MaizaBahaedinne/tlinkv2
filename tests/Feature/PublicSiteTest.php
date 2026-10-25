@@ -190,7 +190,7 @@ class PublicSiteTest extends TestCase
         $html = $this->get('/fr/clubs?scope=university')->assertOk()->getContent();
 
         $this->assertStringContainsString('id="lang-switcher"', $html);
-        foreach (['Français', 'العربية', 'English'] as $name) {
+        foreach (['FR', 'AR', 'EN'] as $name) {
             $this->assertStringContainsString('>'.$name.'</span>', $html);
         }
         // Le changement de langue conserve la page et les filtres.

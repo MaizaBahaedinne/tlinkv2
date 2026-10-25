@@ -1,10 +1,16 @@
 @extends('site.layouts.site')
 
 @section('content')
+    @php
+        $heroMain = $site->heroImage('hero_bg_main', asset('logoFondation-white.webp'));
+        $heroMarkA = $site->heroImage('hero_bg_mark_a', asset('favicon-white-180x180.png'));
+        $heroMarkB = $site->heroImage('hero_bg_mark_b', asset('favicon-white-180x180.png'));
+    @endphp
+
     <section class="hero-shell relative overflow-hidden text-white">
-        <div class="hero-bg-layer hero-bg-photo" aria-hidden="true"></div>
-        <div class="hero-bg-layer hero-bg-mark hero-bg-mark-a" aria-hidden="true"></div>
-        <div class="hero-bg-layer hero-bg-mark hero-bg-mark-b" aria-hidden="true"></div>
+        <div class="hero-bg-layer hero-bg-photo" style="--hero-main-image:url('{{ $heroMain }}');" aria-hidden="true"></div>
+        <div class="hero-bg-layer hero-bg-mark hero-bg-mark-a" style="--hero-mark-a-image:url('{{ $heroMarkA }}');" aria-hidden="true"></div>
+        <div class="hero-bg-layer hero-bg-mark hero-bg-mark-b" style="--hero-mark-b-image:url('{{ $heroMarkB }}');" aria-hidden="true"></div>
         <div class="hero-sheen" aria-hidden="true"></div>
 
         <div class="hero-content mx-auto max-w-6xl px-4 py-16 md:py-24">
