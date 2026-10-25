@@ -165,40 +165,96 @@ html {
     }
 }
 
+.scope-tree-wrap {
+    overflow-x: auto;
+    direction: ltr;
+}
+
 .scope-tree,
 .scope-tree-children {
+    display: flex;
+    justify-content: center;
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.scope-tree-node {
-    position: relative;
-    margin: 0;
-    padding-inline-start: 1.25rem;
-}
-
-.scope-tree > .scope-tree-node {
-    padding-inline-start: 0;
+.scope-tree {
+    width: max-content;
+    min-width: 100%;
+    gap: 1.5rem;
 }
 
 .scope-tree-children {
-    margin-top: 0.6rem;
-    margin-inline-start: 0.8rem;
-    border-inline-start: 2px solid #e2e8f0;
-    padding-inline-start: 0.9rem;
+    position: relative;
+    padding-top: 1.5rem;
 }
 
-.scope-tree-children > .scope-tree-node::before {
+.scope-tree-children::before {
     content: '';
     position: absolute;
-    inset-inline-start: -0.9rem;
-    top: 1.1rem;
-    width: 0.9rem;
-    border-top: 2px solid #e2e8f0;
+    top: 0;
+    left: 50%;
+    height: 1.5rem;
+    border-left: 2px solid #cbd5e1;
+}
+
+.scope-tree-node {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 1.5rem 0.5rem 0;
+    text-align: center;
+}
+
+.scope-tree > .scope-tree-node {
+    padding-top: 0;
+}
+
+.scope-tree-children > .scope-tree-node::before,
+.scope-tree-children > .scope-tree-node::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 50%;
+    width: 50%;
+    height: 1.5rem;
+    border-top: 2px solid #cbd5e1;
+}
+
+.scope-tree-children > .scope-tree-node::after {
+    right: auto;
+    left: 50%;
+    border-left: 2px solid #cbd5e1;
+}
+
+.scope-tree-children > .scope-tree-node:only-child {
+    padding-top: 0;
+}
+
+.scope-tree-children > .scope-tree-node:only-child::before,
+.scope-tree-children > .scope-tree-node:only-child::after {
+    display: none;
+}
+
+.scope-tree-children > .scope-tree-node:first-child::before,
+.scope-tree-children > .scope-tree-node:last-child::after {
+    border: 0 none;
+}
+
+.scope-tree-children > .scope-tree-node:last-child::before {
+    border-right: 2px solid #cbd5e1;
+    border-radius: 0 0.6rem 0 0;
+}
+
+.scope-tree-children > .scope-tree-node:first-child::after {
+    border-radius: 0.6rem 0 0 0;
 }
 
 .scope-tree-card {
+    width: 14rem;
     border: 1px solid #e4e8f0;
     border-radius: 0.85rem;
     background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
