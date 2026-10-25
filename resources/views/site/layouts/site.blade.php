@@ -47,7 +47,7 @@
     <a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">{{ __('site.skip') }}</a>
 
     <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div class="w-full flex items-center justify-between gap-4 px-4 py-3 lg:px-8">
             <a href="{{ route('site.home') }}" class="flex items-center gap-3" aria-label="{{ __('site.name') }}">
                 <picture>
                     <source srcset="{{ asset('logoFondation.webp') }}" type="image/webp">

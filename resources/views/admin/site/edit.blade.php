@@ -46,11 +46,11 @@
                 <x-admin.input name="youtube_url" type="url" label="YouTube" :value="$site->stored('youtube_url')" placeholder="https://" :maxlength="255" />
             </div>
 
-            <h3>Visuels Hero</h3>
-            <p class="text-sm text-muted">Ces images alimentent les animations du bloc d’accueil. Formats acceptés : jpg, png, webp (max 6 Mo).</p>
+            <h3>Visuels Hero (carrousel)</h3>
+            <p class="text-sm text-muted">Le Hero affiche ces 3 images en fond plein écran, en rotation automatique (une image à la fois). Formats acceptés : jpg, png, webp (max 6 Mo).</p>
             <div class="form-grid">
                 <div class="field span-2 {{ $errors->has('hero_bg_main_file') ? 'has-error' : '' }}">
-                    <label for="f-hero-bg-main">Image principale du Hero</label>
+                    <label for="f-hero-bg-main">Image 1 du carrousel Hero</label>
                     <input id="f-hero-bg-main" type="file" name="hero_bg_main_file" accept="image/png,image/jpeg,image/webp">
                     <p class="hint">Actuelle :</p>
                     <img src="{{ $site->heroImage('hero_bg_main', asset('logoFondation-white.webp')) }}" alt="Hero principal" style="margin-top:6px;max-width:100%;height:88px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
@@ -59,7 +59,7 @@
                 </div>
 
                 <div class="field {{ $errors->has('hero_bg_mark_a_file') ? 'has-error' : '' }}">
-                    <label for="f-hero-bg-mark-a">Motif Hero A</label>
+                    <label for="f-hero-bg-mark-a">Image 2 du carrousel Hero</label>
                     <input id="f-hero-bg-mark-a" type="file" name="hero_bg_mark_a_file" accept="image/png,image/jpeg,image/webp">
                     <img src="{{ $site->heroImage('hero_bg_mark_a', asset('favicon-white-180x180.png')) }}" alt="Hero motif A" style="margin-top:6px;max-width:100%;height:72px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
                     <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_mark_a_remove" value="1"> Supprimer</label>
@@ -67,7 +67,7 @@
                 </div>
 
                 <div class="field {{ $errors->has('hero_bg_mark_b_file') ? 'has-error' : '' }}">
-                    <label for="f-hero-bg-mark-b">Motif Hero B</label>
+                    <label for="f-hero-bg-mark-b">Image 3 du carrousel Hero</label>
                     <input id="f-hero-bg-mark-b" type="file" name="hero_bg_mark_b_file" accept="image/png,image/jpeg,image/webp">
                     <img src="{{ $site->heroImage('hero_bg_mark_b', asset('favicon-white-180x180.png')) }}" alt="Hero motif B" style="margin-top:6px;max-width:100%;height:72px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
                     <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_mark_b_remove" value="1"> Supprimer</label>

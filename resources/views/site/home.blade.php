@@ -3,15 +3,17 @@
 @section('content')
     @php
         $heroMain = $site->heroImage('hero_bg_main', asset('logoFondation-white.webp'));
-        $heroMarkA = $site->heroImage('hero_bg_mark_a', asset('favicon-white-180x180.png'));
-        $heroMarkB = $site->heroImage('hero_bg_mark_b', asset('favicon-white-180x180.png'));
+        $heroSlide2 = $site->heroImage('hero_bg_mark_a', $heroMain);
+        $heroSlide3 = $site->heroImage('hero_bg_mark_b', $heroMain);
     @endphp
 
     <section class="hero-shell relative overflow-hidden text-white">
-        <div class="hero-bg-layer hero-bg-photo" style="--hero-main-image:url('{{ $heroMain }}');" aria-hidden="true"></div>
-        <div class="hero-bg-layer hero-bg-mark hero-bg-mark-a" style="--hero-mark-a-image:url('{{ $heroMarkA }}');" aria-hidden="true"></div>
-        <div class="hero-bg-layer hero-bg-mark hero-bg-mark-b" style="--hero-mark-b-image:url('{{ $heroMarkB }}');" aria-hidden="true"></div>
-        <div class="hero-sheen" aria-hidden="true"></div>
+        <div class="hero-bg-layer hero-carousel" aria-hidden="true">
+            <div class="hero-slide hero-slide-1" style="--hero-slide-image:url('{{ $heroMain }}');"></div>
+            <div class="hero-slide hero-slide-2" style="--hero-slide-image:url('{{ $heroSlide2 }}');"></div>
+            <div class="hero-slide hero-slide-3" style="--hero-slide-image:url('{{ $heroSlide3 }}');"></div>
+        </div>
+        <div class="hero-bg-layer hero-overlay" aria-hidden="true"></div>
 
         <div class="hero-content mx-auto max-w-6xl px-4 py-16 md:py-24">
             <p class="hero-kicker text-sm font-bold uppercase tracking-widest text-accent">{{ __('site.tagline') }}</p>
