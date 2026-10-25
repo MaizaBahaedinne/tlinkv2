@@ -23,7 +23,7 @@
                     @foreach($locales as $code => $meta)
                         @php($field = $key.'.'.$code)
                         <div class="field span-2 {{ $errors->has($field) ? 'has-error' : '' }}">
-                            <label for="f-{{ $key }}-{{ $code }}">{{ ['hero_title' => 'Titre d’accueil', 'hero_subtitle' => 'Sous-titre d’accueil', 'about_body' => 'Texte « À propos »'][$key] }} ({{ $meta['name'] }})</label>
+                            <label for="f-{{ $key }}-{{ $code }}">{{ \App\Support\SiteSettings::LABELS[$key] }} ({{ $meta['name'] }})</label>
                             @if($type === 'textarea')
                                 <textarea id="f-{{ $key }}-{{ $code }}" name="{{ $key }}[{{ $code }}]" rows="4" maxlength="3000" dir="{{ $meta['dir'] }}">{{ old($field, $site->stored($key, $code)) }}</textarea>
                             @else

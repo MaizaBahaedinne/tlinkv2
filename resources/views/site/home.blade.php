@@ -26,9 +26,55 @@
         </div>
     </section>
 
+    <section class="relative z-10 mx-auto -mt-10 max-w-6xl px-4">
+        <div class="site-card grid grid-cols-2 gap-6 p-6 text-center md:grid-cols-4">
+            @foreach(['members', 'clubs', 'governorates', 'events'] as $key)
+                <div>
+                    <p class="font-display text-3xl font-bold text-brand-800 md:text-4xl">{{ number_format($stats[$key], 0, ',', ' ') }}</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-600">{{ __('site.stats.'.$key) }}</p>
+                </div>
+            @endforeach
+        </div>
+    </section>
+
     <section class="mx-auto mt-16 max-w-6xl px-4">
-        <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.scopes_title') }}</h2>
-        @include('site.partials.scope-tree')
+        <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.pillars_title') }}</h2>
+        <div class="mt-6 grid gap-5 md:grid-cols-3">
+            @foreach([1, 2, 3] as $i)
+                <article class="site-card p-6">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-800 font-display text-sm font-bold text-white">0{{ $i }}</span>
+                    <h3 class="mt-4 font-display text-lg font-bold text-brand-800">{{ $site->get('pillar_'.$i.'_title') }}</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ $site->get('pillar_'.$i.'_text') }}</p>
+                </article>
+            @endforeach
+        </div>
+    </section>
+
+    <section class="mx-auto mt-16 max-w-6xl px-4">
+        <div class="rounded-2xl bg-brand-800 p-8 text-white md:p-10">
+            <div class="grid items-center gap-6 md:grid-cols-3">
+                <div class="md:col-span-2">
+                    <h2 class="font-display text-2xl font-bold">{{ __('site.home.clubs_title') }}</h2>
+                    <p class="mt-3 max-w-xl text-slate-200">{{ __('site.home.clubs_text', ['clubs' => $stats['clubs'], 'governorates' => $stats['governorates']]) }}</p>
+                </div>
+                <div class="md:text-end">
+                    <a href="{{ route('site.clubs') }}" class="inline-block rounded-xl bg-accent px-6 py-3 font-bold text-brand-900 hover:brightness-110">{{ __('site.home.clubs_cta') }}</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="mx-auto mt-16 max-w-6xl px-4">
+        <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.steps_title') }}</h2>
+        <ol class="mt-6 grid gap-5 md:grid-cols-3">
+            @foreach(trans('site.home.steps') as $i => $step)
+                <li class="site-card p-6">
+                    <p class="font-display text-4xl font-bold text-accent">{{ $i + 1 }}</p>
+                    <h3 class="mt-2 font-display text-lg font-bold text-brand-800">{{ $step['title'] }}</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ $step['text'] }}</p>
+                </li>
+            @endforeach
+        </ol>
     </section>
 
     <section class="mx-auto mt-16 max-w-6xl px-4">

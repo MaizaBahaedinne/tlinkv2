@@ -28,6 +28,12 @@ return [
         'hero_title' => 'Ensemble, donnons vie aux idées de la jeunesse tunisienne',
         'hero_subtitle' => 'La Fondation Tunivisions fédère des clubs universitaires et lycéens, des projets et des événements partout en Tunisie.',
         'about_body' => "La Fondation Tunivisions accompagne la jeunesse tunisienne à travers un réseau de clubs, de projets et d'événements.\n\nPrésente dans les universités et les lycées de plusieurs gouvernorats, elle encourage l'engagement citoyen, le leadership et l'esprit d'initiative.",
+        'pillar_1_title' => 'Des clubs près de vous',
+        'pillar_1_text' => 'Un réseau de clubs universitaires et lycéens, ancrés dans leurs régions, pour agir concrètement au quotidien.',
+        'pillar_2_title' => 'Des projets qui comptent',
+        'pillar_2_text' => 'Initiatives citoyennes, formations et programmes de leadership portés par et pour les jeunes.',
+        'pillar_3_title' => 'Des rencontres qui inspirent',
+        'pillar_3_text' => 'Événements, conférences et rendez-vous pour échanger, apprendre et créer ensemble.',
     ],
 
     'home' => [
@@ -40,6 +46,16 @@ return [
         'scopes_title' => 'Nos espaces',
         'join_title' => 'Prêt à passer à l\'action ?',
         'join_text' => 'Créez votre compte T.Link pour rejoindre un club, suivre les événements et échanger avec la communauté.',
+        'pillars_title' => 'Ce que nous faisons',
+        'clubs_title' => 'Un club près de chez vous',
+        'clubs_text' => ':clubs clubs actifs répartis dans :governorates gouvernorats. Trouvez celui qui vous correspond sur la carte.',
+        'clubs_cta' => 'Voir la carte des clubs',
+        'steps_title' => 'Nous rejoindre en 3 étapes',
+        'steps' => [
+            ['title' => 'Créez votre compte', 'text' => 'Inscrivez-vous gratuitement sur T.Link, la plateforme de la communauté Tunivisions.'],
+            ['title' => 'Rejoignez un club', 'text' => 'Choisissez le club de votre université ou de votre lycée et envoyez votre demande.'],
+            ['title' => 'Participez et proposez', 'text' => 'Suivez les événements, échangez avec les membres et lancez vos propres initiatives.'],
+        ],
     ],
 
     'stats' => [

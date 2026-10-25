@@ -28,6 +28,12 @@ return [
         'hero_title' => 'Together, let\'s bring Tunisian youth\'s ideas to life',
         'hero_subtitle' => 'The Tunivisions Foundation brings together university and high-school clubs, projects and events across Tunisia.',
         'about_body' => "The Tunivisions Foundation supports Tunisian youth through a network of clubs, projects and events.\n\nPresent in universities and high schools across several governorates, it promotes civic engagement, leadership and initiative.",
+        'pillar_1_title' => 'Clubs near you',
+        'pillar_1_text' => 'A network of university and high-school clubs rooted in their regions, taking concrete action every day.',
+        'pillar_2_title' => 'Projects that matter',
+        'pillar_2_text' => 'Civic initiatives, training and leadership programmes led by and for young people.',
+        'pillar_3_title' => 'Meetings that inspire',
+        'pillar_3_text' => 'Events, talks and gatherings to exchange, learn and create together.',
     ],
 
     'home' => [
@@ -40,6 +46,16 @@ return [
         'scopes_title' => 'Our spaces',
         'join_title' => 'Ready to take action?',
         'join_text' => 'Create your T.Link account to join a club, follow events and connect with the community.',
+        'pillars_title' => 'What we do',
+        'clubs_title' => 'A club near you',
+        'clubs_text' => ':clubs active clubs across :governorates governorates. Find the one that suits you on the map.',
+        'clubs_cta' => 'See the clubs map',
+        'steps_title' => 'Join us in 3 steps',
+        'steps' => [
+            ['title' => 'Create your account', 'text' => 'Sign up for free on T.Link, the Tunivisions community platform.'],
+            ['title' => 'Join a club', 'text' => 'Pick the club at your university or high school and send your request.'],
+            ['title' => 'Take part and propose', 'text' => 'Follow events, talk with members and launch your own initiatives.'],
+        ],
     ],
 
     'stats' => [

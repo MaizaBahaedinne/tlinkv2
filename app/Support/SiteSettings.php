@@ -19,6 +19,25 @@ class SiteSettings
         'hero_title' => 'text',
         'hero_subtitle' => 'textarea',
         'about_body' => 'textarea',
+        'pillar_1_title' => 'text',
+        'pillar_1_text' => 'textarea',
+        'pillar_2_title' => 'text',
+        'pillar_2_text' => 'textarea',
+        'pillar_3_title' => 'text',
+        'pillar_3_text' => 'textarea',
+    ];
+
+    /** Libelles admin des champs traduisibles. */
+    public const LABELS = [
+        'hero_title' => 'Titre d’accueil',
+        'hero_subtitle' => 'Sous-titre d’accueil',
+        'about_body' => 'Texte « À propos »',
+        'pillar_1_title' => 'Accueil, pilier 1 : titre',
+        'pillar_1_text' => 'Accueil, pilier 1 : texte',
+        'pillar_2_title' => 'Accueil, pilier 2 : titre',
+        'pillar_2_text' => 'Accueil, pilier 2 : texte',
+        'pillar_3_title' => 'Accueil, pilier 3 : titre',
+        'pillar_3_text' => 'Accueil, pilier 3 : texte',
     ];
 
     /** Champs communs a toutes les langues : cle => type de saisie. */
