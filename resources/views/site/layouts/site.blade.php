@@ -18,6 +18,7 @@
     $metaDescription = $description !== '' ? $description : $site->get('hero_subtitle');
 
     $siteCssPath = null;
+    $canUseViteManifest = false;
     $manifestPath = public_path('build/manifest.json');
 
     if (file_exists($manifestPath)) {
@@ -26,6 +27,7 @@
         $builtFile = is_array($entry) ? ($entry['file'] ?? null) : null;
 
         if (is_string($builtFile) && $builtFile !== '' && file_exists(public_path('build/'.$builtFile))) {
+            $canUseViteManifest = true;
             $siteCssPath = 'build/'.$builtFile;
         }
     }
@@ -62,6 +64,8 @@
         @endforeach
     @endif
     @if (file_exists(public_path('hot')))
+        @vite(['resources/css/site.css'])
+    @elseif($canUseViteManifest)
         @vite(['resources/css/site.css'])
     @elseif($siteCssPath)
         <link rel="stylesheet" href="{{ asset($siteCssPath) }}">
