@@ -140,17 +140,22 @@ class MandateController extends AdminController
 
         $currentYear = (int) now()->year;
 
+        // Le mandat en cours reprend l'organigramme existant (racine historique).
+        $legacyRootId = OrgNode::query()->whereNull('parent_id')->orderBy('id')->value('id');
+
         for ($year = 2016; $year <= $currentYear; $year++) {
             $label = $year.'-'.($year + 1);
             $bureau = 'Bureau Tunivisions';
-            $root = $this->createMandateRootNode($bureau, $label);
+            $rootId = ($year === $currentYear && $legacyRootId)
+                ? $legacyRootId
+                : $this->createMandateRootNode($bureau, $label)->id;
 
             Mandate::query()->create([
                 'label' => $label,
                 'start_year' => $year,
                 'end_year' => $year + 1,
                 'bureau_name' => $bureau,
-                'root_node_id' => $root->id,
+                'root_node_id' => $rootId,
                 'notes' => '',
                 'is_current' => $year === $currentYear,
             ]);

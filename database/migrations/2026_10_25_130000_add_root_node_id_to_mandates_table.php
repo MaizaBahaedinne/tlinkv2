@@ -15,7 +15,18 @@ return new class extends Migration
 
         $mandates = DB::table('mandates')->whereNull('root_node_id')->orderBy('start_year')->get();
 
+        // Le mandat en cours reprend l'organigramme existant (racine historique) : rien n'est masque.
+        $currentId = DB::table('mandates')->where('is_current', true)->value('id')
+            ?? DB::table('mandates')->orderByDesc('start_year')->value('id');
+        $legacyRootId = DB::table('org_nodes')->whereNull('parent_id')->orderBy('id')->value('id');
+
         foreach ($mandates as $mandate) {
+            if ($legacyRootId && (int) $mandate->id === (int) $currentId) {
+                DB::table('mandates')->where('id', $mandate->id)->update(['root_node_id' => $legacyRootId]);
+
+                continue;
+            }
+
             $rootId = DB::table('org_nodes')->insertGetId([
                 'parent_id' => null,
                 'relation_type' => 'hierarchy',
