@@ -33,7 +33,10 @@
     }
 
     if ($siteCssPath === null) {
-        $candidates = glob(public_path('build/assets/site-*.css')) ?: [];
+        $candidates = array_values(array_filter(
+            glob(public_path('build/assets/site-*.css')) ?: [],
+            fn (string $f): bool => !str_starts_with(basename($f), 'site-map-')
+        ));
 
         usort($candidates, fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
 
@@ -64,8 +67,6 @@
         @endforeach
     @endif
     @if (file_exists(public_path('hot')))
-        @vite(['resources/css/site.css'])
-    @elseif($canUseViteManifest)
         @vite(['resources/css/site.css'])
     @elseif($siteCssPath)
         <link rel="stylesheet" href="{{ asset($siteCssPath) }}">
