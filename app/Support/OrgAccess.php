@@ -46,7 +46,18 @@ class OrgAccess
         foreach ($assignments as $assignment) {
             $scopes = self::collect(collect([$assignment]))[$permission] ?? [];
 
-            if (in_array(null, $scopes, true) || in_array($scope, $scopes, true)) {
+            $canCover = in_array(null, $scopes, true);
+
+            if (! $canCover) {
+                foreach ($scopes as $granted) {
+                    if (is_string($granted) && OrgScopes::covers($granted, $scope)) {
+                        $canCover = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($canCover) {
                 $ids[] = (int) $assignment->person->user_id;
             }
         }

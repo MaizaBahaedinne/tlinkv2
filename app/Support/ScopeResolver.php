@@ -20,6 +20,8 @@ class ScopeResolver
             return [];
         }
 
-        return array_values(array_unique(array_map('strval', $scopes)));
+        $normalized = array_values(array_unique(array_map('strval', $scopes)));
+
+        return OrgScopes::expandManaged($normalized);
     }
 }

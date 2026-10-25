@@ -61,6 +61,7 @@ class AdminBackofficeTest extends TestCase
         $urls = [
             '/admin', '/admin/feuille-de-route', '/admin/mandats', '/admin/journal',
             '/admin/utilisateurs', "/admin/utilisateurs/{$admin->id}",
+            '/admin/structure/perimetres',
             '/admin/adhesions',
             '/admin/publications', '/admin/moderation', '/admin/approbations',
             '/admin/evenements', '/admin/evenements/creer', "/admin/evenements/{$event->id}", "/admin/evenements/{$event->id}/modifier",

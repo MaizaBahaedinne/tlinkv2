@@ -146,6 +146,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('structure/clubs/{node}', [Admin\StructureController::class, 'showClub'])->name('clubs.show');
             Route::get('structure/roles', [Admin\StructureController::class, 'roles'])->name('roles.index');
             Route::put('structure/roles', [Admin\StructureController::class, 'updateRoles'])->name('roles.update');
+            Route::get('structure/perimetres', [Admin\ScopeSettingsController::class, 'edit'])->name('scopes.edit');
+            Route::put('structure/perimetres', [Admin\ScopeSettingsController::class, 'update'])->name('scopes.update');
         });
 
         // Communaute

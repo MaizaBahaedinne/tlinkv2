@@ -70,7 +70,7 @@ class AdminContext
             return [];
         }
 
-        return array_values(array_unique($this->permissionScopes[$permission]));
+        return OrgScopes::expandManaged(array_values(array_unique($this->permissionScopes[$permission])));
     }
 
     public function isGlobal(string $permission): bool

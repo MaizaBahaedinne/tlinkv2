@@ -18,6 +18,12 @@ class AccessScope
             return true;
         }
 
-        return in_array($scope, $scopes, true);
+        foreach ($scopes as $granted) {
+            if (is_string($granted) && OrgScopes::covers($granted, $scope)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

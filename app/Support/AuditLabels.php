@@ -43,6 +43,7 @@ class AuditLabels
         'admin.mandate.created' => 'Mandat ajouté',
         'admin.mandate.updated' => 'Mandat modifié',
         'admin.mandate.deleted' => 'Mandat supprimé',
+        'admin.scopes.updated' => 'Hiérarchie des périmètres modifiée',
         'admin.contact_message.updated' => 'Message de contact mis à jour',
         'admin.contact_message.deleted' => 'Message de contact supprimé',
         'orgchart.node.created' => 'Organigramme : bloc créé',
