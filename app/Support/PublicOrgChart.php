@@ -44,7 +44,7 @@ class PublicOrgChart
 
         $groups = [];
 
-        foreach (array_keys(OrgScopes::ALL) as $scope) {
+        foreach (array_keys(OrgScopes::all()) as $scope) {
             if ($nodes->has($scope)) {
                 $groups[$scope] = $nodes->get($scope)->values();
             }

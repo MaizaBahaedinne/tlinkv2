@@ -31,7 +31,13 @@ class ScopeHierarchyAdminTest extends TestCase
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'global_admin');
 
+        $labels = [];
+        foreach (OrgScopes::all() as $slug => $label) {
+            $labels[$slug] = $label;
+        }
+
         $this->actingAs($admin)->put('/admin/structure/perimetres', [
+            'label' => $labels,
             'parent' => [
                 'foundation' => '',
                 'university' => 'foundation',
@@ -40,13 +46,14 @@ class ScopeHierarchyAdminTest extends TestCase
             ],
         ])->assertSessionHasNoErrors()->assertSessionHas('status');
 
-        OrgScopes::flushHierarchyCache();
+        OrgScopes::flushCache();
         $hierarchy = OrgScopes::hierarchy();
 
         $this->assertSame('foundation', $hierarchy['university']);
         $this->assertSame('university', $hierarchy['alumni']);
 
         $this->actingAs($admin)->put('/admin/structure/perimetres', [
+            'label' => $labels,
             'parent' => [
                 'foundation' => 'alumni',
                 'university' => 'foundation',
@@ -61,7 +68,7 @@ class ScopeHierarchyAdminTest extends TestCase
         $manager = User::factory()->create();
         $this->grantAccess($manager, 'manager', 'foundation');
 
-        OrgScopes::flushHierarchyCache();
+        OrgScopes::flushCache();
 
         $this->assertTrue(AccessScope::can($manager, 'membership.manage', 'foundation'));
         $this->assertTrue(AccessScope::can($manager, 'membership.manage', 'university'));

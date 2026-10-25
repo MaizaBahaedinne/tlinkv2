@@ -12,12 +12,14 @@ use Illuminate\Support\Facades\Schema;
  */
 final class OrgScopes
 {
-    public const ALL = [
+    public const DEFAULT = [
         'foundation' => 'Fondation',
         'university' => 'University',
         'high-school' => 'High School',
         'alumni' => 'Alumni',
     ];
+
+    public const CORE = ['foundation', 'university', 'high-school', 'alumni'];
 
     /** Branche de clubs de l'organigramme par perimetre : perimetre => [cle systeme, categorie]. */
     public const CLUB_BRANCHES = [
@@ -28,14 +30,66 @@ final class OrgScopes
     /** @var array<string, string|null>|null */
     private static ?array $hierarchyCache = null;
 
+    /** @var array<string, string>|null */
+    private static ?array $catalogCache = null;
+
+    /**
+     * @return array<string, string>
+     */
+    public static function all(): array
+    {
+        if (self::$catalogCache !== null) {
+            return self::$catalogCache;
+        }
+
+        if (!Schema::hasTable('settings')) {
+            self::$catalogCache = self::DEFAULT;
+
+            return self::$catalogCache;
+        }
+
+        $setting = Setting::query()->where('group', 'org')->where('key', 'scopes_catalog')->value('value');
+        $decoded = is_string($setting) ? json_decode($setting, true) : null;
+
+        if (!is_array($decoded)) {
+            self::$catalogCache = self::DEFAULT;
+
+            return self::$catalogCache;
+        }
+
+        $catalog = [];
+
+        foreach ($decoded as $slug => $label) {
+            $slug = (string) $slug;
+            if ($slug === '' || !preg_match('/^[a-z0-9][a-z0-9\-]{1,48}[a-z0-9]$/', $slug)) {
+                continue;
+            }
+
+            $text = trim((string) $label);
+            if ($text === '') {
+                continue;
+            }
+
+            $catalog[$slug] = $text;
+        }
+
+        foreach (self::DEFAULT as $slug => $label) {
+            $catalog[$slug] = $catalog[$slug] ?? $label;
+        }
+
+        self::$catalogCache = $catalog;
+
+        return self::$catalogCache;
+    }
+
     public static function valid(?string $scope): bool
     {
-        return $scope !== null && isset(self::ALL[$scope]);
+        return $scope !== null && isset(self::all()[$scope]);
     }
 
     public static function label(?string $scope): ?string
     {
-        return $scope === null ? null : (self::ALL[$scope] ?? $scope);
+        return $scope === null ? null : (self::all()[$scope] ?? $scope);
     }
 
     /**
@@ -43,7 +97,7 @@ final class OrgScopes
      */
     public static function slugs(): array
     {
-        return array_keys(self::ALL);
+        return array_keys(self::all());
     }
 
     /**
@@ -69,10 +123,11 @@ final class OrgScopes
 
         $default = [
             'foundation' => null,
-            'university' => 'foundation',
-            'high-school' => 'foundation',
-            'alumni' => 'foundation',
         ];
+
+        foreach (self::slugs() as $slug) {
+            $default[$slug] = $default[$slug] ?? ($slug === 'foundation' ? null : 'foundation');
+        }
 
         if (!Schema::hasTable('settings')) {
             self::$hierarchyCache = $default;
@@ -111,9 +166,10 @@ final class OrgScopes
         return self::$hierarchyCache;
     }
 
-    public static function flushHierarchyCache(): void
+    public static function flushCache(): void
     {
         self::$hierarchyCache = null;
+        self::$catalogCache = null;
     }
 
     /**
@@ -124,7 +180,7 @@ final class OrgScopes
         $visited = [];
         $active = [];
 
-        foreach (self::slugs() as $slug) {
+        foreach (array_keys($hierarchy) as $slug) {
             if (!self::dfsAcyclic($slug, $hierarchy, $visited, $active)) {
                 return false;
             }
@@ -198,7 +254,7 @@ final class OrgScopes
         $active[$node] = true;
         $parent = $hierarchy[$node] ?? null;
 
-        if (is_string($parent) && $parent !== '' && !self::dfsAcyclic($parent, $hierarchy, $visited, $active)) {
+        if (is_string($parent) && $parent !== '' && isset($hierarchy[$parent]) && !self::dfsAcyclic($parent, $hierarchy, $visited, $active)) {
             return false;
         }
 

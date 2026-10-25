@@ -676,7 +676,7 @@ class OrgChartController extends Controller
                 'validations' => OrgNode::VALIDATIONS,
                 'layouts' => OrgNode::LAYOUTS,
                 'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name'])->all(),
-                'scopes' => $canEdit ? OrgScopes::ALL : [],
+                'scopes' => $canEdit ? OrgScopes::all() : [],
                 'club_statuses' => OrgNode::CLUB_STATUSES,
                 'institution_types' => OrgNode::INSTITUTION_TYPES,
             ],

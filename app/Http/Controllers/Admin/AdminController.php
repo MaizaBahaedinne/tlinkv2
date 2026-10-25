@@ -48,7 +48,7 @@ abstract class AdminController extends Controller
 
         abort_if($scope === null, 403, 'Acces refuse.');
 
-        return $scope === [] ? OrgScopes::ALL : array_intersect_key(OrgScopes::ALL, array_flip($scope));
+        return $scope === [] ? OrgScopes::all() : array_intersect_key(OrgScopes::all(), array_flip($scope));
     }
 
     protected function audit(Request $request, string $action, object $target, array $metadata = []): void

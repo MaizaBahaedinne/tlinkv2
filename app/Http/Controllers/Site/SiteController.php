@@ -43,7 +43,7 @@ class SiteController extends Controller
             'stats' => $this->stats(),
             'news' => $news,
             'events' => $events,
-            'scopes' => OrgScopes::ALL,
+            'scopes' => OrgScopes::all(),
         ]);
     }
 
@@ -51,7 +51,7 @@ class SiteController extends Controller
     {
         return $this->render('site.about', [
             'stats' => $this->stats(),
-            'scopes' => OrgScopes::ALL,
+            'scopes' => OrgScopes::all(),
             'groups' => PublicOrgChart::teamByScope(),
         ]);
     }

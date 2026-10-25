@@ -100,7 +100,7 @@ class StructureController extends AdminController
             'canEdit' => $this->canEdit($request),
             'levels' => AccessLevels::LEVELS,
             'permissions' => AccessLevels::PERMISSIONS,
-            'scopes' => OrgScopes::ALL,
+            'scopes' => OrgScopes::all(),
             'kinds' => OrgNode::KINDS,
             'categories' => OrgNode::CATEGORIES,
             'scopeMap' => $scopeMap,
@@ -438,7 +438,7 @@ class StructureController extends AdminController
                 fn (string $permission): string => AccessLevels::PERMISSIONS[$permission],
                 AccessLevels::permissions($level)
             ))->all(),
-            'scopes' => OrgScopes::ALL,
+            'scopes' => OrgScopes::all(),
             'kinds' => array_intersect_key(OrgNode::KINDS, array_flip(OrgNode::MANUAL_KINDS)),
             'capacities' => OrgNode::CAPACITIES,
             'governorates' => Governorate::query()->orderBy('name')->pluck('name', 'id')->all(),

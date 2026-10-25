@@ -16,7 +16,7 @@ class OrganizationController extends Controller
     public function entities(): JsonResponse
     {
         return response()->json([
-            'data' => collect(OrgScopes::ALL)->map(fn (string $name, string $slug): array => ['slug' => $slug, 'name' => $name])->values(),
+            'data' => collect(OrgScopes::all())->map(fn (string $name, string $slug): array => ['slug' => $slug, 'name' => $name])->values(),
         ]);
     }
 

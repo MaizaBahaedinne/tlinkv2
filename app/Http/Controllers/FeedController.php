@@ -131,7 +131,7 @@ class FeedController extends Controller
                 'can_publish_public' => $canPublishPublic,
                 'allowed_visibilities' => $allowedVisibilities,
             ],
-            'entities' => collect(OrgScopes::ALL)->map(fn (string $name, string $slug): array => ['id' => $slug, 'name' => $name, 'slug' => $slug])->values(),
+            'entities' => collect(OrgScopes::all())->map(fn (string $name, string $slug): array => ['id' => $slug, 'name' => $name, 'slug' => $slug])->values(),
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
     }
