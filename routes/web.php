@@ -112,6 +112,10 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
         Route::middleware('admin.can:entity.manage')->group(function (): void {
             Route::get('feuille-de-route', [Admin\RoadmapController::class, 'index'])->name('roadmap.index');
             Route::post('feuille-de-route', [Admin\RoadmapController::class, 'update'])->name('roadmap.update');
+            Route::get('mandats', [Admin\MandateController::class, 'index'])->name('mandates.index');
+            Route::post('mandats', [Admin\MandateController::class, 'store'])->name('mandates.store');
+            Route::put('mandats/{mandate}', [Admin\MandateController::class, 'update'])->name('mandates.update');
+            Route::delete('mandats/{mandate}', [Admin\MandateController::class, 'destroy'])->name('mandates.destroy');
             Route::get('journal', [Admin\AuditLogController::class, 'index'])->name('audit.index');
             Route::get('utilisateurs/{user}/modifier', [Admin\UserController::class, 'edit'])->name('users.edit');
             Route::put('utilisateurs/{user}', [Admin\UserController::class, 'update'])->name('users.update');

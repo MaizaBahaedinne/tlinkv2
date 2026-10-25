@@ -59,7 +59,7 @@ class AdminBackofficeTest extends TestCase
         $event = FoundationEvent::query()->create(['title' => 'Assemblée', 'status' => 'published', 'scope' => 'foundation']);
 
         $urls = [
-            '/admin', '/admin/feuille-de-route', '/admin/journal',
+            '/admin', '/admin/feuille-de-route', '/admin/mandats', '/admin/journal',
             '/admin/utilisateurs', "/admin/utilisateurs/{$admin->id}",
             '/admin/adhesions',
             '/admin/publications', '/admin/moderation', '/admin/approbations',
