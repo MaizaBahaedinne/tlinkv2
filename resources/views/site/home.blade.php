@@ -1,12 +1,17 @@
 @extends('site.layouts.site')
 
 @section('content')
-    <section class="bg-gradient-to-br from-brand-900 via-brand-800 to-brand-600 text-white">
-        <div class="mx-auto max-w-6xl px-4 py-16 md:py-24">
-            <p class="text-sm font-bold uppercase tracking-widest text-accent">{{ __('site.tagline') }}</p>
-            <h1 class="mt-3 max-w-3xl font-display text-4xl font-bold leading-tight md:text-5xl">{{ $site->get('hero_title') }}</h1>
-            <p class="mt-5 max-w-2xl text-lg text-slate-200">{{ $site->get('hero_subtitle') }}</p>
-            <div class="mt-8 flex flex-wrap gap-3">
+    <section class="hero-shell relative overflow-hidden text-white">
+        <div class="hero-bg-layer hero-bg-photo" aria-hidden="true"></div>
+        <div class="hero-bg-layer hero-bg-mark hero-bg-mark-a" aria-hidden="true"></div>
+        <div class="hero-bg-layer hero-bg-mark hero-bg-mark-b" aria-hidden="true"></div>
+        <div class="hero-sheen" aria-hidden="true"></div>
+
+        <div class="hero-content mx-auto max-w-6xl px-4 py-16 md:py-24">
+            <p class="hero-kicker text-sm font-bold uppercase tracking-widest text-accent">{{ __('site.tagline') }}</p>
+            <h1 class="hero-title mt-3 max-w-3xl font-display text-4xl font-bold leading-tight md:text-5xl">{{ $site->get('hero_title') }}</h1>
+            <p class="hero-subtitle mt-5 max-w-2xl text-lg text-slate-200">{{ $site->get('hero_subtitle') }}</p>
+            <div class="hero-actions mt-8 flex flex-wrap gap-3">
                 <a href="{{ route('register') }}" class="rounded-xl bg-accent px-6 py-3 font-bold text-brand-900 hover:brightness-110">{{ __('site.home.cta_join') }}</a>
                 <a href="{{ route('site.clubs') }}" class="rounded-xl border border-white/40 px-6 py-3 font-bold hover:bg-white/10">{{ __('site.home.cta_clubs') }}</a>
             </div>

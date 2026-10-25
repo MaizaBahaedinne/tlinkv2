@@ -37,6 +37,155 @@ html {
     box-shadow: 0 18px 35px rgba(80, 10, 25, 0.06);
 }
 
+.hero-shell {
+    background: linear-gradient(135deg, #6e0019 0%, #8f001f 36%, #d00031 100%);
+    isolation: isolate;
+}
+
+.hero-bg-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.hero-bg-photo {
+    background-image:
+        radial-gradient(circle at 12% 16%, rgba(245, 166, 35, 0.24), transparent 35%),
+        radial-gradient(circle at 88% 86%, rgba(255, 255, 255, 0.18), transparent 32%),
+        linear-gradient(120deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.18)),
+        url('/logoFondation-white.webp');
+    background-repeat: no-repeat;
+    background-size: cover, cover, cover, clamp(360px, 44vw, 760px) auto;
+    background-position: center, center, center, 86% 54%;
+    opacity: 0.78;
+    transform: scale(1.03);
+    animation: heroReveal 1.15s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.hero-bg-mark {
+    opacity: 0.18;
+    filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.24));
+    transform-origin: center;
+}
+
+.hero-bg-mark-a {
+    inset: auto auto 8% -3%;
+    width: clamp(120px, 13vw, 220px);
+    height: clamp(120px, 13vw, 220px);
+    background: url('/favicon-white-180x180.png') center / contain no-repeat;
+    animation: heroFloatA 9s ease-in-out infinite;
+}
+
+.hero-bg-mark-b {
+    inset: 7% 4% auto auto;
+    width: clamp(140px, 16vw, 300px);
+    height: clamp(140px, 16vw, 300px);
+    background: url('/favicon-white-180x180.png') center / contain no-repeat;
+    opacity: 0.16;
+    animation: heroFloatB 11s ease-in-out infinite;
+}
+
+.hero-sheen {
+    position: absolute;
+    inset: -12% auto -18% -8%;
+    width: 54%;
+    background: linear-gradient(110deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+    transform: skewX(-22deg) translateX(-38%);
+    animation: heroSheen 9.5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+.hero-kicker,
+.hero-title,
+.hero-subtitle,
+.hero-actions {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: heroTextUp 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.hero-title { animation-delay: 0.12s; }
+.hero-subtitle { animation-delay: 0.24s; }
+.hero-actions { animation-delay: 0.36s; }
+
+.hero-actions a {
+    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease, background-color 180ms ease;
+}
+
+.hero-actions a:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 26px rgba(0, 0, 0, 0.22);
+}
+
+@keyframes heroTextUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes heroReveal {
+    from {
+        opacity: 0;
+        transform: scale(1.08);
+    }
+    to {
+        opacity: 0.78;
+        transform: scale(1.03);
+    }
+}
+
+@keyframes heroFloatA {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50% { transform: translate3d(8px, -10px, 0) rotate(6deg); }
+}
+
+@keyframes heroFloatB {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50% { transform: translate3d(-10px, 12px, 0) rotate(-7deg); }
+}
+
+@keyframes heroSheen {
+    0%, 100% { transform: skewX(-22deg) translateX(-44%); opacity: 0.15; }
+    50% { transform: skewX(-22deg) translateX(16%); opacity: 0.35; }
+}
+
+@media (max-width: 768px) {
+    .hero-bg-photo {
+        background-size: cover, cover, cover, 320px auto;
+        background-position: center, center, center, 82% 68%;
+    }
+
+    .hero-sheen {
+        width: 72%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-bg-photo,
+    .hero-bg-mark-a,
+    .hero-bg-mark-b,
+    .hero-sheen,
+    .hero-kicker,
+    .hero-title,
+    .hero-subtitle,
+    .hero-actions {
+        animation: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+    }
+
+    .hero-actions a:hover {
+        transform: none;
+        box-shadow: none;
+    }
+}
+
 /* Carte des clubs : toujours en LTR (Leaflet), même sur les pages arabes. */
 .clubs-map {
     direction: ltr;
