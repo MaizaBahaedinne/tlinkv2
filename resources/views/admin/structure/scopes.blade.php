@@ -6,6 +6,21 @@
 @section('content')
     <x-admin.page-header title="Périmètres" subtitle="Ajoutez, modifiez ou supprimez des périmètres, et gérez leur héritage parent -> enfant." />
 
+    @if($errors->any())
+        <article class="card" style="margin-bottom: 12px; border-left: 4px solid #dc2626;">
+            <div class="card-head">
+                <h2>Erreur de validation</h2>
+            </div>
+            <div style="padding: 0 16px 12px;">
+                <ul style="margin:0; padding-left: 18px; color:#b91c1c;">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </article>
+    @endif
+
     <article class="card card-flush">
         <div class="card-head">
             <div>
@@ -34,6 +49,9 @@
                                 <td><code>{{ $slug }}</code></td>
                                 <td>
                                     <input type="text" name="label[{{ $slug }}]" value="{{ old('label.'.$slug, $label) }}" maxlength="60" required>
+                                    @error('label.'.$slug)
+                                        <p class="text-sm" style="color:#b91c1c; margin-top:4px;">{{ $message }}</p>
+                                    @enderror
                                 </td>
                                 <td>
                                     <div class="cell-main">{{ old('label.'.$slug, $label) }}</div>
@@ -50,6 +68,9 @@
                                             <option value="{{ $pSlug }}" @selected(($hierarchy[$slug] ?? null) === $pSlug)>{{ $pLabel }}</option>
                                         @endforeach
                                     </select>
+                                    @error('parent.'.$slug)
+                                        <p class="text-sm" style="color:#b91c1c; margin-top:4px;">{{ $message }}</p>
+                                    @enderror
                                 </td>
                                 <td>
                                     @if(in_array($slug, $coreScopes, true))
@@ -59,6 +80,9 @@
                                             <input type="checkbox" name="delete[{{ $slug }}]" value="1" @checked(old('delete.'.$slug))>
                                             <span class="text-sm">Supprimer</span>
                                         </label>
+                                        @error('delete.'.$slug)
+                                            <p class="text-sm" style="color:#b91c1c; margin-top:4px;">{{ $message }}</p>
+                                        @enderror
                                     @endif
                                 </td>
                             </tr>
@@ -77,6 +101,16 @@
                             </td>
                             <td><span class="text-muted text-sm">Ajout</span></td>
                         </tr>
+                        @if($errors->has('new_slug') || $errors->has('new_label') || $errors->has('new_parent') || $errors->has('parent'))
+                            <tr>
+                                <td colspan="5" style="color:#b91c1c;">
+                                    @error('new_slug')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
+                                    @error('new_label')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
+                                    @error('new_parent')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
+                                    @error('parent')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
+                                </td>
+                            </tr>
+                        @endif
                     </tbody>
                 </table>
             </div>
