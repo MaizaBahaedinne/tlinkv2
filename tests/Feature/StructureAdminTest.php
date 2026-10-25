@@ -124,13 +124,13 @@ class StructureAdminTest extends TestCase
             ->assertOk()
             ->assertSee('Manager Test Alpha')
             ->assertSee('Salma Ben Ali')
-            ->assertSee('Responsable')
-            ->assertSee('(hérité)')
+            ->assertSee('Hérité')
             ->assertDontSee('Poste Vacant Beta');
 
         $this->actingAs($admin)->get('/admin/structure/postes?holder=vacant&q=Beta')->assertSee('Poste Vacant Beta')->assertSee('Vacant');
         $this->actingAs($admin)->get('/admin/structure/postes?q=Salma')->assertSee('Manager Test Alpha');
-        $this->actingAs($admin)->get('/admin/structure/postes?access=manager&scope=university&q=Test')->assertSee('Manager Test Alpha');
+        $this->actingAs($admin)->get('/admin/structure/postes?permission=membership.manage&scope=university&q=Test')->assertSee('Manager Test Alpha');
+        $this->actingAs($admin)->get('/admin/structure/postes?permission=entity.manage&scope=university&q=Test')->assertDontSee('Manager Test Alpha');
     }
 
     public function test_global_admin_edits_a_position_role_perimeter_and_capacity(): void
@@ -145,13 +145,14 @@ class StructureAdminTest extends TestCase
             'kind' => 'position',
             'parent_id' => $position->parent_id,
             'capacity' => 'multiple',
-            'access_level' => 'moderator',
+            'permissions' => ['', 'post.moderate'],
             'scope' => 'high-school',
         ])->assertRedirect("/admin/structure/postes/{$position->id}/modifier");
 
         $position->refresh();
         $this->assertSame('VP Events', $position->title);
-        $this->assertSame('moderator', $position->access_level);
+        $this->assertSame('custom', $position->access_level);
+        $this->assertSame(['post.moderate'], $position->permissions);
         $this->assertSame('high-school', $position->scope);
         $this->assertSame('multiple', $position->capacity);
     }
@@ -166,30 +167,71 @@ class StructureAdminTest extends TestCase
 
         $this->actingAs($scoped)->get('/admin/structure/postes')->assertOk()->assertSee('Poste lisible');
         $this->actingAs($scoped)->get("/admin/structure/postes/{$position->id}/modifier")->assertOk();
-        $this->actingAs($scoped)->put("/admin/structure/postes/{$position->id}", ['title' => 'Piraté', 'access_level' => 'global_admin'])->assertForbidden();
-        $this->actingAs($scoped)->post('/admin/structure/postes/acces', ['nodes' => [$position->id], 'access_level' => 'global_admin'])->assertForbidden();
+        $this->actingAs($scoped)->put("/admin/structure/postes/{$position->id}", ['title' => 'Piraté', 'permissions' => ['entity.manage'], 'scope_all' => 1])->assertForbidden();
+        $this->actingAs($scoped)->post('/admin/structure/postes/droits', ['rows' => [$position->id => ['permissions' => ['entity.manage'], 'scope_all' => 1]]])->assertForbidden();
 
         $this->assertSame('Poste lisible', $position->fresh()->title);
     }
 
-    public function test_bulk_access_applies_to_checked_positions_and_never_removes_own_admin_rights(): void
+    public function test_permissions_and_perimeter_are_set_position_by_position_and_never_remove_own_admin_rights(): void
     {
         $admin = $this->admin();
         $a = $this->position('Poste A');
         $b = $this->position('Poste B');
 
-        $this->actingAs($admin)->post('/admin/structure/postes/acces', ['nodes' => [$a->id, $b->id], 'access_level' => 'manager'])
-            ->assertRedirect()->assertSessionHas('status');
+        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [
+            $a->id => ['permissions' => ['membership.manage', 'event.manage'], 'scope' => 'high-school'],
+            $b->id => ['permissions' => ['post.moderate'], 'scope_all' => 1, 'scope' => ''],
+        ]])->assertRedirect()->assertSessionHas('status');
 
-        $this->assertSame('manager', $a->fresh()->access_level);
-        $this->assertSame('manager', $b->fresh()->access_level);
+        $a->refresh();
+        $b->refresh();
+
+        $this->assertSame('custom', $a->access_level);
+        $this->assertEqualsCanonicalizing(['membership.manage', 'event.manage'], $a->permissions);
+        $this->assertSame('high-school', $a->scope);
+        $this->assertContains('scope.all', $b->permissions);
+        $this->assertNull($b->scope);
+
+        // Un poste dont les droits ne changent pas garde son niveau prédéfini.
+        $manager = $this->position('Poste Manager', null, 'manager');
+        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [
+            $manager->id => ['permissions' => \App\Support\AccessLevels::permissions('manager'), 'scope' => 'university'],
+        ]])->assertRedirect();
+        $this->assertSame('manager', $manager->fresh()->access_level);
+        $this->assertSame('university', $manager->fresh()->scope);
 
         $adminPost = OrgNode::query()->where('system_key', 'national-administrators')->firstOrFail();
 
-        $this->actingAs($admin)->post('/admin/structure/postes/acces', ['nodes' => [$adminPost->id], 'access_level' => 'none'])
+        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [$adminPost->id => ['scope' => '']]])
             ->assertSessionHasErrors('access_level');
 
         $this->assertSame('global_admin', $adminPost->fresh()->access_level);
+    }
+
+    public function test_custom_position_rights_apply_only_inside_the_position_perimeter(): void
+    {
+        $admin = $this->admin();
+        $holder = User::factory()->create();
+        $position = $this->position('Poste ciblé');
+
+        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [
+            $position->id => ['permissions' => ['membership.manage'], 'scope' => 'high-school'],
+        ]])->assertRedirect();
+
+        $person = OrgPerson::query()->create(['user_id' => $holder->id, 'full_name' => $holder->name, 'contact_visible' => true]);
+        OrgAssignment::query()->create(['node_id' => $position->id, 'person_id' => $person->id]);
+
+        $grants = \App\Support\OrgAccess::grants($holder);
+
+        $this->assertSame(['membership.manage'], array_keys($grants));
+        $this->assertSame(['high-school'], $grants['membership.manage']);
+
+        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [
+            $position->id => ['permissions' => ['membership.manage'], 'scope_all' => 1, 'scope' => ''],
+        ]])->assertRedirect();
+
+        $this->assertSame([null], \App\Support\OrgAccess::grants($holder)['membership.manage']);
     }
 
     public function test_holders_can_be_assigned_and_removed_from_the_sheet(): void

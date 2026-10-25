@@ -272,31 +272,3 @@
         </div>
     </div>
 @endsection
-
-@push('scripts')
-    <script>
-        (function () {
-            var select = document.getElementById('f-access_level');
-            var box = document.querySelector('[data-level-perms]');
-            if (!select || !box) return;
-            var perms = @json($levelPermissions);
-            select.addEventListener('change', function () {
-                var list = perms[select.value] || [];
-                box.textContent = '';
-                if (!list.length) {
-                    var none = document.createElement('span');
-                    none.className = 'text-sm text-muted';
-                    none.textContent = 'Ce niveau ne donne aucun droit d’administration.';
-                    box.appendChild(none);
-                    return;
-                }
-                list.forEach(function (label) {
-                    var chip = document.createElement('span');
-                    chip.className = 'chip';
-                    chip.textContent = label;
-                    box.appendChild(chip);
-                });
-            });
-        })();
-    </script>
-@endpush
