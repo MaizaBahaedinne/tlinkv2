@@ -16,6 +16,29 @@
     $description = trim($__env->yieldContent('description'));
     $pageTitle = $title !== '' ? $title.' · '.__('site.name') : __('site.name').' · '.__('site.tagline');
     $metaDescription = $description !== '' ? $description : $site->get('hero_subtitle');
+
+    $siteCssPath = null;
+    $manifestPath = public_path('build/manifest.json');
+
+    if (file_exists($manifestPath)) {
+        $manifest = json_decode((string) file_get_contents($manifestPath), true);
+        $entry = is_array($manifest) ? ($manifest['resources/css/site.css'] ?? null) : null;
+        $builtFile = is_array($entry) ? ($entry['file'] ?? null) : null;
+
+        if (is_string($builtFile) && $builtFile !== '' && file_exists(public_path('build/'.$builtFile))) {
+            $siteCssPath = 'build/'.$builtFile;
+        }
+    }
+
+    if ($siteCssPath === null) {
+        $candidates = glob(public_path('build/assets/site-*.css')) ?: [];
+
+        usort($candidates, fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
+
+        if (!empty($candidates)) {
+            $siteCssPath = 'build/assets/'.basename($candidates[0]);
+        }
+    }
 @endphp
 <html lang="{{ $locale }}" dir="{{ $locales[$locale]['dir'] }}">
 <head>
@@ -38,8 +61,10 @@
             <link rel="alternate" hreflang="{{ $code }}" href="{{ route($routeName, ['locale' => $code] + $route->parameters() + request()->query()) }}">
         @endforeach
     @endif
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+    @if (file_exists(public_path('hot')))
         @vite(['resources/css/site.css'])
+    @elseif($siteCssPath)
+        <link rel="stylesheet" href="{{ asset($siteCssPath) }}">
     @endif
     @stack('head')
 </head>
