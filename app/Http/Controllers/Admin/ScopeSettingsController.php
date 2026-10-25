@@ -15,12 +15,14 @@ class ScopeSettingsController extends AdminController
     private const GROUP = 'org';
     private const CATALOG_KEY = 'scopes_catalog';
     private const HIERARCHY_KEY = 'scope_hierarchy';
+    private const DESCRIPTIONS_KEY = 'scopes_descriptions';
 
     public function edit(): View
     {
         return view('admin/structure/scopes', [
             'scopes' => OrgScopes::all(),
             'hierarchy' => OrgScopes::hierarchy(),
+            'descriptions' => OrgScopes::descriptions(),
             'coreScopes' => OrgScopes::CORE,
         ]);
     }
@@ -34,12 +36,14 @@ class ScopeSettingsController extends AdminController
 
         foreach ($slugs as $slug) {
             $rules['label.'.$slug] = ['required', 'string', 'max:60'];
+            $rules['description.'.$slug] = ['nullable', 'string', 'max:300'];
             $rules['parent.'.$slug] = ['nullable', 'in:'.$allowedParents];
             $rules['delete.'.$slug] = ['nullable', 'boolean'];
         }
 
         $rules['new_slug'] = ['nullable', 'string', 'max:50', 'regex:/^[a-z0-9][a-z0-9\-]{1,48}[a-z0-9]$/'];
         $rules['new_label'] = ['nullable', 'string', 'max:60'];
+        $rules['new_description'] = ['nullable', 'string', 'max:300'];
         $rules['new_parent'] = ['nullable', 'in:'.$allowedParents];
 
         $data = $request->validate($rules);
@@ -58,6 +62,8 @@ class ScopeSettingsController extends AdminController
         }
 
         $catalog = [];
+        $descriptions = [];
+        $descriptionsInput = $data['description'] ?? [];
 
         foreach ($scopes as $slug => $currentLabel) {
             if (in_array($slug, $deletes, true)) {
@@ -65,10 +71,15 @@ class ScopeSettingsController extends AdminController
             }
 
             $catalog[$slug] = trim((string) ($labels[$slug] ?? $currentLabel));
+            $desc = trim((string) ($descriptionsInput[$slug] ?? ''));
+            if ($desc !== '') {
+                $descriptions[$slug] = $desc;
+            }
         }
 
         $newSlug = trim((string) ($data['new_slug'] ?? ''));
         $newLabel = trim((string) ($data['new_label'] ?? ''));
+        $newDescription = trim((string) ($data['new_description'] ?? ''));
 
         if ($newSlug !== '' || $newLabel !== '') {
             if ($newSlug === '' || $newLabel === '') {
@@ -80,6 +91,9 @@ class ScopeSettingsController extends AdminController
             }
 
             $catalog[$newSlug] = $newLabel;
+            if ($newDescription !== '') {
+                $descriptions[$newSlug] = $newDescription;
+            }
             $slugs[] = $newSlug;
         }
 
@@ -113,10 +127,15 @@ class ScopeSettingsController extends AdminController
             ['value' => json_encode($hierarchy, JSON_UNESCAPED_UNICODE)]
         );
 
+        Setting::query()->updateOrCreate(
+            ['group' => self::GROUP, 'key' => self::DESCRIPTIONS_KEY],
+            ['value' => json_encode($descriptions, JSON_UNESCAPED_UNICODE)]
+        );
+
         OrgScopes::flushCache();
 
         $setting = Setting::query()->where('group', self::GROUP)->where('key', self::CATALOG_KEY)->first();
-        $this->audit($request, 'admin.scopes.updated', $setting, ['catalog' => $catalog, 'hierarchy' => $hierarchy]);
+        $this->audit($request, 'admin.scopes.updated', $setting, ['catalog' => $catalog, 'hierarchy' => $hierarchy, 'descriptions' => $descriptions]);
 
         return back()->with('status', 'Périmètres et héritages mis à jour.');
     }

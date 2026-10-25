@@ -33,6 +33,9 @@ final class OrgScopes
     /** @var array<string, string>|null */
     private static ?array $catalogCache = null;
 
+    /** @var array<string, string>|null */
+    private static ?array $descriptionsCache = null;
+
     /**
      * @return array<string, string>
      */
@@ -90,6 +93,44 @@ final class OrgScopes
     public static function label(?string $scope): ?string
     {
         return $scope === null ? null : (self::all()[$scope] ?? $scope);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function descriptions(): array
+    {
+        if (self::$descriptionsCache !== null) {
+            return self::$descriptionsCache;
+        }
+
+        if (!Schema::hasTable('settings')) {
+            self::$descriptionsCache = [];
+
+            return self::$descriptionsCache;
+        }
+
+        $setting = Setting::query()->where('group', 'org')->where('key', 'scopes_descriptions')->value('value');
+        $decoded = is_string($setting) ? json_decode($setting, true) : null;
+
+        if (!is_array($decoded)) {
+            self::$descriptionsCache = [];
+
+            return self::$descriptionsCache;
+        }
+
+        $out = [];
+
+        foreach (self::slugs() as $slug) {
+            $value = trim((string) ($decoded[$slug] ?? ''));
+            if ($value !== '') {
+                $out[$slug] = $value;
+            }
+        }
+
+        self::$descriptionsCache = $out;
+
+        return self::$descriptionsCache;
     }
 
     /**
@@ -170,6 +211,7 @@ final class OrgScopes
     {
         self::$hierarchyCache = null;
         self::$catalogCache = null;
+        self::$descriptionsCache = null;
     }
 
     /**

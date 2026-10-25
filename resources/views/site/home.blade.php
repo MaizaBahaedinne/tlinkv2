@@ -30,53 +30,39 @@
         <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.scopes_title') }}</h2>
         @php
             $scopeHierarchy = $scopeHierarchy ?? [];
-            $scopeRows = [];
+            $scopeDescriptions = $scopeDescriptions ?? [];
+            $childrenByParent = [];
+            $roots = [];
 
             foreach ($scopes as $slug => $label) {
-                $depth = 0;
-                $cursor = $slug;
+                $parent = $scopeHierarchy[$slug] ?? null;
 
-                for ($guard = 0; $guard < 20; $guard++) {
-                    $parent = $scopeHierarchy[$cursor] ?? null;
-                    if (!$parent || !isset($scopes[$parent])) {
-                        break;
-                    }
-
-                    $depth++;
-                    $cursor = $parent;
+                if ($parent && isset($scopes[$parent])) {
+                    $childrenByParent[$parent][] = $slug;
+                } else {
+                    $roots[] = $slug;
                 }
-
-                $scopeRows[] = [
-                    'slug' => $slug,
-                    'label' => $label,
-                    'parent' => $scopeHierarchy[$slug] ?? null,
-                    'depth' => $depth,
-                ];
             }
 
-            usort($scopeRows, fn ($a, $b) => $a['depth'] <=> $b['depth'] ?: strcmp($a['label'], $b['label']));
+            usort($roots, fn ($a, $b) => strcmp((string) $scopes[$a], (string) $scopes[$b]));
+
+            foreach ($childrenByParent as $parent => $children) {
+                usort($children, fn ($a, $b) => strcmp((string) $scopes[$a], (string) $scopes[$b]));
+                $childrenByParent[$parent] = $children;
+            }
         @endphp
 
-        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach($scopeRows as $row)
-                @php($parentLabel = ($row['parent'] && isset($scopes[$row['parent']])) ? $scopes[$row['parent']] : null)
-                <div class="site-card p-5">
-                    <div class="flex items-center justify-between gap-3">
-                        <h3 class="font-display text-lg font-bold text-brand-800">{{ $row['label'] }}</h3>
-                        @if($parentLabel)
-                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">Niveau {{ $row['depth'] }}</span>
-                        @else
-                            <span class="rounded-full bg-brand-100 px-2.5 py-1 text-[11px] font-bold text-brand-800">Racine</span>
-                        @endif
-                    </div>
-
-                    @if($parentLabel)
-                        <p class="mt-2 text-sm text-slate-600">Hérite de <span class="font-semibold text-slate-700">{{ $parentLabel }}</span></p>
-                    @else
-                        <p class="mt-2 text-sm text-slate-500">Périmètre parent (niveau principal).</p>
-                    @endif
-                </div>
-            @endforeach
+        <div class="site-card scope-tree-wrap mt-6 p-6">
+            <ul class="scope-tree">
+                @foreach($roots as $root)
+                    @include('site.partials.scope-tree-node', [
+                        'scopeSlug' => $root,
+                        'scopes' => $scopes,
+                        'scopeDescriptions' => $scopeDescriptions,
+                        'childrenByParent' => $childrenByParent,
+                    ])
+                @endforeach
+            </ul>
         </div>
     </section>
 

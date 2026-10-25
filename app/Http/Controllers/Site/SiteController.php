@@ -45,6 +45,7 @@ class SiteController extends Controller
             'events' => $events,
             'scopes' => OrgScopes::all(),
             'scopeHierarchy' => OrgScopes::hierarchy(),
+            'scopeDescriptions' => OrgScopes::descriptions(),
         ]);
     }
 

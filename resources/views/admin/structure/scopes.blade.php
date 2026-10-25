@@ -38,6 +38,7 @@
                         <tr>
                             <th>Slug</th>
                             <th>Libellé</th>
+                            <th>Description</th>
                             <th>Périmètre</th>
                             <th>Parent (héritage)</th>
                             <th>Suppression</th>
@@ -50,6 +51,12 @@
                                 <td>
                                     <input type="text" name="label[{{ $slug }}]" value="{{ old('label.'.$slug, $label) }}" maxlength="60" required>
                                     @error('label.'.$slug)
+                                        <p class="text-sm" style="color:#b91c1c; margin-top:4px;">{{ $message }}</p>
+                                    @enderror
+                                </td>
+                                <td>
+                                    <textarea name="description[{{ $slug }}]" rows="2" maxlength="300" placeholder="Description de l'espace">{{ old('description.'.$slug, $descriptions[$slug] ?? '') }}</textarea>
+                                    @error('description.'.$slug)
                                         <p class="text-sm" style="color:#b91c1c; margin-top:4px;">{{ $message }}</p>
                                     @enderror
                                 </td>
@@ -90,6 +97,7 @@
                         <tr>
                             <td><input type="text" name="new_slug" value="{{ old('new_slug') }}" maxlength="50" placeholder="nouveau-scope"></td>
                             <td><input type="text" name="new_label" value="{{ old('new_label') }}" maxlength="60" placeholder="Nouveau périmètre"></td>
+                            <td><textarea name="new_description" rows="2" maxlength="300" placeholder="Description du nouveau périmètre">{{ old('new_description') }}</textarea></td>
                             <td><span class="cell-sub">Nouveau périmètre</span></td>
                             <td>
                                 <select name="new_parent" aria-label="Parent du nouveau périmètre">
@@ -101,11 +109,12 @@
                             </td>
                             <td><span class="text-muted text-sm">Ajout</span></td>
                         </tr>
-                        @if($errors->has('new_slug') || $errors->has('new_label') || $errors->has('new_parent') || $errors->has('parent'))
+                        @if($errors->has('new_slug') || $errors->has('new_label') || $errors->has('new_description') || $errors->has('new_parent') || $errors->has('parent'))
                             <tr>
-                                <td colspan="5" style="color:#b91c1c;">
+                                <td colspan="6" style="color:#b91c1c;">
                                     @error('new_slug')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
                                     @error('new_label')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
+                                    @error('new_description')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
                                     @error('new_parent')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
                                     @error('parent')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
                                 </td>

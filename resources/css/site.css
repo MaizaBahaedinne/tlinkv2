@@ -164,3 +164,64 @@ html {
         height: 36rem;
     }
 }
+
+.scope-tree,
+.scope-tree-children {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.scope-tree-node {
+    position: relative;
+    margin: 0;
+    padding-inline-start: 1.25rem;
+}
+
+.scope-tree > .scope-tree-node {
+    padding-inline-start: 0;
+}
+
+.scope-tree-children {
+    margin-top: 0.6rem;
+    margin-inline-start: 0.8rem;
+    border-inline-start: 2px solid #e2e8f0;
+    padding-inline-start: 0.9rem;
+}
+
+.scope-tree-children > .scope-tree-node::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: -0.9rem;
+    top: 1.1rem;
+    width: 0.9rem;
+    border-top: 2px solid #e2e8f0;
+}
+
+.scope-tree-card {
+    border: 1px solid #e4e8f0;
+    border-radius: 0.85rem;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    padding: 0.75rem 0.95rem;
+    box-shadow: 0 8px 18px rgba(80, 10, 25, 0.06);
+}
+
+.scope-tree-title {
+    margin: 0;
+    color: #7f0f2d;
+    font-weight: 800;
+}
+
+.scope-tree-desc {
+    margin: 0.45rem 0 0;
+    color: #475569;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.scope-tree-sub {
+    margin: 0.42rem 0 0;
+    color: #64748b;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+}
