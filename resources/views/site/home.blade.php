@@ -28,43 +28,7 @@
 
     <section class="mx-auto mt-16 max-w-6xl px-4">
         <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.scopes_title') }}</h2>
-        @php
-            $scopeHierarchy = $scopeHierarchy ?? [];
-            $scopeDescriptions = $scopeDescriptions ?? [];
-            $childrenByParent = [];
-            $roots = [];
-
-            foreach ($scopes as $slug => $label) {
-                $parent = $scopeHierarchy[$slug] ?? null;
-
-                if ($parent && isset($scopes[$parent])) {
-                    $childrenByParent[$parent][] = $slug;
-                } else {
-                    $roots[] = $slug;
-                }
-            }
-
-            usort($roots, fn ($a, $b) => strcmp((string) $scopes[$a], (string) $scopes[$b]));
-
-            foreach ($childrenByParent as $parent => $children) {
-                usort($children, fn ($a, $b) => strcmp((string) $scopes[$a], (string) $scopes[$b]));
-                $childrenByParent[$parent] = $children;
-            }
-        @endphp
-
-        <div class="site-card scope-tree-wrap mt-6 p-6">
-            <ul class="scope-tree">
-                @foreach($roots as $root)
-                    @include('site.partials.scope-tree-node', [
-                        'scopeSlug' => $root,
-                        'scopes' => $scopes,
-                        'scopeDescriptions' => $scopeDescriptions,
-                        'scopeLogos' => $scopeLogos,
-                        'childrenByParent' => $childrenByParent,
-                    ])
-                @endforeach
-            </ul>
-        </div>
+        @include('site.partials.scope-tree')
     </section>
 
     <section class="mx-auto mt-16 max-w-6xl px-4">

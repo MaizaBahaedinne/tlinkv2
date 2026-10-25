@@ -43,13 +43,7 @@ class SiteController extends Controller
             'stats' => $this->stats(),
             'news' => $news,
             'events' => $events,
-            'scopes' => OrgScopes::all(),
-            'scopeHierarchy' => OrgScopes::hierarchy(),
-            'scopeDescriptions' => OrgScopes::descriptions(),
-            'scopeLogos' => collect(OrgScopes::logos())
-                ->filter(fn (string $path) => Storage::disk('public')->exists($path))
-                ->map(fn (string $path) => Storage::disk('public')->url($path))
-                ->all(),
+            ...$this->scopeTreeData(),
         ]);
     }
 
@@ -57,9 +51,25 @@ class SiteController extends Controller
     {
         return $this->render('site.about', [
             'stats' => $this->stats(),
-            'scopes' => OrgScopes::all(),
             'groups' => PublicOrgChart::teamByScope(),
+            ...$this->scopeTreeData(),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function scopeTreeData(): array
+    {
+        return [
+            'scopes' => OrgScopes::all(),
+            'scopeHierarchy' => OrgScopes::hierarchy(),
+            'scopeDescriptions' => OrgScopes::descriptions(),
+            'scopeLogos' => collect(OrgScopes::logos())
+                ->filter(fn (string $path) => Storage::disk('public')->exists($path))
+                ->map(fn (string $path) => Storage::disk('public')->url($path))
+                ->all(),
+        ];
     }
 
     public function news(Request $request): View

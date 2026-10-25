@@ -31,14 +31,7 @@
 
     <section class="mx-auto mt-12 max-w-6xl px-4">
         <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.scopes_title') }}</h2>
-        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            @foreach($scopes as $slug => $label)
-                <div class="site-card p-5">
-                    <h3 class="font-display text-lg font-bold text-brand-800">{{ __('site.scopes.'.$slug.'.name') }}</h3>
-                    <p class="mt-2 text-sm text-slate-600">{{ __('site.scopes.'.$slug.'.text') }}</p>
-                </div>
-            @endforeach
-        </div>
+        @include('site.partials.scope-tree')
     </section>
 
     <section id="equipe" class="mx-auto mt-14 max-w-6xl scroll-mt-24 px-4" aria-labelledby="equipe-title">
