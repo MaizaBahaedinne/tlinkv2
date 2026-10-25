@@ -51,27 +51,32 @@
                                 <x-admin.select name="parent_id" label="Rattaché à" :options="$parentOptions" :value="$node->parent_id" :required="true" :placeholder="null" />
                             @endif
 
-                            <x-admin.select name="scope" label="Périmètre" :options="$scopes" :value="$node->scope" placeholder="Hérité du bloc parent"
-                                :hint="$effectiveScope ? 'Périmètre effectif : '.\App\Support\OrgScopes::label($effectiveScope).($scopeInherited ? ' (hérité)' : '').'.' : 'Aucun périmètre : un poste sans périmètre ne donne aucun droit (sauf administrateur global).'" />
+                            <x-admin.select name="scope" label="Périmètre sur lequel ce poste agit" :options="$scopes" :value="$node->scope" placeholder="Hérité du bloc parent"
+                                :hint="$effectiveScope ? 'Périmètre effectif : '.\App\Support\OrgScopes::label($effectiveScope).($scopeInherited ? ' (hérité)' : '').'.' : 'Aucun périmètre : un poste sans périmètre ne donne aucun droit (sauf s’il agit sur toute la plateforme).'" />
 
                             @if($isPosition)
                                 <x-admin.select name="capacity" label="Titulaires" :options="$capacities" :value="$node->capacity" :required="true" :placeholder="null" />
                                 <div class="span-2">
+                                    <label>Droits de ce poste sur T.Link</label>
                                     @if($node->role_key)
-                                        <label>Niveau d’accès sur T.Link</label>
-                                        <p style="margin:4px 0 0"><span class="badge badge-{{ \App\Support\AccessLevels::BADGES[$node->access_level][1] ?? 'neutral' }}">{{ $levels[$node->access_level] ?? $node->access_level }}</span></p>
-                                        <p class="hint" style="margin-top:6px">Poste de l’équipe standard des clubs : le niveau est le même dans tous les clubs et se règle dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p>
+                                        <div class="chips" style="margin-top:8px">
+                                            @forelse($nodePermissions as $slug)
+                                                <span class="chip">{{ $permissions[$slug] }}</span>
+                                            @empty
+                                                <span class="text-sm text-muted">Aucun droit d’administration.</span>
+                                            @endforelse
+                                        </div>
+                                        <p class="hint" style="margin-top:6px">Poste de l’équipe standard des clubs : les droits sont les mêmes dans tous les clubs et se règlent dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p>
                                     @else
-                                        <x-admin.select name="access_level" label="Niveau d’accès sur T.Link" :options="$levels" :value="$node->access_level" :required="true" :placeholder="null" />
+                                        <input type="hidden" name="permissions[]" value="">
+                                        <div style="display:grid;gap:8px;margin-top:8px">
+                                            @foreach($permissions as $slug => $label)
+                                                <label class="check"><input type="checkbox" name="permissions[]" value="{{ $slug }}" @checked(in_array($slug, old('permissions', $nodePermissions), true))> {{ $label }}</label>
+                                            @endforeach
+                                            <label class="check"><input type="checkbox" name="scope_all" value="1" @checked(old('scope_all', $nodeEverywhere))> Agit sur toute la plateforme, sans limite de périmètre</label>
+                                        </div>
+                                        <p class="hint" style="margin-top:6px">Les droits s’appliquent à chaque personne qui occupe ce poste, dans le périmètre choisi ci-dessus.</p>
                                     @endif
-                                    <div class="chips" style="margin-top:8px" data-level-perms>
-                                        @forelse($levelPermissions[old('access_level', $node->access_level)] ?? [] as $permission)
-                                            <span class="chip">{{ $permission }}</span>
-                                        @empty
-                                            <span class="text-sm text-muted">Ce niveau ne donne aucun droit d’administration.</span>
-                                        @endforelse
-                                    </div>
-                                    <p class="hint" style="margin-top:6px">Les droits s’appliquent au périmètre du poste, pour chaque personne qui l’occupe.</p>
                                 </div>
                             @endif
                         </div>
@@ -108,14 +113,24 @@
                 @if($children->count())
                     <div class="table-wrap">
                         <table class="tbl">
-                            <thead><tr><th>Bloc</th><th>Type</th><th>Accès</th><th>Titulaires</th><th></th></tr></thead>
+                            <thead><tr><th>Bloc</th><th>Type</th><th>Droits</th><th>Titulaires</th><th></th></tr></thead>
                             <tbody>
                                 @foreach($children as $child)
-                                    @php [$short, $tone] = \App\Support\AccessLevels::BADGES[$child->access_level] ?? \App\Support\AccessLevels::BADGES['none']; @endphp
+                                    @php $childRights = \App\Support\AccessLevels::forPosition((string) $child->access_level, $child->permissions); @endphp
                                     <tr>
                                         <td><a href="{{ route('admin.postes.edit', $child) }}" class="cell-main">{{ $child->title }}</a></td>
                                         <td><span class="chip">{{ \App\Models\OrgNode::KINDS[$child->kind] ?? $child->kind }}</span></td>
-                                        <td>@if($child->kind === 'position')<span class="badge badge-{{ $tone }}">{{ $short }}</span>@else<span class="text-muted">—</span>@endif</td>
+                                        <td>
+                                            @if($child->kind === 'position')
+                                                @forelse($childRights as $slug)
+                                                    <span class="chip">{{ \App\Support\AccessLevels::SHORT[$slug] }}</span>
+                                                @empty
+                                                    <span class="text-muted">Aucun</span>
+                                                @endforelse
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
                                         <td>
                                             @if($child->kind === 'position')
                                                 @forelse($child->assignments as $assignment)
@@ -155,7 +170,7 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="field">
+                            <div class="field span-2">
                                 <label for="add-capacity">Titulaires</label>
                                 <select id="add-capacity" name="capacity">
                                     @foreach($capacities as $id => $name)
@@ -163,15 +178,8 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="field span-2">
-                                <label for="add-access">Niveau d’accès</label>
-                                <select id="add-access" name="access_level">
-                                    @foreach($levels as $id => $name)
-                                        <option value="{{ $id }}" @selected($id === 'none')>{{ $name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
                         </div>
+                        <p class="hint" style="margin-top:8px">Les droits et le périmètre se règlent ensuite sur la fiche du poste.</p>
                         <div style="margin-top:14px"><button type="submit" class="btn btn-secondary"><x-admin.icon name="plus" :size="16" /> Ajouter</button></div>
                     </form>
                 @endif

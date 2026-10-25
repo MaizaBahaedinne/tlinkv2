@@ -4,54 +4,37 @@
 @section('section', 'Organisation')
 
 @section('content')
-    <x-admin.page-header title="Postes et droits" subtitle="Chaque poste est un rôle : son niveau d’accès donne des droits sur T.Link, dans son périmètre.">
+    <x-admin.page-header title="Postes et droits" subtitle="Un poste de l’organigramme est un rôle : cochez ce qu’il peut faire et choisissez le périmètre sur lequel il agit.">
         <x-slot:actions>
+            <a href="{{ route('admin.scopes.edit') }}" class="btn btn-secondary"><x-admin.icon name="layers" :size="16" /> Périmètres</a>
             <a href="{{ route('admin.clubs.index') }}" class="btn btn-secondary"><x-admin.icon name="building" :size="16" /> Clubs</a>
             <a href="{{ route('orgchart.index') }}" class="btn btn-secondary"><x-admin.icon name="network" :size="16" /> Organigramme</a>
         </x-slot:actions>
     </x-admin.page-header>
 
+    @if($errors->any())
+        <div class="alert alert-error" role="alert">
+            <x-admin.icon name="x" />
+            <span>@foreach($errors->all() as $message){{ $message }} @endforeach</span>
+        </div>
+    @endif
+
     <details class="card card-flush" style="margin-bottom:18px">
         <summary class="card-head" style="cursor:pointer">
             <div>
-                <h2>Que donne chaque niveau d’accès ?</h2>
-                <p class="sub">Les droits d’une personne sont ceux des postes qu’elle occupe, limités au périmètre du poste (propre ou hérité).</p>
+                <h2>Comment ça marche ?</h2>
+                <p class="sub">Les droits d’une personne sont ceux des postes qu’elle occupe, limités au périmètre de chaque poste.</p>
             </div>
         </summary>
-        <div class="table-wrap">
-            <table class="tbl">
-                <thead>
-                    <tr>
-                        <th>Niveau</th>
-                        @foreach($permissions as $label)
-                            <th style="text-align:center">{{ $label }}</th>
-                        @endforeach
-                        <th>Portée</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach(\App\Support\AccessLevels::BADGES as $level => [$short, $tone])
-                        <tr>
-                            <td><span class="badge badge-{{ $tone }}">{{ $short }}</span></td>
-                            @foreach($permissions as $slug => $label)
-                                <td style="text-align:center">
-                                    @if(in_array($slug, \App\Support\AccessLevels::permissions($level), true))
-                                        <x-admin.icon name="check" :size="16" />
-                                    @else
-                                        <span class="text-muted">—</span>
-                                    @endif
-                                </td>
-                            @endforeach
-                            <td class="text-sm text-muted">
-                                @if($level === 'none') Aucune
-                                @elseif($level === 'global_admin') Toute la plateforme
-                                @else Périmètre du poste
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        <div class="card-body">
+            <ul style="margin:0;padding-left:18px;display:grid;gap:6px">
+                @foreach($permissions as $slug => $label)
+                    <li><strong>{{ \App\Support\AccessLevels::SHORT[$slug] }}</strong> : {{ $label }}.</li>
+                @endforeach
+                <li><strong>Périmètre</strong> : le poste agit dans ce périmètre et dans ses sous-périmètres. « Hérité » reprend le périmètre du bloc parent. Sans périmètre, un poste ne donne aucun droit.</li>
+                <li><strong>Plateforme entière</strong> : le poste agit partout, sans limite de périmètre (réservé aux administrateurs).</li>
+                <li>Les postes de l’équipe standard des clubs se règlent ensemble dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</li>
+            </ul>
         </div>
     </details>
 
@@ -80,10 +63,10 @@
                         <option value="{{ $id }}" @selected(($filters['scope'] ?? '') === $id)>{{ $name }}</option>
                     @endforeach
                 </select>
-                <select name="access" aria-label="Niveau d'accès">
-                    <option value="">Tous les niveaux</option>
-                    @foreach($levels as $id => $name)
-                        <option value="{{ $id }}" @selected(($filters['access'] ?? '') === $id)>{{ \App\Support\AccessLevels::BADGES[$id][0] }}</option>
+                <select name="permission" aria-label="Droit">
+                    <option value="">Tous les droits</option>
+                    @foreach($permissions as $id => $name)
+                        <option value="{{ $id }}" @selected(($filters['permission'] ?? '') === $id)>{{ \App\Support\AccessLevels::SHORT[$id] }}</option>
                     @endforeach
                 </select>
                 <select name="holder" aria-label="Titulaire">
@@ -96,34 +79,27 @@
             </form>
         </div>
 
-        <form method="post" action="{{ route('admin.postes.access') }}">
-            @csrf
-            @if($canEdit)
-                <div class="toolbar" style="border-bottom:1px solid var(--line)">
-                    <span class="text-sm text-muted">Pour les postes cochés :</span>
-                    <select name="access_level" aria-label="Niveau d'accès à appliquer" required>
-                        <option value="">Choisir un niveau d’accès…</option>
-                        @foreach($levels as $id => $name)
-                            <option value="{{ $id }}">{{ $name }}</option>
-                        @endforeach
-                    </select>
-                    <button class="btn btn-secondary btn-sm" type="submit">Appliquer</button>
-                    @error('nodes')<span class="text-sm" style="color:var(--danger)">{{ $message }}</span>@enderror
-                </div>
-            @endif
+        @if($nodes->count())
+            <form method="post" action="{{ route('admin.postes.permissions') }}">
+                @csrf
 
-            @if($nodes->count())
+                @if($canEdit)
+                    <div class="toolbar" style="border-bottom:1px solid var(--line)">
+                        <span class="text-sm text-muted">Cochez les droits de chaque poste, choisissez son périmètre, puis enregistrez (postes de cette page).</span>
+                        <button class="btn btn-primary btn-sm" type="submit"><x-admin.icon name="check" :size="16" /> Enregistrer</button>
+                    </div>
+                @endif
+
                 <div class="table-wrap">
                     <table class="tbl">
                         <thead>
                             <tr>
-                                @if($canEdit)
-                                    <th style="width:36px"><input type="checkbox" data-check-all aria-label="Tout cocher"></th>
-                                @endif
                                 <th>Poste</th>
-                                <th class="hide-mobile">Type</th>
-                                <th class="hide-mobile">Périmètre</th>
-                                <th>Accès</th>
+                                <th>Périmètre</th>
+                                @foreach($permissions as $slug => $label)
+                                    <th style="text-align:center" title="{{ $label }}">{{ \App\Support\AccessLevels::SHORT[$slug] }}</th>
+                                @endforeach
+                                <th style="text-align:center" title="Agit partout, sans limite de périmètre">Plateforme entière</th>
                                 <th>Titulaires</th>
                                 <th></th>
                             </tr>
@@ -132,43 +108,76 @@
                             @foreach($nodes as $node)
                                 @php
                                     $isPosition = $node->kind === 'position';
+                                    $locked = $isPosition && $node->role_key !== null;
+                                    $editable = $canEdit && $isPosition && ! $locked;
+                                    $rights = $isPosition ? \App\Support\AccessLevels::forPosition((string) $node->access_level, $node->permissions) : [];
+                                    $everywhere = $isPosition && $rights !== [] && \App\Support\AccessLevels::reachesEverywhere((string) $node->access_level, $node->permissions);
                                     $effective = $scopeMap[$node->id] ?? null;
-                                    [$short, $tone] = \App\Support\AccessLevels::BADGES[$node->access_level] ?? \App\Support\AccessLevels::BADGES['none'];
+                                    $inherited = $node->parent_id ? ($scopeMap[$node->parent_id] ?? null) : null;
                                 @endphp
                                 <tr>
-                                    @if($canEdit)
-                                        <td><input type="checkbox" name="nodes[]" value="{{ $node->id }}" data-check-item @disabled(! $isPosition) aria-label="Sélectionner {{ $node->title }}"></td>
-                                    @endif
                                     <td>
                                         <a href="{{ route('admin.postes.edit', $node) }}" class="cell-main">{{ $node->title }}</a>
                                         <div class="cell-sub">
+                                            <span class="chip">{{ $kinds[$node->kind] ?? $node->kind }}</span>
                                             {{ collect([$crumbs[$node->id]['club'] ?? null, $crumbs[$node->id]['parent'] ?? null])->filter()->unique()->implode(' › ') }}
                                         </div>
                                     </td>
-                                    <td class="hide-mobile"><span class="chip">{{ $kinds[$node->kind] ?? $node->kind }}</span></td>
-                                    <td class="hide-mobile text-sm">
-                                        {{ \App\Support\OrgScopes::label($effective) ?: '—' }}
-                                        @if($effective && $node->scope === null)<span class="text-muted">(hérité)</span>@endif
-                                    </td>
-                                    <td>
-                                        @if($isPosition)
-                                            <span class="badge badge-{{ $tone }}">{{ $short }}</span>
-                                        @else
-                                            <span class="text-muted">—</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($isPosition)
+
+                                    @if(! $isPosition)
+                                        <td class="text-sm">{{ \App\Support\OrgScopes::label($effective) ?: '—' }}</td>
+                                        <td colspan="{{ count($permissions) + 1 }}" class="text-sm text-muted">Seuls les postes portent des droits.</td>
+                                        <td><span class="text-muted">—</span></td>
+                                    @else
+                                        <td>
+                                            @if($editable)
+                                                <select name="rows[{{ $node->id }}][scope]" aria-label="Périmètre de {{ $node->title }}" style="min-width:150px">
+                                                    <option value="">Hérité{{ $inherited ? ' : '.\App\Support\OrgScopes::label($inherited) : ' (aucun)' }}</option>
+                                                    @foreach($scopes as $id => $name)
+                                                        <option value="{{ $id }}" @selected($node->scope === $id)>{{ $name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            @else
+                                                <span class="text-sm">{{ \App\Support\OrgScopes::label($effective) ?: '—' }}</span>
+                                                @if($effective && $node->scope === null)<span class="text-muted text-sm">(hérité)</span>@endif
+                                            @endif
+                                        </td>
+
+                                        @foreach($permissions as $slug => $label)
+                                            <td style="text-align:center">
+                                                @if($editable)
+                                                    <input type="checkbox" name="rows[{{ $node->id }}][permissions][]" value="{{ $slug }}" @checked(in_array($slug, $rights, true)) aria-label="{{ $label }} : {{ $node->title }}">
+                                                @elseif(in_array($slug, $rights, true))
+                                                    <x-admin.icon name="check" :size="16" />
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                        @endforeach
+
+                                        <td style="text-align:center">
+                                            @if($editable)
+                                                <input type="checkbox" name="rows[{{ $node->id }}][scope_all]" value="1" @checked($everywhere) aria-label="Plateforme entière : {{ $node->title }}">
+                                            @elseif($everywhere)
+                                                <x-admin.icon name="check" :size="16" />
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+
+                                        <td>
                                             @forelse($node->assignments as $assignment)
                                                 <span class="chip">{{ $assignment->person?->displayName() }}</span>
                                             @empty
                                                 <span class="badge badge-warning">Vacant</span>
                                             @endforelse
-                                        @else
-                                            <span class="text-muted">—</span>
-                                        @endif
-                                    </td>
+                                        </td>
+                                    @endif
+
                                     <td class="cell-actions">
+                                        @if($locked)
+                                            <a href="{{ route('admin.roles.index') }}" class="btn btn-ghost btn-sm" title="Droits communs à tous les clubs">Droits des clubs</a>
+                                        @endif
                                         <a href="{{ route('admin.postes.edit', $node) }}" class="btn btn-secondary btn-sm">{{ $canEdit ? 'Modifier' : 'Voir' }}</a>
                                     </td>
                                 </tr>
@@ -176,10 +185,10 @@
                         </tbody>
                     </table>
                 </div>
-                {{ $nodes->links('admin.partials.pagination') }}
-            @else
-                <x-admin.empty icon="key" title="Aucun bloc" text="Aucun bloc ne correspond à ces critères." />
-            @endif
-        </form>
+            </form>
+            {{ $nodes->links('admin.partials.pagination') }}
+        @else
+            <x-admin.empty icon="key" title="Aucun bloc" text="Aucun bloc ne correspond à ces critères." />
+        @endif
     </article>
 @endsection

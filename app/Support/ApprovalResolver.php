@@ -10,7 +10,7 @@ class ApprovalResolver
      */
     public static function resolveMembershipReviewer(string $scope, int $requesterId): ?int
     {
-        foreach (['entity_admin', 'global_admin'] as $level) {
+        foreach (['entity_admin', 'custom', 'global_admin'] as $level) {
             $ids = OrgAccess::userIdsWith('approval.review', $scope, $requesterId, $level);
 
             if ($ids !== []) {

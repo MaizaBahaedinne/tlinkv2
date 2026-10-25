@@ -132,7 +132,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             // Structure : tableaux et fiches (postes, droits, titulaires, clubs)
             Route::get('structure/postes', [Admin\StructureController::class, 'index'])->name('postes.index');
             Route::post('structure/postes', [Admin\StructureController::class, 'store'])->name('postes.store');
-            Route::post('structure/postes/acces', [Admin\StructureController::class, 'bulkAccess'])->name('postes.access');
+            Route::post('structure/postes/droits', [Admin\StructureController::class, 'savePermissions'])->name('postes.permissions');
             Route::get('structure/postes/{node}/modifier', [Admin\StructureController::class, 'edit'])->name('postes.edit');
             Route::put('structure/postes/{node}', [Admin\StructureController::class, 'update'])->name('postes.update');
             Route::delete('structure/postes/{node}', [Admin\StructureController::class, 'destroy'])->name('postes.destroy');

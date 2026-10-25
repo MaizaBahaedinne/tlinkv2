@@ -53,7 +53,7 @@ class StructureController extends AdminController
             'q' => ['nullable', 'string', 'max:100'],
             'kind' => ['nullable', Rule::in(array_keys(OrgNode::KINDS))],
             'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
-            'access' => ['nullable', Rule::in(array_keys(AccessLevels::LEVELS))],
+            'permission' => ['nullable', Rule::in(array_keys(AccessLevels::PERMISSIONS))],
             'category' => ['nullable', Rule::in(array_keys(OrgNode::CATEGORIES))],
             'holder' => ['nullable', Rule::in(['vacant', 'filled'])],
         ]);
@@ -70,7 +70,11 @@ class StructureController extends AdminController
             ->with(['assignments' => fn ($query) => $query->where($current)->with('person.user:id,name')])
             ->when($filters['kind'] ?? null, fn ($query, $kind) => $query->where('kind', $kind))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
-            ->when($filters['access'] ?? null, fn ($query, $level) => $query->where('kind', 'position')->where('access_level', $level))
+            ->when($filters['permission'] ?? null, function ($query, $permission): void {
+                $query->where('kind', 'position')->where(fn ($inner) => $inner
+                    ->whereIn('access_level', AccessLevels::levelsGranting($permission))
+                    ->orWhere(fn ($custom) => $custom->where('access_level', AccessLevels::CUSTOM)->whereJsonContains('permissions', $permission)));
+            })
             ->when($filters['scope'] ?? null, function ($query, $scope) use ($scopeMap): void {
                 $query->whereIn('id', array_keys(array_filter($scopeMap, fn (?string $effective): bool => $effective === $scope)));
             })
@@ -98,7 +102,6 @@ class StructureController extends AdminController
             'nodes' => $nodes,
             'filters' => $filters,
             'canEdit' => $this->canEdit($request),
-            'levels' => AccessLevels::LEVELS,
             'permissions' => AccessLevels::PERMISSIONS,
             'scopes' => OrgScopes::all(),
             'kinds' => OrgNode::KINDS,
@@ -111,24 +114,61 @@ class StructureController extends AdminController
         ]);
     }
 
-    public function bulkAccess(Request $request): RedirectResponse
+    public function savePermissions(Request $request): RedirectResponse
     {
         $this->requireEditor($request);
 
         $data = $request->validate([
-            'nodes' => ['required', 'array', 'min:1', 'max:200'],
-            'nodes.*' => ['integer', 'exists:org_nodes,id'],
-            'access_level' => ['required', Rule::in(array_keys(AccessLevels::LEVELS))],
-        ], ['nodes.required' => 'Cochez au moins un poste.']);
+            'rows' => ['required', 'array', 'min:1', 'max:100'],
+            'rows.*.permissions' => ['nullable', 'array'],
+            'rows.*.permissions.*' => [Rule::in(array_keys(AccessLevels::PERMISSIONS))],
+            'rows.*.scope_all' => ['nullable', 'boolean'],
+            'rows.*.scope' => ['nullable', Rule::in(OrgScopes::slugs())],
+        ]);
 
-        // Les postes d'une equipe type de club prennent le niveau de leur role (ecran « Roles des clubs »).
-        $count = $this->keepingAdminAccess($request, fn (): int => OrgNode::query()
-            ->whereIn('id', $data['nodes'])->where('kind', 'position')->whereNull('role_key')
-            ->update(['access_level' => $data['access_level']]));
+        // Les postes d'une equipe type de club prennent leurs droits de leur role (ecran « Droits des clubs »).
+        $nodes = OrgNode::query()->whereIn('id', array_keys($data['rows']))->where('kind', 'position')->whereNull('role_key')->get();
 
-        AuditLogger::record($request->user()->id, 'orgchart.access.bulk_updated', null, null, ['level' => $data['access_level'], 'positions' => $count], $request->ip());
+        $changed = $this->keepingAdminAccess($request, function () use ($nodes, $data): int {
+            $count = 0;
 
-        return back()->with('status', $count.' poste(s) : niveau d’accès « '.AccessLevels::LEVELS[$data['access_level']].' ».');
+            foreach ($nodes as $node) {
+                $row = $data['rows'][$node->id];
+                $everywhere = (bool) ($row['scope_all'] ?? false);
+                $scope = ($row['scope'] ?? '') !== '' ? $row['scope'] : null;
+                [$level, $stored] = AccessLevels::fromChecked($row['permissions'] ?? [], $everywhere);
+
+                $currentLevel = (string) $node->access_level;
+                $currentRights = AccessLevels::forPosition($currentLevel, $node->permissions);
+                $newRights = AccessLevels::forPosition($level, $stored);
+
+                sort($currentRights);
+                sort($newRights);
+
+                // Droits inchanges : on ne touche pas au niveau predefini du poste (ni a son historique).
+                $sameRights = $currentRights === $newRights
+                    && ($newRights === [] || AccessLevels::reachesEverywhere($currentLevel, $node->permissions) === AccessLevels::reachesEverywhere($level, $stored));
+
+                if ($sameRights && $node->scope === $scope) {
+                    continue;
+                }
+
+                $attributes = ['scope' => $scope];
+
+                if (! $sameRights) {
+                    $attributes += ['access_level' => $level, 'permissions' => $stored];
+                }
+
+                $node->update($attributes);
+                $count++;
+            }
+
+            return $count;
+        });
+
+        AuditLogger::record($request->user()->id, 'orgchart.access.bulk_updated', null, null, ['positions' => $changed], $request->ip());
+
+        return back()->with('status', $changed === 0 ? 'Aucun changement.' : $changed.' poste(s) mis à jour.');
     }
 
     /* ------------------------------------------------------------------ Tableau des clubs */
@@ -434,10 +474,9 @@ class StructureController extends AdminController
             'effectiveScope' => $effectiveScope,
             'scopeInherited' => $node->scope === null && $effectiveScope !== null,
             'levels' => AccessLevels::LEVELS,
-            'levelPermissions' => collect(AccessLevels::LEVELS)->map(fn ($label, $level): array => array_map(
-                fn (string $permission): string => AccessLevels::PERMISSIONS[$permission],
-                AccessLevels::permissions($level)
-            ))->all(),
+            'permissions' => AccessLevels::PERMISSIONS,
+            'nodePermissions' => AccessLevels::forPosition((string) $node->access_level, $node->permissions),
+            'nodeEverywhere' => AccessLevels::reachesEverywhere((string) $node->access_level, $node->permissions),
             'scopes' => OrgScopes::all(),
             'kinds' => array_intersect_key(OrgNode::KINDS, array_flip(OrgNode::MANUAL_KINDS)),
             'capacities' => OrgNode::CAPACITIES,
@@ -459,7 +498,9 @@ class StructureController extends AdminController
             'kind' => ['nullable', Rule::in(OrgNode::MANUAL_KINDS)],
             'parent_id' => ['nullable', 'integer', 'exists:org_nodes,id'],
             'capacity' => ['nullable', Rule::in(array_keys(OrgNode::CAPACITIES))],
-            'access_level' => ['nullable', Rule::in(array_keys(AccessLevels::LEVELS))],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['nullable', Rule::in(array_keys(AccessLevels::PERMISSIONS))],
+            'scope_all' => ['nullable', 'boolean'],
             'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
             'status' => ['nullable', Rule::in(array_keys(OrgNode::CLUB_STATUSES))],
             'email' => ['nullable', 'email', 'max:255'],
@@ -481,8 +522,14 @@ class StructureController extends AdminController
 
         if ($kind === 'position') {
             $attributes['capacity'] = $data['capacity'] ?? $node->capacity ?? 'single';
-            // Poste d'une equipe type de club : le niveau vient du role, pas de la fiche.
-            $attributes['access_level'] = $node->role_key !== null ? $node->access_level : ($data['access_level'] ?? $node->access_level);
+
+            // Poste d'une equipe type de club : les droits viennent du role, pas de la fiche.
+            if ($node->role_key === null && $request->has('permissions')) {
+                [$attributes['access_level'], $attributes['permissions']] = AccessLevels::fromChecked(
+                    array_filter((array) ($data['permissions'] ?? [])),
+                    $request->boolean('scope_all'),
+                );
+            }
         } else {
             $attributes['capacity'] = 'single';
             $attributes['access_level'] = 'none';

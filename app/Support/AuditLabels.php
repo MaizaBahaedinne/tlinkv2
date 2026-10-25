@@ -58,7 +58,7 @@ class AuditLabels
         'orgchart.club_roles.updated' => 'Organigramme : droits des rôles de club modifiés',
         'orgchart.club.status_bulk' => 'Organigramme : statut de plusieurs clubs modifié',
         'orgchart.club.aligned' => 'Organigramme : clubs alignés sur l’équipe type',
-        'orgchart.access.bulk_updated' => 'Organigramme : niveau d’accès de plusieurs postes modifié',
+        'orgchart.access.bulk_updated' => 'Organigramme : droits et périmètre de plusieurs postes modifiés',
         'orgchart.assignments.updated' => 'Organigramme : affectations modifiées',
         'orgchart.person.created' => 'Organigramme : personne ajoutée',
         'orgchart.person.updated' => 'Organigramme : personne modifiée',

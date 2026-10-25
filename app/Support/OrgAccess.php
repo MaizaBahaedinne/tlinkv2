@@ -104,7 +104,7 @@ class OrgAccess
         return OrgAssignment::query()
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
             ->whereHas('node', fn ($query) => $query->where('kind', 'position')->where('access_level', '!=', AccessLevels::NONE))
-            ->with('node:id,parent_id,access_level,scope');
+            ->with('node:id,parent_id,access_level,permissions,scope');
     }
 
     /**
@@ -124,13 +124,14 @@ class OrgAccess
         foreach ($assignments as $assignment) {
             $node = $assignment->node;
             $level = (string) $node?->access_level;
-            $permissions = AccessLevels::permissions($level);
+            $custom = $node?->permissions;
+            $permissions = AccessLevels::forPosition($level, $custom);
 
             if ($permissions === []) {
                 continue;
             }
 
-            if (AccessLevels::isGlobal($level)) {
+            if (AccessLevels::reachesEverywhere($level, $custom)) {
                 $scope = null;
             } else {
                 $parents ??= OrgNode::query()->pluck('parent_id', 'id')->all();

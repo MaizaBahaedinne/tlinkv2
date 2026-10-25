@@ -47,6 +47,7 @@ class OrgNode extends Model
         'kind',
         'capacity',
         'access_level',
+        'permissions',
         'category',
         'title',
         'subtitle',
@@ -73,6 +74,7 @@ class OrgNode extends Model
     ];
 
     protected $casts = [
+        'permissions' => 'array',
         'is_collapsed' => 'boolean',
         'charter_signed' => 'boolean',
         'founded_on' => 'date',
@@ -80,6 +82,16 @@ class OrgNode extends Model
         'pos_dy' => 'integer',
         'sort_order' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        // Les droits coches n'ont de sens que pour le niveau « personnalise » : on ne garde pas de restes.
+        static::saving(function (self $node): void {
+            if ($node->isDirty('access_level') && $node->access_level !== 'custom') {
+                $node->permissions = null;
+            }
+        });
+    }
 
     public function parent(): BelongsTo
     {
