@@ -36,6 +36,10 @@ type RootData = {
     user?: { id: number; name: string; email: string };
   };
   feed: FeedPost[];
+  composer: {
+    can_publish_public: boolean;
+    allowed_visibilities: string[];
+  };
   entities: Array<{ id: number | string; name: string; slug: string }>;
   governorates: Array<{ id: number; name: string; slug: string }>;
   csrf: string;
@@ -44,6 +48,7 @@ type RootData = {
 const data = (window.__TLINK__ ?? {
   auth: { isAuthenticated: false },
   feed: [],
+  composer: { can_publish_public: false, allowed_visibilities: ['authenticated', 'entity', 'department', 'club', 'restricted'] },
   entities: [],
   governorates: [],
   csrf: '',
@@ -81,7 +86,7 @@ const reactionLabels: Record<string, string> = {
   celebrate: 'Bravo',
 };
 
-const visibilityChoices = [
+const allVisibilityChoices = [
   { value: 'public', icon: 'fa-earth-africa', title: 'Public' },
   { value: 'authenticated', icon: 'fa-user-group', title: 'Communaute' },
   { value: 'entity', icon: 'fa-building', title: 'Entite' },
@@ -89,6 +94,11 @@ const visibilityChoices = [
   { value: 'club', icon: 'fa-people-group', title: 'Club' },
   { value: 'restricted', icon: 'fa-lock', title: 'Restreint' },
 ];
+
+const visibilityChoices = computed(() => {
+  const allowed = new Set(data.composer?.allowed_visibilities ?? []);
+  return allVisibilityChoices.filter((item) => allowed.has(item.value));
+});
 
 const sentimentChoices = [
   { value: 'neutral', icon: 'fa-face-meh', title: 'Neutre' },
@@ -124,7 +134,7 @@ function iconForReaction(type: string): string {
 }
 
 function iconForVisibility(value: string): string {
-  return visibilityChoices.find((item) => item.value === value)?.icon ?? 'fa-user-group';
+  return allVisibilityChoices.find((item) => item.value === value)?.icon ?? 'fa-user-group';
 }
 
 function iconForSentiment(value: string): string {
@@ -160,6 +170,10 @@ function formatCommentAt(value: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
+  form.visibility = visibilityChoices.value[0]?.value ?? 'authenticated';
 }
 </script>
 

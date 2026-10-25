@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Governorate;
 use App\Support\OrgScopes;
+use App\Support\AccessScope;
 use App\Models\Post;
 use App\Models\PostAttachment;
 use App\Models\PostReaction;
@@ -19,9 +20,15 @@ use Illuminate\View\View;
 
 class FeedController extends Controller
 {
+    private const VISIBILITIES = ['public', 'authenticated', 'entity', 'department', 'club', 'restricted'];
+
     public function index(Request $request): View
     {
         $currentUserId = $request->user()?->id;
+        $canPublishPublic = AccessScope::can($request->user(), 'post.publish_public');
+        $allowedVisibilities = $canPublishPublic
+            ? self::VISIBILITIES
+            : array_values(array_filter(self::VISIBILITIES, fn (string $v): bool => $v !== 'public'));
 
         $posts = Post::query()
             ->with([
@@ -120,6 +127,10 @@ class FeedController extends Controller
             'posts' => $posts,
             'feedPayload' => $feedPayload,
             'user' => $request->user(),
+            'composerCapabilities' => [
+                'can_publish_public' => $canPublishPublic,
+                'allowed_visibilities' => $allowedVisibilities,
+            ],
             'entities' => collect(OrgScopes::ALL)->map(fn (string $name, string $slug): array => ['id' => $slug, 'name' => $name, 'slug' => $slug])->values(),
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
@@ -127,9 +138,14 @@ class FeedController extends Controller
 
     public function storePost(Request $request): RedirectResponse
     {
+        $canPublishPublic = AccessScope::can($request->user(), 'post.publish_public');
+        $allowedVisibilities = $canPublishPublic
+            ? self::VISIBILITIES
+            : array_values(array_filter(self::VISIBILITIES, fn (string $v): bool => $v !== 'public'));
+
         $data = $request->validate([
             'content' => ['required', 'string', 'max:3000'],
-            'visibility' => ['required', 'in:public,authenticated,entity,department,club,restricted'],
+            'visibility' => ['required', Rule::in($allowedVisibilities)],
             'sentiment' => ['nullable', 'in:positive,neutral,negative,inspired,grateful'],
             'photos' => ['nullable', 'array', 'max:4'],
             'photos.*' => ['file', 'image', 'max:5120'],

@@ -37,14 +37,15 @@ final class AccessLevels
         'membership.manage' => 'Gérer les adhésions',
         'approval.review' => 'Valider ou rejeter les demandes',
         'post.moderate' => 'Modérer les publications',
+        'post.publish_public' => 'Publier des contenus visibles publiquement',
         'event.manage' => 'Créer et administrer les événements',
     ];
 
     private const LEVEL_PERMISSIONS = [
-        'global_admin' => ['entity.manage', 'membership.manage', 'approval.review', 'post.moderate', 'event.manage'],
-        'entity_admin' => ['entity.manage', 'membership.manage', 'approval.review', 'post.moderate', 'event.manage'],
-        'manager' => ['membership.manage', 'approval.review', 'post.moderate', 'event.manage'],
-        'club_president' => ['membership.manage', 'approval.review', 'event.manage'],
+        'global_admin' => ['entity.manage', 'membership.manage', 'approval.review', 'post.moderate', 'post.publish_public', 'event.manage'],
+        'entity_admin' => ['entity.manage', 'membership.manage', 'approval.review', 'post.moderate', 'post.publish_public', 'event.manage'],
+        'manager' => ['membership.manage', 'approval.review', 'post.moderate', 'post.publish_public', 'event.manage'],
+        'club_president' => ['membership.manage', 'approval.review', 'post.publish_public', 'event.manage'],
         'moderator' => ['post.moderate'],
     ];
 

@@ -9,6 +9,7 @@ use App\Models\PostAttachment;
 use App\Models\PostReaction;
 use App\Models\PostShare;
 use App\Models\PostView;
+use App\Support\AccessScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class FeedController extends Controller
 {
+    private const VISIBILITIES = ['public', 'authenticated', 'entity', 'department', 'club', 'restricted'];
+
     public function index(Request $request): JsonResponse
     {
         $posts = Post::query()
@@ -45,9 +48,14 @@ class FeedController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $canPublishPublic = AccessScope::can($request->user(), 'post.publish_public');
+        $allowedVisibilities = $canPublishPublic
+            ? self::VISIBILITIES
+            : array_values(array_filter(self::VISIBILITIES, fn (string $v): bool => $v !== 'public'));
+
         $data = $request->validate([
             'content' => ['required', 'string', 'max:3000'],
-            'visibility' => ['required', 'in:public,authenticated,entity,department,club,restricted'],
+            'visibility' => ['required', Rule::in($allowedVisibilities)],
             'type' => ['required', 'in:text,image,link,announcement,project_update,activity_report,event_announcement'],
             'sentiment' => ['nullable', 'in:positive,neutral,negative,inspired,grateful'],
             'photos' => ['nullable', 'array', 'max:4'],
