@@ -51,7 +51,7 @@
             <a href="{{ route('site.home') }}" class="flex items-center gap-3" aria-label="{{ __('site.name') }}">
                 <picture>
                     <source srcset="{{ asset('logoFondation.webp') }}" type="image/webp">
-                    <img src="{{ asset('logoFondation.png') }}" alt="{{ __('site.name') }}" class="h-14 w-auto sm:h-16" loading="eager" decoding="async">
+                    <img src="{{ asset('logoFondation.png') }}" alt="{{ __('site.name') }}" class="h-11 w-auto sm:h-12" loading="eager" decoding="async">
                 </picture>
             </a>
 
@@ -66,7 +66,6 @@
             <div class="flex items-center gap-2">
                 <details class="relative" id="lang-switcher">
                     <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" aria-label="{{ __('site.language') }}">
-                        <span aria-hidden="true">🌐</span>
                         <span>{{ strtoupper($locale) }}</span>
                         <span aria-hidden="true" class="text-xs">▾</span>
                     </summary>
@@ -122,20 +121,29 @@
             </div>
             <div>
                 <p class="text-sm font-bold uppercase tracking-wide text-white">{{ __('site.contact.follow') }}</p>
-                <ul class="mt-3 grid gap-1 text-sm">
-                    @foreach(['facebook_url' => 'Facebook', 'instagram_url' => 'Instagram', 'linkedin_url' => 'LinkedIn', 'youtube_url' => 'YouTube'] as $key => $label)
+                <ul class="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                    @foreach([
+                        'facebook_url' => ['label' => 'Facebook', 'svg' => 'M13.5 8H16V5h-2.5C11.6 5 10 6.6 10 8.5V11H8v3h2v6h3v-6h2.3l.7-3H13v-2.5c0-.3.2-.5.5-.5Z'],
+                        'instagram_url' => ['label' => 'Instagram', 'svg' => 'M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 1 0 12 8.8Zm0 5.2A2 2 0 1 1 12 10A2 2 0 1 1 12 14Zm4.2-5.3a.75.75 0 1 0 0-1.5a.75.75 0 1 0 0 1.5ZM12 4.8c2.3 0 2.6 0 3.5.1.8 0 1.2.2 1.5.3.4.2.6.3.9.6.3.3.4.5.6.9.1.3.3.7.3 1.5.1.9.1 1.2.1 3.5s0 2.6-.1 3.5c0 .8-.2 1.2-.3 1.5-.2.4-.3.6-.6.9-.3.3-.5.4-.9.6-.3.1-.7.3-1.5.3-.9.1-1.2.1-3.5.1s-2.6 0-3.5-.1c-.8 0-1.2-.2-1.5-.3-.4-.2-.6-.3-.9-.6-.3-.3-.4-.5-.6-.9-.1-.3-.3-.7-.3-1.5-.1-.9-.1-1.2-.1-3.5s0-2.6.1-3.5c0-.8.2-1.2.3-1.5.2-.4.3-.6.6-.9.3-.3.5-.4.9-.6.3-.1.7-.3 1.5-.3.9-.1 1.2-.1 3.5-.1Zm0-1.8c-2.4 0-2.8 0-3.6.1-1 .1-1.7.2-2.3.4-.6.2-1.2.5-1.8 1.1-.6.6-.9 1.1-1.1 1.8-.2.6-.3 1.3-.4 2.3C3 9.2 3 9.6 3 12s0 2.8.1 3.6c.1 1 .2 1.7.4 2.3.2.6.5 1.2 1.1 1.8.6.6 1.1.9 1.8 1.1.6.2 1.3.3 2.3.4.8.1 1.2.1 3.6.1s2.8 0 3.6-.1c1-.1 1.7-.2 2.3-.4.6-.2 1.2-.5 1.8-1.1.6-.6.9-1.1 1.1-1.8.2-.6.3-1.3.4-2.3.1-.8.1-1.2.1-3.6s0-2.8-.1-3.6c-.1-1-.2-1.7-.4-2.3-.2-.6-.5-1.2-1.1-1.8-.6-.6-1.1-.9-1.8-1.1-.6-.2-1.3-.3-2.3-.4-.8-.1-1.2-.1-3.6-.1Z'],
+                        'linkedin_url' => ['label' => 'LinkedIn', 'svg' => 'M6.5 8.5H3.8V20h2.7V8.5Zm-1.3-4A1.6 1.6 0 1 0 5.2 7.7A1.6 1.6 0 1 0 5.2 4.5ZM20 13.4c0-3.1-1.7-4.6-4-4.6-1.8 0-2.6 1-3.1 1.7v-2H10.2c0 .8 0 11.5 0 11.5h2.7v-6.4c0-.3 0-.7.1-.9.2-.7.8-1.5 1.8-1.5 1.3 0 1.9 1 1.9 2.5V20H20v-6.6Z'],
+                        'youtube_url' => ['label' => 'YouTube', 'svg' => 'M21.6 8.2a2.8 2.8 0 0 0-2-2c-1.8-.5-7.6-.5-7.6-.5s-5.8 0-7.6.5a2.8 2.8 0 0 0-2 2c-.5 1.8-.5 3.8-.5 3.8s0 2 .5 3.8a2.8 2.8 0 0 0 2 2c1.8.5 7.6.5 7.6.5s5.8 0 7.6-.5a2.8 2.8 0 0 0 2-2c.5-1.8.5-3.8.5-3.8s0-2-.5-3.8ZM10.2 15.8V8.2l6 3.8-6 3.8Z'],
+                    ] as $key => $social)
                         @if($url = $site->link($key))
-                            <li><a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="hover:text-white">{{ $label }}</a></li>
+                            <li>
+                                <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 text-slate-300 transition hover:border-white hover:text-white" aria-label="{{ $social['label'] }}" title="{{ $social['label'] }}">
+                                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="{{ $social['svg'] }}"/></svg>
+                                </a>
+                            </li>
                         @endif
                     @endforeach
                     @if($email = $site->get('contact_email'))
-                        <li><a href="mailto:{{ $email }}" class="hover:text-white">{{ $email }}</a></li>
+                        <li><a href="mailto:{{ $email }}" class="text-xs hover:text-white">{{ $email }}</a></li>
                     @endif
                 </ul>
             </div>
         </div>
         <div class="border-t border-white/10 px-4 py-4 text-center text-xs">
-            © {{ now()->year }} {{ __('site.name') }}. {{ __('site.footer.rights') }} · {{ __('site.footer.powered') }}
+            © {{ now()->year }} Fondation Tunivisions. Tous droits réservés. · Propulsé par Persomy.com
         </div>
     </footer>
     <script>

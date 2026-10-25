@@ -62,7 +62,7 @@ html {
     background-repeat: no-repeat;
     opacity: 1;
     transform: scale(1.06);
-    animation: heroCarousel 18s linear infinite;
+    animation: heroCarousel 18s steps(1, end) infinite;
 }
 
 .hero-slide-1 { animation-delay: 0s; }
@@ -115,11 +115,11 @@ html {
         opacity: 1;
         transform: scale(1.06);
     }
-    30% {
+    33.333% {
         opacity: 1;
         transform: scale(1.02);
     }
-    33% {
+    33.334% {
         opacity: 0;
         transform: scale(1.01);
     }
