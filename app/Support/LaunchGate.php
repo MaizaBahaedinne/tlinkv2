@@ -21,8 +21,8 @@ class LaunchGate
 
     public const DEFAULT_MESSAGE = 'T.Link, la plateforme de la Fondation Tunivisions, ouvre bientôt ses portes. Rendez-vous à l’ouverture.';
 
-    /** Chemins restant accessibles pendant la fermeture : connexion des administrateurs et santé du serveur. */
-    private const OPEN_PATHS = ['up', 'connexion', 'deconnexion', 'auth/*', 'impersonation/quitter', 'api/v1/auth/login', 'api/v1/auth/logout', 'api/v1/auth/me'];
+    /** Chemins restant accessibles pendant la fermeture : connexion, liens de candidature aux postes et santé du serveur. */
+    private const OPEN_PATHS = ['up', 'connexion', 'deconnexion', 'auth/*', 'rejoindre/*', 'impersonation/quitter', 'api/v1/auth/login', 'api/v1/auth/logout', 'api/v1/auth/me'];
 
     /**
      * @return array{enabled: bool, launch_at: string, title: string, message: string}

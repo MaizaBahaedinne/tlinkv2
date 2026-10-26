@@ -55,6 +55,28 @@ class LaunchCountdownTest extends TestCase
         $this->get('/connexion')->assertOk();
     }
 
+    public function test_position_join_links_stay_open_while_closed(): void
+    {
+        $this->closeUntil();
+        $position = \App\Models\OrgNode::query()->create([
+            'parent_id' => \App\Models\OrgNode::query()->where('system_key', 'university-office')->value('id'),
+            'relation_type' => 'hierarchy',
+            'kind' => 'position',
+            'capacity' => 'single',
+            'access_level' => 'none',
+            'category' => 'national_office',
+            'title' => 'Responsable communication',
+            'sort_order' => 0,
+        ]);
+
+        $this->get('/rejoindre/'.$position->join_token)->assertOk()->assertSee('Responsable communication');
+
+        $member = User::factory()->create();
+        $this->actingAs($member)->post('/rejoindre/'.$position->join_token, ['message' => 'Motivé.'])
+            ->assertRedirect(route('position.join', $position->join_token));
+        $this->assertDatabaseHas('position_applications', ['node_id' => $position->id, 'user_id' => $member->id]);
+    }
+
     public function test_global_admin_still_sees_the_site_and_admin_area(): void
     {
         $this->closeUntil();

@@ -8,6 +8,7 @@ use App\Models\PositionApplication;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\LaunchGate;
 use App\Support\OrgChart\OrgChartRules;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -130,7 +131,7 @@ class PositionJoinController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('home')->with('status', 'Votre compte est créé et votre candidature au poste « '.$node->title.' » est enregistrée : elle sera examinée par l’équipe.');
+        return $this->afterApplication($node, 'Votre compte est créé et votre candidature au poste « '.$node->title.' » est enregistrée : elle sera examinée par l’équipe.');
     }
 
     private function applyExisting(Request $request, OrgNode $node, User $user): RedirectResponse
@@ -149,7 +150,17 @@ class PositionJoinController extends Controller
 
         $this->createApplication($node, $user, $data['message']);
 
-        return redirect()->route('home')->with('status', 'Votre candidature au poste « '.$node->title.' » est enregistrée : elle sera examinée par l’équipe.');
+        return $this->afterApplication($node, 'Votre candidature au poste « '.$node->title.' » est enregistrée : elle sera examinée par l’équipe.');
+    }
+
+    /**
+     * Pendant le compte à rebours de lancement, le fil T.Link est fermé : on confirme sur la page du poste.
+     */
+    private function afterApplication(OrgNode $node, string $status): RedirectResponse
+    {
+        $target = LaunchGate::isClosed() ? route('position.join', $node->join_token) : route('home');
+
+        return redirect($target)->with('status', $status);
     }
 
     private function createApplication(OrgNode $node, User $user, string $message): PositionApplication
