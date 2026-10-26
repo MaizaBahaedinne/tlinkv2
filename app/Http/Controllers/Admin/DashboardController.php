@@ -23,15 +23,18 @@ class DashboardController extends AdminController
         $ctx = $this->context($request);
         $user = $request->user();
 
-        $canPlatform = $ctx->can('entity.manage');
-        $canMemberships = $ctx->can('membership.manage');
-        $canApprovals = $ctx->can('approval.review');
-        $canModeration = $ctx->can('post.moderate');
-        $canEvents = $ctx->can('event.manage');
+        $canPlatform = $ctx->allowsModule(['entity.manage'], 'organization.chart');
+        $canUsers = $ctx->allowsModule(['entity.manage'], 'members.users');
+        $canClubs = $ctx->allowsModule(['entity.manage'], 'organization.clubs');
+        $canAudit = $ctx->allowsModule(['entity.manage'], 'governance.audit');
+        $canMemberships = $ctx->allowsModule(['membership.manage'], 'members.memberships');
+        $canApprovals = $ctx->allowsModule(['approval.review'], 'governance.approvals');
+        $canModeration = $ctx->allowsModule(['post.moderate'], 'governance.moderation');
+        $canEvents = $ctx->allowsModule(['event.manage'], 'events.events');
 
         $stats = [];
 
-        if ($canPlatform) {
+        if ($canUsers) {
             $stats[] = [
                 'label' => 'Utilisateurs',
                 'value' => User::query()->count(),
@@ -42,7 +45,7 @@ class DashboardController extends AdminController
             ];
         }
 
-        if ($canPlatform) {
+        if ($canClubs) {
             $stats[] = [
                 'label' => 'Clubs',
                 'value' => $this->scoped(OrgNode::query()->where('kind', 'club'), $request, 'entity.manage')->count(),
@@ -117,7 +120,7 @@ class DashboardController extends AdminController
             'organization' => $canPlatform
                 ? $this->organization($request)
                 : null,
-            'recentAudit' => $canPlatform
+            'recentAudit' => $canAudit
                 ? AuditLog::query()->with('actor:id,name')->latest('id')->limit(7)->get()
                 : null,
             'today' => Carbon::now()->locale('fr')->translatedFormat('l j F Y'),

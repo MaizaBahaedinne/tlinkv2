@@ -163,7 +163,7 @@
                             </div>
                         </fieldset>
                         <div class="card-body" style="padding-top:0">
-                            <p class="hint">« Consulter » est ajouté automatiquement dès qu’une autre action est accordée. Les habilitations s’appliquent dans le périmètre du poste (ou à toute la plateforme si le poste y agit). Le catalogue des modules se gère dans <a href="{{ route('admin.modules.index') }}">Modules de l’application</a>.</p>
+                            <p class="hint">« Consulter » est ajouté automatiquement dès qu’une autre action est accordée. Dès qu’une case est cochée, le menu et l’accès aux pages d’administration de ce poste se limitent aux modules cochés et aux actions cochées ; sans aucune case, le niveau d’accès du poste s’applique sans restriction. La matrice ne donne jamais de droit au-delà du niveau d’accès : elle ne fait que le restreindre. Le catalogue des modules se gère dans <a href="{{ route('admin.modules.index') }}">Modules de l’application</a>.</p>
                         </div>
                         @if($canEdit)
                             <div class="form-actions">

@@ -16,10 +16,14 @@ class AdminContext
     /** @var array<string, array<int, string|null>> */
     private array $permissionScopes = [];
 
+    /** @var array<int, array{permissions: array<int, string>, scope: string|null, matrix: array<string, array<int, string>>|null}> */
+    private array $positions = [];
+
     public function __construct(public readonly User $user)
     {
         // Les droits viennent des postes occupés dans l'organigramme (niveau d'accès du poste).
-        $this->permissionScopes = OrgAccess::grants($user);
+        $this->positions = OrgAccess::positions($user);
+        $this->permissionScopes = OrgAccess::aggregate($this->positions);
     }
 
     public static function of(Request $request): self
@@ -71,6 +75,29 @@ class AdminContext
         }
 
         return OrgScopes::expandManaged(array_values(array_unique($this->permissionScopes[$permission])));
+    }
+
+    /**
+     * Accès à un module de l'administration : le niveau d'accès d'un poste donne la permission,
+     * et la matrice CRUD du poste (si elle existe) la restreint aux modules cochés.
+     * La matrice n'ajoute jamais de droit : sans la permission, l'accès est refusé.
+     *
+     * @param array<int, string> $permissions au moins une
+     * @param array<int, string> $actions au moins une
+     */
+    public function allowsModule(array $permissions, string $moduleKey, array $actions = ['read']): bool
+    {
+        foreach ($this->positions as $position) {
+            if (array_intersect($permissions, $position['permissions']) === []) {
+                continue;
+            }
+
+            if ($position['matrix'] === null || array_intersect($actions, $position['matrix'][$moduleKey] ?? []) !== []) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function isGlobal(string $permission): bool

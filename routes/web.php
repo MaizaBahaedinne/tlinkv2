@@ -112,7 +112,7 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
 | Chaque section est protegee par `admin.can:<permissions>` (au moins une).
 | Le perimetre (global ou limite a des perimetres) est ensuite applique dans les controleurs.
 */
-Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.review,post.moderate,event.manage'])
+Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.review,post.moderate,event.manage', 'admin.module'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function (): void {

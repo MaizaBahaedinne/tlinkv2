@@ -597,6 +597,12 @@ class StructureController extends AdminController
 
         $node->update(['module_permissions' => $matrix === [] ? null : $matrix]);
 
+        // Garde-fou : la matrice ne doit pas retirer à son auteur l'accès à cet écran.
+        if (! (new AdminContext($request->user()))->allowsModule(['entity.manage'], 'organization.positions', ['update'])) {
+            $node->update(['module_permissions' => $before === [] ? null : $before]);
+
+            throw ValidationException::withMessages(['modules' => 'Cette matrice vous retirerait l’accès à la gestion des postes : cochez « Postes et droits » (consulter et modifier) ou choisissez un autre poste.']);
+        }
         $this->audit($request, 'orgchart.module_permissions.updated', $node, [
             'title' => $node->title,
             'modules' => count($matrix),

@@ -14,9 +14,62 @@ use App\Models\PositionApplication;
 class AdminMenu
 {
     /**
-     * @return array<int, array{title: string, items: array<int, array{label: string, route: string, icon: string, match: string, badge: int|null}>}>
+     * Module du catalogue qui commande chaque entrée (clé : motif de route de l'entrée).
+     * Une entrée sans module n'est commandée que par le niveau d'accès du poste.
      */
-    public static function build(AdminContext $context): array
+    public const MODULES = [
+        'admin.roadmap.*' => 'governance.roadmap',
+        'admin.mandates.*' => 'organization.mandates',
+        'admin.launch.*' => 'website.launch',
+        'admin.modules.*' => 'governance.modules',
+        'admin.audit.*' => 'governance.audit',
+        'orgchart.*' => 'organization.chart',
+        'admin.postes.*' => 'organization.positions',
+        'admin.candidatures.*' => 'organization.applications',
+        'admin.clubs.*' => 'organization.clubs',
+        'admin.roles.*' => 'organization.positions',
+        'admin.scopes.*' => 'organization.scopes',
+        'admin.users.*' => 'members.users',
+        'admin.memberships.*' => 'members.memberships',
+        'admin.members.*' => 'members.entity_members',
+        'admin.posts.*' => 'feed.posts',
+        'admin.moderation.*' => 'governance.moderation',
+        'admin.site.*' => 'website.content',
+        'admin.partners.*' => 'website.partners',
+        'admin.info-session.*' => 'members.info_session',
+        'admin.messages.*' => 'website.messages',
+        'admin.approvals.*' => 'governance.approvals',
+        'admin.events.*' => 'events.events',
+    ];
+
+    /**
+     * Entrée de menu qui couvre cette route : permissions du niveau d'accès et module commandé.
+     *
+     * @return array{perms: array<int, string>, module: string}|null
+     */
+    public static function itemFor(?string $routeName): ?array
+    {
+        if ($routeName === null) {
+            return null;
+        }
+
+        foreach (self::groups() as $group) {
+            foreach ($group['items'] as $item) {
+                $module = self::MODULES[$item['match']] ?? null;
+
+                if ($module !== null && $item['perms'] !== null && \Illuminate\Support\Str::is($item['match'], $routeName)) {
+                    return ['perms' => $item['perms'], 'module' => $module];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, array{title: string, items: array<int, array<string, mixed>>}>
+     */
+    private static function groups(): array
     {
         $groups = [
             [
@@ -69,13 +122,22 @@ class AdminMenu
             ],
         ];
 
+        return $groups;
+    }
+
+    /**
+     * @return array<int, array{title: string, items: array<int, array{label: string, route: string, icon: string, match: string, badge: int|null}>}>
+     */
+    public static function build(AdminContext $context): array
+    {
+        $groups = self::groups();
         $result = [];
 
         foreach ($groups as $group) {
             $items = [];
 
             foreach ($group['items'] as $item) {
-                if ($item['perms'] !== null && ! $context->canAny($item['perms'])) {
+                if ($item['perms'] !== null && ! self::visible($item, $context)) {
                     continue;
                 }
 
@@ -94,6 +156,18 @@ class AdminMenu
         }
 
         return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private static function visible(array $item, AdminContext $context): bool
+    {
+        $module = self::MODULES[$item['match']] ?? null;
+
+        return $module === null
+            ? $context->canAny($item['perms'])
+            : $context->allowsModule($item['perms'], $module);
     }
 
     private static function badge(string $type, AdminContext $context): ?int

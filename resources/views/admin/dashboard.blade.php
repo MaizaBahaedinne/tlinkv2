@@ -6,10 +6,10 @@
 @section('content')
     <x-admin.page-header :title="'Bonjour, '.$firstName" :subtitle='ucfirst($today)." — voici l’état de la plateforme."'>
         <x-slot:actions>
-            @if($ctx->can('entity.manage'))
+            @if($ctx->allowsModule(['entity.manage'], 'organization.chart'))
                 <a href="{{ route('orgchart.index') }}" class="btn btn-secondary"><x-admin.icon name="network" :size="16" /> Organigramme</a>
             @endif
-            @if($ctx->can('event.manage'))
+            @if($ctx->allowsModule(['event.manage'], 'events.events', ['create']))
                 <a href="{{ route('admin.events.create') }}" class="btn btn-primary"><x-admin.icon name="plus" :size="16" /> Nouvel événement</a>
             @endif
         </x-slot:actions>
@@ -23,7 +23,7 @@
         </section>
     @endif
 
-    @if($chart || $ctx->can('entity.manage'))
+    @if($chart || $organization !== null)
         <section class="grid-3-1">
             @if($chart)
                 <article class="card">
@@ -56,19 +56,19 @@
             <article class="card">
                 <div class="card-head"><h2>Accès rapides</h2></div>
                 <div class="quick">
-                    @if($ctx->can('entity.manage'))
+                    @if($ctx->allowsModule(['entity.manage'], 'organization.chart'))
                         <a href="{{ route('orgchart.index') }}"><x-admin.icon name="network" /> Organigramme</a>
                     @endif
-                    @if($ctx->canAny(['entity.manage', 'membership.manage']))
+                    @if($ctx->allowsModule(['entity.manage', 'membership.manage'], 'members.users'))
                         <a href="{{ route('admin.users.index') }}"><x-admin.icon name="user" /> Utilisateurs</a>
                     @endif
-                    @if($ctx->can('post.moderate'))
+                    @if($ctx->allowsModule(['post.moderate'], 'governance.moderation'))
                         <a href="{{ route('admin.moderation.index') }}"><x-admin.icon name="flag" /> Modération</a>
                     @endif
-                    @if($ctx->can('approval.review'))
+                    @if($ctx->allowsModule(['approval.review'], 'governance.approvals'))
                         <a href="{{ route('admin.approvals.index') }}"><x-admin.icon name="shield" /> Approbations</a>
                     @endif
-                    @if($ctx->can('event.manage'))
+                    @if($ctx->allowsModule(['event.manage'], 'events.events'))
                         <a href="{{ route('admin.events.index') }}"><x-admin.icon name="calendar" /> Événements</a>
                     @endif
                 </div>

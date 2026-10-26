@@ -64,6 +64,7 @@ final class ModuleCatalog
                     ['key' => 'governance.moderation', 'name' => 'Modération', 'description' => 'Signalements et suppression de contenus.', 'actions' => ['read', 'update', 'delete']],
                     ['key' => 'governance.audit', 'name' => 'Journal d’audit', 'description' => 'Historique des actions sensibles.', 'actions' => ['read']],
                     ['key' => 'governance.roadmap', 'name' => 'Feuille de route', 'description' => 'Avancement des modules du projet.', 'actions' => ['read', 'update']],
+                    ['key' => 'governance.modules', 'name' => 'Modules et habilitations', 'description' => 'Catalogue des modules de l’application.', 'actions' => self::CRUD],
                 ],
             ],
             [

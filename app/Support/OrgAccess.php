@@ -20,11 +20,39 @@ class OrgAccess
      */
     public static function grants(User $user): array
     {
+        return self::aggregate(self::positions($user));
+    }
+
+    /**
+     * Postes qui accordent des droits à l'utilisateur : permissions, périmètre (null = global) et matrice CRUD
+     * par module (null = pas de matrice, le niveau d'accès du poste s'applique sans restriction).
+     *
+     * @return array<int, array{permissions: array<int, string>, scope: string|null, matrix: array<string, array<int, string>>|null}>
+     */
+    public static function positions(User $user): array
+    {
         $assignments = self::currentAssignments()
             ->whereHas('person', fn ($query) => $query->where('user_id', $user->id))
             ->get();
 
-        return self::collect($assignments);
+        return self::describeAll($assignments);
+    }
+
+    /**
+     * @param array<int, array{permissions: array<int, string>, scope: string|null, matrix: mixed}> $positions
+     * @return array<string, array<int, string|null>>
+     */
+    public static function aggregate(array $positions): array
+    {
+        $grants = [];
+
+        foreach ($positions as $position) {
+            foreach ($position['permissions'] as $permission) {
+                $grants[$permission][] = $position['scope'];
+            }
+        }
+
+        return $grants;
     }
 
     /**
@@ -104,7 +132,8 @@ class OrgAccess
         return OrgAssignment::query()
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
             ->whereHas('node', fn ($query) => $query->where('kind', 'position')->where('access_level', '!=', AccessLevels::NONE))
-            ->with('node:id,parent_id,access_level,permissions,scope');
+            // Colonnes non listées : le code reste utilisable avant la migration de module_permissions.
+            ->with('node');
     }
 
     /**
@@ -113,13 +142,22 @@ class OrgAccess
      */
     private static function collect($assignments): array
     {
+        return self::aggregate(self::describeAll($assignments));
+    }
+
+    /**
+     * @param \Illuminate\Support\Collection<int, OrgAssignment> $assignments
+     * @return array<int, array{permissions: array<int, string>, scope: string|null, matrix: array<string, array<int, string>>|null}>
+     */
+    private static function describeAll($assignments): array
+    {
         if ($assignments->isEmpty()) {
             return [];
         }
 
         $parents = null;
         $scopes = null;
-        $grants = [];
+        $positions = [];
 
         foreach ($assignments as $assignment) {
             $node = $assignment->node;
@@ -143,12 +181,16 @@ class OrgAccess
                 }
             }
 
-            foreach ($permissions as $permission) {
-                $grants[$permission][] = $scope;
-            }
+            $matrix = (array) $node->module_permissions;
+
+            $positions[] = [
+                'permissions' => $permissions,
+                'scope' => $scope,
+                'matrix' => $matrix === [] ? null : $matrix,
+            ];
         }
 
-        return $grants;
+        return $positions;
     }
 
     /**
