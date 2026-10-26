@@ -55,7 +55,9 @@
                                 :hint="$effectiveScope ? 'Périmètre effectif : '.\App\Support\OrgScopes::label($effectiveScope).($scopeInherited ? ' (hérité)' : '').'.' : 'Aucun périmètre : un poste sans périmètre ne donne aucun droit (sauf s’il agit sur toute la plateforme).'" />
 
                             @if($isPosition && ! $node->role_key)
-                                @php($selectedExtra = (array) old('extra_scopes', (array) $node->extra_scopes))
+                                @php
+                                    $selectedExtra = (array) old('extra_scopes', (array) $node->extra_scopes);
+                                @endphp
                                 <div class="span-2">
                                     <label>Autres périmètres sur lesquels ce poste a le pouvoir</label>
                                     <input type="hidden" name="extra_scopes_present" value="1">
