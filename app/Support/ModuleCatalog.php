@@ -42,6 +42,7 @@ final class ModuleCatalog
                     ['key' => 'members.users', 'name' => 'Comptes utilisateurs', 'description' => 'Liste, fiches et administration des comptes.', 'actions' => self::CRUD],
                     ['key' => 'members.profiles', 'name' => 'Profils', 'description' => 'Profil du membre (photo, coordonnées, présentation).', 'actions' => ['read', 'update']],
                     ['key' => 'members.memberships', 'name' => 'Adhésions', 'description' => 'Demandes d’adhésion à un périmètre ou à un club.', 'actions' => self::CRUD],
+                    ['key' => 'members.entity_members', 'name' => 'Membres de mon entité', 'description' => 'Liste, ajout, suspension et retrait des membres de sa propre entité (sans les sous-entités).', 'actions' => ['create', 'read', 'update']],
                     ['key' => 'members.info_session', 'name' => 'Info session et quiz', 'description' => 'Vidéo d’accueil et quiz de validation du compte.', 'actions' => ['read', 'update']],
                 ],
             ],
