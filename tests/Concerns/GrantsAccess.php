@@ -47,6 +47,7 @@ trait GrantsAccess
         $installer = app(OrgChartInstaller::class);
 
         if (! $installer->isInstalled()) {
+            $this->seed(\Database\Seeders\GovernorateSeeder::class);
             $installer->install();
         }
 
