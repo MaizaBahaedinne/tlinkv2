@@ -41,15 +41,6 @@
             @endforeach
         </nav>
 
-        @isset($adminUser)
-            <div class="adm-side-foot">
-                <x-admin.avatar :name="$adminUser->name" :size="36" />
-                <div class="who">
-                    <strong>{{ $adminUser->name }}</strong>
-                    <span>{{ $adminUser->email }}</span>
-                </div>
-            </div>
-        @endisset
     </aside>
     <div class="adm-overlay" data-nav-toggle></div>
 
@@ -68,13 +59,33 @@
                     <x-admin.icon name="external" :size="15" />
                     <span class="hide-mobile">Voir le site</span>
                 </a>
-                <form method="post" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="btn btn-ghost btn-sm">
-                        <x-admin.icon name="logout" :size="15" />
-                        <span class="hide-mobile">Déconnexion</span>
-                    </button>
-                </form>
+                @isset($adminUser)
+                    <details class="adm-user" data-user-menu>
+                        <summary class="adm-user-trigger" aria-label="Menu utilisateur">
+                            <x-admin.avatar :name="$adminUser->name" :size="34" />
+                            <span class="adm-user-name hide-mobile">{{ $adminUser->name }}</span>
+                            <span class="adm-user-caret" aria-hidden="true">▾</span>
+                        </summary>
+                        <div class="adm-user-menu">
+                            <div class="adm-user-head">
+                                <strong>{{ $adminUser->name }}</strong>
+                                <span>{{ $adminUser->email }}</span>
+                            </div>
+                            <a href="{{ route('profile.show') }}" class="adm-user-item">
+                                <x-admin.icon name="user" :size="15" /> Mon profil
+                            </a>
+                            <a href="{{ route('home') }}" class="adm-user-item">
+                                <x-admin.icon name="external" :size="15" /> Voir le site
+                            </a>
+                            <form method="post" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="adm-user-item">
+                                    <x-admin.icon name="logout" :size="15" /> Déconnexion
+                                </button>
+                            </form>
+                        </div>
+                    </details>
+                @endisset
             </div>
         </header>
 

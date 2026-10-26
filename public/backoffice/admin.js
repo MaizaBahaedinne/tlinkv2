@@ -10,6 +10,21 @@
         });
     });
 
+    // Menu utilisateur : fermeture au clic extérieur et à Échap
+    document.querySelectorAll('[data-user-menu]').forEach(function (menu) {
+        document.addEventListener('click', function (event) {
+            if (menu.open && !menu.contains(event.target)) {
+                menu.open = false;
+            }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && menu.open) {
+                menu.open = false;
+                menu.querySelector('summary').focus();
+            }
+        });
+    });
+
     // Tout cocher / décocher (case [data-check-all] et cases [data-check-item] du même formulaire)
     document.querySelectorAll('[data-check-all]').forEach(function (master) {
         master.addEventListener('change', function () {
