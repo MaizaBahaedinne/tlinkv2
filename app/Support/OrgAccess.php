@@ -170,13 +170,19 @@ class OrgAccess
             }
 
             if (AccessLevels::reachesEverywhere($level, $custom)) {
-                $scope = null;
+                $nodeScopes = [null];
             } else {
                 $parents ??= OrgNode::query()->pluck('parent_id', 'id')->all();
                 $scopes ??= OrgNode::query()->whereNotNull('scope')->pluck('scope', 'id')->all();
-                $scope = self::resolveScope($node->id, $parents, $scopes);
+                $primary = self::resolveScope($node->id, $parents, $scopes);
 
-                if ($scope === null) {
+                // Périmètre principal (propre ou hérité) puis périmètres supplémentaires du poste.
+                $nodeScopes = array_values(array_unique(array_filter(
+                    array_merge([$primary], (array) $node->extra_scopes),
+                    fn ($scope) => is_string($scope) && OrgScopes::valid($scope),
+                )));
+
+                if ($nodeScopes === []) {
                     continue;
                 }
             }
@@ -186,11 +192,14 @@ class OrgAccess
             // L'administrateur global n'est jamais restreint par une matrice : il garde toutes les entrées de menu.
             $restricted = $level !== AccessLevels::GLOBAL_ADMIN && $matrix !== [];
 
-            $positions[] = [
-                'permissions' => $permissions,
-                'scope' => $scope,
-                'matrix' => $restricted ? $matrix : null,
-            ];
+            // Une entrée par périmètre : mêmes droits et même matrice sur chacun.
+            foreach ($nodeScopes as $scope) {
+                $positions[] = [
+                    'permissions' => $permissions,
+                    'scope' => $scope,
+                    'matrix' => $restricted ? $matrix : null,
+                ];
+            }
         }
 
         return $positions;

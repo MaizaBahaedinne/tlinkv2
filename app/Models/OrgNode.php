@@ -56,6 +56,7 @@ class OrgNode extends Model
         'description',
         'governorate_id',
         'scope',
+        'extra_scopes',
         'status',
         'legacy_id',
         'email',
@@ -78,6 +79,7 @@ class OrgNode extends Model
     protected $casts = [
         'permissions' => 'array',
         'module_permissions' => 'array',
+        'extra_scopes' => 'array',
         'is_collapsed' => 'boolean',
         'charter_signed' => 'boolean',
         'founded_on' => 'date',

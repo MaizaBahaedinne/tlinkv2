@@ -234,6 +234,47 @@ class StructureAdminTest extends TestCase
         $this->assertSame([null], \App\Support\OrgAccess::grants($holder)['membership.manage']);
     }
 
+    public function test_a_position_can_act_on_several_perimeters(): void
+    {
+        $admin = $this->admin();
+        $holder = User::factory()->create();
+        $position = $this->position('Poste multi-périmètres');
+
+        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [
+            $position->id => ['permissions' => ['membership.manage'], 'scope' => 'high-school'],
+        ]])->assertRedirect();
+
+        $person = OrgPerson::query()->create(['user_id' => $holder->id, 'full_name' => $holder->name, 'contact_visible' => true]);
+        OrgAssignment::query()->create(['node_id' => $position->id, 'person_id' => $person->id]);
+
+        $this->actingAs($admin)->put("/admin/structure/postes/{$position->id}", [
+            'title' => $position->title,
+            'scope' => 'high-school',
+            'extra_scopes_present' => 1,
+            'extra_scopes' => ['alumni', 'high-school', 'alumni'],
+        ])->assertRedirect();
+
+        $this->assertSame(['alumni'], $position->fresh()->extra_scopes);
+        $this->assertEqualsCanonicalizing(['high-school', 'alumni'], \App\Support\OrgAccess::grants($holder)['membership.manage']);
+        $this->assertTrue(\App\Support\AccessScope::can($holder, 'membership.manage', 'alumni'));
+        $this->assertFalse(\App\Support\AccessScope::can($holder, 'membership.manage', 'university'));
+
+        $this->actingAs($admin)->put("/admin/structure/postes/{$position->id}", [
+            'title' => $position->title,
+            'scope' => 'high-school',
+            'extra_scopes_present' => 1,
+        ])->assertRedirect();
+
+        $this->assertNull($position->fresh()->extra_scopes);
+        $this->assertSame(['high-school'], \App\Support\OrgAccess::grants($holder)['membership.manage']);
+
+        $this->actingAs($admin)->put("/admin/structure/postes/{$position->id}", [
+            'title' => $position->title,
+            'extra_scopes_present' => 1,
+            'extra_scopes' => ['inconnu'],
+        ])->assertSessionHasErrors('extra_scopes.0');
+    }
+
     public function test_holders_can_be_assigned_and_removed_from_the_sheet(): void
     {
         $admin = $this->admin();

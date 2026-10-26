@@ -518,6 +518,8 @@ class StructureController extends AdminController
             'permissions.*' => ['nullable', Rule::in(array_keys(AccessLevels::PERMISSIONS))],
             'scope_all' => ['nullable', 'boolean'],
             'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
+            'extra_scopes' => ['nullable', 'array', 'max:50'],
+            'extra_scopes.*' => ['string', Rule::in(OrgScopes::slugs())],
             'status' => ['nullable', Rule::in(array_keys(OrgNode::CLUB_STATUSES))],
             'email' => ['nullable', 'email', 'max:255'],
             'facebook_url' => ['nullable', 'url', 'max:500'],
@@ -540,6 +542,13 @@ class StructureController extends AdminController
         if ($kind === 'position') {
             $attributes['capacity'] = $data['capacity'] ?? $node->capacity ?? 'single';
 
+            // Périmètres supplémentaires (hors poste d'équipe type de club) ; le principal n'est pas répété.
+            if ($node->role_key === null && $request->has('extra_scopes_present')) {
+                $primary = $data['scope'] ?? $node->scope;
+                $extra = array_values(array_unique(array_diff((array) ($data['extra_scopes'] ?? []), [$primary])));
+                $attributes['extra_scopes'] = $extra === [] ? null : $extra;
+            }
+
             // Les droits se règlent dans la matrice (une seule source) ; des droits cochés envoyés ici sont convertis en matrice.
             // Poste d'une équipe type de club : les droits viennent du rôle, pas de la fiche.
             if ($node->role_key === null && $request->has('permissions')) {
@@ -550,6 +559,7 @@ class StructureController extends AdminController
             $attributes['access_level'] = 'none';
             $attributes['permissions'] = null;
             $attributes['module_permissions'] = null;
+            $attributes['extra_scopes'] = null;
         }
 
         if ($kind === 'club') {

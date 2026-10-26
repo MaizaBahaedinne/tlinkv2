@@ -141,6 +141,9 @@
                                                 <span class="text-sm">{{ \App\Support\OrgScopes::label($effective) ?: '—' }}</span>
                                                 @if($effective && $node->scope === null)<span class="text-muted text-sm">(hérité)</span>@endif
                                             @endif
+                                            @if(! empty($node->extra_scopes))
+                                                <div class="text-muted text-sm" style="margin-top:4px">+ {{ collect($node->extra_scopes)->map(fn ($slug) => \App\Support\OrgScopes::label($slug))->implode(', ') }}</div>
+                                            @endif
                                         </td>
 
                                         @foreach($permissions as $slug => $label)

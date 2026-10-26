@@ -54,6 +54,24 @@
                             <x-admin.select name="scope" label="Périmètre sur lequel ce poste agit" :options="$scopes" :value="$node->scope" placeholder="Hérité du bloc parent"
                                 :hint="$effectiveScope ? 'Périmètre effectif : '.\App\Support\OrgScopes::label($effectiveScope).($scopeInherited ? ' (hérité)' : '').'.' : 'Aucun périmètre : un poste sans périmètre ne donne aucun droit (sauf s’il agit sur toute la plateforme).'" />
 
+                            @if($isPosition && ! $node->role_key)
+                                @php($selectedExtra = (array) old('extra_scopes', (array) $node->extra_scopes))
+                                <div class="span-2">
+                                    <label>Autres périmètres sur lesquels ce poste a le pouvoir</label>
+                                    <input type="hidden" name="extra_scopes_present" value="1">
+                                    <div class="chips" style="margin-top:8px">
+                                        @foreach($scopes as $slug => $name)
+                                            @continue($slug === $effectiveScope)
+                                            <label class="check"><input type="checkbox" name="extra_scopes[]" value="{{ $slug }}" @checked(in_array($slug, $selectedExtra, true)) @disabled(! $canEdit)> {{ $name }}</label>
+                                        @endforeach
+                                    </div>
+                                    <p class="hint" style="margin-top:6px">
+                                        Les mêmes droits s’appliquent au périmètre principal ci-dessus et à chaque périmètre coché. Un périmètre couvre aussi ses sous-périmètres.
+                                        @if($nodeEverywhere) Ce poste agit déjà sur toute la plateforme : ces périmètres n’ajoutent rien. @endif
+                                    </p>
+                                </div>
+                            @endif
+
                             @if($isPosition)
                                 <x-admin.select name="capacity" label="Titulaires" :options="$capacities" :value="$node->capacity" :required="true" :placeholder="null" />
                                 <div class="span-2">
@@ -115,7 +133,7 @@
                         @elseif($matrixDerived)
                             <div class="card-body" style="padding-bottom:0"><p class="hint">Ce poste a été créé avec un niveau d’accès : la matrice ci-dessous en reprend les droits. Enregistrez pour la rendre modifiable module par module.</p></div>
                         @endif
-                        @if(! $effectiveScope && ! $nodeEverywhere && $nodePermissions !== [])
+                        @if(! $effectiveScope && ! $nodeEverywhere && empty($node->extra_scopes) && $nodePermissions !== [])
                             <div class="alert alert-info" role="alert" style="margin:16px 20px 0">
                                 <x-admin.icon name="x" />
                                 <span>Ce poste n’a aucun périmètre : ses habilitations ne donnent aucun accès (ni menu) tant qu’un périmètre n’est pas choisi dans la fiche, ou que « Agit sur toute la plateforme » n’est pas coché.</span>
