@@ -183,10 +183,13 @@ class OrgAccess
 
             $matrix = (array) $node->module_permissions;
 
+            // L'administrateur global n'est jamais restreint par une matrice : il garde toutes les entrées de menu.
+            $restricted = $level !== AccessLevels::GLOBAL_ADMIN && $matrix !== [];
+
             $positions[] = [
                 'permissions' => $permissions,
                 'scope' => $scope,
-                'matrix' => $matrix === [] ? null : $matrix,
+                'matrix' => $restricted ? $matrix : null,
             ];
         }
 

@@ -19,6 +19,7 @@
         window.__TLINK__ = {
             auth: {
                 isAuthenticated: @json((bool) $user),
+                canAdmin: @json((bool) ($canAdmin ?? false)),
                 user: @json($user ? ['id' => $user->id, 'name' => $user->name, 'email' => $user->email] : null),
             },
             feed: @json($feedPayload),

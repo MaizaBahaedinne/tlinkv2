@@ -159,6 +159,23 @@ class AdminMenu
     }
 
     /**
+     * L'utilisateur voit-il au moins une entrée de l'administration (hors tableau de bord) ?
+     * C'est la condition d'affichage de tous les liens « Administration » de l'application.
+     */
+    public static function hasAccess(AdminContext $context): bool
+    {
+        foreach (self::groups() as $group) {
+            foreach ($group['items'] as $item) {
+                if ($item['perms'] !== null && self::visible($item, $context)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param array<string, mixed> $item
      */
     private static function visible(array $item, AdminContext $context): bool

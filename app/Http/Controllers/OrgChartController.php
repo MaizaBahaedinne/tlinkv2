@@ -56,7 +56,7 @@ class OrgChartController extends Controller
             'userName' => $request->user()->name,
             'mandates' => Mandate::query()->orderByDesc('start_year')->get(['id', 'label']),
             'activeMandate' => $activeMandate,
-            'adminUrl' => AdminContext::of($request)->canAny(['entity.manage', 'membership.manage', 'approval.review', 'post.moderate', 'event.manage'])
+            'adminUrl' => \App\Support\AdminMenu::hasAccess(AdminContext::of($request))
                 ? route('admin.dashboard')
                 : null,
         ]);

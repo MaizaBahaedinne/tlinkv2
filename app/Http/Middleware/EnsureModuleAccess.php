@@ -17,6 +17,10 @@ class EnsureModuleAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->user() && $request->route()?->getName() === 'admin.dashboard') {
+            abort_unless(AdminMenu::hasAccess(AdminContext::of($request)), 403, 'Les habilitations de votre poste ne donnent accès à aucun module de l’administration.');
+        }
+
         $item = AdminMenu::itemFor($request->route()?->getName());
 
         if ($item === null || ! $request->user()) {

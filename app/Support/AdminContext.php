@@ -2,8 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\AppModule;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Photographie des permissions actives d'un utilisateur pour la requete en cours.
@@ -13,11 +15,17 @@ class AdminContext
 {
     public const ATTRIBUTE = 'admin.context';
 
+    /** Modules jamais désactivables : on ne doit pas pouvoir se verrouiller hors de la gestion des droits. */
+    private const ALWAYS_ENABLED = ['governance.modules', 'organization.positions'];
+
     /** @var array<string, array<int, string|null>> */
     private array $permissionScopes = [];
 
     /** @var array<int, array{permissions: array<int, string>, scope: string|null, matrix: array<string, array<int, string>>|null}> */
     private array $positions = [];
+
+    /** @var array<string, true>|null clés des modules désactivés dans le catalogue (ou dont un parent l'est) */
+    private ?array $disabledModules = null;
 
     public function __construct(public readonly User $user)
     {
@@ -87,6 +95,11 @@ class AdminContext
      */
     public function allowsModule(array $permissions, string $moduleKey, array $actions = ['read']): bool
     {
+        // Le catalogue pilote le menu : un module désactivé disparaît pour tout le monde.
+        if (! $this->moduleEnabled($moduleKey)) {
+            return false;
+        }
+
         foreach ($this->positions as $position) {
             if (array_intersect($permissions, $position['permissions']) === []) {
                 continue;
@@ -98,6 +111,35 @@ class AdminContext
         }
 
         return false;
+    }
+
+    private function moduleEnabled(string $moduleKey): bool
+    {
+        if (in_array($moduleKey, self::ALWAYS_ENABLED, true)) {
+            return true;
+        }
+
+        if ($this->disabledModules === null) {
+            $this->disabledModules = [];
+
+            if (Schema::hasTable('app_modules')) {
+                $modules = AppModule::query()->get(['id', 'parent_id', 'key', 'is_active']);
+                $byId = $modules->keyBy('id');
+
+                foreach ($modules as $module) {
+                    for ($current = $module, $guard = 0; $current !== null && $guard < 5; $guard++) {
+                        if (! $current->is_active) {
+                            $this->disabledModules[$module->key] = true;
+                            break;
+                        }
+
+                        $current = $current->parent_id !== null ? ($byId[$current->parent_id] ?? null) : null;
+                    }
+                }
+            }
+        }
+
+        return ! isset($this->disabledModules[$moduleKey]);
     }
 
     public function isGlobal(string $permission): bool

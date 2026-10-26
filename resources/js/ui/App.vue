@@ -33,6 +33,7 @@ type FeedPost = {
 type RootData = {
   auth: {
     isAuthenticated: boolean;
+    canAdmin?: boolean;
     user?: { id: number; name: string; email: string };
   };
   feed: FeedPost[];
@@ -215,7 +216,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
             </summary>
             <div class="absolute right-0 z-30 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-soft">
               <a href="/profil" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2"></i>Profil</a>
-              <a href="/admin" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-list-check mr-2"></i>Administration</a>
+              <a v-if="data.auth.canAdmin" href="/admin" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-list-check mr-2"></i>Administration</a>
               <a href="/organigramme" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-sitemap mr-2"></i>Organigramme</a>
               <a href="/notifications" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-bell mr-2"></i>Notifications</a>
               <form action="/deconnexion" method="post" class="mt-1">
@@ -261,7 +262,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                     <span>Organigramme</span>
                   </a>
                 </li>
-                <li>
+                <li v-if="data.auth.canAdmin">
                   <a href="/admin" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
                     <i class="fa-solid fa-list-check text-slate-500"></i>
                     <span>Administration</span>

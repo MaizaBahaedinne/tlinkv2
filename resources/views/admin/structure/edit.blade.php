@@ -115,6 +115,12 @@
                         @elseif($matrixDerived)
                             <div class="card-body" style="padding-bottom:0"><p class="hint">Ce poste a été créé avec un niveau d’accès : la matrice ci-dessous en reprend les droits. Enregistrez pour la rendre modifiable module par module.</p></div>
                         @endif
+                        @if(! $effectiveScope && ! $nodeEverywhere && $nodePermissions !== [])
+                            <div class="alert alert-info" role="alert" style="margin:16px 20px 0">
+                                <x-admin.icon name="x" />
+                                <span>Ce poste n’a aucun périmètre : ses habilitations ne donnent aucun accès (ni menu) tant qu’un périmètre n’est pas choisi dans la fiche, ou que « Agit sur toute la plateforme » n’est pas coché.</span>
+                            </div>
+                        @endif
                         <fieldset @disabled(! $canEdit || $node->role_key) style="border:0;margin:0;padding:0;min-width:0">
                             <div class="table-wrap">
                                 <table class="tbl">

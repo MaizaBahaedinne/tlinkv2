@@ -42,5 +42,12 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('adminNav', AdminMenu::build($context));
             }
         });
+
+        // Les liens « Administration » de l'application suivent les mêmes droits que le menu admin.
+        View::composer(['app', 'profile.show'], function ($view): void {
+            $request = request();
+
+            $view->with('canAdmin', $request->user() !== null && AdminMenu::hasAccess(AdminContext::of($request)));
+        });
     }
 }
