@@ -157,6 +157,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('structure/postes/droits', [Admin\StructureController::class, 'savePermissions'])->name('postes.permissions');
             Route::get('structure/postes/{node}/modifier', [Admin\StructureController::class, 'edit'])->name('postes.edit');
             Route::put('structure/postes/{node}', [Admin\StructureController::class, 'update'])->name('postes.update');
+            Route::put('structure/postes/{node}/habilitations', [Admin\StructureController::class, 'saveModulePermissions'])->name('postes.modules');
             Route::delete('structure/postes/{node}', [Admin\StructureController::class, 'destroy'])->name('postes.destroy');
             Route::post('structure/postes/{node}/modele', [Admin\StructureController::class, 'applyTemplate'])->name('postes.template');
             Route::post('structure/postes/{node}/titulaires', [Admin\StructureController::class, 'assign'])->name('postes.assign');

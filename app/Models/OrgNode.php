@@ -49,6 +49,7 @@ class OrgNode extends Model
         'capacity',
         'access_level',
         'permissions',
+        'module_permissions',
         'category',
         'title',
         'subtitle',
@@ -76,6 +77,7 @@ class OrgNode extends Model
 
     protected $casts = [
         'permissions' => 'array',
+        'module_permissions' => 'array',
         'is_collapsed' => 'boolean',
         'charter_signed' => 'boolean',
         'founded_on' => 'date',

@@ -77,6 +77,7 @@ class AuditLabels
         'admin.module.created' => 'Module de l’application ajouté',
         'admin.module.updated' => 'Module de l’application modifié',
         'admin.module.deleted' => 'Module de l’application supprimé',
+        'orgchart.module_permissions.updated' => 'Habilitations CRUD d’un poste modifiées',
     ];
 
     public static function label(string $action): string

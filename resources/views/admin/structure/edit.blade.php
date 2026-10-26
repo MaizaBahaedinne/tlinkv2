@@ -107,7 +107,73 @@
                 @endif
             </form>
 
-            {{-- Sous-blocs --}}
+            {{-- Matrice des habilitations CRUD --}}
+            @if($isPosition)
+                <form method="post" action="{{ route('admin.postes.modules', $node) }}" class="card card-flush" id="module-matrix">
+                    @csrf
+                    @method('PUT')
+                    <div class="card-head"><div><h2>Habilitations par module</h2><p class="sub">Ce que les titulaires de « {{ $node->title }} » peuvent créer (C), consulter (R), modifier (U) et supprimer (D).</p></div></div>
+                    @if($node->role_key)
+                        <div class="card-body"><p class="hint">Poste de l’équipe standard des clubs : les droits se règlent dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p></div>
+                    @elseif($moduleTree->isEmpty())
+                        <x-admin.empty icon="layers" title="Aucun module actif" />
+                    @else
+                        <fieldset @disabled(! $canEdit) style="border:0;margin:0;padding:0;min-width:0">
+                            <div class="table-wrap">
+                                <table class="tbl">
+                                    <thead>
+                                        <tr>
+                                            <th>Module</th>
+                                            @foreach($moduleActions as $action => $actionLabel)
+                                                <th style="text-align:center;width:64px"><button type="button" class="btn btn-ghost btn-sm" data-matrix-col="{{ $action }}" title="Tout cocher / décocher : {{ $actionLabel }}">{{ \App\Models\AppModule::ACTION_LETTERS[$action] }}</button></th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($moduleTree as $root)
+                                            @php $rows = $root->actions ? collect([$root]) : collect(); $rows = $rows->concat($root->children); @endphp
+                                            <tr>
+                                                <td colspan="{{ count($moduleActions) + 1 }}" style="background:var(--surface-2,#f6f7f9);font-weight:600">{{ $root->name }}</td>
+                                            </tr>
+                                            @foreach($rows as $module)
+                                                @php
+                                                    $supported = $module->supportedActions();
+                                                    $granted = (array) (old('modules')[$module->key] ?? $modulePermissions[$module->key] ?? []);
+                                                @endphp
+                                                @continue($supported === [])
+                                                <tr>
+                                                    <td style="padding-left:{{ $module->id === $root->id ? 14 : 28 }}px">
+                                                        <span class="cell-main">{{ $module->id === $root->id ? 'Général' : $module->name }}</span>
+                                                        @if($module->description)<div class="cell-sub">{{ $module->description }}</div>@endif
+                                                    </td>
+                                                    @foreach($moduleActions as $action => $actionLabel)
+                                                        <td style="text-align:center">
+                                                            @if(in_array($action, $supported, true))
+                                                                <input type="checkbox" name="modules[{{ $module->key }}][]" value="{{ $action }}" data-action="{{ $action }}" aria-label="{{ $actionLabel }} — {{ $module->name }}" @checked(in_array($action, (array) $granted, true))>
+                                                            @else
+                                                                <span class="text-muted">—</span>
+                                                            @endif
+                                                        </td>
+                                                    @endforeach
+                                                </tr>
+                                            @endforeach
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </fieldset>
+                        <div class="card-body" style="padding-top:0">
+                            <p class="hint">« Consulter » est ajouté automatiquement dès qu’une autre action est accordée. Les habilitations s’appliquent dans le périmètre du poste (ou à toute la plateforme si le poste y agit). Le catalogue des modules se gère dans <a href="{{ route('admin.modules.index') }}">Modules de l’application</a>.</p>
+                        </div>
+                        @if($canEdit)
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary"><x-admin.icon name="check" :size="16" /> Enregistrer les habilitations</button>
+                            </div>
+                        @endif
+                    @endif
+                </form>
+            @endif
+
             <article class="card card-flush">
                 <div class="card-head"><div><h2>Sous-blocs</h2><p class="sub">Départements et postes placés directement sous « {{ $node->title }} ».</p></div></div>
                 @if($children->count())
@@ -272,3 +338,17 @@
         </div>
     </div>
 @endsection
+
+@if($isPosition && ! $node->role_key && $canEdit)
+    @push('scripts')
+        <script>
+            document.querySelectorAll('#module-matrix [data-matrix-col]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var boxes = document.querySelectorAll('#module-matrix input[data-action="' + button.dataset.matrixCol + '"]');
+                    var all = Array.prototype.every.call(boxes, function (box) { return box.checked; });
+                    boxes.forEach(function (box) { box.checked = ! all; });
+                });
+            });
+        </script>
+    @endpush
+@endif

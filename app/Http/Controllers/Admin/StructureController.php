@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\AuditLog;
+use App\Models\AppModule;
 use App\Models\FoundationEvent;
 use App\Models\Governorate;
 use App\Models\Membership;
@@ -15,6 +16,7 @@ use App\Support\AccessLevels;
 use App\Support\AdminContext;
 use App\Support\AuditLogger;
 use App\Support\ClubRoles;
+use App\Support\ModulePermissions;
 use App\Support\OrgAccess;
 use App\Support\OrgChart\OrgChartInstaller;
 use App\Support\OrgChart\OrgChartLinker;
@@ -475,6 +477,10 @@ class StructureController extends AdminController
             'scopeInherited' => $node->scope === null && $effectiveScope !== null,
             'levels' => AccessLevels::LEVELS,
             'permissions' => AccessLevels::PERMISSIONS,
+            'moduleTree' => AppModule::query()->whereNull('parent_id')->where('is_active', true)
+                ->with(['children' => fn ($query) => $query->where('is_active', true)])->orderBy('sort_order')->orderBy('id')->get(),
+            'moduleActions' => AppModule::ACTIONS,
+            'modulePermissions' => (array) $node->module_permissions,
             'nodePermissions' => AccessLevels::forPosition((string) $node->access_level, $node->permissions),
             'nodeEverywhere' => AccessLevels::reachesEverywhere((string) $node->access_level, $node->permissions),
             'scopes' => OrgScopes::all(),
@@ -568,6 +574,37 @@ class StructureController extends AdminController
         $this->audit($request, 'orgchart.node.updated', $node, ['title' => $node->title, 'changes' => $changes]);
 
         return redirect()->route('admin.postes.edit', $node)->with('status', 'Fiche enregistrée.');
+    }
+
+    /**
+     * Matrice d'habilitations CRUD d'un poste, module par module.
+     */
+    public function saveModulePermissions(Request $request, OrgNode $node): RedirectResponse
+    {
+        $this->requireEditor($request);
+
+        abort_unless($node->kind === 'position', 404);
+
+        if ($node->role_key !== null) {
+            throw ValidationException::withMessages(['modules' => 'Poste de l’équipe standard des clubs : ses droits se règlent dans « Droits des clubs ».']);
+        }
+
+        // Les clés de modules contiennent des points : pas de règle imbriquée, normalize() filtre tout.
+        $data = $request->validate(['modules' => ['nullable', 'array']]);
+
+        $matrix = ModulePermissions::normalize((array) ($data['modules'] ?? []));
+        $before = (array) $node->module_permissions;
+
+        $node->update(['module_permissions' => $matrix === [] ? null : $matrix]);
+
+        $this->audit($request, 'orgchart.module_permissions.updated', $node, [
+            'title' => $node->title,
+            'modules' => count($matrix),
+            'added' => array_keys(array_diff_key($matrix, $before)),
+            'removed' => array_keys(array_diff_key($before, $matrix)),
+        ]);
+
+        return redirect()->route('admin.postes.edit', $node)->with('status', 'Habilitations du poste enregistrées.');
     }
 
     public function store(Request $request): RedirectResponse
