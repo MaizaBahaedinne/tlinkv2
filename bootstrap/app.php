@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use App\Http\Middleware\EnsureAdminAccess;
+use App\Http\Middleware\LaunchCountdown;
 use App\Http\Middleware\SecurityHeaders;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -16,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
+        // Compte a rebours de lancement : ferme le site (web + API) aux non-administrateurs globaux jusqu'a la date choisie.
+        $middleware->web(append: [LaunchCountdown::class]);
+        $middleware->api(append: [LaunchCountdown::class]);
         // Un utilisateur deja connecte qui ouvre /connexion ou /inscription arrive sur le fil, pas sur la vitrine.
         $middleware->redirectUsersTo(fn () => route('home'));
         $middleware->alias([

@@ -123,6 +123,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('feuille-de-route', [Admin\RoadmapController::class, 'index'])->name('roadmap.index');
             Route::post('feuille-de-route', [Admin\RoadmapController::class, 'update'])->name('roadmap.update');
             Route::get('mandats', [Admin\MandateController::class, 'index'])->name('mandates.index');
+            Route::get('lancement', [Admin\LaunchController::class, 'edit'])->name('launch.edit');
+            Route::put('lancement', [Admin\LaunchController::class, 'update'])->name('launch.update');
             Route::post('mandats', [Admin\MandateController::class, 'store'])->name('mandates.store');
             Route::put('mandats/{mandate}', [Admin\MandateController::class, 'update'])->name('mandates.update');
             Route::delete('mandats/{mandate}', [Admin\MandateController::class, 'destroy'])->name('mandates.destroy');

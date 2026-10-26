@@ -25,6 +25,7 @@ class AdminMenu
                     ['label' => 'Tableau de bord', 'route' => 'admin.dashboard', 'icon' => 'home', 'match' => 'admin.dashboard', 'perms' => null],
                     ['label' => 'Feuille de route', 'route' => 'admin.roadmap.index', 'icon' => 'map', 'match' => 'admin.roadmap.*', 'perms' => ['entity.manage']],
                     ['label' => 'Mandats', 'route' => 'admin.mandates.index', 'icon' => 'calendar', 'match' => 'admin.mandates.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Lancement du site', 'route' => 'admin.launch.edit', 'icon' => 'flag', 'match' => 'admin.launch.*', 'perms' => ['entity.manage']],
                     ['label' => 'Journal d\'audit', 'route' => 'admin.audit.index', 'icon' => 'activity', 'match' => 'admin.audit.*', 'perms' => ['entity.manage']],
                 ],
             ],
