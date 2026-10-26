@@ -62,7 +62,7 @@
 
     {{-- Formulaire --}}
     <main class="flex items-center justify-center px-4 py-10 sm:px-8 lg:min-h-screen">
-        <div class="w-full max-w-md">
+        <div class="w-full {{ $formWidth ?? 'max-w-md' }}">
             @yield('form')
         </div>
     </main>

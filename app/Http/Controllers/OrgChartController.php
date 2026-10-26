@@ -9,6 +9,7 @@ use App\Models\Mandate;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
+use App\Models\PositionApplication;
 use App\Models\User;
 use App\Support\AdminContext;
 use App\Support\AccessLevels;
@@ -24,6 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -385,6 +387,26 @@ class OrgChartController extends Controller
         return $this->respond($request, $node->id);
     }
 
+    /**
+     * Génère un nouveau lien d'inscription pour un poste : l'ancien cesse immédiatement de fonctionner.
+     */
+    public function regenerateJoinLink(Request $request, OrgNode $node): JsonResponse
+    {
+        $this->requireEditor($request);
+        $this->assertNodeInMandate($node->id, $this->resolveMandate($request));
+
+        if ($node->kind !== 'position') {
+            throw ValidationException::withMessages(['node' => 'Seuls les postes ont un lien d’inscription.']);
+        }
+
+        $node->join_token = Str::random(40);
+        $node->save();
+
+        $this->audit($request, 'orgchart.join_link.regenerated', $node, ['title' => $node->title]);
+
+        return $this->respond($request, $node->id);
+    }
+
     public function syncAssignments(Request $request, OrgNode $node): JsonResponse
     {
         $this->requireEditor($request);
@@ -657,8 +679,10 @@ class OrgChartController extends Controller
         // Effectifs : donnees reservees aux administrateurs.
         $clubMembers = collect();
         $scopeMembers = collect();
+        $pendingApplications = collect();
 
         if ($canEdit) {
+            $pendingApplications = PositionApplication::query()->where('status', 'pending')->groupBy('node_id')->selectRaw('node_id, count(*) as total')->pluck('total', 'node_id');
             $approved = fn () => Membership::query()->where('memberships.status', 'approved');
             $clubMembers = $approved()->whereNotNull('node_id')->groupBy('node_id')->selectRaw('node_id, count(distinct user_id) as total')->pluck('total', 'node_id');
             $scopeMembers = $approved()->whereNotNull('scope')->groupBy('scope')->selectRaw('scope, count(distinct user_id) as total')->pluck('total', 'scope');
@@ -679,8 +703,9 @@ class OrgChartController extends Controller
                 'scopes' => $canEdit ? OrgScopes::all() : [],
                 'club_statuses' => OrgNode::CLUB_STATUSES,
                 'institution_types' => OrgNode::INSTITUTION_TYPES,
+                'applications_url' => $canEdit ? route('admin.candidatures.index') : null,
             ],
-            'nodes' => $nodes->map(function (OrgNode $node) use ($assignments, $resolve, $clubMembers, $scopeMembers, $canEdit): array {
+            'nodes' => $nodes->map(function (OrgNode $node) use ($assignments, $resolve, $clubMembers, $scopeMembers, $pendingApplications, $canEdit): array {
                 [$effScope, $scopeInherited] = $resolve($node);
 
                 return [
@@ -690,6 +715,8 @@ class OrgChartController extends Controller
                     'kind' => $node->kind,
                     'capacity' => $node->capacity ?? 'single',
                     'access_level' => $canEdit ? $node->access_level : null,
+                    'join_url' => $canEdit ? $node->joinUrl() : null,
+                    'pending_applications' => $canEdit && $node->kind === 'position' ? (int) ($pendingApplications[$node->id] ?? 0) : null,
                     'category' => $node->category,
                     'title' => $node->title,
                     'subtitle' => $node->subtitle,

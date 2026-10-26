@@ -787,6 +787,48 @@
         return rows.length ? h('div', { class: 'oc-links' }, rows) : null;
     }
 
+    // Lien d'inscription direct d'un poste : formulaire complet (compte, profil, avatar) qui depose une candidature.
+    function joinLinkSection(n) {
+        var input = h('input', { type: 'text', class: 'oc-user-input', readonly: true, value: n.join_url, 'aria-label': 'Lien d\'inscription du poste', onfocus: function () { input.select(); } });
+
+        function copy() {
+            var done = function () { toast('Lien copié.'); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(n.join_url).then(done).catch(function () { input.select(); toast('Sélectionnez le lien puis copiez-le (Ctrl+C).', 'error'); });
+            } else {
+                input.select();
+                try { document.execCommand('copy'); done(); } catch (e) { toast('Sélectionnez le lien puis copiez-le (Ctrl+C).', 'error'); }
+            }
+        }
+
+        function regenerate() {
+            askConfirm({
+                title: 'Nouveau lien d\'inscription',
+                body: 'L\'ancien lien cessera immédiatement de fonctionner. Les candidatures déjà reçues sont conservées.',
+                okLabel: 'Générer un nouveau lien',
+                primary: true
+            }).then(function (r) {
+                if (!r.ok) { return; }
+                api('POST', '/blocs/' + n.id + '/lien-inscription').then(function (res) { applyResponse(res, 'Nouveau lien généré.'); }).catch(function (err) { toast(formatError(err), 'error'); });
+            });
+        }
+
+        var pending = n.pending_applications || 0;
+        var appsUrl = (S.chart.meta || {}).applications_url;
+
+        return section('Inscription directe',
+            h('div', { class: 'oc-join' },
+                h('p', { class: 'oc-muted', text: 'Partagez ce lien : la personne crée son compte complet (photo, coordonnées, profil) et candidate à ce poste. Rien n\'est attribué sans votre validation.' }),
+                input,
+                h('div', { class: 'oc-assign' },
+                    btn('Copier le lien', copy, 'oc-btn-primary'),
+                    h('a', { class: 'oc-btn', href: n.join_url, target: '_blank', rel: 'noopener', text: 'Ouvrir' }),
+                    btn('Nouveau lien', regenerate)
+                ),
+                pending && appsUrl ? h('p', { class: 'oc-note oc-note-warn' }, h('a', { href: appsUrl, text: pending + ' candidature' + (pending > 1 ? 's' : '') + ' à examiner' })) : null
+            ));
+    }
+
     function renderPanel() {
         var body = $('#oc-panel-body');
         body.textContent = '';
@@ -870,6 +912,8 @@
             list.appendChild(h('div', { class: 'oc-assign' }, select));
         }
         body.appendChild(section('Personnes', list));
+
+        if (S.canEdit && isPos && n.join_url) { body.appendChild(joinLinkSection(n)); }
 
         if (n.description) { body.appendChild(section('Description', h('p', { class: 'oc-desc', text: n.description }))); }
 

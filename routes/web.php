@@ -8,12 +8,17 @@ use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
+use App\Http\Controllers\PositionJoinController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 // Site vitrine de la Fondation : racine du site (/ puis /fr, /ar, /en).
 require base_path('routes/site.php');
+
+// Lien d'inscription direct d'un poste de l'organigramme (public : jeton non devinable, candidature a valider).
+Route::get('/rejoindre/{token}', [PositionJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('position.join');
+Route::post('/rejoindre/{token}', [PositionJoinController::class, 'store'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:10,10')->name('position.join.store');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/connexion', [LoginController::class, 'show'])->name('login');
@@ -83,6 +88,7 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
     Route::post('blocs/{node}/ordre', [OrgChartController::class, 'reorder'])->name('nodes.reorder');
     Route::put('blocs/{node}/affectations', [OrgChartController::class, 'syncAssignments'])->name('nodes.assignments');
     Route::post('blocs/{node}/modele', [OrgChartController::class, 'applyTemplate'])->name('nodes.template');
+    Route::post('blocs/{node}/lien-inscription', [OrgChartController::class, 'regenerateJoinLink'])->name('nodes.join-link');
     Route::post('disposition', [OrgChartController::class, 'saveLayout'])->name('layout.save');
     Route::post('clubs', [OrgChartController::class, 'storeClub'])->name('clubs.store');
 
@@ -139,6 +145,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('structure/postes/{node}/modele', [Admin\StructureController::class, 'applyTemplate'])->name('postes.template');
             Route::post('structure/postes/{node}/titulaires', [Admin\StructureController::class, 'assign'])->name('postes.assign');
             Route::delete('structure/postes/{node}/titulaires/{person}', [Admin\StructureController::class, 'unassign'])->name('postes.unassign');
+            Route::get('structure/candidatures', [Admin\PositionApplicationController::class, 'index'])->name('candidatures.index');
+            Route::post('structure/candidatures/{application}', [Admin\PositionApplicationController::class, 'decide'])->name('candidatures.decide');
             Route::get('structure/clubs', [Admin\StructureController::class, 'clubs'])->name('clubs.index');
             Route::post('structure/clubs', [Admin\StructureController::class, 'storeClub'])->name('clubs.store');
             Route::post('structure/clubs/aligner', [Admin\StructureController::class, 'alignClubs'])->name('clubs.align');

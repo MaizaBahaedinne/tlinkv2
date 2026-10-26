@@ -352,3 +352,8 @@ html, body { height: 100%; margin: 0; }
 .oc-user-item:hover:not(:disabled), .oc-user-item:focus-visible { background: var(--oc-bg, #fcf3f5); outline: none; }
 .oc-user-item:disabled { opacity: .5; cursor: not-allowed; }
 .oc-user-item small { font-size: .74rem; }
+
+/* Lien d inscription direct d un poste */
+.oc-join{display:grid;gap:8px}
+.oc-join .oc-assign{display:flex;flex-wrap:wrap;gap:8px}
+.oc-join input{width:100%;font-size:12px}

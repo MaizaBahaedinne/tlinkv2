@@ -64,6 +64,10 @@ class AuditLabels
         'orgchart.person.updated' => 'Organigramme : personne modifiée',
         'orgchart.person.deleted' => 'Organigramme : personne supprimée',
         'orgchart.imported' => 'Organigramme : import JSON',
+        'orgchart.join_link.regenerated' => 'Organigramme : lien d’inscription d’un poste régénéré',
+        'orgchart.application.approved' => 'Candidature à un poste acceptée',
+        'orgchart.application.rejected' => 'Candidature à un poste refusée',
+        'position.application.created' => 'Candidature à un poste déposée',
     ];
 
     public static function label(string $action): string

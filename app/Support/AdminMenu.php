@@ -6,6 +6,7 @@ use App\Models\ApprovalRequest;
 use App\Models\ContactMessage;
 use App\Models\Membership;
 use App\Models\ModerationReport;
+use App\Models\PositionApplication;
 
 /**
  * Construit la navigation de l'espace admin en fonction des permissions de l'utilisateur.
@@ -32,6 +33,7 @@ class AdminMenu
                 'items' => [
                     ['label' => 'Organigramme', 'route' => 'orgchart.index', 'icon' => 'network', 'match' => 'orgchart.*', 'perms' => ['entity.manage']],
                     ['label' => 'Postes et droits', 'route' => 'admin.postes.index', 'icon' => 'key', 'match' => 'admin.postes.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Candidatures aux postes', 'route' => 'admin.candidatures.index', 'icon' => 'user-check', 'match' => 'admin.candidatures.*', 'perms' => ['entity.manage'], 'badge' => 'applications'],
                     ['label' => 'Clubs', 'route' => 'admin.clubs.index', 'icon' => 'building', 'match' => 'admin.clubs.*', 'perms' => ['entity.manage']],
                     ['label' => 'Droits des clubs', 'route' => 'admin.roles.index', 'icon' => 'shield', 'match' => 'admin.roles.*', 'perms' => ['entity.manage']],
                     ['label' => 'Périmètres', 'route' => 'admin.scopes.edit', 'icon' => 'network', 'match' => 'admin.scopes.*', 'perms' => ['entity.manage']],
@@ -105,6 +107,7 @@ class AdminMenu
                 ->count(),
             'reports' => ModerationReport::query()->where('status', 'pending')->count(),
             'messages' => ContactMessage::query()->where('status', 'new')->count(),
+            'applications' => PositionApplication::query()->where('status', 'pending')->count(),
             default => 0,
         };
 

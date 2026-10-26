@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class OrgNode extends Model
 {
@@ -83,8 +84,17 @@ class OrgNode extends Model
         'sort_order' => 'integer',
     ];
 
+    protected $hidden = ['join_token'];
+
     protected static function booted(): void
     {
+        // Chaque poste a son lien d'inscription direct (jeton non devinable, hors $fillable).
+        static::saving(function (self $node): void {
+            if ($node->kind === 'position' && blank($node->join_token)) {
+                $node->join_token = Str::random(40);
+            }
+        });
+
         // Les droits coches n'ont de sens que pour le niveau « personnalise » : on ne garde pas de restes.
         static::saving(function (self $node): void {
             if ($node->isDirty('access_level') && $node->access_level !== 'custom') {
@@ -111,5 +121,15 @@ class OrgNode extends Model
     public function assignments(): HasMany
     {
         return $this->hasMany(OrgAssignment::class, 'node_id');
+    }
+
+    public function applications(): HasMany
+    {
+        return $this->hasMany(PositionApplication::class, 'node_id');
+    }
+
+    public function joinUrl(): ?string
+    {
+        return $this->kind === 'position' && $this->join_token ? route('position.join', $this->join_token) : null;
     }
 }
