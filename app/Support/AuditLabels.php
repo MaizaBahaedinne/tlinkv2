@@ -74,6 +74,9 @@ class AuditLabels
         'admin.partner.created' => 'Partenaire ajouté',
         'admin.partner.updated' => 'Partenaire modifié',
         'admin.partner.deleted' => 'Partenaire supprimé',
+        'admin.module.created' => 'Module de l’application ajouté',
+        'admin.module.updated' => 'Module de l’application modifié',
+        'admin.module.deleted' => 'Module de l’application supprimé',
     ];
 
     public static function label(string $action): string

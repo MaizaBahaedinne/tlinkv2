@@ -124,6 +124,11 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('feuille-de-route', [Admin\RoadmapController::class, 'update'])->name('roadmap.update');
             Route::get('mandats', [Admin\MandateController::class, 'index'])->name('mandates.index');
             Route::get('lancement', [Admin\LaunchController::class, 'edit'])->name('launch.edit');
+            Route::get('modules', [Admin\AppModuleController::class, 'index'])->name('modules.index');
+            Route::post('modules', [Admin\AppModuleController::class, 'store'])->name('modules.store');
+            Route::post('modules/completer', [Admin\AppModuleController::class, 'sync'])->name('modules.sync');
+            Route::put('modules/{module}', [Admin\AppModuleController::class, 'update'])->name('modules.update');
+            Route::delete('modules/{module}', [Admin\AppModuleController::class, 'destroy'])->name('modules.destroy');
             Route::put('lancement', [Admin\LaunchController::class, 'update'])->name('launch.update');
             Route::post('mandats', [Admin\MandateController::class, 'store'])->name('mandates.store');
             Route::put('mandats/{mandate}', [Admin\MandateController::class, 'update'])->name('mandates.update');
