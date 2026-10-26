@@ -71,6 +71,9 @@ class AuditLabels
         'admin.impersonation.started' => 'Connexion en tant qu’un autre utilisateur (début)',
         'admin.impersonation.stopped' => 'Connexion en tant qu’un autre utilisateur (fin)',
         'admin.launch.updated' => 'Compte à rebours de lancement modifié',
+        'admin.partner.created' => 'Partenaire ajouté',
+        'admin.partner.updated' => 'Partenaire modifié',
+        'admin.partner.deleted' => 'Partenaire supprimé',
     ];
 
     public static function label(string $action): string

@@ -136,6 +136,10 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             // Site public de la Fondation
             Route::get('site-public', [Admin\SiteSettingsController::class, 'edit'])->name('site.edit');
             Route::put('site-public', [Admin\SiteSettingsController::class, 'update'])->name('site.update');
+            Route::get('partenaires', [Admin\PartnerController::class, 'index'])->name('partners.index');
+            Route::post('partenaires', [Admin\PartnerController::class, 'store'])->name('partners.store');
+            Route::put('partenaires/{partner}', [Admin\PartnerController::class, 'update'])->name('partners.update');
+            Route::delete('partenaires/{partner}', [Admin\PartnerController::class, 'destroy'])->name('partners.destroy');
             Route::get('info-session', [Admin\InfoSessionController::class, 'edit'])->name('info-session.edit');
             Route::put('info-session', [Admin\InfoSessionController::class, 'update'])->name('info-session.update');
             Route::get('messages', [Admin\ContactMessageController::class, 'index'])->name('messages.index');

@@ -8,6 +8,7 @@ use App\Models\FoundationEvent;
 use App\Models\Governorate;
 use App\Models\Membership;
 use App\Models\OrgNode;
+use App\Models\Partner;
 use App\Models\Post;
 use App\Models\PostAttachment;
 use App\Support\OrgScopes;
@@ -43,6 +44,7 @@ class SiteController extends Controller
             'stats' => $this->stats(),
             'news' => $news,
             'events' => $events,
+            'partners' => Partner::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(),
             ...$this->scopeTreeData(),
         ]);
     }

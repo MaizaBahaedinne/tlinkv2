@@ -51,6 +51,7 @@ return [
         'clubs_text' => ':clubs clubs actifs répartis dans :governorates gouvernorats. Trouvez celui qui vous correspond sur la carte.',
         'clubs_cta' => 'Voir la carte des clubs',
         'steps_title' => 'Nous rejoindre en 3 étapes',
+        'partners_title' => 'Nos partenaires',
         'steps' => [
             ['title' => 'Créez votre compte', 'text' => 'Inscrivez-vous gratuitement sur T.Link, la plateforme de la communauté Tunivisions.'],
             ['title' => 'Rejoignez un club', 'text' => 'Choisissez le club de votre université ou de votre lycée et envoyez votre demande.'],

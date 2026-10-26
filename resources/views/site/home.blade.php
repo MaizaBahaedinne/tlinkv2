@@ -109,6 +109,22 @@
         @endif
     </section>
 
+    @if($partners->isNotEmpty())
+        <section class="mx-auto mt-16 max-w-6xl px-4" aria-labelledby="partners-title">
+            <h2 id="partners-title" class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.partners_title') }}</h2>
+            <ul class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                @foreach($partners as $partner)
+                    <li>
+                        @php($url = $partner->safeUrl())
+                        @if($url)<a href="{{ $url }}" target="_blank" rel="noopener noreferrer" title="{{ $partner->name }}" class="site-card flex h-28 items-center justify-center p-4 transition hover:shadow-md">@else<div title="{{ $partner->name }}" class="site-card flex h-28 items-center justify-center p-4">@endif
+                            <img src="{{ $partner->logoUrl() }}" alt="{{ $partner->name }}" loading="lazy" class="max-h-full max-w-full object-contain">
+                        @if($url)</a>@else</div>@endif
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
+
     <section class="mx-auto mt-16 max-w-6xl px-4">
         <div class="rounded-2xl bg-brand-800 p-8 text-center text-white md:p-12">
             <h2 class="font-display text-2xl font-bold">{{ __('site.home.join_title') }}</h2>

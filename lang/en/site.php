@@ -51,6 +51,7 @@ return [
         'clubs_text' => ':clubs active clubs across :governorates governorates. Find the one that suits you on the map.',
         'clubs_cta' => 'See the clubs map',
         'steps_title' => 'Join us in 3 steps',
+        'partners_title' => 'Our partners',
         'steps' => [
             ['title' => 'Create your account', 'text' => 'Sign up for free on T.Link, the Tunivisions community platform.'],
             ['title' => 'Join a club', 'text' => 'Pick the club at your university or high school and send your request.'],

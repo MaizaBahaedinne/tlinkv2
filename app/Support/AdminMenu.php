@@ -53,6 +53,7 @@ class AdminMenu
                     ['label' => 'Publications', 'route' => 'admin.posts.index', 'icon' => 'file-text', 'match' => 'admin.posts.*', 'perms' => ['post.moderate']],
                     ['label' => 'Modération', 'route' => 'admin.moderation.index', 'icon' => 'flag', 'match' => 'admin.moderation.*', 'perms' => ['post.moderate'], 'badge' => 'reports'],
                     ['label' => 'Site public', 'route' => 'admin.site.edit', 'icon' => 'external', 'match' => 'admin.site.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Partenaires', 'route' => 'admin.partners.index', 'icon' => 'building', 'match' => 'admin.partners.*', 'perms' => ['entity.manage']],
                     ['label' => 'Info session et quiz', 'route' => 'admin.info-session.edit', 'icon' => 'graduation', 'match' => 'admin.info-session.*', 'perms' => ['entity.manage']],
                     ['label' => 'Messages du site', 'route' => 'admin.messages.index', 'icon' => 'file-text', 'match' => 'admin.messages.*', 'perms' => ['entity.manage'], 'badge' => 'messages'],
                 ],
