@@ -78,6 +78,26 @@ class AdminContext
         return $this->scope($permission) === [];
     }
 
+    /**
+     * Entités propres : les périmètres des postes occupés, sans leurs sous-périmètres.
+     *
+     * null => permission absente ; [] => périmètre global ; [slugs] => entités propres.
+     *
+     * @return array<int, string>|null
+     */
+    public function ownScopes(string $permission): ?array
+    {
+        if (! $this->can($permission)) {
+            return null;
+        }
+
+        if (in_array(null, $this->permissionScopes[$permission], true)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter($this->permissionScopes[$permission], 'is_string')));
+    }
+
     public function canManageScope(string $permission, ?string $scopeSlug): bool
     {
         $scope = $this->scope($permission);

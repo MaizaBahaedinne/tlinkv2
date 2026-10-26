@@ -34,6 +34,7 @@ class AuditLabels
         'admin.role.assigned' => 'Rôle attribué',
         'admin.role.revoked' => 'Rôle retiré',
         'admin.membership.status_changed' => 'Statut d\'adhésion modifié',
+        'admin.member.added' => 'Membre ajouté à une entité',
         'admin.post.deleted' => 'Publication supprimée',
         'admin.post.comments_toggled' => 'Commentaires activés/désactivés',
         'admin.post.site_news_toggled' => 'Publication autorisée/refusée pour le site vitrine',

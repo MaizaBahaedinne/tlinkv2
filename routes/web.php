@@ -184,6 +184,9 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
         Route::middleware('admin.can:membership.manage')->group(function (): void {
             Route::get('adhesions', [Admin\MembershipController::class, 'index'])->name('memberships.index');
             Route::patch('adhesions/{membership}', [Admin\MembershipController::class, 'update'])->name('memberships.update');
+            Route::get('membres', [Admin\EntityMemberController::class, 'index'])->name('members.index');
+            Route::post('membres', [Admin\EntityMemberController::class, 'store'])->name('members.store');
+            Route::patch('membres/{membership}', [Admin\EntityMemberController::class, 'update'])->name('members.update');
         });
 
         // Contenu
