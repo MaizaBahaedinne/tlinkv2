@@ -68,6 +68,8 @@ class AuditLabels
         'orgchart.application.approved' => 'Candidature à un poste acceptée',
         'orgchart.application.rejected' => 'Candidature à un poste refusée',
         'position.application.created' => 'Candidature à un poste déposée',
+        'admin.impersonation.started' => 'Connexion en tant qu’un autre utilisateur (début)',
+        'admin.impersonation.stopped' => 'Connexion en tant qu’un autre utilisateur (fin)',
     ];
 
     public static function label(string $action): string

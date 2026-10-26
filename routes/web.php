@@ -36,6 +36,10 @@ Route::post('/deconnexion', [LoginController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
+Route::post('/impersonation/quitter', [Admin\ImpersonationController::class, 'stop'])
+    ->middleware('auth')
+    ->name('impersonation.stop');
+
 Route::get('/posts/attachments/{attachment}', [FeedController::class, 'showAttachment'])
     ->name('posts.attachments.show');
 
@@ -125,6 +129,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('journal', [Admin\AuditLogController::class, 'index'])->name('audit.index');
             Route::get('utilisateurs/{user}/modifier', [Admin\UserController::class, 'edit'])->name('users.edit');
             Route::put('utilisateurs/{user}', [Admin\UserController::class, 'update'])->name('users.update');
+            Route::post('utilisateurs/{user}/se-connecter-en-tant-que', [Admin\ImpersonationController::class, 'start'])->name('users.impersonate');
 
             // Site public de la Fondation
             Route::get('site-public', [Admin\SiteSettingsController::class, 'edit'])->name('site.edit');

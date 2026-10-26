@@ -10,6 +10,12 @@
             @if($canEdit)
                 <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary"><x-admin.icon name="edit" :size="16" /> Modifier</a>
             @endif
+            @if($canImpersonate)
+                <form method="post" action="{{ route('admin.users.impersonate', $user) }}" style="display:inline" onsubmit="return confirm('Vous allez vous connecter en tant que {{ e(addslashes($user->name)) }}. Vos actions seront faites avec son compte. Continuer ?')">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary"><x-admin.icon name="user" :size="16" /> Se connecter en tant que</button>
+                </form>
+            @endif
         </x-slot:actions>
     </x-admin.page-header>
 

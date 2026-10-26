@@ -70,6 +70,7 @@ class UserController extends AdminController
         return view('admin.users.show', [
             'user' => $user,
             'canEdit' => $this->context($request)->isGlobal('entity.manage'),
+            'canImpersonate' => ImpersonationController::canImpersonate($request, $user),
             'memberships' => $user->memberships()->with(['node:id,title'])->latest('id')->get(),
             'orgPositions' => $this->orgPositions($user),
             'recentPosts' => $user->posts()->latest('id')->limit(5)->get(['id', 'content', 'type', 'created_at']),

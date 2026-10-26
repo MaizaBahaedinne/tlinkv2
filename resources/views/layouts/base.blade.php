@@ -34,5 +34,6 @@
     @endauth
 
     @yield('content')
+@include('partials.impersonation-banner')
 </body>
 </html>
