@@ -4,7 +4,7 @@
 @section('section', 'Organisation')
 
 @section('content')
-    <x-admin.page-header title="Postes et droits" subtitle="Un poste de l’organigramme est un rôle : cochez ce qu’il peut faire et choisissez le périmètre sur lequel il agit.">
+    <x-admin.page-header title="Postes et droits" subtitle="Un poste de l’organigramme est un rôle : ses droits se règlent module par module dans la fiche du poste (matrice C R U D) ; ce tableau les résume et règle le périmètre sur lequel chaque poste agit.">
         <x-slot:actions>
             <a href="{{ route('admin.scopes.edit') }}" class="btn btn-secondary"><x-admin.icon name="layers" :size="16" /> Périmètres</a>
             <a href="{{ route('admin.clubs.index') }}" class="btn btn-secondary"><x-admin.icon name="building" :size="16" /> Clubs</a>
@@ -85,7 +85,7 @@
 
                 @if($canEdit)
                     <div class="toolbar" style="border-bottom:1px solid var(--line)">
-                        <span class="text-sm text-muted">Cochez les droits de chaque poste, choisissez son périmètre, puis enregistrez (postes de cette page).</span>
+                        <span class="text-sm text-muted">Choisissez le périmètre de chaque poste, puis enregistrez (postes de cette page). Les droits (colonnes) se modifient dans la fiche du poste.</span>
                         <button class="btn btn-primary btn-sm" type="submit"><x-admin.icon name="check" :size="16" /> Enregistrer</button>
                     </div>
                 @endif
@@ -145,9 +145,7 @@
 
                                         @foreach($permissions as $slug => $label)
                                             <td style="text-align:center">
-                                                @if($editable)
-                                                    <input type="checkbox" name="rows[{{ $node->id }}][permissions][]" value="{{ $slug }}" @checked(in_array($slug, $rights, true)) aria-label="{{ $label }} : {{ $node->title }}">
-                                                @elseif(in_array($slug, $rights, true))
+                                                @if(in_array($slug, $rights, true))
                                                     <x-admin.icon name="check" :size="16" />
                                                 @else
                                                     <span class="text-muted">—</span>
@@ -157,6 +155,7 @@
 
                                         <td style="text-align:center">
                                             @if($editable)
+                                                <input type="hidden" name="rows[{{ $node->id }}][scope_all]" value="0">
                                                 <input type="checkbox" name="rows[{{ $node->id }}][scope_all]" value="1" @checked($everywhere) aria-label="Plateforme entière : {{ $node->title }}">
                                             @elseif($everywhere)
                                                 <x-admin.icon name="check" :size="16" />

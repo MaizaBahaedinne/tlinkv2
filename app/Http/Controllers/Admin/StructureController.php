@@ -123,7 +123,7 @@ class StructureController extends AdminController
         $data = $request->validate([
             'rows' => ['required', 'array', 'min:1', 'max:100'],
             'rows.*.permissions' => ['nullable', 'array'],
-            'rows.*.permissions.*' => [Rule::in(array_keys(AccessLevels::PERMISSIONS))],
+            'rows.*.permissions.*' => ['nullable', Rule::in(array_keys(AccessLevels::PERMISSIONS))],
             'rows.*.scope_all' => ['nullable', 'boolean'],
             'rows.*.scope' => ['nullable', Rule::in(OrgScopes::slugs())],
         ]);
@@ -136,32 +136,40 @@ class StructureController extends AdminController
 
             foreach ($nodes as $node) {
                 $row = $data['rows'][$node->id];
-                $everywhere = (bool) ($row['scope_all'] ?? false);
                 $scope = ($row['scope'] ?? '') !== '' ? $row['scope'] : null;
-                [$level, $stored] = AccessLevels::fromChecked($row['permissions'] ?? [], $everywhere);
 
                 $currentLevel = (string) $node->access_level;
                 $currentRights = AccessLevels::forPosition($currentLevel, $node->permissions);
-                $newRights = AccessLevels::forPosition($level, $stored);
+                $currentEverywhere = AccessLevels::reachesEverywhere($currentLevel, $node->permissions);
 
-                sort($currentRights);
-                sort($newRights);
+                // Le tableau règle le périmètre ; les droits viennent de la matrice. Des droits envoyés ici
+                // (préréglage) sont convertis en matrice, jamais enregistrés à part.
+                $sentRights = array_key_exists('permissions', $row);
+                $everywhere = array_key_exists('scope_all', $row) ? (bool) $row['scope_all'] : $currentEverywhere;
+                $rights = $sentRights ? array_values(array_intersect(array_keys(AccessLevels::PERMISSIONS), array_filter((array) $row['permissions']))) : $currentRights;
 
-                // Droits inchanges : on ne touche pas au niveau predefini du poste (ni a son historique).
-                $sameRights = $currentRights === $newRights
-                    && ($newRights === [] || AccessLevels::reachesEverywhere($currentLevel, $node->permissions) === AccessLevels::reachesEverywhere($level, $stored));
+                $sortedCurrent = $currentRights;
+                $sortedNew = $rights;
+                sort($sortedCurrent);
+                sort($sortedNew);
+
+                // Droits inchanges : on ne touche pas a la matrice du poste (ni a son niveau predefini).
+                $sameRights = $sortedCurrent === $sortedNew && ($sortedNew === [] || $currentEverywhere === $everywhere);
 
                 if ($sameRights && $node->scope === $scope) {
                     continue;
                 }
 
-                $attributes = ['scope' => $scope];
+                $node->update(['scope' => $scope]);
 
                 if (! $sameRights) {
-                    $attributes += ['access_level' => $level, 'permissions' => $stored];
+                    $matrix = $sentRights || $node->module_permissions === null
+                        ? ModulePermissions::fromPermissions($rights)
+                        : (array) $node->module_permissions;
+
+                    ModulePermissions::apply($node, $matrix, $everywhere);
                 }
 
-                $node->update($attributes);
                 $count++;
             }
 
@@ -463,6 +471,7 @@ class StructureController extends AdminController
         }
 
         $effectiveScope = OrgAccess::scopeOf($node);
+        $rights = AccessLevels::forPosition((string) $node->access_level, $node->permissions);
 
         return view('admin.structure.edit', [
             'node' => $node,
@@ -480,8 +489,9 @@ class StructureController extends AdminController
             'moduleTree' => AppModule::query()->whereNull('parent_id')->where('is_active', true)
                 ->with(['children' => fn ($query) => $query->where('is_active', true)])->orderBy('sort_order')->orderBy('id')->get(),
             'moduleActions' => AppModule::ACTIONS,
-            'modulePermissions' => (array) $node->module_permissions,
-            'nodePermissions' => AccessLevels::forPosition((string) $node->access_level, $node->permissions),
+            'modulePermissions' => $node->module_permissions !== null ? (array) $node->module_permissions : ModulePermissions::fromPermissions($rights),
+            'matrixDerived' => $node->module_permissions === null && $rights !== [],
+            'nodePermissions' => $rights,
             'nodeEverywhere' => AccessLevels::reachesEverywhere((string) $node->access_level, $node->permissions),
             'scopes' => OrgScopes::all(),
             'kinds' => array_intersect_key(OrgNode::KINDS, array_flip(OrgNode::MANUAL_KINDS)),
@@ -525,20 +535,21 @@ class StructureController extends AdminController
         $this->rules->assertValidKind($kind, $parentId);
 
         $attributes = Arr::only($data, ['title', 'subtitle', 'description', 'scope']) + ['kind' => $kind, 'parent_id' => $parentId];
+        $legacyRights = null;
 
         if ($kind === 'position') {
             $attributes['capacity'] = $data['capacity'] ?? $node->capacity ?? 'single';
 
-            // Poste d'une equipe type de club : les droits viennent du role, pas de la fiche.
+            // Les droits se règlent dans la matrice (une seule source) ; des droits cochés envoyés ici sont convertis en matrice.
+            // Poste d'une équipe type de club : les droits viennent du rôle, pas de la fiche.
             if ($node->role_key === null && $request->has('permissions')) {
-                [$attributes['access_level'], $attributes['permissions']] = AccessLevels::fromChecked(
-                    array_filter((array) ($data['permissions'] ?? [])),
-                    $request->boolean('scope_all'),
-                );
+                $legacyRights = array_values(array_filter((array) ($data['permissions'] ?? [])));
             }
         } else {
             $attributes['capacity'] = 'single';
             $attributes['access_level'] = 'none';
+            $attributes['permissions'] = null;
+            $attributes['module_permissions'] = null;
         }
 
         if ($kind === 'club') {
@@ -553,8 +564,12 @@ class StructureController extends AdminController
 
         $before = $node->only(array_keys($attributes));
 
-        $this->keepingAdminAccess($request, function () use ($node, $attributes): void {
+        $this->keepingAdminAccess($request, function () use ($node, $attributes, $legacyRights, $request): void {
             $node->update($attributes);
+
+            if ($legacyRights !== null) {
+                ModulePermissions::apply($node, ModulePermissions::fromPermissions($legacyRights), $request->boolean('scope_all'));
+            }
 
             if ($node->kind === 'club') {
                 $this->linker->placeClub($node);
@@ -590,22 +605,28 @@ class StructureController extends AdminController
         }
 
         // Les clés de modules contiennent des points : pas de règle imbriquée, normalize() filtre tout.
-        $data = $request->validate(['modules' => ['nullable', 'array']]);
+        $data = $request->validate(['modules' => ['nullable', 'array'], 'scope_all' => ['nullable', 'boolean']]);
 
         $matrix = ModulePermissions::normalize((array) ($data['modules'] ?? []));
         $before = (array) $node->module_permissions;
+        $everywhere = $request->has('scope_all')
+            ? $request->boolean('scope_all')
+            : AccessLevels::reachesEverywhere((string) $node->access_level, $node->permissions);
 
-        $node->update(['module_permissions' => $matrix === [] ? null : $matrix]);
+        // Une seule source de droits : la matrice. Les permissions du poste en sont déduites.
+        $this->keepingAdminAccess($request, function () use ($request, $node, $matrix, $everywhere): void {
+            ModulePermissions::apply($node, $matrix, $everywhere);
 
-        // Garde-fou : la matrice ne doit pas retirer à son auteur l'accès à cet écran.
-        if (! (new AdminContext($request->user()))->allowsModule(['entity.manage'], 'organization.positions', ['update'])) {
-            $node->update(['module_permissions' => $before === [] ? null : $before]);
+            // Garde-fou : la matrice ne doit pas retirer à son auteur l'accès à cet écran.
+            if (! (new AdminContext($request->user()))->allowsModule(['entity.manage'], 'organization.positions', ['update'])) {
+                throw ValidationException::withMessages(['modules' => 'Cette matrice vous retirerait l’accès à la gestion des postes : cochez « Postes et droits » (consulter et modifier) ou choisissez un autre poste.']);
+            }
+        });
 
-            throw ValidationException::withMessages(['modules' => 'Cette matrice vous retirerait l’accès à la gestion des postes : cochez « Postes et droits » (consulter et modifier) ou choisissez un autre poste.']);
-        }
         $this->audit($request, 'orgchart.module_permissions.updated', $node, [
             'title' => $node->title,
             'modules' => count($matrix),
+            'permissions' => $node->fresh()->permissions,
             'added' => array_keys(array_diff_key($matrix, $before)),
             'removed' => array_keys(array_diff_key($before, $matrix)),
         ]);
@@ -643,6 +664,13 @@ class StructureController extends AdminController
             'subtitle' => $parent->kind === 'club' ? $parent->title : $parent->subtitle,
             'sort_order' => $this->nextSort($parent->id),
         ]);
+
+        // Un niveau d'accès donné à la création est converti en matrice : une seule source de droits.
+        $rights = AccessLevels::forPosition((string) $node->access_level, null);
+
+        if ($isPosition && $rights !== []) {
+            $node->update(['module_permissions' => ModulePermissions::fromPermissions($rights) ?: null]);
+        }
 
         $this->audit($request, 'orgchart.node.created', $node, ['title' => $node->title, 'parent_id' => $node->parent_id]);
 

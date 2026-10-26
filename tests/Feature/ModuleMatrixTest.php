@@ -84,6 +84,57 @@ class ModuleMatrixTest extends TestCase
         $this->assertNull($position->fresh()->module_permissions);
     }
 
+    public function test_matrix_is_the_single_source_of_rights_and_derives_the_permissions(): void
+    {
+        $position = $this->position();
+
+        $this->actingAs($this->admin())->put("/admin/structure/postes/{$position->id}/habilitations", [
+            'modules' => ['members.memberships' => ['read', 'update'], 'events.events' => ['read']],
+            'scope_all' => '0',
+        ])->assertSessionHasNoErrors();
+
+        $position->refresh();
+        $this->assertSame('custom', $position->access_level);
+        $this->assertEqualsCanonicalizing(['membership.manage', 'event.manage'], $position->permissions);
+        $this->assertSame(['read', 'update'], $position->module_permissions['members.memberships']);
+
+        $this->actingAs($this->admin())->put("/admin/structure/postes/{$position->id}/habilitations", [
+            'modules' => ['members.memberships' => ['read']], 'scope_all' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $position->refresh();
+        $this->assertSame(['membership.manage', 'scope.all'], $position->permissions);
+    }
+
+    public function test_a_level_converts_to_the_equivalent_matrix(): void
+    {
+        $matrix = ModulePermissions::fromPermissions(\App\Support\AccessLevels::permissions('moderator'));
+
+        $this->assertSame(['governance.moderation' => ['read', 'update', 'delete']], $matrix);
+        $this->assertSame(['post.moderate'], ModulePermissions::derivePermissions($matrix));
+    }
+
+    public function test_perimeter_table_changes_the_perimeter_without_touching_the_matrix(): void
+    {
+        $position = $this->position();
+        ModulePermissions::apply($position, ['members.memberships' => ['read', 'update']], false);
+
+        $this->actingAs($this->admin())->post('/admin/structure/postes/droits', ['rows' => [$position->id => ['scope' => 'high-school']]])->assertSessionHasNoErrors();
+
+        $position->refresh();
+        $this->assertSame('high-school', $position->scope);
+        $this->assertSame(['members.memberships' => ['read', 'update']], $position->module_permissions);
+        $this->assertSame(['membership.manage'], $position->permissions);
+    }
+
+    public function test_the_sheet_no_longer_offers_a_second_rights_editor(): void
+    {
+        $position = $this->position();
+
+        $this->actingAs($this->admin())->get("/admin/structure/postes/{$position->id}/modifier")
+            ->assertOk()->assertSee('Habilitations par module')->assertDontSee('name="permissions[]"', false);
+    }
+
     public function test_grants_follow_the_position_scope(): void
     {
         $this->admin();

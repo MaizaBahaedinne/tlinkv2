@@ -57,25 +57,19 @@
                             @if($isPosition)
                                 <x-admin.select name="capacity" label="Titulaires" :options="$capacities" :value="$node->capacity" :required="true" :placeholder="null" />
                                 <div class="span-2">
-                                    <label>Droits de ce poste sur T.Link</label>
+                                    <label>Accès à l’administration (déduit des habilitations)</label>
+                                    <div class="chips" style="margin-top:8px">
+                                        @forelse($nodePermissions as $slug)
+                                            <span class="chip">{{ $permissions[$slug] }}</span>
+                                        @empty
+                                            <span class="text-sm text-muted">Aucun accès à l’administration.</span>
+                                        @endforelse
+                                        @if($nodeEverywhere)<span class="chip">Agit sur toute la plateforme</span>@endif
+                                    </div>
                                     @if($node->role_key)
-                                        <div class="chips" style="margin-top:8px">
-                                            @forelse($nodePermissions as $slug)
-                                                <span class="chip">{{ $permissions[$slug] }}</span>
-                                            @empty
-                                                <span class="text-sm text-muted">Aucun droit d’administration.</span>
-                                            @endforelse
-                                        </div>
                                         <p class="hint" style="margin-top:6px">Poste de l’équipe standard des clubs : les droits sont les mêmes dans tous les clubs et se règlent dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p>
                                     @else
-                                        <input type="hidden" name="permissions[]" value="">
-                                        <div style="display:grid;gap:8px;margin-top:8px">
-                                            @foreach($permissions as $slug => $label)
-                                                <label class="check"><input type="checkbox" name="permissions[]" value="{{ $slug }}" @checked(in_array($slug, old('permissions', $nodePermissions), true))> {{ $label }}</label>
-                                            @endforeach
-                                            <label class="check"><input type="checkbox" name="scope_all" value="1" @checked(old('scope_all', $nodeEverywhere))> Agit sur toute la plateforme, sans limite de périmètre</label>
-                                        </div>
-                                        <p class="hint" style="margin-top:6px">Les droits s’appliquent à chaque personne qui occupe ce poste, dans le périmètre choisi ci-dessus.</p>
+                                        <p class="hint" style="margin-top:6px">Les droits ne se règlent qu’à un endroit : la carte « Habilitations par module » ci-dessous. Ils s’appliquent à chaque personne qui occupe ce poste, dans le périmètre choisi plus haut.</p>
                                     @endif
                                 </div>
                             @endif
@@ -113,12 +107,15 @@
                     @csrf
                     @method('PUT')
                     <div class="card-head"><div><h2>Habilitations par module</h2><p class="sub">Ce que les titulaires de « {{ $node->title }} » peuvent créer (C), consulter (R), modifier (U) et supprimer (D).</p></div></div>
-                    @if($node->role_key)
-                        <div class="card-body"><p class="hint">Poste de l’équipe standard des clubs : les droits se règlent dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p></div>
-                    @elseif($moduleTree->isEmpty())
+                    @if($moduleTree->isEmpty())
                         <x-admin.empty icon="layers" title="Aucun module actif" />
                     @else
-                        <fieldset @disabled(! $canEdit) style="border:0;margin:0;padding:0;min-width:0">
+                        @if($node->role_key)
+                            <div class="card-body" style="padding-bottom:0"><p class="hint">Poste de l’équipe standard des clubs : voici les droits déduits de son rôle, en lecture seule. Ils se règlent dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p></div>
+                        @elseif($matrixDerived)
+                            <div class="card-body" style="padding-bottom:0"><p class="hint">Ce poste a été créé avec un niveau d’accès : la matrice ci-dessous en reprend les droits. Enregistrez pour la rendre modifiable module par module.</p></div>
+                        @endif
+                        <fieldset @disabled(! $canEdit || $node->role_key) style="border:0;margin:0;padding:0;min-width:0">
                             <div class="table-wrap">
                                 <table class="tbl">
                                     <thead>
@@ -163,9 +160,13 @@
                             </div>
                         </fieldset>
                         <div class="card-body" style="padding-top:0">
-                            <p class="hint">« Consulter » est ajouté automatiquement dès qu’une autre action est accordée. Dès qu’une case est cochée, le menu et l’accès aux pages d’administration de ce poste se limitent aux modules cochés et aux actions cochées ; sans aucune case, le niveau d’accès du poste s’applique sans restriction. La matrice ne donne jamais de droit au-delà du niveau d’accès : elle ne fait que le restreindre. Le catalogue des modules se gère dans <a href="{{ route('admin.modules.index') }}">Modules de l’application</a>.</p>
+                            @unless($node->role_key)
+                                <input type="hidden" name="scope_all" value="0">
+                                <label class="check"><input type="checkbox" name="scope_all" value="1" @checked(old('scope_all', $nodeEverywhere)) @disabled(! $canEdit)> Agit sur toute la plateforme, sans limite de périmètre</label>
+                            @endunless
+                            <p class="hint" style="margin-top:8px">C’est ici, et seulement ici, que se règlent les droits d’un poste. « Consulter » est ajouté automatiquement dès qu’une autre action est accordée. Le menu, le tableau de bord et les pages d’administration suivent cette matrice, et l’accès à l’administration en est déduit. Les droits s’appliquent dans le périmètre du poste, ou partout si la case ci-dessus est cochée. Le catalogue des modules se gère dans <a href="{{ route('admin.modules.index') }}">Modules de l’application</a>.</p>
                         </div>
-                        @if($canEdit)
+                        @if($canEdit && ! $node->role_key)
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-primary"><x-admin.icon name="check" :size="16" /> Enregistrer les habilitations</button>
                             </div>

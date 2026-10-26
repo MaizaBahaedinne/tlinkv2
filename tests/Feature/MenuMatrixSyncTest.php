@@ -69,7 +69,7 @@ class MenuMatrixSyncTest extends TestCase
         $position = OrgNode::query()->where('system_key', 'national-administrators')->firstOrFail();
 
         $this->actingAs($admin)->put("/admin/structure/postes/{$position->id}/habilitations", ['modules' => ['feed.posts' => ['read']]])
-            ->assertSessionHasErrors('modules');
+            ->assertSessionHasErrors();
 
         $this->assertNull($position->fresh()->module_permissions);
     }

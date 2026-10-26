@@ -32,7 +32,7 @@ class AdminMenu
         'admin.users.*' => 'members.users',
         'admin.memberships.*' => 'members.memberships',
         'admin.members.*' => 'members.entity_members',
-        'admin.posts.*' => 'feed.posts',
+        'admin.posts.*' => 'governance.moderation',
         'admin.moderation.*' => 'governance.moderation',
         'admin.site.*' => 'website.content',
         'admin.partners.*' => 'website.partners',

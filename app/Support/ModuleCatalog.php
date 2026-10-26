@@ -27,6 +27,7 @@ final class ModuleCatalog
                     ['key' => 'feed.reactions', 'name' => 'Réactions', 'description' => 'Réagir aux publications.', 'actions' => ['create', 'read', 'delete']],
                     ['key' => 'feed.shares', 'name' => 'Partages', 'description' => 'Partager une publication.', 'actions' => ['create', 'read', 'delete']],
                     ['key' => 'feed.attachments', 'name' => 'Pièces jointes', 'description' => 'Images, vidéos et fichiers joints aux publications.', 'actions' => ['create', 'read', 'delete']],
+                    ['key' => 'feed.public_posts', 'name' => 'Publications publiques', 'description' => 'Publier des contenus visibles publiquement.', 'actions' => ['create']],
                 ],
             ],
             [

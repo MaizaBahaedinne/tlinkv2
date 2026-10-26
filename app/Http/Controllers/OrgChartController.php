@@ -193,6 +193,8 @@ class OrgChartController extends Controller
         if (($data['kind'] ?? $node->kind) !== 'position') {
             $data['capacity'] = 'single';
             $data['access_level'] = 'none';
+            $data['permissions'] = null;
+            $data['module_permissions'] = null;
         }
 
         if (($data['kind'] ?? $node->kind) !== 'club') {
@@ -815,9 +817,8 @@ class OrgChartController extends Controller
             unset($data['capacity']);
         }
 
-        if (empty($data['access_level'])) {
-            unset($data['access_level']);
-        }
+        // Les droits d'un poste se règlent uniquement dans sa matrice d'habilitations (Postes et droits).
+        unset($data['access_level']);
 
         if (empty($data['status'])) {
             unset($data['status']);

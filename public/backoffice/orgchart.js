@@ -1154,7 +1154,6 @@
         $('#n-collapsed').checked = n ? !!n.is_collapsed : false;
 
         fillSelect($('#n-capacity'), mapOptions(meta.capacities), n ? n.capacity : 'single');
-        fillSelect($('#n-access'), mapOptions(meta.access_levels), n ? (n.access_level || 'none') : 'none');
         refreshKindOptions(n && !isClub ? n.kind : 'position', parent ? parent.id : null, isClub);
         fillSelect($('#n-category'), mapOptions(meta.categories), n ? n.category : (parent ? parent.category : 'direction'));
         fillSelect($('#n-relation'), mapOptions(meta.relations), n ? n.relation_type : 'hierarchy');
@@ -1241,7 +1240,6 @@
         if (!isClub) {
             body.kind = $('#n-kind').value;
             body.capacity = body.kind === 'position' ? $('#n-capacity').value : 'single';
-            body.access_level = body.kind === 'position' ? $('#n-access').value : 'none';
         }
         if (!body.title) { showError('#n-error', { message: 'L\'intitulé est obligatoire.' }); return; }
 

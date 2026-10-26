@@ -203,7 +203,7 @@ class StructureAdminTest extends TestCase
 
         $adminPost = OrgNode::query()->where('system_key', 'national-administrators')->firstOrFail();
 
-        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [$adminPost->id => ['scope' => '']]])
+        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [$adminPost->id => ['scope' => '', 'permissions' => ['']]]])
             ->assertSessionHasErrors('access_level');
 
         $this->assertSame('global_admin', $adminPost->fresh()->access_level);
