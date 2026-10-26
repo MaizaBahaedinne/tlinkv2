@@ -42,7 +42,7 @@ class LaunchCountdownTest extends TestCase
 
         $this->get('/fr')->assertStatus(503)->assertSee('Ouverture prochaine')->assertHeader('Retry-After');
         $this->get('/inscription')->assertStatus(503);
-        $this->get('/feed')->assertStatus(503);
+        $this->actingAs(User::factory()->create())->get('/feed')->assertStatus(503);
         $this->getJson('/api/v1/posts')->assertStatus(503)->assertJsonPath('message', 'Ouverture prochaine');
 
         $this->actingAs(User::factory()->create())->get('/fr/a-propos')->assertStatus(503);

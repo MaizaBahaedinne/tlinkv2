@@ -46,7 +46,7 @@ trait GrantsAccess
     {
         $installer = app(OrgChartInstaller::class);
 
-        if (! $installer->isInstalled()) {
+        if (! OrgNode::query()->where('system_key', 'national-administrators')->exists()) {
             $this->seed(\Database\Seeders\GovernorateSeeder::class);
             $installer->install();
         }

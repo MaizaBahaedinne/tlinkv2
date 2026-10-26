@@ -112,7 +112,7 @@ class ClubRolesTest extends TestCase
         $club = $this->club('ESPRIT', true);
         $vp = OrgNode::query()->where('subtitle', $club->title)->where('role_key', 'vp-marketing')->firstOrFail();
 
-        $this->actingAs($admin)->post('/admin/structure/postes/acces', ['nodes' => [$vp->id], 'access_level' => 'manager'])->assertRedirect();
+        $this->actingAs($admin)->post('/admin/structure/postes/droits', ['rows' => [$vp->id => ['permissions' => ['membership.manage'], 'scope_all' => 1]]])->assertRedirect();
         $this->assertSame('none', $vp->fresh()->access_level);
 
         $this->actingAs($admin)->put('/admin/structure/postes/'.$vp->id, ['title' => $vp->title, 'capacity' => 'single', 'access_level' => 'manager'])->assertRedirect();
