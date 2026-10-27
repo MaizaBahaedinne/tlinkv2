@@ -64,13 +64,31 @@ class SiteSettings
         'value_4_text' => 'Valeur 4 : texte',
     ];
 
-    /** Titre de section affiché dans l'admin avant le champ indiqué. */
+    /** Titre de section affiché dans l'admin avant le champ indiqué (au sein d'un onglet). */
     public const SECTIONS = [
-        'hero_title' => 'Page d’accueil',
-        'about_body' => 'Page « À propos » : présentation',
-        'president_role' => 'Page « À propos » : mot du président (le nom et la photo se règlent plus bas)',
-        'mission' => 'Page « À propos » : mission, vision et valeurs',
+        'hero_title' => 'Titre et sous-titre',
+        'pillar_1_title' => 'Piliers',
+        'about_body' => 'Présentation',
+        'mission' => 'Mission, vision et valeurs',
     ];
+
+    /** Onglets de l'admin du site public : clé => libellé. */
+    public const TABS = [
+        'home' => 'Accueil',
+        'about' => 'À propos',
+        'president' => 'Mot du président',
+        'contact' => 'Contact et réseaux',
+    ];
+
+    /** Onglet de l'admin où se saisit un champ traduisible. */
+    public static function tabOf(string $key): string
+    {
+        return match (true) {
+            str_starts_with($key, 'president_') => 'president',
+            $key === 'about_body', $key === 'mission', $key === 'vision', str_starts_with($key, 'value_') => 'about',
+            default => 'home',
+        };
+    }
 
     /** Images envoyées depuis l'admin : clé => dossier du disque public. */
     public const IMAGES = [

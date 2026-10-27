@@ -68,6 +68,32 @@ class AboutPageTest extends TestCase
         $this->assertNotEmpty(Storage::disk('public')->allFiles('site/president'));
     }
 
+    public function test_site_settings_admin_is_split_into_tabs_with_every_field(): void
+    {
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'global_admin');
+
+        $page = $this->actingAs($admin)->get('/admin/site-public')->assertOk()->assertSee('data-tabset', false);
+
+        foreach (['home', 'about', 'president', 'contact'] as $tab) {
+            $page->assertSee('id="tab-'.$tab.'"', false)->assertSee('aria-controls="tab-'.$tab.'"', false);
+        }
+
+        // Chaque champ reste dans le formulaire unique : un seul « Enregistrer » pour tous les onglets.
+        foreach (array_keys(SiteSettings::LOCALIZED) as $key) {
+            $page->assertSee('name="'.$key.'[fr]"', false);
+        }
+
+        foreach (['president_name', 'president_photo_file', 'contact_email', 'facebook_url', 'hero_bg_main_file'] as $name) {
+            $page->assertSee('name="'.$name.'"', false);
+        }
+
+        $this->assertSame(1, substr_count($page->getContent(), 'class="card card-flush"'));
+        $this->assertSame('president', SiteSettings::tabOf('president_message'));
+        $this->assertSame('about', SiteSettings::tabOf('value_3_text'));
+        $this->assertSame('home', SiteSettings::tabOf('pillar_2_title'));
+    }
+
     public function test_visitor_can_subscribe_and_duplicates_get_the_same_answer(): void
     {
         $this->post('/fr/newsletter', ['email' => 'Sami@Example.test'])

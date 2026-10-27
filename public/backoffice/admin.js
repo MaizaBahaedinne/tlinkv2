@@ -92,6 +92,53 @@
         refresh();
     });
 
+    // Onglets d'un formulaire : sans JavaScript tous les panneaux restent visibles.
+    document.querySelectorAll('[data-tabset]').forEach(function (set) {
+        var tabs = Array.prototype.slice.call(set.querySelectorAll('[role="tab"]'));
+        var panels = {};
+        var storeKey = 'admin-tab:' + window.location.pathname;
+
+        tabs.forEach(function (tab) {
+            panels[tab.getAttribute('aria-controls')] = document.getElementById(tab.getAttribute('aria-controls'));
+        });
+
+        var show = function (tab, focus) {
+            tabs.forEach(function (other) {
+                var active = other === tab;
+                other.classList.toggle('is-active', active);
+                other.setAttribute('aria-selected', active ? 'true' : 'false');
+                other.tabIndex = active ? 0 : -1;
+                panels[other.getAttribute('aria-controls')].hidden = !active;
+            });
+            if (focus) { tab.focus(); }
+            try { window.sessionStorage.setItem(storeKey, tab.getAttribute('aria-controls')); } catch (e) { /* stockage indisponible */ }
+        };
+
+        tabs.forEach(function (tab, index) {
+            tab.addEventListener('click', function () { show(tab, false); });
+            tab.addEventListener('keydown', function (event) {
+                var next = null;
+                if (event.key === 'ArrowRight') { next = tabs[(index + 1) % tabs.length]; }
+                if (event.key === 'ArrowLeft') { next = tabs[(index - 1 + tabs.length) % tabs.length]; }
+                if (next) { event.preventDefault(); show(next, true); }
+            });
+        });
+
+        // Onglet affiché : celui qui contient la première erreur, sinon le dernier utilisé, sinon le premier.
+        var initial = tabs[0];
+        var failing = tabs.filter(function (tab) { return panels[tab.getAttribute('aria-controls')].querySelector('.has-error, p.error'); })[0];
+        var remembered = null;
+        try { remembered = window.sessionStorage.getItem(storeKey); } catch (e) { /* stockage indisponible */ }
+
+        if (failing) {
+            initial = failing;
+        } else if (remembered) {
+            initial = tabs.filter(function (tab) { return tab.getAttribute('aria-controls') === remembered; })[0] || tabs[0];
+        }
+
+        show(initial, false);
+    });
+
     // Alertes de succes auto-masquees
     document.querySelectorAll('.alert-success[data-autohide]').forEach(function (alert) {
         setTimeout(function () {

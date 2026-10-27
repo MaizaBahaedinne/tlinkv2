@@ -14,84 +14,88 @@
         @csrf
         @method('PUT')
 
-        <div class="card-body">
-            <h3 style="margin-top:0">Textes</h3>
-            <p class="text-sm text-muted">Laissez vide pour utiliser le texte par défaut. Une langue vide reprend le français. Le mot du président n'est affiché sur le site que s'il est rempli.</p>
-
-            @foreach($localized as $key => $type)
-                @if(isset(\App\Support\SiteSettings::SECTIONS[$key]))
-                    <h4 style="margin:24px 0 10px">{{ \App\Support\SiteSettings::SECTIONS[$key] }}</h4>
-                @endif
-                <div class="form-grid" style="margin-bottom:16px">
-                    @foreach($locales as $code => $meta)
-                        @php($field = $key.'.'.$code)
-                        <div class="field span-2 {{ $errors->has($field) ? 'has-error' : '' }}">
-                            <label for="f-{{ $key }}-{{ $code }}">{{ \App\Support\SiteSettings::LABELS[$key] }} ({{ $meta['name'] }})</label>
-                            @if($type === 'textarea')
-                                <textarea id="f-{{ $key }}-{{ $code }}" name="{{ $key }}[{{ $code }}]" rows="4" maxlength="3000" dir="{{ $meta['dir'] }}">{{ old($field, $site->stored($key, $code)) }}</textarea>
-                            @else
-                                <input id="f-{{ $key }}-{{ $code }}" type="text" name="{{ $key }}[{{ $code }}]" maxlength="200" dir="{{ $meta['dir'] }}" value="{{ old($field, $site->stored($key, $code)) }}">
-                            @endif
-                            @error($field)<p class="error">{{ $message }}</p>@enderror
-                        </div>
-                    @endforeach
-                </div>
+        {{-- Un seul formulaire, découpé en onglets : « Enregistrer » enregistre tous les onglets. --}}
+        <div class="tabs" role="tablist" aria-label="Sections du site public" data-tabset>
+            @foreach(\App\Support\SiteSettings::TABS as $tabKey => $tabLabel)
+                <button type="button" role="tab" class="tab {{ $loop->first ? 'is-active' : '' }}" id="tab-btn-{{ $tabKey }}" aria-controls="tab-{{ $tabKey }}" aria-selected="{{ $loop->first ? 'true' : 'false' }}">{{ $tabLabel }}</button>
             @endforeach
+        </div>
 
-            <h3>Président : nom et photo</h3>
-            <p class="text-sm text-muted">Affichés avec le mot du président. Sans nom ni photo ici, le site reprend le titulaire du poste de président de l'organigramme. Formats acceptés : jpg, png, webp (max 4 Mo).</p>
-            <div class="form-grid">
-                <x-admin.input name="president_name" label="Nom du président" :value="$site->stored('president_name')" :maxlength="120" />
-                <div class="field {{ $errors->has('president_photo_file') ? 'has-error' : '' }}">
-                    <label for="f-president-photo">Photo du président</label>
-                    <input id="f-president-photo" type="file" name="president_photo_file" accept="image/png,image/jpeg,image/webp">
-                    @if($photo = $site->imageUrl('president_photo'))
-                        <img src="{{ $photo }}" alt="Photo actuelle" style="margin-top:6px;width:96px;height:96px;object-fit:cover;border-radius:50%">
-                        <label class="check" style="margin-top:8px"><input type="checkbox" name="president_photo_remove" value="1"> Supprimer cette photo</label>
-                    @endif
-                    @error('president_photo_file')<p class="error">{{ $message }}</p>@enderror
+        <div class="card-body">
+            <p class="text-sm text-muted">Laissez vide pour utiliser le texte par défaut. Une langue vide reprend le français. Le bouton « Enregistrer » en bas de page enregistre tous les onglets.</p>
+
+            {{-- Accueil --}}
+            <section class="tab-panel" id="tab-home" role="tabpanel" aria-labelledby="tab-btn-home">
+                @include('admin.site.partials.localized-fields', ['tab' => 'home'])
+
+                <h3>Visuels Hero (carrousel)</h3>
+                <p class="text-sm text-muted">Le Hero affiche ces 3 images en fond plein écran, en rotation automatique (une image à la fois). Formats acceptés : jpg, png, webp (max 6 Mo).</p>
+                <div class="form-grid">
+                    <div class="field span-2 {{ $errors->has('hero_bg_main_file') ? 'has-error' : '' }}">
+                        <label for="f-hero-bg-main">Image 1 du carrousel Hero</label>
+                        <input id="f-hero-bg-main" type="file" name="hero_bg_main_file" accept="image/png,image/jpeg,image/webp">
+                        <p class="hint">Actuelle :</p>
+                        <img src="{{ $site->heroImage('hero_bg_main', asset('logoFondation-white.webp')) }}" alt="Hero principal" style="margin-top:6px;max-width:100%;height:88px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
+                        <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_main_remove" value="1"> Supprimer cette image et revenir au visuel par défaut</label>
+                        @error('hero_bg_main_file')<p class="error">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div class="field {{ $errors->has('hero_bg_mark_a_file') ? 'has-error' : '' }}">
+                        <label for="f-hero-bg-mark-a">Image 2 du carrousel Hero</label>
+                        <input id="f-hero-bg-mark-a" type="file" name="hero_bg_mark_a_file" accept="image/png,image/jpeg,image/webp">
+                        <img src="{{ $site->heroImage('hero_bg_mark_a', asset('favicon-white-180x180.png')) }}" alt="Hero motif A" style="margin-top:6px;max-width:100%;height:72px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
+                        <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_mark_a_remove" value="1"> Supprimer</label>
+                        @error('hero_bg_mark_a_file')<p class="error">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div class="field {{ $errors->has('hero_bg_mark_b_file') ? 'has-error' : '' }}">
+                        <label for="f-hero-bg-mark-b">Image 3 du carrousel Hero</label>
+                        <input id="f-hero-bg-mark-b" type="file" name="hero_bg_mark_b_file" accept="image/png,image/jpeg,image/webp">
+                        <img src="{{ $site->heroImage('hero_bg_mark_b', asset('favicon-white-180x180.png')) }}" alt="Hero motif B" style="margin-top:6px;max-width:100%;height:72px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
+                        <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_mark_b_remove" value="1"> Supprimer</label>
+                        @error('hero_bg_mark_b_file')<p class="error">{{ $message }}</p>@enderror
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            <h3>Coordonnées et réseaux</h3>
-            <div class="form-grid">
-                <x-admin.input name="contact_email" type="email" label="E-mail de contact" :value="$site->stored('contact_email')" :maxlength="190" />
-                <x-admin.input name="contact_phone" label="Téléphone" :value="$site->stored('contact_phone')" :maxlength="40" />
-                <x-admin.input name="contact_address" label="Adresse" :value="$site->stored('contact_address')" :maxlength="255" :span="true" />
-                <x-admin.input name="facebook_url" type="url" label="Facebook" :value="$site->stored('facebook_url')" placeholder="https://" :maxlength="255" />
-                <x-admin.input name="instagram_url" type="url" label="Instagram" :value="$site->stored('instagram_url')" placeholder="https://" :maxlength="255" />
-                <x-admin.input name="linkedin_url" type="url" label="LinkedIn" :value="$site->stored('linkedin_url')" placeholder="https://" :maxlength="255" />
-                <x-admin.input name="youtube_url" type="url" label="YouTube" :value="$site->stored('youtube_url')" placeholder="https://" :maxlength="255" />
-            </div>
+            {{-- À propos --}}
+            <section class="tab-panel" id="tab-about" role="tabpanel" aria-labelledby="tab-btn-about">
+                @include('admin.site.partials.localized-fields', ['tab' => 'about'])
+            </section>
 
-            <h3>Visuels Hero (carrousel)</h3>
-            <p class="text-sm text-muted">Le Hero affiche ces 3 images en fond plein écran, en rotation automatique (une image à la fois). Formats acceptés : jpg, png, webp (max 6 Mo).</p>
-            <div class="form-grid">
-                <div class="field span-2 {{ $errors->has('hero_bg_main_file') ? 'has-error' : '' }}">
-                    <label for="f-hero-bg-main">Image 1 du carrousel Hero</label>
-                    <input id="f-hero-bg-main" type="file" name="hero_bg_main_file" accept="image/png,image/jpeg,image/webp">
-                    <p class="hint">Actuelle :</p>
-                    <img src="{{ $site->heroImage('hero_bg_main', asset('logoFondation-white.webp')) }}" alt="Hero principal" style="margin-top:6px;max-width:100%;height:88px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
-                    <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_main_remove" value="1"> Supprimer cette image et revenir au visuel par défaut</label>
-                    @error('hero_bg_main_file')<p class="error">{{ $message }}</p>@enderror
+            {{-- Mot du président --}}
+            <section class="tab-panel" id="tab-president" role="tabpanel" aria-labelledby="tab-btn-president">
+                <p class="text-sm text-muted">Le bloc « Mot du président » de la page « À propos » n'est affiché que si le message est rempli.</p>
+                @include('admin.site.partials.localized-fields', ['tab' => 'president'])
+
+                <h3>Nom et photo</h3>
+                <p class="text-sm text-muted">Sans nom ni photo ici, le site reprend le titulaire du poste de président de l'organigramme. Formats acceptés : jpg, png, webp (max 4 Mo).</p>
+                <div class="form-grid">
+                    <x-admin.input name="president_name" label="Nom du président" :value="$site->stored('president_name')" :maxlength="120" />
+                    <div class="field {{ $errors->has('president_photo_file') ? 'has-error' : '' }}">
+                        <label for="f-president-photo">Photo du président</label>
+                        <input id="f-president-photo" type="file" name="president_photo_file" accept="image/png,image/jpeg,image/webp">
+                        @if($photo = $site->imageUrl('president_photo'))
+                            <img src="{{ $photo }}" alt="Photo actuelle" style="margin-top:6px;width:96px;height:96px;object-fit:cover;border-radius:50%">
+                            <label class="check" style="margin-top:8px"><input type="checkbox" name="president_photo_remove" value="1"> Supprimer cette photo</label>
+                        @endif
+                        @error('president_photo_file')<p class="error">{{ $message }}</p>@enderror
+                    </div>
                 </div>
+            </section>
 
-                <div class="field {{ $errors->has('hero_bg_mark_a_file') ? 'has-error' : '' }}">
-                    <label for="f-hero-bg-mark-a">Image 2 du carrousel Hero</label>
-                    <input id="f-hero-bg-mark-a" type="file" name="hero_bg_mark_a_file" accept="image/png,image/jpeg,image/webp">
-                    <img src="{{ $site->heroImage('hero_bg_mark_a', asset('favicon-white-180x180.png')) }}" alt="Hero motif A" style="margin-top:6px;max-width:100%;height:72px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
-                    <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_mark_a_remove" value="1"> Supprimer</label>
-                    @error('hero_bg_mark_a_file')<p class="error">{{ $message }}</p>@enderror
+            {{-- Contact et réseaux --}}
+            <section class="tab-panel" id="tab-contact" role="tabpanel" aria-labelledby="tab-btn-contact">
+                <div class="form-grid">
+                    <x-admin.input name="contact_email" type="email" label="E-mail de contact" :value="$site->stored('contact_email')" :maxlength="190" />
+                    <x-admin.input name="contact_phone" label="Téléphone" :value="$site->stored('contact_phone')" :maxlength="40" />
+                    <x-admin.input name="contact_address" label="Adresse" :value="$site->stored('contact_address')" :maxlength="255" :span="true" />
+                    <x-admin.input name="facebook_url" type="url" label="Facebook" :value="$site->stored('facebook_url')" placeholder="https://" :maxlength="255" />
+                    <x-admin.input name="instagram_url" type="url" label="Instagram" :value="$site->stored('instagram_url')" placeholder="https://" :maxlength="255" />
+                    <x-admin.input name="linkedin_url" type="url" label="LinkedIn" :value="$site->stored('linkedin_url')" placeholder="https://" :maxlength="255" />
+                    <x-admin.input name="youtube_url" type="url" label="YouTube" :value="$site->stored('youtube_url')" placeholder="https://" :maxlength="255" />
                 </div>
-
-                <div class="field {{ $errors->has('hero_bg_mark_b_file') ? 'has-error' : '' }}">
-                    <label for="f-hero-bg-mark-b">Image 3 du carrousel Hero</label>
-                    <input id="f-hero-bg-mark-b" type="file" name="hero_bg_mark_b_file" accept="image/png,image/jpeg,image/webp">
-                    <img src="{{ $site->heroImage('hero_bg_mark_b', asset('favicon-white-180x180.png')) }}" alt="Hero motif B" style="margin-top:6px;max-width:100%;height:72px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
-                    <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_mark_b_remove" value="1"> Supprimer</label>
-                    @error('hero_bg_mark_b_file')<p class="error">{{ $message }}</p>@enderror
-                </div>
-            </div>
+            </section>
         </div>
 
         <div class="form-actions">
