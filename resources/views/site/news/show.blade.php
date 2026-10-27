@@ -9,10 +9,10 @@
     $encodedUrl = rawurlencode($shareUrl);
     $encodedText = rawurlencode($title);
     $networks = [
-        'Facebook' => 'https://www.facebook.com/sharer/sharer.php?u='.$encodedUrl,
-        'X' => 'https://twitter.com/intent/tweet?text='.$encodedText.'&url='.$encodedUrl,
-        'LinkedIn' => 'https://www.linkedin.com/sharing/share-offsite/?url='.$encodedUrl,
-        'WhatsApp' => 'https://wa.me/?text='.rawurlencode($title.' '.$shareUrl),
+        'Facebook' => ['href' => 'https://www.facebook.com/sharer/sharer.php?u='.$encodedUrl, 'path' => 'M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.69.24 2.69.24v2.97h-1.52c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07Z'],
+        'X' => ['href' => 'https://twitter.com/intent/tweet?text='.$encodedText.'&url='.$encodedUrl, 'path' => 'M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.4l-5.8-7.58-6.64 7.58H.47l8.6-9.83L0 1.15h7.59l5.24 6.93 6.07-6.93Zm-1.29 19.5h2.04L6.49 3.24H4.3l13.31 17.41Z'],
+        'LinkedIn' => ['href' => 'https://www.linkedin.com/sharing/share-offsite/?url='.$encodedUrl, 'path' => 'M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z'],
+        'WhatsApp' => ['href' => 'https://wa.me/?text='.rawurlencode($title.' '.$shareUrl), 'path' => 'M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.39-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.21 3.07.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35ZM12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.83 9.83 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88ZM20.46 3.49A11.8 11.8 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.88 11.88 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.17-3.48-8.42Z'],
     ];
     $reactionIcons = ['like' => '👍', 'support' => '🤝', 'insightful' => '💡', 'celebrate' => '👏'];
 @endphp
@@ -37,6 +37,21 @@
                 <time datetime="{{ $item->published_at->toDateString() }}" class="text-white/85">{{ __('site.news.published_on', ['date' => $item->published_at->translatedFormat('d F Y')]) }}</time>
             </div>
             <h1 class="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">{{ $title }}</h1>
+
+            {{-- Partage sur les réseaux sociaux --}}
+            <div class="mt-6 flex flex-wrap items-center gap-2" role="group" aria-label="{{ __('site.news.share') }}">
+                <span class="me-1 text-xs font-bold uppercase tracking-wide text-white/80">{{ __('site.news.share') }}</span>
+                @foreach($networks as $name => $network)
+                    <a href="{{ $network['href'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/15 px-3.5 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white hover:text-brand-800" aria-label="{{ __('site.news.share_on', ['network' => $name]) }}">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="currentColor" aria-hidden="true"><path d="{{ $network['path'] }}"/></svg>
+                        <span class="hidden sm:inline">{{ $name }}</span>
+                    </a>
+                @endforeach
+                <button type="button" data-copy-link="{{ $shareUrl }}" data-copied="{{ __('site.news.link_copied') }}" class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/15 px-3.5 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white hover:text-brand-800">
+                    <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>
+                    <span data-label>{{ __('site.news.copy_link') }}</span>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -48,17 +63,6 @@
                 @endforeach
             </div>
         @endif
-
-        {{-- Partage sur les réseaux sociaux --}}
-        <section class="mt-10 border-t border-slate-200 pt-6" aria-labelledby="share-title">
-            <h2 id="share-title" class="text-sm font-bold uppercase tracking-wide text-slate-500">{{ __('site.news.share') }}</h2>
-            <div class="mt-3 flex flex-wrap gap-2">
-                @foreach($networks as $name => $href)
-                    <a href="{{ $href }}" target="_blank" rel="noopener noreferrer" class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-brand-600 hover:text-brand-600" aria-label="{{ __('site.news.share_on', ['network' => $name]) }}">{{ $name }}</a>
-                @endforeach
-                <button type="button" data-copy-link="{{ $shareUrl }}" data-copied="{{ __('site.news.link_copied') }}" class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-brand-600 hover:text-brand-600">{{ __('site.news.copy_link') }}</button>
-            </div>
-        </section>
 
         {{-- Réactions et commentaires des membres, lus depuis la publication du fil T.Link --}}
         @if($feed)
@@ -123,10 +127,11 @@
 <script>
     document.querySelectorAll('[data-copy-link]').forEach(function (button) {
         button.addEventListener('click', function () {
-            var label = button.textContent;
+            var label = button.querySelector('[data-label]');
+            var original = label.textContent;
             var done = function () {
-                button.textContent = button.dataset.copied;
-                setTimeout(function () { button.textContent = label; }, 2000);
+                label.textContent = button.dataset.copied;
+                setTimeout(function () { label.textContent = original; }, 2000);
             };
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(button.dataset.copyLink).then(done);

@@ -205,7 +205,7 @@ class SiteNewsTest extends TestCase
             'published_at' => now()->subHour(),
         ]);
 
-        $this->get('/fr/actualites/'.$news->id)->assertOk()
+        $html = $this->get('/fr/actualites/'.$news->id)->assertOk()
             ->assertSee('facebook.com/sharer', false)
             ->assertSee('twitter.com/intent/tweet', false)
             ->assertSee('linkedin.com/sharing', false)
@@ -213,7 +213,17 @@ class SiteNewsTest extends TestCase
             ->assertSee('data-copy-link', false)
             ->assertSee('og:image', false)
             ->assertSee('content="article"', false)
-            ->assertSee('news/covers/une.jpg', false);
+            ->assertSee('news/covers/une.jpg', false)
+            ->getContent();
+
+        // Les boutons sont dans le hero (avant le corps de l'article) et portent une icône.
+        $heroEnd = strpos($html, '<article');
+        $this->assertNotFalse($heroEnd);
+        foreach (['facebook.com/sharer', 'twitter.com/intent/tweet', 'linkedin.com/sharing', 'wa.me/', 'data-copy-link'] as $needle) {
+            $this->assertLessThan($heroEnd, strpos($html, $needle), $needle.' doit être dans le hero');
+        }
+        $groupStart = strpos($html, 'role="group"');
+        $this->assertGreaterThanOrEqual(5, substr_count(substr($html, $groupStart, $heroEnd - $groupStart), '<svg'), 'une icône par bouton de partage');
     }
 
     public function test_other_articles_of_the_same_category_are_listed(): void
