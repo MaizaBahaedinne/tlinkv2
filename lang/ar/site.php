@@ -44,8 +44,9 @@ return [
         'value_2_text' => 'التقدّم معًا والتعاون ومشاركة ما نتعلّمه.',
         'value_3_title' => 'القيادة',
         'value_3_text' => 'الجرأة على المبادرة وتنمية روح المسؤولية.',
-        'value_4_title' => 'الشفافية',
-        'value_4_text' => 'تنظيم واضح بأدوار وقرارات معروفة للجميع.',
+        'slogan_1' => 'Dream Big',
+        'slogan_2' => 'Work Hard',
+        'slogan_3' => 'Think Tunivisions',
     ],
 
     'home' => [
@@ -91,6 +92,7 @@ return [
         'mission_title' => 'مهمتنا',
         'vision_title' => 'رؤيتنا',
         'values_title' => 'قيمنا',
+        'slogans_label' => 'شعاراتنا',
         'spaces_title' => 'فريقنا وفضاءاتنا',
         'spaces_intro' => 'اختر فضاءً لتتعرّف على مكوّناته ومسؤوليه.',
         'spaces_label' => 'فضاءات المؤسسة',

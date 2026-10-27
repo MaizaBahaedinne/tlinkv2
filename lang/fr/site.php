@@ -44,8 +44,9 @@ return [
         'value_2_text' => 'Avancer ensemble, s\'entraider et partager ce que l\'on apprend.',
         'value_3_title' => 'Leadership',
         'value_3_text' => 'Oser prendre des initiatives et développer le sens des responsabilités.',
-        'value_4_title' => 'Transparence',
-        'value_4_text' => 'Une organisation claire, avec des rôles et des décisions connus de tous.',
+        'slogan_1' => 'Dream Big',
+        'slogan_2' => 'Work Hard',
+        'slogan_3' => 'Think Tunivisions',
     ],
 
     'home' => [
@@ -91,6 +92,7 @@ return [
         'mission_title' => 'Notre mission',
         'vision_title' => 'Notre vision',
         'values_title' => 'Nos valeurs',
+        'slogans_label' => 'Nos slogans',
         'spaces_title' => 'Notre équipe et nos espaces',
         'spaces_intro' => 'Choisissez un espace pour découvrir ce qu\'il regroupe et ses responsables.',
         'spaces_label' => 'Espaces de la Fondation',

@@ -35,8 +35,9 @@ class SiteSettings
         'value_2_text' => 'textarea',
         'value_3_title' => 'text',
         'value_3_text' => 'textarea',
-        'value_4_title' => 'text',
-        'value_4_text' => 'textarea',
+        'slogan_1' => 'text',
+        'slogan_2' => 'text',
+        'slogan_3' => 'text',
     ];
 
     /** Libelles admin des champs traduisibles. */
@@ -60,8 +61,9 @@ class SiteSettings
         'value_2_text' => 'Valeur 2 : texte',
         'value_3_title' => 'Valeur 3 : titre',
         'value_3_text' => 'Valeur 3 : texte',
-        'value_4_title' => 'Valeur 4 : titre',
-        'value_4_text' => 'Valeur 4 : texte',
+        'slogan_1' => 'Slogan 1',
+        'slogan_2' => 'Slogan 2',
+        'slogan_3' => 'Slogan 3',
     ];
 
     /** Titre de section affiché dans l'admin avant le champ indiqué (au sein d'un onglet). */
@@ -70,6 +72,7 @@ class SiteSettings
         'pillar_1_title' => 'Piliers',
         'about_body' => 'Présentation',
         'mission' => 'Mission, vision et valeurs',
+        'slogan_1' => 'Slogans',
     ];
 
     /** Onglets de l'admin du site public : clé => libellé. */
@@ -85,7 +88,7 @@ class SiteSettings
     {
         return match (true) {
             str_starts_with($key, 'president_') => 'president',
-            $key === 'about_body', $key === 'mission', $key === 'vision', str_starts_with($key, 'value_') => 'about',
+            $key === 'about_body', $key === 'mission', $key === 'vision', str_starts_with($key, 'value_'), str_starts_with($key, 'slogan_') => 'about',
             default => 'home',
         };
     }

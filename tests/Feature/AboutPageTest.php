@@ -32,6 +32,31 @@ class AboutPageTest extends TestCase
         }
     }
 
+    public function test_about_page_shows_three_values_and_three_slogans(): void
+    {
+        foreach (['fr', 'en', 'ar'] as $locale) {
+            $page = $this->get("/{$locale}/a-propos")->assertOk()->assertSee('Dream Big')->assertSee('Work Hard')->assertSee('Think Tunivisions');
+
+            $this->assertSame(3, substr_count($page->getContent(), 'site-card value-card'));
+            $this->assertSame(3, substr_count($page->getContent(), 'class="slogan-item"'));
+        }
+    }
+
+    public function test_slogans_are_editable_with_french_fallback(): void
+    {
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'global_admin');
+
+        $this->actingAs($admin)->get('/admin/site-public')->assertOk()->assertSee('name="slogan_2[fr]"', false);
+
+        $this->actingAs($admin)->put('/admin/site-public', [
+            'slogan_1' => ['fr' => 'Rêvez grand', 'en' => '', 'ar' => ''],
+        ])->assertSessionHasNoErrors();
+
+        $this->get('/fr/a-propos')->assertSee('Rêvez grand')->assertDontSee('Dream Big');
+        $this->get('/en/a-propos')->assertSee('Rêvez grand'); // repli sur le français
+    }
+
     public function test_president_section_appears_only_once_the_message_is_filled(): void
     {
         $this->get('/fr/a-propos')->assertOk()->assertDontSee('id="president"', false);

@@ -44,8 +44,9 @@ return [
         'value_2_text' => 'Moving forward together, helping one another and sharing what we learn.',
         'value_3_title' => 'Leadership',
         'value_3_text' => 'Daring to take initiative and developing a sense of responsibility.',
-        'value_4_title' => 'Transparency',
-        'value_4_text' => 'A clear organization, with roles and decisions known to everyone.',
+        'slogan_1' => 'Dream Big',
+        'slogan_2' => 'Work Hard',
+        'slogan_3' => 'Think Tunivisions',
     ],
 
     'home' => [
@@ -91,6 +92,7 @@ return [
         'mission_title' => 'Our mission',
         'vision_title' => 'Our vision',
         'values_title' => 'Our values',
+        'slogans_label' => 'Our slogans',
         'spaces_title' => 'Our team and our spaces',
         'spaces_intro' => 'Pick a space to see what it brings together and who leads it.',
         'spaces_label' => 'Foundation spaces',

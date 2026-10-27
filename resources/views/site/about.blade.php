@@ -10,7 +10,8 @@
     $presidentMessage = $site->optional('president_message');
     $presidentName = $site->stored('president_name') ?: ($president['name'] ?? '');
     $presidentPhoto = $site->imageUrl('president_photo') ?: ($president['photo'] ?? null);
-    $values = [1, 2, 3, 4];
+    $values = [1, 2, 3];
+    $slogans = array_values(array_filter(array_map(fn (int $n): string => trim($site->get('slogan_'.$n)), [1, 2, 3]), fn (string $slogan): bool => $slogan !== ''));
 @endphp
 
 @section('content')
@@ -79,7 +80,7 @@
     {{-- Valeurs --}}
     <section class="mx-auto mt-14 max-w-6xl px-4" aria-labelledby="values-title">
         <h2 id="values-title" class="font-display text-2xl font-bold text-brand-900" data-reveal>{{ __('site.about.values_title') }}</h2>
-        <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="mt-5 grid gap-4 md:grid-cols-3">
             @foreach($values as $i => $n)
                 <article class="site-card value-card" data-reveal style="--i: {{ $i }}">
                     <span class="value-num" aria-hidden="true">{{ sprintf('%02d', $n) }}</span>
@@ -89,6 +90,17 @@
             @endforeach
         </div>
     </section>
+
+    {{-- Slogans --}}
+    @if($slogans !== [])
+        <section class="mx-auto mt-14 max-w-6xl px-4" aria-label="{{ __('site.about.slogans_label') }}">
+            <ul class="slogan-band" data-reveal>
+                @foreach($slogans as $i => $slogan)
+                    <li class="slogan-item" style="--i: {{ $i }}">{{ $slogan }}</li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 
     {{-- Équipe et espaces --}}
     @include('site.partials.about-spaces', ['spaces' => $spaces])
