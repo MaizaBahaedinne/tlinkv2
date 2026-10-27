@@ -106,6 +106,18 @@ return [
         'published_on' => 'Publié le :date',
         'more' => 'À lire aussi',
         'video' => 'Votre navigateur ne lit pas cette vidéo.',
+        'share' => 'Partager cet article',
+        'share_on' => 'Partager sur :network',
+        'copy_link' => 'Copier le lien',
+        'link_copied' => 'Lien copié',
+        'same_category' => 'Dans la même catégorie : :category',
+        'community_title' => 'La communauté en parle',
+        'comments_title' => 'Commentaires (:count)',
+        'no_comments' => 'Aucun commentaire pour le moment.',
+        'more_comments' => 'Voir tous les commentaires dans T.Link',
+        'join_cta' => 'Réagir et commenter dans T.Link',
+        'member' => 'Membre',
+        'reaction' => ['like' => 'J\'aime', 'support' => 'Soutien', 'insightful' => 'Pertinent', 'celebrate' => 'Bravo'],
     ],
 
     'projects' => [

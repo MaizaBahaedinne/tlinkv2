@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Comment;
 use App\Models\Post;
+use App\Models\PostReaction;
 use App\Models\SiteNews;
 use App\Models\User;
 use App\Support\ModuleCatalog;
@@ -191,6 +193,127 @@ class SiteNewsTest extends TestCase
         $this->assertStringStartsWith('news/covers/', $news->cover_path);
         Storage::disk('public')->assertExists($news->cover_path);
         $this->assertNotSame('posts/images/a.jpg', $news->cover_path, 'la couverture est copiée, pas partagée avec le fil');
+    }
+
+    public function test_article_page_has_a_hero_share_links_and_social_meta(): void
+    {
+        $news = SiteNews::query()->create([
+            'title' => ['fr' => 'Grande rentrée'],
+            'body' => ['fr' => 'Texte.'],
+            'cover_path' => 'news/covers/une.jpg',
+            'status' => 'published',
+            'published_at' => now()->subHour(),
+        ]);
+
+        $this->get('/fr/actualites/'.$news->id)->assertOk()
+            ->assertSee('facebook.com/sharer', false)
+            ->assertSee('twitter.com/intent/tweet', false)
+            ->assertSee('linkedin.com/sharing', false)
+            ->assertSee('wa.me/', false)
+            ->assertSee('data-copy-link', false)
+            ->assertSee('og:image', false)
+            ->assertSee('content="article"', false)
+            ->assertSee('news/covers/une.jpg', false);
+    }
+
+    public function test_other_articles_of_the_same_category_are_listed(): void
+    {
+        $make = fn (string $title, ?string $scope) => SiteNews::query()->create(['title' => ['fr' => $title], 'scope' => $scope, 'status' => 'published', 'published_at' => now()->subHour()]);
+        $main = $make('Article principal', 'university');
+        $make('Même catégorie un', 'university');
+        $make('Autre catégorie', 'high-school');
+
+        $this->get('/fr/actualites/'.$main->id)->assertOk()
+            ->assertSee('Dans la même catégorie')
+            ->assertSee('Même catégorie un')
+            ->assertDontSee('Autre catégorie');
+
+        // Seul de sa catégorie : repli sur les plus récents.
+        $alone = $make('Article isolé', 'alumni');
+        $this->get('/fr/actualites/'.$alone->id)->assertOk()
+            ->assertDontSee('Dans la même catégorie')
+            ->assertSee('À lire aussi')
+            ->assertSee('Autre catégorie');
+    }
+
+    public function test_admin_can_relay_the_article_to_the_feed_once(): void
+    {
+        Storage::fake('public');
+        $admin = $this->globalAdmin();
+        $this->actingAs($admin);
+
+        $this->post('/admin/actualites', [
+            'title' => ['fr' => 'Relayé dans le fil'],
+            'excerpt' => ['fr' => 'Résumé relayé'],
+            'cover' => UploadedFile::fake()->image('une.jpg', 800, 400),
+            'scope' => 'university',
+            'status' => 'published',
+            'publish_to_feed' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $news = SiteNews::query()->firstOrFail();
+        $post = Post::query()->findOrFail($news->feed_post_id);
+        $this->assertSame($admin->id, $post->user_id);
+        $this->assertSame('public', $post->visibility);
+        $this->assertSame('university', $post->scope);
+        $this->assertStringContainsString('Relayé dans le fil', $post->content);
+        $this->assertStringContainsString('Résumé relayé', $post->content);
+        $this->assertStringContainsString('/fr/actualites/'.$news->id, $post->content);
+
+        $attachment = $post->attachments()->firstOrFail();
+        $this->assertNotSame($news->cover_path, $attachment->path, 'image copiée, pas partagée');
+        Storage::disk('public')->assertExists($attachment->path);
+
+        $this->put('/admin/actualites/'.$news->id, ['title' => ['fr' => 'Relayé dans le fil'], 'status' => 'published', 'publish_to_feed' => '1'])->assertSessionHasNoErrors();
+        $this->assertSame(1, Post::query()->count(), 'un seul relais par article');
+        $this->get('/admin/actualites/'.$news->id.'/modifier')->assertOk()->assertSee('Publié dans le fil T.Link');
+    }
+
+    public function test_a_draft_or_scheduled_article_is_not_relayed_to_the_feed(): void
+    {
+        $this->actingAs($this->globalAdmin());
+
+        $this->post('/admin/actualites', ['title' => ['fr' => 'Brouillon'], 'status' => 'draft', 'publish_to_feed' => '1'])->assertSessionHasNoErrors();
+        $this->post('/admin/actualites', ['title' => ['fr' => 'Plus tard'], 'status' => 'published', 'published_at' => now()->addDay()->format('Y-m-d\TH:i'), 'publish_to_feed' => '1'])->assertSessionHasNoErrors();
+
+        $this->assertSame(0, Post::query()->count());
+        $this->assertSame(0, SiteNews::query()->whereNotNull('feed_post_id')->count());
+    }
+
+    public function test_article_shows_reactions_and_comments_from_the_feed_post(): void
+    {
+        $author = User::factory()->create(['name' => 'Salma Auteure']);
+        $replier = User::factory()->create(['name' => 'Omar Répondeur']);
+        $post = Post::query()->create(['user_id' => $author->id, 'type' => 'text', 'visibility' => 'public', 'content' => 'Relais', 'published_at' => now()]);
+        PostReaction::query()->create(['post_id' => $post->id, 'user_id' => $author->id, 'reaction_type' => 'celebrate']);
+        PostReaction::query()->create(['post_id' => $post->id, 'user_id' => $replier->id, 'reaction_type' => 'celebrate']);
+        $comment = Comment::query()->create(['post_id' => $post->id, 'user_id' => $author->id, 'content' => 'Super initiative <script>alert(1)</script>']);
+        Comment::query()->create(['post_id' => $post->id, 'user_id' => $replier->id, 'parent_id' => $comment->id, 'content' => 'Merci beaucoup']);
+
+        $news = SiteNews::query()->create(['title' => ['fr' => 'Avec échanges'], 'status' => 'published', 'published_at' => now()->subHour(), 'feed_post_id' => $post->id]);
+        $plain = SiteNews::query()->create(['title' => ['fr' => 'Sans fil'], 'status' => 'published', 'published_at' => now()->subHour()]);
+
+        $this->get('/fr/actualites/'.$news->id)->assertOk()
+            ->assertSee('La communauté en parle')
+            ->assertSee('Bravo · 2', false)
+            ->assertSee('Commentaires (2)')
+            ->assertSee('Salma Auteure')
+            ->assertSee('Omar Répondeur')
+            ->assertSee('Merci beaucoup')
+            ->assertDontSee('<script>alert(1)</script>', false);
+
+        $this->get('/fr/actualites/'.$plain->id)->assertOk()->assertDontSee('La communauté en parle');
+    }
+
+    public function test_deleting_the_feed_post_keeps_the_article(): void
+    {
+        $post = Post::query()->create(['user_id' => User::factory()->create()->id, 'type' => 'text', 'visibility' => 'public', 'content' => 'Relais', 'published_at' => now()]);
+        $news = SiteNews::query()->create(['title' => ['fr' => 'Reste en ligne'], 'status' => 'published', 'published_at' => now()->subHour(), 'feed_post_id' => $post->id]);
+
+        $post->delete();
+
+        $this->assertNull($news->refresh()->feed_post_id);
+        $this->get('/fr/actualites/'.$news->id)->assertOk()->assertDontSee('La communauté en parle');
     }
 
     public function test_module_is_in_the_catalog_and_the_old_media_route_is_gone(): void

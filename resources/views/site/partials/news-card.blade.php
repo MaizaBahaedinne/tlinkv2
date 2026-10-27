@@ -11,7 +11,7 @@
         <div class="flex flex-wrap items-center gap-2">
             <time datetime="{{ $item->published_at->toDateString() }}" class="text-xs font-semibold text-brand-600">{{ $item->published_at->translatedFormat('d F Y') }}</time>
             @if(\App\Support\OrgScopes::valid($item->scope))
-                <span class="rounded bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-800">{{ __('site.scopes.'.$item->scope.'.name') }}</span>
+                <span class="rounded bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-800">{{ $item->categoryLabel() }}</span>
             @endif
         </div>
         <h3 class="mt-1 font-display text-lg font-bold text-brand-900">

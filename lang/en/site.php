@@ -106,6 +106,18 @@ return [
         'published_on' => 'Published on :date',
         'more' => 'Also read',
         'video' => 'Your browser cannot play this video.',
+        'share' => 'Share this article',
+        'share_on' => 'Share on :network',
+        'copy_link' => 'Copy link',
+        'link_copied' => 'Link copied',
+        'same_category' => 'In the same category: :category',
+        'community_title' => 'What the community says',
+        'comments_title' => 'Comments (:count)',
+        'no_comments' => 'No comments yet.',
+        'more_comments' => 'See all comments in T.Link',
+        'join_cta' => 'React and comment in T.Link',
+        'member' => 'Member',
+        'reaction' => ['like' => 'Like', 'support' => 'Support', 'insightful' => 'Insightful', 'celebrate' => 'Bravo'],
     ],
 
     'projects' => [

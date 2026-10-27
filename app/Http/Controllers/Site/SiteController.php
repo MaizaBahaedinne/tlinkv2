@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
+use App\Models\Comment;
 use App\Models\FoundationEvent;
 use App\Models\Governorate;
 use App\Models\Membership;
 use App\Models\NewsletterSubscriber;
 use App\Models\OrgNode;
 use App\Models\Partner;
+use App\Models\Post;
+use App\Models\PostReaction;
 use App\Models\SiteNews;
 use App\Models\SiteProject;
 use App\Support\OrgScopes;
@@ -126,12 +129,47 @@ class SiteController extends Controller
 
     public function newsShow(int $news): View
     {
-        $item = SiteNews::query()->visible()->findOrFail($news);
+        $item = SiteNews::query()->visible()->with('feedPost')->findOrFail($news);
+
+        // Autres articles de la même catégorie ; à défaut, les plus récents.
+        $sameCategory = SiteNews::query()->visible()->inCategory($item->scope)->whereKeyNot($item->id)->limit(3)->get();
 
         return $this->render('site.news.show', [
             'item' => $item,
-            'related' => SiteNews::query()->visible()->whereKeyNot($item->id)->limit(3)->get(),
+            'related' => $sameCategory->isNotEmpty() ? $sameCategory : SiteNews::query()->visible()->whereKeyNot($item->id)->limit(3)->get(),
+            'relatedInCategory' => $sameCategory->isNotEmpty(),
+            'feed' => $item->feedPost ? $this->feedActivity($item->feedPost) : null,
         ]);
+    }
+
+    /**
+     * Réactions et commentaires des membres sur la publication du fil qui relaie l'article (lecture seule).
+     *
+     * @return array{reactions: array<string, int>, reactions_total: int, comments: \Illuminate\Support\Collection<int, Comment>, comments_count: int, comments_enabled: bool}
+     */
+    private function feedActivity(Post $post): array
+    {
+        $reactions = PostReaction::query()
+            ->selectRaw('reaction_type, COUNT(*) as aggregate_count')
+            ->where('post_id', $post->id)
+            ->groupBy('reaction_type')
+            ->pluck('aggregate_count', 'reaction_type')
+            ->map(fn ($count): int => (int) $count)
+            ->all();
+
+        return [
+            'reactions' => $reactions,
+            'reactions_total' => array_sum($reactions),
+            'comments' => Comment::query()
+                ->where('post_id', $post->id)
+                ->whereNull('parent_id')
+                ->with(['author:id,name', 'replies.author:id,name'])
+                ->orderBy('created_at')
+                ->limit(30)
+                ->get(),
+            'comments_count' => Comment::query()->where('post_id', $post->id)->count(),
+            'comments_enabled' => (bool) $post->comments_enabled,
+        ];
     }
 
     public function events(Request $request): View

@@ -60,7 +60,12 @@
     <meta name="description" content="{{ \Illuminate\Support\Str::limit(strip_tags($metaDescription), 160) }}">
     <meta property="og:title" content="{{ $pageTitle }}">
     <meta property="og:description" content="{{ \Illuminate\Support\Str::limit(strip_tags($metaDescription), 160) }}">
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="{{ trim($__env->yieldContent('og_type')) ?: 'website' }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    @if(trim($__env->yieldContent('og_image')) !== '')
+        <meta property="og:image" content="{{ url(trim($__env->yieldContent('og_image'))) }}">
+        <meta name="twitter:card" content="summary_large_image">
+    @endif
     <meta property="og:locale" content="{{ $locale }}">
     @if($routeName)
         @foreach($locales as $code => $meta)

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OrgScopes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +18,7 @@ class SiteNews extends Model
 
     protected $table = 'site_news';
 
-    protected $fillable = ['title', 'excerpt', 'body', 'cover_path', 'scope', 'author_id', 'status', 'published_at'];
+    protected $fillable = ['title', 'excerpt', 'body', 'cover_path', 'scope', 'author_id', 'feed_post_id', 'status', 'published_at'];
 
     protected $casts = [
         'title' => 'array',
@@ -29,6 +30,35 @@ class SiteNews extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /** Publication du fil T.Link qui relaie l'article (facultative). */
+    public function feedPost(): BelongsTo
+    {
+        return $this->belongsTo(Post::class, 'feed_post_id');
+    }
+
+    /** Actualités de la même catégorie : le périmètre, une actualité sans périmètre relevant de la Fondation. */
+    public function scopeInCategory(Builder $query, ?string $scope): Builder
+    {
+        return $scope === null || $scope === 'foundation'
+            ? $query->where(fn (Builder $inner) => $inner->whereNull('scope')->orWhere('scope', 'foundation'))
+            : $query->where('scope', $scope);
+    }
+
+    public function publicUrl(string $locale = 'fr'): string
+    {
+        return route('site.news.show', ['locale' => $locale, 'news' => $this->id]);
+    }
+
+    /** Nom de la catégorie (le périmètre) dans la langue courante ; sans périmètre : la Fondation. */
+    public function categoryLabel(): string
+    {
+        $slug = $this->scope ?: 'foundation';
+        $key = 'site.scopes.'.$slug.'.name';
+        $translated = __($key);
+
+        return $translated !== $key ? $translated : (string) (OrgScopes::label($slug) ?? '');
     }
 
     /** Actualités visibles sur le site : publiées et dont la date est atteinte (une date future programme la parution). */

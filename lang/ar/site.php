@@ -106,6 +106,18 @@ return [
         'published_on' => 'نُشر في :date',
         'more' => 'اقرأ أيضا',
         'video' => 'متصفحك لا يدعم تشغيل هذا الفيديو.',
+        'share' => 'شارك هذا المقال',
+        'share_on' => 'المشاركة على :network',
+        'copy_link' => 'نسخ الرابط',
+        'link_copied' => 'تم نسخ الرابط',
+        'same_category' => 'في نفس الفئة: :category',
+        'community_title' => 'المجتمع يتفاعل',
+        'comments_title' => 'التعليقات (:count)',
+        'no_comments' => 'لا توجد تعليقات بعد.',
+        'more_comments' => 'عرض كل التعليقات في T.Link',
+        'join_cta' => 'تفاعل وعلّق في T.Link',
+        'member' => 'عضو',
+        'reaction' => ['like' => 'إعجاب', 'support' => 'دعم', 'insightful' => 'مفيد', 'celebrate' => 'أحسنت'],
     ],
 
     'projects' => [

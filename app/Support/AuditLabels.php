@@ -85,6 +85,7 @@ class AuditLabels
         'admin.news.created' => 'Actualité du site créée',
         'admin.news.updated' => 'Actualité du site modifiée',
         'admin.news.deleted' => 'Actualité du site supprimée',
+        'admin.news.relayed' => 'Actualité du site publiée dans le fil T.Link',
         'admin.module.created' => 'Module de l’application ajouté',
         'admin.module.updated' => 'Module de l’application modifié',
         'admin.module.deleted' => 'Module de l’application supprimé',

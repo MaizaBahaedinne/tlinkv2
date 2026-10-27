@@ -79,6 +79,15 @@
                     @endif
                     @error('cover')<p class="error">{{ $message }}</p>@enderror
                 </div>
+                <div class="field span-2">
+                    <span class="text-sm" style="font-weight:600">Fil T.Link</span>
+                    @if($item->feedPost)
+                        <p class="text-sm text-muted">Publié dans le fil T.Link le {{ $item->feedPost->published_at?->format('d/m/Y H:i') }}. Les réactions et commentaires des membres s’affichent sous l’article sur le site.</p>
+                    @else
+                        <label class="check"><input type="checkbox" name="publish_to_feed" value="1" @checked(old('publish_to_feed'))> Publier aussi cet article dans le fil T.Link</label>
+                        <p class="text-sm text-muted">Crée une publication publique (titre, résumé, lien et image) à l’enregistrement, une seule fois. L’article doit être publié et déjà en ligne.</p>
+                    @endif
+                </div>
             </div>
         </div>
 
