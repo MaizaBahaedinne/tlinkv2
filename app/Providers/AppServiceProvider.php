@@ -48,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
             $request = request();
 
             $view->with('canAdmin', $request->user() !== null && AdminMenu::hasAccess(AdminContext::of($request)));
+            $view->with('hasOffice', $request->user() !== null && \App\Support\MyOffice::enabled() && \App\Support\MyOffice::holdsPosition($request->user()));
         });
     }
 }

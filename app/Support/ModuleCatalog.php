@@ -51,6 +51,7 @@ final class ModuleCatalog
                 'key' => 'organization', 'name' => 'Organisation', 'description' => 'Structure de la Fondation : organigramme, postes, clubs et mandats.',
                 'children' => [
                     ['key' => 'organization.chart', 'name' => 'Organigramme', 'description' => 'Blocs, personnes et affectations de l’organigramme.', 'actions' => self::CRUD],
+                    ['key' => 'organization.my_office', 'name' => 'Mon bureau', 'description' => 'Voir ses supérieurs et son équipe ; un supérieur affecte et retire les titulaires des postes situés sous le sien.', 'actions' => ['read', 'update']],
                     ['key' => 'organization.positions', 'name' => 'Postes et droits', 'description' => 'Postes, titulaires, niveaux d’accès et périmètres.', 'actions' => self::CRUD],
                     ['key' => 'organization.applications', 'name' => 'Candidatures aux postes', 'description' => 'Candidatures déposées via le lien d’inscription d’un poste.', 'actions' => ['create', 'read', 'update']],
                     ['key' => 'organization.clubs', 'name' => 'Clubs', 'description' => 'Clubs régionaux, universitaires et lycées.', 'actions' => self::CRUD],
@@ -91,6 +92,26 @@ final class ModuleCatalog
      *
      * @return int nombre de modules ajoutés
      */
+    /**
+     * Un module est actif s'il est actif lui-même et si son parent l'est ; un module inconnu du catalogue reste actif.
+     */
+    public static function isActive(string $key): bool
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('app_modules')) {
+            return true;
+        }
+
+        $module = AppModule::query()->where('key', $key)->first(['id', 'parent_id', 'is_active']);
+
+        if ($module === null) {
+            return true;
+        }
+
+        $parent = $module->parent_id !== null ? AppModule::query()->find($module->parent_id, ['id', 'is_active']) : null;
+
+        return $module->is_active && ($parent === null || $parent->is_active);
+    }
+
     public static function sync(): int
     {
         $added = 0;

@@ -94,6 +94,18 @@ class OrgAccess
     }
 
     /**
+     * Droits qu'accorde un poste (permission => perimetres, null = global), quel que soit son titulaire.
+     *
+     * @return array<string, array<int, string|null>>
+     */
+    public static function nodeGrants(OrgNode $node): array
+    {
+        $assignment = (new OrgAssignment())->setRelation('node', $node);
+
+        return self::collect(collect([$assignment]));
+    }
+
+    /**
      * Perimetre effectif d'un bloc : le sien, sinon celui du plus proche parent.
      */
     public static function scopeOf(OrgNode $node): ?string

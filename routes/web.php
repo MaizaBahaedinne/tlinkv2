@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
+use App\Http\Controllers\MyOfficeController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
 use App\Http\Controllers\PositionJoinController;
@@ -49,6 +50,11 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/posts/{post}/view', [FeedController::class, 'view'])->name('posts.view');
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
+
+    // Mon bureau : supérieurs, équipe, et gestion des titulaires des postes situés sous les siens.
+    Route::get('/mon-bureau', [MyOfficeController::class, 'index'])->name('office.index');
+    Route::post('/mon-bureau/postes/{node}/titulaires', [MyOfficeController::class, 'assign'])->middleware('throttle:30,1')->name('office.assign');
+    Route::delete('/mon-bureau/postes/{node}/titulaires/{person}', [MyOfficeController::class, 'unassign'])->name('office.unassign');
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
 
     // Info session (video) puis quiz : reussir le quiz valide le compte.
