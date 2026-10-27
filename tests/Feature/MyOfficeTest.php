@@ -97,6 +97,55 @@ class MyOfficeTest extends TestCase
         $this->assertLessThan(strpos($html, 'Chef Second'), strpos($html, 'Chef Premier'));
     }
 
+    public function test_avatars_are_shown_and_phone_numbers_are_hidden(): void
+    {
+        $director = $this->place($this->top, 'Karim Directeur');
+        $director->profile()->create(['phone' => '+216 20 111 222', 'photo_path' => 'profiles/avatars/karim.jpg']);
+        $middle = $this->place($this->middle, 'Sonia Cheffe');
+        $middle->profile()->create(['phone' => '+216 99 888 777']);
+        $assistant = $this->place($this->low, 'Yassine Assistant');
+        $assistant->profile()->create(['phone' => '+216 55 444 333']);
+
+        $this->actingAs($middle)->get('/mon-bureau')->assertOk()
+            ->assertSee('/storage/profiles/avatars/karim.jpg', false)
+            ->assertSee('>YA<', false)
+            ->assertDontSee('+216 20 111 222')
+            ->assertDontSee('+216 55 444 333')
+            ->assertDontSee('20 111 222');
+    }
+
+    public function test_club_offices_below_me_are_hidden(): void
+    {
+        $club = $this->node('Club Robotique', $this->top);
+        $club->update(['kind' => 'club']);
+        $clubDept = $this->node('Département Média du club', $club);
+        $clubDept->update(['kind' => 'club_department']);
+        $this->node('Président du club', $club);
+        $this->node('Responsable média', $clubDept);
+        $this->node('Chargé de communication nationale', $this->top);
+
+        $this->actingAs($this->place($this->top, 'Karim Directeur'))->get('/mon-bureau')->assertOk()
+            ->assertSee('Chargé de communication nationale')
+            ->assertDontSee('Président du club')
+            ->assertDontSee('Responsable média')
+            ->assertDontSee('Club Robotique');
+    }
+
+    public function test_a_club_president_still_sees_their_own_club_team(): void
+    {
+        $club = $this->node('Club Robotique', $this->top);
+        $club->update(['kind' => 'club']);
+        $president = $this->node('Président du club', $club);
+        $dept = $this->node('Département Média du club', $president);
+        $dept->update(['kind' => 'club_department']);
+        $this->node('Responsable média', $dept);
+        $this->node('Trésorier du club', $president);
+
+        $this->actingAs($this->place($president, 'Nour Présidente'))->get('/mon-bureau')->assertOk()
+            ->assertSee('Trésorier du club')
+            ->assertSee('Responsable média');
+    }
+
     public function test_an_attached_position_has_no_hierarchical_superior(): void
     {
         $this->place($this->top, 'Karim Directeur');

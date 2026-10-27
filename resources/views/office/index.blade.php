@@ -53,14 +53,9 @@
                                 @if($superior['holders'] === [])
                                     <p class="text-xs text-slate-500">Poste vacant.</p>
                                 @else
-                                    <ul class="mt-1 space-y-0.5 text-sm text-slate-700">
+                                    <ul class="mt-2 space-y-2 text-sm text-slate-700">
                                         @foreach($superior['holders'] as $holder)
-                                            <li>
-                                                {{ $holder['name'] }}
-                                                @if($holder['job_title'])<span class="text-slate-500"> · {{ $holder['job_title'] }}</span>@endif
-                                                @if($holder['email'])<span class="text-slate-500"> · <a class="underline" href="mailto:{{ $holder['email'] }}">{{ $holder['email'] }}</a></span>@endif
-                                                @if($holder['phone'])<span class="text-slate-500"> · {{ $holder['phone'] }}</span>@endif
-                                            </li>
+                                            <li>@include('office.partials.holder', ['holder' => $holder, 'withMailto' => true])</li>
                                         @endforeach
                                     </ul>
                                 @endif
@@ -103,9 +98,7 @@
                                         @foreach($row['holders'] as $holder)
                                             <li class="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-700">
                                                 <span>
-                                                    {{ $holder['name'] }}
-                                                    @if($holder['job_title'])<span class="text-slate-500"> · {{ $holder['job_title'] }}</span>@endif
-                                                    @if($holder['email'])<span class="text-slate-500"> · {{ $holder['email'] }}</span>@endif
+                                                    @include('office.partials.holder', ['holder' => $holder])
                                                 </span>
                                                 @if($row['manageable'])
                                                     <form method="post" action="{{ route('office.unassign', [$member, $holder['person_id']]) }}" onsubmit="return confirm('Retirer ce titulaire du poste ?')">

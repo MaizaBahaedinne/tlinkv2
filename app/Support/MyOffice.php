@@ -125,7 +125,7 @@ final class MyOffice
 
             $team = [];
             $truncated = false;
-            self::walk($heldId, 1, $children, $all, $team, $truncated);
+            self::walk($heldId, 1, $children, $all, $team, $truncated, self::insideClub($held, $all));
 
             // Par niveau (1 = juste sous mon poste), puis dans l'ordre de l'organigramme au sein d'un même niveau.
             usort($team, fn (array $a, array $b): int => [$a['depth'], $a['order']] <=> [$b['depth'], $b['order']]);
@@ -176,7 +176,7 @@ final class MyOffice
      * @param \Illuminate\Support\Collection<int, OrgNode> $all
      * @param array<int, array{id: int, depth: int, order: int}> $rows
      */
-    private static function walk(int $nodeId, int $depth, array $children, $all, array &$rows, bool &$truncated): void
+    private static function walk(int $nodeId, int $depth, array $children, $all, array &$rows, bool &$truncated, bool $inClub): void
     {
         foreach ($children[$nodeId] ?? [] as $childId) {
             if (count($rows) >= self::MAX_TEAM_ROWS) {
@@ -185,14 +185,45 @@ final class MyOffice
                 return;
             }
 
-            // Seuls les postes comptent : un bloc (unité, département, club) est traversé sans ajouter de niveau.
-            if (($all[$childId]->kind ?? null) === 'position') {
+            $kind = $all[$childId]->kind ?? null;
+
+            // Les bureaux des clubs situés sous mon poste ne sont pas listés (sauf si j'occupe moi-même un poste de ce club).
+            if ($kind === 'club' || ($kind === 'club_department' && ! $inClub)) {
+                continue;
+            }
+
+            // Seuls les postes comptent : un bloc (unité, département) est traversé sans ajouter de niveau.
+            if ($kind === 'position') {
                 $rows[] = ['id' => $childId, 'depth' => $depth, 'order' => count($rows)];
-                self::walk($childId, $depth + 1, $children, $all, $rows, $truncated);
+                self::walk($childId, $depth + 1, $children, $all, $rows, $truncated, $inClub);
             } else {
-                self::walk($childId, $depth, $children, $all, $rows, $truncated);
+                self::walk($childId, $depth, $children, $all, $rows, $truncated, $inClub);
             }
         }
+    }
+
+    /**
+     * Le poste fait-il partie d'un club (un de ses blocs parents est un club ou un département de club) ?
+     *
+     * @param \Illuminate\Support\Collection<int, OrgNode> $all
+     */
+    private static function insideClub(OrgNode $node, $all): bool
+    {
+        $current = $node;
+
+        for ($guard = 0; $guard < 80 && $current->parent_id !== null; $guard++) {
+            $current = $all[$current->parent_id] ?? null;
+
+            if ($current === null) {
+                return false;
+            }
+
+            if (in_array($current->kind, ['club', 'club_department'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -292,7 +323,7 @@ final class MyOffice
                 'name' => $person->displayName(),
                 'job_title' => $person->job_title,
                 'email' => $person->contact_visible ? $person->displayEmail() : null,
-                'phone' => $person->contact_visible ? $person->displayPhone() : null,
+                'photo_url' => $person->photoUrl(),
                 'is_me' => $person->user_id !== null && (int) $person->user_id === (int) $viewer->id,
             ];
         }
