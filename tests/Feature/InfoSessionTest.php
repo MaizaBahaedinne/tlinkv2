@@ -290,7 +290,7 @@ class InfoSessionTest extends TestCase
         $this->actingAs($admin)->put('/admin/info-session', $base)->assertSessionHasErrors('questions');
     }
 
-    public function test_only_global_admins_can_edit(): void
+    public function test_scoped_admin_with_entity_manage_can_edit(): void
     {
         $this->actingAs(User::factory()->create())->get('/admin/info-session')->assertForbidden();
         $this->actingAs(User::factory()->create())->put('/admin/info-session', [])->assertForbidden();
@@ -298,7 +298,7 @@ class InfoSessionTest extends TestCase
         $manager = User::factory()->create();
         $this->grantAccess($manager, 'entity_admin', 'university');
         $this->actingAs($manager)->get('/admin/info-session')->assertOk();
-        $this->actingAs($manager)->put('/admin/info-session', ['video_url' => 'https://youtu.be/dQw4w9WgXcQ', 'title' => 'X', 'duration_minutes' => 5, 'pass_percent' => 50])->assertForbidden();
+        $this->actingAs($manager)->put('/admin/info-session', ['video_url' => 'https://youtu.be/dQw4w9WgXcQ', 'title' => 'X', 'duration_minutes' => 5, 'pass_percent' => 50, 'questions' => [['text' => 'Q', 'options' => [['text' => 'A', 'correct' => '1'], ['text' => 'B']]]]])->assertRedirect();
     }
 
     public function test_video_id_extraction(): void

@@ -11,14 +11,12 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Abonnés à la newsletter du site public (réservé à l'administration globale).
+ * Abonnés à la newsletter du site public.
  */
 class NewsletterController extends AdminController
 {
     public function index(Request $request): View
     {
-        $this->authorizeGlobal($request);
-
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in(['active', 'unsubscribed', 'all'])],
@@ -46,8 +44,6 @@ class NewsletterController extends AdminController
 
     public function export(Request $request): StreamedResponse
     {
-        $this->authorizeGlobal($request);
-
         AuditLogger::record($request->user()->id, 'admin.newsletter.exported', null, null, [], $request->ip());
 
         return response()->streamDownload(function (): void {
@@ -71,8 +67,6 @@ class NewsletterController extends AdminController
 
     public function destroy(Request $request, NewsletterSubscriber $subscriber): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $this->audit($request, 'admin.newsletter.deleted', $subscriber, ['email' => $subscriber->email]);
         $subscriber->delete();
 
@@ -83,10 +77,5 @@ class NewsletterController extends AdminController
     private function safeCell(string $value): string
     {
         return preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'".$value : $value;
-    }
-
-    private function authorizeGlobal(Request $request): void
-    {
-        abort_unless($this->context($request)->scope('entity.manage') === [], 403, 'Réservé à l\'administration globale.');
     }
 }

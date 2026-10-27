@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\QuizAttempt;
 use App\Models\User;
-use App\Support\AdminContext;
 use App\Support\AuditLogger;
 use App\Support\InfoSession;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +13,6 @@ use Illuminate\View\View;
 
 /**
  * Info session et quiz de validation des comptes : vidéo, questions, durée et seuil de réussite.
- * Lecture pour qui pilote l'organisation, écriture réservée aux administrateurs globaux.
  */
 class InfoSessionController extends AdminController
 {
@@ -26,7 +24,6 @@ class InfoSessionController extends AdminController
         return view('admin.info-session.edit', [
             'settings' => $settings,
             'questions' => is_array($old) ? array_values($old) : $settings['questions'],
-            'canEdit' => $this->canEdit($request),
             'videoId' => InfoSession::videoId($settings['video_url']),
             'maxOptions' => InfoSession::MAX_OPTIONS,
             'stats' => [
@@ -42,8 +39,6 @@ class InfoSessionController extends AdminController
 
     public function update(Request $request): RedirectResponse
     {
-        abort_unless($this->canEdit($request), 403, 'Seuls les administrateurs globaux peuvent modifier l’info session.');
-
         $data = $request->validate([
             'video_url' => ['required', 'url', 'max:255'],
             'title' => ['required', 'string', 'max:150'],
@@ -78,10 +73,5 @@ class InfoSessionController extends AdminController
         AuditLogger::record($request->user()->id, 'admin.info_session.updated', null, null, ['questions' => count($questions), 'pass_percent' => (int) $data['pass_percent']], $request->ip());
 
         return redirect()->route('admin.info-session.edit')->with('status', 'Info session enregistrée : '.count($questions).' question(s).');
-    }
-
-    private function canEdit(Request $request): bool
-    {
-        return AdminContext::of($request)->isGlobal('entity.manage');
     }
 }

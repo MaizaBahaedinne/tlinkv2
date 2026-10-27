@@ -9,14 +9,12 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 /**
- * Logos des partenaires affichés sur le site vitrine (réservé à l'administration globale).
+ * Logos des partenaires affichés sur le site vitrine.
  */
 class PartnerController extends AdminController
 {
     public function index(Request $request): View
     {
-        $this->authorizeGlobal($request);
-
         return view('admin.partners.index', [
             'partners' => Partner::query()->orderBy('sort_order')->orderBy('id')->get(),
         ]);
@@ -24,8 +22,6 @@ class PartnerController extends AdminController
 
     public function store(Request $request): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
             'website_url' => ['nullable', 'url:http,https', 'max:255'],
@@ -48,8 +44,6 @@ class PartnerController extends AdminController
 
     public function update(Request $request, Partner $partner): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
             'website_url' => ['nullable', 'url:http,https', 'max:255'],
@@ -82,8 +76,6 @@ class PartnerController extends AdminController
 
     public function destroy(Request $request, Partner $partner): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $this->audit($request, 'admin.partner.deleted', $partner, ['name' => $partner->name]);
 
         $logo = $partner->logo_path;
@@ -98,10 +90,5 @@ class PartnerController extends AdminController
         if ($path && str_starts_with($path, 'partners/logos/')) {
             Storage::disk('public')->delete($path);
         }
-    }
-
-    private function authorizeGlobal(Request $request): void
-    {
-        abort_unless($this->context($request)->isGlobal('entity.manage'), 403, 'Réservé à l’administration globale.');
     }
 }

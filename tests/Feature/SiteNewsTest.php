@@ -153,6 +153,9 @@ class SiteNewsTest extends TestCase
         $this->grantAccess($user, 'entity_admin', 'university');
         $this->actingAs($user);
 
+        $this->get('/admin/actualites')->assertOk();
+
+        $this->actingAs(User::factory()->create());
         $this->get('/admin/actualites')->assertForbidden();
         $this->post('/admin/actualites', ['title' => ['fr' => 'Intrus'], 'status' => 'published'])->assertForbidden();
         $this->assertDatabaseCount('site_news', 0);

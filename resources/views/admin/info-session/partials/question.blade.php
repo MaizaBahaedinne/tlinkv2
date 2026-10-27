@@ -5,11 +5,9 @@
 <article class="card card-flush" data-question>
     <div class="card-head">
         <div><h2>Question <span data-num></span></h2></div>
-        @if($canEdit)
-            <button type="button" class="btn btn-ghost btn-sm" data-remove-question>Supprimer</button>
-        @endif
+        <button type="button" class="btn btn-ghost btn-sm" data-remove-question>Supprimer</button>
     </div>
-    <fieldset @disabled(! $canEdit) style="border:0;margin:0;padding:0;min-width:0">
+    <fieldset style="border:0;margin:0;padding:0;min-width:0">
         <div class="card-body">
             <input type="hidden" name="questions[{{ $i }}][id]" value="{{ $q['id'] ?? '' }}">
             <div class="form-grid">

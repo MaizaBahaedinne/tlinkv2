@@ -13,20 +13,17 @@ use Illuminate\View\View;
 
 /**
  * Pages « projet » du site vitrine. Un projet est un périmètre de type « Projet » (Structure > Périmètres) :
- * ici on rédige sa page (présentation et chiffres clés). Réservé à l'administration globale.
+ * ici on rédige sa page (présentation et chiffres clés).
  */
 class ProjectController extends AdminController
 {
     public function index(Request $request): View
     {
-        $this->authorizeGlobal($request);
-
         return view('admin.projects.index', ['projects' => SiteProject::allPages()]);
     }
 
     public function edit(Request $request, string $scope): View
     {
-        $this->authorizeGlobal($request);
         $this->assertProjectScope($scope);
 
         return view('admin.projects.form', ['project' => SiteProject::forScope($scope), 'locales' => config('site.locales')]);
@@ -34,7 +31,6 @@ class ProjectController extends AdminController
 
     public function update(Request $request, string $scope): RedirectResponse
     {
-        $this->authorizeGlobal($request);
         $this->assertProjectScope($scope);
 
         $project = SiteProject::forScope($scope);
@@ -63,7 +59,6 @@ class ProjectController extends AdminController
     /** Efface le contenu de la page : le projet reste affiché avec les informations de son périmètre. */
     public function destroy(Request $request, string $scope): RedirectResponse
     {
-        $this->authorizeGlobal($request);
         $this->assertProjectScope($scope);
 
         $project = SiteProject::query()->where('scope', $scope)->firstOrFail();
@@ -143,10 +138,5 @@ class ProjectController extends AdminController
         if ($path && str_starts_with($path, 'projects/covers/')) {
             Storage::disk('public')->delete($path);
         }
-    }
-
-    private function authorizeGlobal(Request $request): void
-    {
-        abort_unless($this->context($request)->isGlobal('entity.manage'), 403, 'Réservé à l’administration globale.');
     }
 }

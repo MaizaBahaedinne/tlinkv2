@@ -10,14 +10,12 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Textes et coordonnees du site public de la Fondation (reserve a l'administration globale).
+ * Textes et coordonnees du site public de la Fondation.
  */
 class SiteSettingsController extends AdminController
 {
     public function edit(Request $request): View
     {
-        $this->authorizeGlobal($request);
-
         return view('admin.site.edit', [
             'site' => new SiteSettings(),
             'locales' => config('site.locales'),
@@ -29,8 +27,6 @@ class SiteSettingsController extends AdminController
 
     public function update(Request $request): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $rules = [];
         foreach (SiteSettings::LOCALIZED as $key => $type) {
             $rules[$key] = ['nullable', 'array'];
@@ -97,11 +93,6 @@ class SiteSettingsController extends AdminController
         $this->audit($request, 'admin.site.updated', $setting, ['fields' => array_keys($values)]);
 
         return back()->with('status', 'Site public mis à jour.');
-    }
-
-    private function authorizeGlobal(Request $request): void
-    {
-        abort_unless($this->context($request)->scope('entity.manage') === [], 403, 'Réservé à l\'administration globale.');
     }
 
     private function deletePublicImage(string $path): void

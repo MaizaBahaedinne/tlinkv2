@@ -14,15 +14,12 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Actualités du site vitrine. Système indépendant des publications du fil T.Link
- * (réservé à l'administration globale).
+ * Actualités du site vitrine. Système indépendant des publications du fil T.Link.
  */
 class NewsController extends AdminController
 {
     public function index(Request $request): View
     {
-        $this->authorizeGlobal($request);
-
         $status = $request->query('status');
         $search = trim((string) $request->query('q', ''));
 
@@ -45,15 +42,11 @@ class NewsController extends AdminController
 
     public function create(Request $request): View
     {
-        $this->authorizeGlobal($request);
-
         return view('admin.news.form', ['item' => new SiteNews(['status' => 'draft']), 'scopes' => OrgScopes::all(), 'locales' => config('site.locales')]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $values = $this->validated($request);
         $values['author_id'] = $request->user()->id;
 
@@ -70,15 +63,11 @@ class NewsController extends AdminController
 
     public function edit(Request $request, SiteNews $news): View
     {
-        $this->authorizeGlobal($request);
-
         return view('admin.news.form', ['item' => $news, 'scopes' => OrgScopes::all(), 'locales' => config('site.locales')]);
     }
 
     public function update(Request $request, SiteNews $news): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $values = $this->validated($request);
         $oldCover = null;
 
@@ -100,8 +89,6 @@ class NewsController extends AdminController
 
     public function destroy(Request $request, SiteNews $news): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $this->audit($request, 'admin.news.deleted', $news, ['title' => $news->text('title', 'fr')]);
 
         $cover = $news->cover_path;
@@ -224,10 +211,5 @@ class NewsController extends AdminController
         if ($path && str_starts_with($path, 'news/covers/')) {
             Storage::disk('public')->delete($path);
         }
-    }
-
-    private function authorizeGlobal(Request $request): void
-    {
-        abort_unless($this->context($request)->isGlobal('entity.manage'), 403, 'Réservé à l’administration globale.');
     }
 }

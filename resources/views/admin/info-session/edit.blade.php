@@ -31,7 +31,7 @@
             <div style="display:grid;gap:22px;align-content:start;min-width:0">
                 <article class="card card-flush">
                     <div class="card-head"><div><h2>Vidéo et texte</h2></div></div>
-                    <fieldset @disabled(! $canEdit) style="border:0;margin:0;padding:0;min-width:0">
+                    <fieldset style="border:0;margin:0;padding:0;min-width:0">
                         <div class="card-body">
                             <div class="form-grid">
                                 <x-admin.input name="title" label="Titre" :value="$settings['title']" required :maxlength="150" />
@@ -44,22 +44,20 @@
 
                 <div id="questions" style="display:grid;gap:22px">
                     @foreach($questions as $i => $question)
-                        @include('admin.info-session.partials.question', ['i' => $i, 'q' => $question, 'slots' => 6, 'canEdit' => $canEdit])
+                        @include('admin.info-session.partials.question', ['i' => $i, 'q' => $question, 'slots' => 6])
                     @endforeach
                 </div>
 
-                @if($canEdit)
-                    <div>
-                        <button type="button" class="btn btn-secondary" id="add-question"><x-admin.icon name="plus" :size="16" /> Ajouter une question</button>
-                        <p class="hint" style="margin-top:8px">Pour supprimer une réponse, videz son champ. Une question sans intitulé est ignorée à l’enregistrement.</p>
-                    </div>
-                @endif
+                <div>
+                    <button type="button" class="btn btn-secondary" id="add-question"><x-admin.icon name="plus" :size="16" /> Ajouter une question</button>
+                    <p class="hint" style="margin-top:8px">Pour supprimer une réponse, videz son champ. Une question sans intitulé est ignorée à l’enregistrement.</p>
+                </div>
             </div>
 
             <div style="display:grid;gap:22px;align-content:start">
                 <article class="card card-flush">
                     <div class="card-head"><div><h2>Règles du quiz</h2></div></div>
-                    <fieldset @disabled(! $canEdit) style="border:0;margin:0;padding:0;min-width:0">
+                    <fieldset style="border:0;margin:0;padding:0;min-width:0">
                         <div class="card-body">
                             <div class="form-grid" style="grid-template-columns:1fr">
                                 <x-admin.input name="duration_minutes" label="Durée (minutes)" type="number" :value="$settings['duration_minutes']" required min="1" max="60" />
@@ -67,13 +65,9 @@
                             </div>
                         </div>
                     </fieldset>
-                    @if($canEdit)
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary"><x-admin.icon name="check" :size="16" /> Enregistrer</button>
-                        </div>
-                    @else
-                        <div class="card-body"><p class="text-sm text-muted">Seuls les administrateurs globaux peuvent modifier l’info session.</p></div>
-                    @endif
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary"><x-admin.icon name="check" :size="16" /> Enregistrer</button>
+                    </div>
                 </article>
 
                 <article class="card card-flush">
@@ -98,11 +92,9 @@
         </div>
     </form>
 
-    @if($canEdit)
-        <template id="question-template">
-            @include('admin.info-session.partials.question', ['i' => '__Q__', 'q' => ['type' => 'single'], 'slots' => 4, 'canEdit' => true])
-        </template>
-    @endif
+    <template id="question-template">
+        @include('admin.info-session.partials.question', ['i' => '__Q__', 'q' => ['type' => 'single'], 'slots' => 4])
+    </template>
 @endsection
 
 @push('scripts')

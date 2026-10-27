@@ -178,14 +178,15 @@ class AboutPageTest extends TestCase
         $this->assertDatabaseMissing('newsletter_subscribers', ['id' => $kept->id]);
     }
 
-    public function test_scoped_admin_cannot_access_newsletter(): void
+    public function test_scoped_admin_can_access_newsletter(): void
     {
         $this->get('/admin/newsletter')->assertRedirect(route('login'));
 
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'entity_admin', 'university');
 
-        $this->actingAs($admin)->get('/admin/newsletter')->assertForbidden();
+        $this->actingAs($admin)->get('/admin/newsletter')->assertOk();
+        $this->actingAs(User::factory()->create())->get('/admin/newsletter')->assertForbidden();
     }
 
     public function test_newsletter_module_is_in_the_catalog(): void

@@ -9,14 +9,12 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Messages recus via le formulaire de contact du site public (reserve a l'administration globale).
+ * Messages recus via le formulaire de contact du site public.
  */
 class ContactMessageController extends AdminController
 {
     public function index(Request $request): View
     {
-        $this->authorizeGlobal($request);
-
         $filters = $request->validate([
             'status' => ['nullable', Rule::in(array_merge(array_keys(ContactMessage::STATUSES), ['all']))],
         ]);
@@ -37,8 +35,6 @@ class ContactMessageController extends AdminController
 
     public function update(Request $request, ContactMessage $message): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $data = $request->validate(['status' => ['required', Rule::in(array_keys(ContactMessage::STATUSES))]]);
 
         $message->update([
@@ -53,16 +49,9 @@ class ContactMessageController extends AdminController
 
     public function destroy(Request $request, ContactMessage $message): RedirectResponse
     {
-        $this->authorizeGlobal($request);
-
         $this->audit($request, 'admin.contact_message.deleted', $message, ['subject' => $message->subject]);
         $message->delete();
 
         return back()->with('status', 'Message supprimé.');
-    }
-
-    private function authorizeGlobal(Request $request): void
-    {
-        abort_unless($this->context($request)->scope('entity.manage') === [], 403, 'Réservé à l\'administration globale.');
     }
 }

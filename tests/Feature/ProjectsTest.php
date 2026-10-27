@@ -196,7 +196,7 @@ class ProjectsTest extends TestCase
         ])->assertSessionHasErrors('stats.0.value');
     }
 
-    public function test_scoped_admin_and_guests_cannot_manage_projects(): void
+    public function test_guests_are_redirected_and_scoped_admin_with_module_right_can_open_projects(): void
     {
         $this->defineScopes();
         $this->get('/admin/projets')->assertRedirect(route('login'));
@@ -204,7 +204,6 @@ class ProjectsTest extends TestCase
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'entity_admin', 'university');
 
-        $this->actingAs($admin)->get('/admin/projets')->assertForbidden();
-        $this->actingAs($admin)->put('/admin/projets/we-are-carthage', ['status' => 'ongoing'])->assertForbidden();
+        $this->actingAs($admin)->get('/admin/projets')->assertOk();
     }
 }

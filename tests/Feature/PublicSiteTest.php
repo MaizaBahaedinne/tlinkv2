@@ -345,13 +345,15 @@ class PublicSiteTest extends TestCase
         $this->actingAs($admin)->put('/admin/site-public', ['facebook_url' => 'javascript:alert(1)'])->assertSessionHasErrors('facebook_url');
     }
 
-    public function test_scoped_admin_cannot_manage_site_or_messages(): void
+    public function test_scoped_admin_can_open_site_settings_and_messages(): void
     {
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'entity_admin', 'university');
 
-        $this->actingAs($admin)->get('/admin/site-public')->assertForbidden();
-        $this->actingAs($admin)->get('/admin/messages')->assertForbidden();
+        $this->actingAs($admin)->get('/admin/site-public')->assertOk();
+        $this->actingAs($admin)->get('/admin/messages')->assertOk();
+
+        $this->actingAs(User::factory()->create())->get('/admin/site-public')->assertForbidden();
     }
 
     public function test_site_admin_pages_require_authentication(): void
