@@ -84,8 +84,8 @@
         </div>
         @if($news->isNotEmpty())
             <div class="mt-6 grid gap-5 md:grid-cols-3">
-                @foreach($news as $post)
-                    @include('site.partials.post-card', ['post' => $post])
+                @foreach($news as $item)
+                    @include('site.partials.news-card', ['item' => $item])
                 @endforeach
             </div>
         @else

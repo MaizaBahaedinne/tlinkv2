@@ -10,8 +10,7 @@ use App\Models\Membership;
 use App\Models\NewsletterSubscriber;
 use App\Models\OrgNode;
 use App\Models\Partner;
-use App\Models\Post;
-use App\Models\PostAttachment;
+use App\Models\SiteNews;
 use App\Models\SiteProject;
 use App\Support\OrgScopes;
 use App\Support\PublicOrgChart;
@@ -22,11 +21,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Site public de la Fondation : ne lit que des donnees deja publiques dans T.Link
- * (publications `public`, evenements publies, postes de l'organigramme, clubs actifs).
+ * (actualites du site, evenements publies, postes de l'organigramme, clubs actifs).
  */
 class SiteController extends Controller
 {
@@ -39,7 +37,7 @@ class SiteController extends Controller
 
     public function home(): View
     {
-        $news = $this->publicPosts()->limit(3)->get();
+        $news = SiteNews::query()->visible()->limit(3)->get();
         $events = $this->upcomingEvents()->limit(3)->get();
 
         return $this->render('site.home', [
@@ -121,19 +119,18 @@ class SiteController extends Controller
         $scope = $this->scopeFilter($request);
 
         return $this->render('site.news.index', [
-            'posts' => $this->inScope($this->publicPosts(), $scope)->paginate(9)->withQueryString(),
+            'news' => $this->inScope(SiteNews::query()->visible(), $scope)->paginate(9)->withQueryString(),
             'scope' => $scope,
         ]);
     }
 
-    public function newsShow(int $post): View
+    public function newsShow(int $news): View
     {
-        $post = $this->publicPosts()->with('attachments')->findOrFail($post);
+        $item = SiteNews::query()->visible()->findOrFail($news);
 
         return $this->render('site.news.show', [
-            'post' => $post,
-            'media' => $this->visibleAttachments($post),
-            'related' => $this->publicPosts()->whereKeyNot($post->id)->limit(3)->get(),
+            'item' => $item,
+            'related' => SiteNews::query()->visible()->whereKeyNot($item->id)->limit(3)->get(),
         ]);
     }
 
@@ -323,22 +320,6 @@ class SiteController extends Controller
     }
 
     /**
-     * Piece jointe d'une publication publique (les autres restent reservees a l'application).
-     */
-    public function media(PostAttachment $attachment): StreamedResponse
-    {
-        $isPublic = $this->publicPosts()->whereKey($attachment->post_id)->exists();
-        $disk = $attachment->disk ?: 'public';
-
-        abort_unless($isPublic && Storage::disk($disk)->exists($attachment->path), 404);
-
-        return Storage::disk($disk)->response($attachment->path, basename($attachment->path), [
-            'Content-Type' => $attachment->mime_type,
-            'Cache-Control' => 'public, max-age=86400',
-        ]);
-    }
-
-    /**
      * @param array<string, mixed> $data
      */
     private function render(string $view, array $data): View
@@ -366,29 +347,6 @@ class SiteController extends Controller
         return $scope === 'foundation'
             ? $query->where(fn (Builder $inner) => $inner->whereNull('scope')->orWhere('scope', 'foundation'))
             : $query->where('scope', $scope);
-    }
-
-    private function publicPosts(): Builder
-    {
-        return Post::query()
-            ->with(['author:id,name', 'attachments:id,post_id,disk,path,mime_type'])
-            ->where('is_site_news', true)
-            ->where('visibility', 'public')
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->latest('published_at')
-            ->latest('id');
-    }
-
-    /**
-     * @return \Illuminate\Support\Collection<int, PostAttachment>
-     */
-    private function visibleAttachments(Post $post)
-    {
-        return $post->attachments->filter(
-            fn (PostAttachment $attachment): bool => Storage::disk($attachment->disk ?: 'public')->exists($attachment->path)
-                && (str_starts_with($attachment->mime_type, 'image/') || str_starts_with($attachment->mime_type, 'video/'))
-        )->values();
     }
 
     private function publicEvents(): Builder

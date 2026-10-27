@@ -9,8 +9,8 @@ use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
 use App\Models\Post;
-use App\Models\PostAttachment;
 use App\Models\Setting;
+use App\Models\SiteNews;
 use App\Models\User;
 use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,14 +23,12 @@ class PublicSiteTest extends TestCase
     use GrantsAccess;
     use RefreshDatabase;
 
-    private function makePost(string $content, string $visibility = 'public'): Post
+    private function makePost(string $title, string $status = 'published', ?string $body = null): SiteNews
     {
-        return Post::query()->create([
-            'user_id' => User::factory()->create()->id,
-            'type' => 'text',
-            'visibility' => $visibility,
-            'content' => $content,
-            'is_site_news' => true,
+        return SiteNews::query()->create([
+            'title' => ['fr' => $title],
+            'body' => $body !== null ? ['fr' => $body] : null,
+            'status' => $status,
             'published_at' => now()->subHour(),
         ]);
     }
@@ -75,39 +73,45 @@ class PublicSiteTest extends TestCase
         $this->get('/fr')->assertSee('dir="ltr"', false);
     }
 
-    public function test_only_public_posts_are_listed(): void
+    public function test_only_published_news_are_listed(): void
     {
         $public = $this->makePost('Annonce ouverte à tous');
-        $private = $this->makePost('Note interne réservée', 'authenticated');
+        $draft = $this->makePost('Brouillon réservé', 'draft');
+        $scheduled = SiteNews::query()->create(['title' => ['fr' => 'Parution programmée'], 'status' => 'published', 'published_at' => now()->addDay()]);
 
         $this->get('/fr/actualites')
             ->assertSee('Annonce ouverte à tous')
-            ->assertDontSee('Note interne réservée');
+            ->assertDontSee('Brouillon réservé')
+            ->assertDontSee('Parution programmée');
 
         $this->get("/fr/actualites/{$public->id}")->assertOk();
-        $this->get("/fr/actualites/{$private->id}")->assertNotFound();
+        $this->get("/fr/actualites/{$draft->id}")->assertNotFound();
+        $this->get("/fr/actualites/{$scheduled->id}")->assertNotFound();
     }
 
-    public function test_post_content_is_escaped(): void
+    public function test_news_content_is_escaped(): void
     {
-        $post = $this->makePost('<script>alert(1)</script>');
+        $post = $this->makePost('<b>Titre</b>', 'published', '<script>alert(1)</script>');
 
         $this->get("/fr/actualites/{$post->id}")
             ->assertOk()
-            ->assertDontSee('<script>alert(1)</script>', false);
+            ->assertDontSee('<script>alert(1)</script>', false)
+            ->assertDontSee('<b>Titre</b>', false);
     }
 
-    public function test_media_is_only_served_for_public_posts(): void
+    public function test_feed_posts_never_appear_on_the_site(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('posts/images/a.jpg', 'x');
-        Storage::disk('public')->put('posts/images/b.jpg', 'x');
+        Post::query()->create([
+            'user_id' => User::factory()->create()->id,
+            'type' => 'text',
+            'visibility' => 'public',
+            'content' => 'Publication du fil T.Link',
+            'is_site_news' => true,
+            'published_at' => now()->subHour(),
+        ]);
 
-        $public = PostAttachment::query()->create(['post_id' => $this->makePost('ouvert')->id, 'disk' => 'public', 'path' => 'posts/images/a.jpg', 'mime_type' => 'image/jpeg']);
-        $private = PostAttachment::query()->create(['post_id' => $this->makePost('prive', 'authenticated')->id, 'disk' => 'public', 'path' => 'posts/images/b.jpg', 'mime_type' => 'image/jpeg']);
-
-        $this->get("/medias/{$public->id}")->assertOk();
-        $this->get("/medias/{$private->id}")->assertNotFound();
+        $this->get('/fr/actualites')->assertOk()->assertDontSee('Publication du fil T.Link');
+        $this->get('/fr')->assertOk()->assertDontSee('Publication du fil T.Link');
     }
 
     public function test_only_published_events_are_shown(): void

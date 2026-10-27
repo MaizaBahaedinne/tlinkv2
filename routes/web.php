@@ -155,6 +155,12 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('projets/{scope}/modifier', [Admin\ProjectController::class, 'edit'])->name('projects.edit');
             Route::put('projets/{scope}', [Admin\ProjectController::class, 'update'])->name('projects.update');
             Route::delete('projets/{scope}', [Admin\ProjectController::class, 'destroy'])->name('projects.destroy');
+            Route::get('actualites', [Admin\NewsController::class, 'index'])->name('news.index');
+            Route::get('actualites/nouvelle', [Admin\NewsController::class, 'create'])->name('news.create');
+            Route::post('actualites', [Admin\NewsController::class, 'store'])->name('news.store');
+            Route::get('actualites/{news}/modifier', [Admin\NewsController::class, 'edit'])->whereNumber('news')->name('news.edit');
+            Route::put('actualites/{news}', [Admin\NewsController::class, 'update'])->whereNumber('news')->name('news.update');
+            Route::delete('actualites/{news}', [Admin\NewsController::class, 'destroy'])->whereNumber('news')->name('news.destroy');
             Route::get('info-session', [Admin\InfoSessionController::class, 'edit'])->name('info-session.edit');
             Route::put('info-session', [Admin\InfoSessionController::class, 'update'])->name('info-session.update');
             Route::get('messages', [Admin\ContactMessageController::class, 'index'])->name('messages.index');
@@ -206,7 +212,6 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
         Route::middleware('admin.can:post.moderate')->group(function (): void {
             Route::get('publications', [Admin\PostController::class, 'index'])->name('posts.index');
             Route::patch('publications/{post}/commentaires', [Admin\PostController::class, 'toggleComments'])->name('posts.comments');
-            Route::patch('publications/{post}/vitrine', [Admin\PostController::class, 'toggleSiteNews'])->name('posts.site-news');
             Route::delete('publications/{post}', [Admin\PostController::class, 'destroy'])->name('posts.destroy');
             Route::get('moderation', [Admin\ModerationController::class, 'index'])->name('moderation.index');
             Route::patch('moderation/{report}', [Admin\ModerationController::class, 'update'])->name('moderation.update');
