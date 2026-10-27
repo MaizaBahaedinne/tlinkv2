@@ -15,6 +15,7 @@ return [
     'nav' => [
         'home' => 'Home',
         'about' => 'About',
+        'projects' => 'Projects',
         'news' => 'News',
         'events' => 'Events',
         'team' => 'Team',
@@ -103,6 +104,20 @@ return [
         'published_on' => 'Published on :date',
         'more' => 'Also read',
         'video' => 'Your browser cannot play this video.',
+    ],
+
+    'projects' => [
+        'title' => 'Our projects',
+        'intro' => 'The projects led by the Foundation, with their key figures.',
+        'figures' => 'The project in figures',
+        'about' => 'Overview',
+        'since' => 'Since :year',
+        'visit' => 'Project website',
+        'others' => 'Other projects',
+        'status_ongoing' => 'Ongoing',
+        'status_completed' => 'Completed',
+        'status_upcoming' => 'Upcoming',
+        'empty' => 'The Foundation\'s projects will soon be presented here.',
     ],
 
     'events' => [

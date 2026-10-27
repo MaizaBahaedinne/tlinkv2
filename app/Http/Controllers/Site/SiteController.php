@@ -12,6 +12,7 @@ use App\Models\OrgNode;
 use App\Models\Partner;
 use App\Models\Post;
 use App\Models\PostAttachment;
+use App\Models\SiteProject;
 use App\Support\OrgScopes;
 use App\Support\PublicOrgChart;
 use App\Support\SiteSettings;
@@ -156,6 +157,21 @@ class SiteController extends Controller
         $event = $this->publicEvents()->findOrFail($event);
 
         return $this->render('site.events.show', ['event' => $event]);
+    }
+
+    public function projects(): View
+    {
+        return $this->render('site.projects.index', ['projects' => SiteProject::query()->published()->ordered()->get()]);
+    }
+
+    public function projectShow(string $slug): View
+    {
+        $project = SiteProject::query()->published()->where('slug', $slug)->firstOrFail();
+
+        return $this->render('site.projects.show', [
+            'project' => $project,
+            'others' => SiteProject::query()->published()->whereKeyNot($project->id)->ordered()->limit(3)->get(),
+        ]);
     }
 
     public function clubs(Request $request): View

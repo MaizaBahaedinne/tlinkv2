@@ -7,6 +7,7 @@
     $nav = [
         'site.home' => __('site.nav.home'),
         'site.about' => __('site.nav.about'),
+        'site.projects' => __('site.nav.projects'),
         'site.news' => __('site.nav.news'),
         'site.events' => __('site.nav.events'),
         'site.clubs' => __('site.nav.clubs'),

@@ -15,6 +15,7 @@ return [
     'nav' => [
         'home' => 'Accueil',
         'about' => 'À propos',
+        'projects' => 'Projets',
         'news' => 'Actualités',
         'events' => 'Événements',
         'team' => 'Équipe',
@@ -103,6 +104,20 @@ return [
         'published_on' => 'Publié le :date',
         'more' => 'À lire aussi',
         'video' => 'Votre navigateur ne lit pas cette vidéo.',
+    ],
+
+    'projects' => [
+        'title' => 'Nos projets',
+        'intro' => 'Les projets portés par la Fondation, avec leurs chiffres clés.',
+        'figures' => 'Le projet en chiffres',
+        'about' => 'Présentation',
+        'since' => 'Depuis :year',
+        'visit' => 'Site du projet',
+        'others' => 'Autres projets',
+        'status_ongoing' => 'En cours',
+        'status_completed' => 'Terminé',
+        'status_upcoming' => 'À venir',
+        'empty' => 'Les projets de la Fondation seront bientôt présentés ici.',
     ],
 
     'events' => [

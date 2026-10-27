@@ -74,6 +74,7 @@ final class ModuleCatalog
                 'children' => [
                     ['key' => 'website.content', 'name' => 'Contenu et textes', 'description' => 'Textes, visuels et coordonnées du site.', 'actions' => ['read', 'update']],
                     ['key' => 'website.partners', 'name' => 'Partenaires', 'description' => 'Logos des partenaires.', 'actions' => self::CRUD],
+                    ['key' => 'website.projects', 'name' => 'Projets', 'description' => 'Pages de présentation des projets de la Fondation et leurs chiffres clés.', 'actions' => self::CRUD],
                     ['key' => 'website.messages', 'name' => 'Messages de contact', 'description' => 'Messages reçus via le formulaire de contact.', 'actions' => ['read', 'update', 'delete']],
                     ['key' => 'website.newsletter', 'name' => 'Newsletter', 'description' => 'Abonnés à la newsletter du site : liste, export et suppression.', 'actions' => ['read', 'delete']],
                     ['key' => 'website.launch', 'name' => 'Lancement du site', 'description' => 'Compte à rebours et ouverture du site.', 'actions' => ['read', 'update']],

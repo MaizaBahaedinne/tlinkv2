@@ -30,6 +30,8 @@ Route::prefix('{locale}')
         Route::get('evenements/{event}', [SiteController::class, 'eventShow'])->whereNumber('event')->name('events.show');
         // L'équipe est désormais une section de « À propos » : on garde l'ancienne adresse valide.
         Route::get('equipe', fn () => redirect(route('site.about').'#equipe', 301));
+        Route::get('projets', [SiteController::class, 'projects'])->name('projects');
+        Route::get('projets/{slug}', [SiteController::class, 'projectShow'])->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')->name('projects.show');
         Route::get('clubs', [SiteController::class, 'clubs'])->name('clubs');
         Route::get('contact', [SiteController::class, 'contact'])->name('contact');
         Route::post('contact', [SiteController::class, 'contactStore'])
