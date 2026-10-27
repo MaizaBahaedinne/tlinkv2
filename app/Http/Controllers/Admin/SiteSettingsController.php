@@ -46,6 +46,9 @@ class SiteSettingsController extends AdminController
             'instagram_url' => ['nullable', 'url:http,https', 'max:255'],
             'linkedin_url' => ['nullable', 'url:http,https', 'max:255'],
             'youtube_url' => ['nullable', 'url:http,https', 'max:255'],
+            'president_name' => ['nullable', 'string', 'max:120'],
+            'president_photo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'president_photo_remove' => ['nullable', 'boolean'],
             'hero_bg_main_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
             'hero_bg_mark_a_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
             'hero_bg_mark_b_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
@@ -69,7 +72,7 @@ class SiteSettingsController extends AdminController
 
         $site = new SiteSettings();
         $current = $site->raw();
-        foreach (['hero_bg_main', 'hero_bg_mark_a', 'hero_bg_mark_b'] as $key) {
+        foreach (SiteSettings::IMAGES as $key => $directory) {
             $existing = (string) ($current[$key] ?? '');
 
             if ($request->boolean($key.'_remove')) {
@@ -79,7 +82,7 @@ class SiteSettingsController extends AdminController
             }
 
             if ($request->hasFile($key.'_file')) {
-                $path = $request->file($key.'_file')->store('site/hero', 'public');
+                $path = $request->file($key.'_file')->store($directory, 'public');
                 $this->deletePublicImage($existing);
                 $values[$key] = $path;
                 continue;
@@ -105,7 +108,7 @@ class SiteSettingsController extends AdminController
     {
         $normalized = ltrim($path, '/');
 
-        if ($normalized !== '' && str_starts_with($normalized, 'site/hero/')) {
+        if ($normalized !== '' && (str_starts_with($normalized, 'site/hero/') || str_starts_with($normalized, 'site/president/'))) {
             Storage::disk('public')->delete($normalized);
         }
     }

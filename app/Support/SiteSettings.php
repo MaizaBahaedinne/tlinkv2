@@ -18,26 +18,66 @@ class SiteSettings
     public const LOCALIZED = [
         'hero_title' => 'text',
         'hero_subtitle' => 'textarea',
-        'about_body' => 'textarea',
         'pillar_1_title' => 'text',
         'pillar_1_text' => 'textarea',
         'pillar_2_title' => 'text',
         'pillar_2_text' => 'textarea',
         'pillar_3_title' => 'text',
         'pillar_3_text' => 'textarea',
+        'about_body' => 'textarea',
+        'president_role' => 'text',
+        'president_message' => 'textarea',
+        'mission' => 'textarea',
+        'vision' => 'textarea',
+        'value_1_title' => 'text',
+        'value_1_text' => 'textarea',
+        'value_2_title' => 'text',
+        'value_2_text' => 'textarea',
+        'value_3_title' => 'text',
+        'value_3_text' => 'textarea',
+        'value_4_title' => 'text',
+        'value_4_text' => 'textarea',
     ];
 
     /** Libelles admin des champs traduisibles. */
     public const LABELS = [
         'hero_title' => 'Titre d’accueil',
         'hero_subtitle' => 'Sous-titre d’accueil',
-        'about_body' => 'Texte « À propos »',
         'pillar_1_title' => 'Accueil, pilier 1 : titre',
         'pillar_1_text' => 'Accueil, pilier 1 : texte',
         'pillar_2_title' => 'Accueil, pilier 2 : titre',
         'pillar_2_text' => 'Accueil, pilier 2 : texte',
         'pillar_3_title' => 'Accueil, pilier 3 : titre',
         'pillar_3_text' => 'Accueil, pilier 3 : texte',
+        'about_body' => 'Texte « À propos »',
+        'president_role' => 'Fonction du président (sous son nom)',
+        'president_message' => 'Mot du président',
+        'mission' => 'Mission',
+        'vision' => 'Vision',
+        'value_1_title' => 'Valeur 1 : titre',
+        'value_1_text' => 'Valeur 1 : texte',
+        'value_2_title' => 'Valeur 2 : titre',
+        'value_2_text' => 'Valeur 2 : texte',
+        'value_3_title' => 'Valeur 3 : titre',
+        'value_3_text' => 'Valeur 3 : texte',
+        'value_4_title' => 'Valeur 4 : titre',
+        'value_4_text' => 'Valeur 4 : texte',
+    ];
+
+    /** Titre de section affiché dans l'admin avant le champ indiqué. */
+    public const SECTIONS = [
+        'hero_title' => 'Page d’accueil',
+        'about_body' => 'Page « À propos » : présentation',
+        'president_role' => 'Page « À propos » : mot du président (le nom et la photo se règlent plus bas)',
+        'mission' => 'Page « À propos » : mission, vision et valeurs',
+    ];
+
+    /** Images envoyées depuis l'admin : clé => dossier du disque public. */
+    public const IMAGES = [
+        'hero_bg_main' => 'site/hero',
+        'hero_bg_mark_a' => 'site/hero',
+        'hero_bg_mark_b' => 'site/hero',
+        'president_photo' => 'site/president',
     ];
 
     /** Champs communs a toutes les langues : cle => type de saisie. */
@@ -52,6 +92,8 @@ class SiteSettings
         'hero_bg_main' => 'text',
         'hero_bg_mark_a' => 'text',
         'hero_bg_mark_b' => 'text',
+        'president_name' => 'text',
+        'president_photo' => 'text',
     ];
 
     /** @var array<string, mixed>|null */
@@ -102,7 +144,25 @@ class SiteSettings
     }
 
     /**
-     * URL de reseau social uniquement si elle est en http(s) (evite les schemas dangereux type javascript:).
+     * Texte saisi en admin, sans texte par défaut : langue courante, puis français, sinon vide.
+     */
+    public function optional(string $key, ?string $locale = null): string
+    {
+        return $this->stored($key, $locale ?? app()->getLocale()) ?: $this->stored($key, config('site.default_locale'));
+    }
+
+    /**
+     * URL absolue d'une image envoyée depuis l'admin, ou null si aucune.
+     */
+    public function imageUrl(string $key): ?string
+    {
+        $path = ltrim($this->stored($key), '/');
+
+        return $path !== '' ? asset('storage/'.$path) : null;
+    }
+
+    /**
+     * URL de réseau social uniquement si elle est en http(s) (evite les schemas dangereux type javascript:).
      */
     public function link(string $key): ?string
     {

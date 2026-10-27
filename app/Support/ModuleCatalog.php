@@ -75,6 +75,7 @@ final class ModuleCatalog
                     ['key' => 'website.content', 'name' => 'Contenu et textes', 'description' => 'Textes, visuels et coordonnées du site.', 'actions' => ['read', 'update']],
                     ['key' => 'website.partners', 'name' => 'Partenaires', 'description' => 'Logos des partenaires.', 'actions' => self::CRUD],
                     ['key' => 'website.messages', 'name' => 'Messages de contact', 'description' => 'Messages reçus via le formulaire de contact.', 'actions' => ['read', 'update', 'delete']],
+                    ['key' => 'website.newsletter', 'name' => 'Newsletter', 'description' => 'Abonnés à la newsletter du site : liste, export et suppression.', 'actions' => ['read', 'delete']],
                     ['key' => 'website.launch', 'name' => 'Lancement du site', 'description' => 'Compte à rebours et ouverture du site.', 'actions' => ['read', 'update']],
                 ],
             ],
@@ -87,11 +88,6 @@ final class ModuleCatalog
         ];
     }
 
-    /**
-     * Ajoute les modules manquants (par clé) ; ne modifie jamais un module existant.
-     *
-     * @return int nombre de modules ajoutés
-     */
     /**
      * Un module est actif s'il est actif lui-même et si son parent l'est ; un module inconnu du catalogue reste actif.
      */
@@ -112,6 +108,11 @@ final class ModuleCatalog
         return $module->is_active && ($parent === null || $parent->is_active);
     }
 
+    /**
+     * Ajoute les modules manquants (par clé) ; ne modifie jamais un module existant.
+     *
+     * @return int nombre de modules ajoutés
+     */
     public static function sync(): int
     {
         $added = 0;

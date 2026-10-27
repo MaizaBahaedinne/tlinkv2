@@ -34,6 +34,17 @@ return [
         'pillar_2_text' => 'Initiatives citoyennes, formations et programmes de leadership portés par et pour les jeunes.',
         'pillar_3_title' => 'Des rencontres qui inspirent',
         'pillar_3_text' => 'Événements, conférences et rendez-vous pour échanger, apprendre et créer ensemble.',
+        'president_role' => 'Président de la Fondation',
+        'mission' => 'Accompagner la jeunesse tunisienne dans son engagement citoyen, en lui offrant un réseau de clubs, des projets concrets et des espaces pour apprendre, entreprendre et agir.',
+        'vision' => 'Une jeunesse tunisienne actrice du changement : engagée, solidaire, capable de transformer ses idées en initiatives qui servent la société.',
+        'value_1_title' => 'Engagement',
+        'value_1_text' => 'Agir concrètement pour sa communauté et tenir ses promesses.',
+        'value_2_title' => 'Solidarité',
+        'value_2_text' => 'Avancer ensemble, s\'entraider et partager ce que l\'on apprend.',
+        'value_3_title' => 'Leadership',
+        'value_3_text' => 'Oser prendre des initiatives et développer le sens des responsabilités.',
+        'value_4_title' => 'Transparence',
+        'value_4_text' => 'Une organisation claire, avec des rôles et des décisions connus de tous.',
     ],
 
     'home' => [
@@ -75,12 +86,15 @@ return [
 
     'about' => [
         'title' => 'À propos de la Fondation',
-        'mission_title' => 'Notre approche',
-        'points' => [
-            'Des clubs ancrés localement, dans les universités et les lycées.',
-            'Des projets et événements ouverts à toute la communauté.',
-            'Une organisation transparente, avec une équipe et des rôles clairement identifiés.',
-        ],
+        'president_title' => 'Le mot du président',
+        'mission_title' => 'Notre mission',
+        'vision_title' => 'Notre vision',
+        'values_title' => 'Nos valeurs',
+        'spaces_title' => 'Notre équipe et nos espaces',
+        'spaces_intro' => 'Choisissez un espace pour découvrir ce qu\'il regroupe et ses responsables.',
+        'spaces_label' => 'Espaces de la Fondation',
+        'includes' => 'Comprend',
+        'no_team' => 'L\'équipe de cet espace sera bientôt présentée.',
     ],
 
     'news' => [
@@ -104,9 +118,17 @@ return [
         'register' => 'Pour participer, connectez-vous ou créez votre compte T.Link.',
     ],
 
-    'team' => [
-        'title' => 'Notre équipe',
-        'intro' => 'Les responsables de la Fondation, par périmètre.',
+    'newsletter' => [
+        'title' => 'Restez informé',
+        'text' => 'Recevez les actualités, les événements et les initiatives de la Fondation directement dans votre boîte mail.',
+        'placeholder' => 'Votre adresse e-mail',
+        'subscribe' => 'Je m\'abonne',
+        'sent' => 'Merci ! Votre adresse a bien été enregistrée.',
+        'privacy' => 'Pas de spam : vous pouvez vous désinscrire à tout moment.',
+        'unsubscribe_title' => 'Se désinscrire de la newsletter',
+        'unsubscribe_text' => 'Confirmez que vous ne souhaitez plus recevoir la newsletter de la Fondation.',
+        'unsubscribe_button' => 'Me désinscrire',
+        'unsubscribed' => 'Vous êtes désinscrit(e) : vous ne recevrez plus la newsletter.',
     ],
 
     'clubs' => [

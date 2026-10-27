@@ -38,6 +38,7 @@ class AdminMenu
         'admin.partners.*' => 'website.partners',
         'admin.info-session.*' => 'members.info_session',
         'admin.messages.*' => 'website.messages',
+        'admin.newsletter.*' => 'website.newsletter',
         'admin.approvals.*' => 'governance.approvals',
         'admin.events.*' => 'events.events',
     ];
@@ -111,6 +112,7 @@ class AdminMenu
                     ['label' => 'Partenaires', 'route' => 'admin.partners.index', 'icon' => 'building', 'match' => 'admin.partners.*', 'perms' => ['entity.manage']],
                     ['label' => 'Info session et quiz', 'route' => 'admin.info-session.edit', 'icon' => 'graduation', 'match' => 'admin.info-session.*', 'perms' => ['entity.manage']],
                     ['label' => 'Messages du site', 'route' => 'admin.messages.index', 'icon' => 'file-text', 'match' => 'admin.messages.*', 'perms' => ['entity.manage'], 'badge' => 'messages'],
+                    ['label' => 'Newsletter', 'route' => 'admin.newsletter.index', 'icon' => 'user', 'match' => 'admin.newsletter.*', 'perms' => ['entity.manage']],
                 ],
             ],
             [

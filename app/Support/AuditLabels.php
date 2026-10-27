@@ -35,6 +35,8 @@ class AuditLabels
         'admin.role.revoked' => 'Rôle retiré',
         'admin.membership.status_changed' => 'Statut d\'adhésion modifié',
         'admin.member.added' => 'Membre ajouté à une entité',
+        'admin.newsletter.deleted' => 'Abonné de la newsletter supprimé',
+        'admin.newsletter.exported' => 'Abonnés de la newsletter exportés',
         'office.holder.assigned' => 'Mon bureau : titulaire affecté à un poste',
         'office.holder.removed' => 'Mon bureau : titulaire retiré d\'un poste',
         'admin.post.deleted' => 'Publication supprimée',

@@ -35,4 +35,14 @@ Route::prefix('{locale}')
         Route::post('contact', [SiteController::class, 'contactStore'])
             ->middleware('throttle:5,10')
             ->name('contact.store');
+        Route::post('newsletter', [SiteController::class, 'newsletterStore'])
+            ->middleware('throttle:5,10')
+            ->name('newsletter.store');
+        Route::get('newsletter/desinscription/{token}', [SiteController::class, 'newsletterUnsubscribe'])
+            ->where('token', '[A-Za-z0-9]{48}')
+            ->name('newsletter.unsubscribe');
+        Route::post('newsletter/desinscription/{token}', [SiteController::class, 'newsletterUnsubscribeConfirm'])
+            ->where('token', '[A-Za-z0-9]{48}')
+            ->middleware('throttle:10,10')
+            ->name('newsletter.unsubscribe.confirm');
     });

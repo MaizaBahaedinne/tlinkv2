@@ -7,6 +7,7 @@ use App\Models\ContactMessage;
 use App\Models\FoundationEvent;
 use App\Models\Governorate;
 use App\Models\Membership;
+use App\Models\NewsletterSubscriber;
 use App\Models\OrgNode;
 use App\Models\Partner;
 use App\Models\Post;
@@ -51,11 +52,51 @@ class SiteController extends Controller
 
     public function about(): View
     {
+        $groups = PublicOrgChart::teamByScope();
+
         return $this->render('site.about', [
             'stats' => $this->stats(),
-            'groups' => PublicOrgChart::teamByScope(),
-            ...$this->scopeTreeData(),
+            'spaces' => $this->spaces($groups),
+            'president' => PublicOrgChart::president(),
         ]);
+    }
+
+    /**
+     * Les espaces (périmètres) de la Fondation avec leur description, leur logo, leurs sous-espaces et leur équipe.
+     *
+     * @param array<string, \Illuminate\Support\Collection<int, OrgNode>> $groups
+     * @return array<int, array{slug: string, name: string, description: string, logo: string|null, children: array<int, string>, team: \Illuminate\Support\Collection<int, OrgNode>}>
+     */
+    private function spaces(array $groups): array
+    {
+        $tree = $this->scopeTreeData();
+        $names = $tree['scopes'];
+        $childrenOf = [];
+
+        foreach ($tree['scopeHierarchy'] as $child => $parent) {
+            if ($parent !== null && isset($names[$child], $names[$parent])) {
+                $childrenOf[$parent][] = $child;
+            }
+        }
+
+        $translated = fn (string $key): ?string => \Illuminate\Support\Facades\Lang::has($key) ? (string) __($key) : null;
+        $spaces = [];
+
+        foreach ($names as $slug => $label) {
+            $slug = (string) $slug;
+            $description = trim((string) ($tree['scopeDescriptions'][$slug] ?? '')) ?: ($translated("site.scopes.{$slug}.text") ?? '');
+
+            $spaces[] = [
+                'slug' => $slug,
+                'name' => $translated("site.scopes.{$slug}.name") ?? (string) $label,
+                'description' => $description,
+                'logo' => $tree['scopeLogos'][$slug] ?? null,
+                'children' => array_map(fn (string $child): string => $translated("site.scopes.{$child}.name") ?? (string) $names[$child], $childrenOf[$slug] ?? []),
+                'team' => $groups[$slug] ?? collect(),
+            ];
+        }
+
+        return $spaces;
     }
 
     /**
@@ -210,6 +251,56 @@ class SiteController extends Controller
         ]);
 
         return redirect()->route('site.contact')->with('contact_sent', true);
+    }
+
+    public function newsletterStore(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email:rfc', 'max:190'],
+            'website' => ['nullable', 'max:0'], // piège à robots
+        ], [
+            'required' => __('site.validation.required'),
+            'email' => __('site.validation.email'),
+            'max' => __('site.validation.max'),
+        ], ['email' => __('site.contact.email')]);
+
+        $email = mb_strtolower(trim($data['email']));
+
+        try {
+            $subscriber = NewsletterSubscriber::query()->firstOrCreate(['email' => $email], [
+                'locale' => app()->getLocale(),
+                'ip_address' => $request->ip(),
+                'subscribed_at' => now(),
+            ]);
+
+            // Une personne désinscrite qui se réinscrit elle-même redevient abonnée.
+            if ($subscriber->unsubscribed_at !== null) {
+                $subscriber->update(['unsubscribed_at' => null, 'subscribed_at' => now(), 'locale' => app()->getLocale()]);
+            }
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            // Double envoi simultané : l'adresse est déjà inscrite.
+        }
+
+        // Même réponse que l'adresse soit nouvelle ou déjà connue : on ne révèle pas qui est abonné.
+        return redirect(route('site.about').'#newsletter')->with('newsletter_sent', true);
+    }
+
+    public function newsletterUnsubscribe(string $token): View
+    {
+        $subscriber = NewsletterSubscriber::query()->where('unsubscribe_token', $token)->firstOrFail();
+
+        return $this->render('site.newsletter-unsubscribe', ['token' => $subscriber->unsubscribe_token, 'done' => $subscriber->unsubscribed_at !== null]);
+    }
+
+    public function newsletterUnsubscribeConfirm(string $token): RedirectResponse
+    {
+        $subscriber = NewsletterSubscriber::query()->where('unsubscribe_token', $token)->firstOrFail();
+
+        if ($subscriber->unsubscribed_at === null) {
+            $subscriber->update(['unsubscribed_at' => now()]);
+        }
+
+        return redirect()->route('site.newsletter.unsubscribe', ['token' => $token]);
     }
 
     /**

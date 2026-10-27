@@ -54,6 +54,36 @@ class PublicOrgChart
     }
 
     /**
+     * Titulaire du poste de président (organigramme) : nom, titre du poste et photo, pour la page « À propos ».
+     *
+     * @return array{name: string, title: string, photo: string|null}|null
+     */
+    public static function president(): ?array
+    {
+        $today = now()->toDateString();
+
+        $node = OrgNode::query()
+            ->where('system_key', 'presidency')
+            ->where('kind', 'position')
+            ->with([
+                'assignments' => fn ($query) => $query
+                    ->where(fn ($inner) => $inner->whereNull('starts_at')->orWhere('starts_at', '<=', $today))
+                    ->where(fn ($inner) => $inner->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
+                    ->orderBy('id'),
+                'assignments.person.user.profile',
+            ])
+            ->first();
+
+        $person = $node?->assignments->first(fn ($assignment): bool => $assignment->person !== null)?->person;
+
+        if ($node === null || $person === null) {
+            return null;
+        }
+
+        return ['name' => $person->displayName(), 'title' => $node->title, 'photo' => $person->photoUrl()];
+    }
+
+    /**
      * Rang de chaque bloc dans un parcours en profondeur de l'arbre (freres tries par `sort_order`, puis `id`).
      *
      * @return array<int, int> id => rang

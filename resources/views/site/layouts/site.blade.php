@@ -185,6 +185,7 @@
             document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { menu.removeAttribute('open'); } });
         })();
     </script>
+@stack('scripts')
 @include('partials.impersonation-banner')
 </body>
 </html>

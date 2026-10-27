@@ -156,6 +156,9 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('messages', [Admin\ContactMessageController::class, 'index'])->name('messages.index');
             Route::patch('messages/{message}', [Admin\ContactMessageController::class, 'update'])->name('messages.update');
             Route::delete('messages/{message}', [Admin\ContactMessageController::class, 'destroy'])->name('messages.destroy');
+            Route::get('newsletter', [Admin\NewsletterController::class, 'index'])->name('newsletter.index');
+            Route::get('newsletter/export', [Admin\NewsletterController::class, 'export'])->name('newsletter.export');
+            Route::delete('newsletter/{subscriber}', [Admin\NewsletterController::class, 'destroy'])->name('newsletter.destroy');
 
             // Structure : tableaux et fiches (postes, droits, titulaires, clubs)
             Route::get('structure/postes', [Admin\StructureController::class, 'index'])->name('postes.index');

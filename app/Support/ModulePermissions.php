@@ -29,6 +29,7 @@ final class ModulePermissions
         'website.content' => 'entity.manage',
         'website.partners' => 'entity.manage',
         'website.messages' => 'entity.manage',
+        'website.newsletter' => 'entity.manage',
         'website.launch' => 'entity.manage',
         'governance.audit' => 'entity.manage',
         'governance.roadmap' => 'entity.manage',

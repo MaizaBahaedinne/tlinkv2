@@ -16,9 +16,12 @@
 
         <div class="card-body">
             <h3 style="margin-top:0">Textes</h3>
-            <p class="text-sm text-muted">Laissez vide pour utiliser le texte par défaut. Une langue vide reprend le français.</p>
+            <p class="text-sm text-muted">Laissez vide pour utiliser le texte par défaut. Une langue vide reprend le français. Le mot du président n'est affiché sur le site que s'il est rempli.</p>
 
             @foreach($localized as $key => $type)
+                @if(isset(\App\Support\SiteSettings::SECTIONS[$key]))
+                    <h4 style="margin:24px 0 10px">{{ \App\Support\SiteSettings::SECTIONS[$key] }}</h4>
+                @endif
                 <div class="form-grid" style="margin-bottom:16px">
                     @foreach($locales as $code => $meta)
                         @php($field = $key.'.'.$code)
@@ -34,6 +37,21 @@
                     @endforeach
                 </div>
             @endforeach
+
+            <h3>Président : nom et photo</h3>
+            <p class="text-sm text-muted">Affichés avec le mot du président. Sans nom ni photo ici, le site reprend le titulaire du poste de président de l'organigramme. Formats acceptés : jpg, png, webp (max 4 Mo).</p>
+            <div class="form-grid">
+                <x-admin.input name="president_name" label="Nom du président" :value="$site->stored('president_name')" :maxlength="120" />
+                <div class="field {{ $errors->has('president_photo_file') ? 'has-error' : '' }}">
+                    <label for="f-president-photo">Photo du président</label>
+                    <input id="f-president-photo" type="file" name="president_photo_file" accept="image/png,image/jpeg,image/webp">
+                    @if($photo = $site->imageUrl('president_photo'))
+                        <img src="{{ $photo }}" alt="Photo actuelle" style="margin-top:6px;width:96px;height:96px;object-fit:cover;border-radius:50%">
+                        <label class="check" style="margin-top:8px"><input type="checkbox" name="president_photo_remove" value="1"> Supprimer cette photo</label>
+                    @endif
+                    @error('president_photo_file')<p class="error">{{ $message }}</p>@enderror
+                </div>
+            </div>
 
             <h3>Coordonnées et réseaux</h3>
             <div class="form-grid">

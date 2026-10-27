@@ -34,6 +34,17 @@ return [
         'pillar_2_text' => 'Civic initiatives, training and leadership programmes led by and for young people.',
         'pillar_3_title' => 'Meetings that inspire',
         'pillar_3_text' => 'Events, talks and gatherings to exchange, learn and create together.',
+        'president_role' => 'President of the Foundation',
+        'mission' => 'To support Tunisian youth in their civic engagement by offering a network of clubs, concrete projects and spaces to learn, undertake and act.',
+        'vision' => 'A Tunisian youth that drives change: engaged, supportive and able to turn ideas into initiatives that serve society.',
+        'value_1_title' => 'Commitment',
+        'value_1_text' => 'Taking concrete action for the community and keeping our promises.',
+        'value_2_title' => 'Solidarity',
+        'value_2_text' => 'Moving forward together, helping one another and sharing what we learn.',
+        'value_3_title' => 'Leadership',
+        'value_3_text' => 'Daring to take initiative and developing a sense of responsibility.',
+        'value_4_title' => 'Transparency',
+        'value_4_text' => 'A clear organization, with roles and decisions known to everyone.',
     ],
 
     'home' => [
@@ -75,12 +86,15 @@ return [
 
     'about' => [
         'title' => 'About the Foundation',
-        'mission_title' => 'Our approach',
-        'points' => [
-            'Locally rooted clubs in universities and high schools.',
-            'Projects and events open to the whole community.',
-            'A transparent organization with clearly identified teams and roles.',
-        ],
+        'president_title' => 'A word from the president',
+        'mission_title' => 'Our mission',
+        'vision_title' => 'Our vision',
+        'values_title' => 'Our values',
+        'spaces_title' => 'Our team and our spaces',
+        'spaces_intro' => 'Pick a space to see what it brings together and who leads it.',
+        'spaces_label' => 'Foundation spaces',
+        'includes' => 'Includes',
+        'no_team' => 'This space\'s team will be introduced soon.',
     ],
 
     'news' => [
@@ -104,9 +118,17 @@ return [
         'register' => 'To take part, sign in or create your T.Link account.',
     ],
 
-    'team' => [
-        'title' => 'Our team',
-        'intro' => 'The Foundation\'s leaders, by scope.',
+    'newsletter' => [
+        'title' => 'Stay informed',
+        'text' => 'Get the Foundation\'s news, events and initiatives straight to your inbox.',
+        'placeholder' => 'Your e-mail address',
+        'subscribe' => 'Subscribe',
+        'sent' => 'Thank you! Your address has been registered.',
+        'privacy' => 'No spam: you can unsubscribe at any time.',
+        'unsubscribe_title' => 'Unsubscribe from the newsletter',
+        'unsubscribe_text' => 'Confirm that you no longer wish to receive the Foundation\'s newsletter.',
+        'unsubscribe_button' => 'Unsubscribe me',
+        'unsubscribed' => 'You are unsubscribed: you will no longer receive the newsletter.',
     ],
 
     'clubs' => [
