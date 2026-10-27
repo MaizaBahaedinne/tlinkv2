@@ -1,10 +1,13 @@
 @php
     $figures = array_slice($project->figures(), 0, 3);
     $cover = $project->coverUrl();
+    $logo = $project->logoUrl();
 @endphp
-<a href="{{ route('site.projects.show', ['slug' => $project->slug]) }}" class="site-card group flex h-full flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-lg">
+<a href="{{ route('site.projects.show', ['slug' => $project->scope]) }}" class="site-card group flex h-full flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-lg">
     @if($cover)
         <img src="{{ $cover }}" alt="" loading="lazy" class="h-44 w-full object-cover">
+    @elseif($logo)
+        <div class="flex h-44 items-center justify-center bg-white p-6"><img src="{{ $logo }}" alt="" loading="lazy" class="max-h-full max-w-full object-contain"></div>
     @else
         <div class="flex h-44 items-center justify-center bg-gradient-to-br from-brand-900 to-brand-800 font-display text-5xl font-bold text-white/80" aria-hidden="true">{{ mb_strtoupper(mb_substr($project->text('name'), 0, 1)) }}</div>
     @endif

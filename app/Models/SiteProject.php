@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
+use App\Support\OrgScopes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Projet de la Fondation présenté sur le site vitrine : texte traduit (fr/en/ar) et chiffres clés.
+ * Page « projet » du site vitrine : contenu (texte fr/en/ar, chiffres clés, couverture) d'un périmètre de type « Projet ».
+ * Le nom, la description et le logo viennent du périmètre tant que la page ne les remplace pas.
  */
 class SiteProject extends Model
 {
@@ -16,7 +19,7 @@ class SiteProject extends Model
     /** Nombre maximal de chiffres clés par projet. */
     public const MAX_FIGURES = 8;
 
-    protected $fillable = ['slug', 'name', 'summary', 'body', 'stats', 'cover_path', 'status', 'started_year', 'website_url', 'sort_order', 'is_published'];
+    protected $fillable = ['slug', 'scope', 'name', 'summary', 'body', 'stats', 'cover_path', 'status', 'started_year', 'website_url', 'sort_order', 'is_published'];
 
     protected $casts = [
         'name' => 'array',
@@ -28,17 +31,44 @@ class SiteProject extends Model
         'is_published' => 'boolean',
     ];
 
-    public function scopePublished(Builder $query): Builder
+    /** Page du périmètre donné : l'enregistrement s'il existe, sinon une page vide (non enregistrée). */
+    public static function forScope(string $scope): static
     {
-        return $query->where('is_published', true);
+        return static::query()->where('scope', $scope)->first() ?? static::blank($scope);
     }
 
-    public function scopeOrdered(Builder $query): Builder
+    public static function blank(string $scope): static
     {
-        return $query->orderBy('sort_order')->orderBy('id');
+        return new static(['scope' => $scope, 'slug' => $scope, 'status' => 'ongoing', 'is_published' => true, 'sort_order' => 0]);
     }
 
-    /** Texte d'un champ traduisible : langue demandée, sinon français. */
+    /**
+     * Pages de tous les périmètres de type Projet (publiées ou non), dans l'ordre d'affichage.
+     *
+     * @return Collection<int, static>
+     */
+    public static function allPages(): Collection
+    {
+        $stored = static::query()->whereNotNull('scope')->get()->keyBy('scope');
+
+        return collect(OrgScopes::slugsOfType('project'))
+            ->map(fn (string $scope): static => $stored->get($scope) ?? static::blank($scope))
+            ->sort(fn (self $a, self $b): int => [$a->sort_order, $a->text('name')] <=> [$b->sort_order, $b->text('name')])
+            ->values();
+    }
+
+    /**
+     * Pages visibles sur le site : un périmètre de type Projet sans page enregistrée est affiché avec ses
+     * informations de base ; une page enregistrée mais dépubliée est masquée.
+     *
+     * @return Collection<int, static>
+     */
+    public static function publicPages(): Collection
+    {
+        return static::allPages()->filter(fn (self $page): bool => $page->is_published)->values();
+    }
+
+    /** Texte d'un champ traduisible : langue demandée, sinon français, sinon valeur du périmètre. */
     public function text(string $field, ?string $locale = null): string
     {
         $values = (array) ($this->{$field} ?? []);
@@ -52,7 +82,18 @@ class SiteProject extends Model
             }
         }
 
-        return '';
+        return match ($field) {
+            'name' => $this->scopeName(),
+            'summary' => trim((string) (OrgScopes::descriptions()[$this->scope] ?? '')),
+            default => '',
+        };
+    }
+
+    private function scopeName(): string
+    {
+        $key = "site.scopes.{$this->scope}.name";
+
+        return Lang::has($key) ? (string) __($key) : (string) OrgScopes::label($this->scope);
     }
 
     /**
@@ -81,6 +122,14 @@ class SiteProject extends Model
     public function coverUrl(): ?string
     {
         return $this->cover_path ? Storage::disk('public')->url($this->cover_path) : null;
+    }
+
+    /** Logo du périmètre (null s'il n'existe pas). */
+    public function logoUrl(): ?string
+    {
+        $path = OrgScopes::logos()[$this->scope] ?? null;
+
+        return $path && Storage::disk('public')->exists($path) ? Storage::disk('public')->url($path) : null;
     }
 
     /** Lien uniquement en http(s) (évite les schémas dangereux type javascript:). */

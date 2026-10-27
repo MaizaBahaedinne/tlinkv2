@@ -25,7 +25,7 @@
         <div class="card-head">
             <div>
                 <h2>Catalogue et héritage des périmètres</h2>
-                <p class="sub">Un parent couvre ses enfants. Les périmètres système restent non supprimables.</p>
+                <p class="sub">Un parent couvre ses enfants. Le type (Management, Chapitre ou Projet) classe le périmètre : seuls les périmètres de type Projet ont une page sur le site public. Les périmètres système restent non supprimables.</p>
             </div>
         </div>
 
@@ -41,6 +41,7 @@
                             <th>Libellé</th>
                             <th>Description</th>
                             <th>Périmètre</th>
+                            <th>Type</th>
                             <th>Parent (héritage)</th>
                             <th>Suppression</th>
                         </tr>
@@ -83,6 +84,16 @@
                                     @endif
                                 </td>
                                 <td>
+                                    <select name="type[{{ $slug }}]" aria-label="Type de {{ $label }}">
+                                        @foreach($typeLabels as $typeKey => $typeLabel)
+                                            <option value="{{ $typeKey }}" @selected(old('type.'.$slug, $types[$slug] ?? 'project') === $typeKey)>{{ $typeLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('type.'.$slug)
+                                        <p class="text-sm" style="color:#b91c1c; margin-top:4px;">{{ $message }}</p>
+                                    @enderror
+                                </td>
+                                <td>
                                     <select name="parent[{{ $slug }}]" aria-label="Parent {{ $label }}">
                                         <option value="">Aucun (racine)</option>
                                         @foreach($scopes as $pSlug => $pLabel)
@@ -120,6 +131,13 @@
                             <td><textarea name="new_description" rows="2" maxlength="300" placeholder="Description du nouveau périmètre">{{ old('new_description') }}</textarea></td>
                             <td><span class="cell-sub">Nouveau périmètre</span></td>
                             <td>
+                                <select name="new_type" aria-label="Type du nouveau périmètre">
+                                    @foreach($typeLabels as $typeKey => $typeLabel)
+                                        <option value="{{ $typeKey }}" @selected(old('new_type', 'project') === $typeKey)>{{ $typeLabel }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td>
                                 <select name="new_parent" aria-label="Parent du nouveau périmètre">
                                     <option value="">Aucun (racine)</option>
                                     @foreach($scopes as $pSlug => $pLabel)
@@ -131,7 +149,7 @@
                         </tr>
                         @if($errors->has('new_slug') || $errors->has('new_label') || $errors->has('new_description') || $errors->has('new_parent') || $errors->has('parent'))
                             <tr>
-                                <td colspan="7" style="color:#b91c1c;">
+                                <td colspan="8" style="color:#b91c1c;">
                                     @error('new_slug')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
                                     @error('new_label')<p style="margin: 4px 0;">{{ $message }}</p>@enderror
                                     @error('new_description')<p style="margin: 4px 0;">{{ $message }}</p>@enderror

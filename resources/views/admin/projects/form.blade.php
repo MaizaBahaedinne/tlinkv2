@@ -1,23 +1,21 @@
 @extends('admin.layouts.app')
 
 @php
-    $isNew = ! $project->exists;
+    $pageTitle = $project->text('name', 'fr');
 @endphp
-@section('title', $isNew ? 'Nouveau projet' : 'Modifier le projet')
+@section('title', 'Page du projet')
 @section('section', 'Projets')
 
 @section('content')
-    <x-admin.page-header :title="$isNew ? 'Nouveau projet' : 'Modifier le projet'" subtitle="Une langue vide reprend le français. Seul le nom français est obligatoire.">
+    <x-admin.page-header :title="$pageTitle" subtitle="Page publique du projet. Un champ vide reprend le français, puis les informations du périmètre (nom, description). Le nom et le logo du périmètre se gèrent dans Structure > Périmètres.">
         <x-slot:actions>
             <a href="{{ route('admin.projects.index') }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour aux projets</a>
         </x-slot:actions>
     </x-admin.page-header>
 
-    <form method="post" action="{{ $isNew ? route('admin.projects.store') : route('admin.projects.update', $project) }}" class="card card-flush" style="max-width:860px" enctype="multipart/form-data">
+    <form method="post" action="{{ route('admin.projects.update', ['scope' => $project->scope]) }}" class="card card-flush" style="max-width:860px" enctype="multipart/form-data">
         @csrf
-        @unless($isNew)
-            @method('PUT')
-        @endunless
+        @method('PUT')
 
         <div class="card-body">
             <h3 style="margin-top:0">Présentation</h3>
@@ -33,7 +31,7 @@
                             @if($type === 'textarea')
                                 <textarea id="p-{{ $field }}-{{ $code }}" name="{{ $field }}[{{ $code }}]" rows="{{ $field === 'body' ? 7 : 3 }}" maxlength="{{ $max }}" dir="{{ $meta['dir'] }}">{{ old($key, data_get($project->{$field}, $code)) }}</textarea>
                             @else
-                                <input id="p-{{ $field }}-{{ $code }}" type="text" name="{{ $field }}[{{ $code }}]" maxlength="{{ $max }}" dir="{{ $meta['dir'] }}" value="{{ old($key, data_get($project->{$field}, $code)) }}" @required($field === 'name' && $code === 'fr')>
+                                <input id="p-{{ $field }}-{{ $code }}" type="text" name="{{ $field }}[{{ $code }}]" maxlength="{{ $max }}" dir="{{ $meta['dir'] }}" value="{{ old($key, data_get($project->{$field}, $code)) }}" placeholder="{{ $project->text('name', 'fr') }}">
                             @endif
                             @error($key)<p class="error">{{ $message }}</p>@enderror
                         </div>
@@ -78,10 +76,7 @@
                 </div>
                 <x-admin.input name="started_year" type="number" label="Année de lancement (optionnel)" :value="old('started_year', $project->started_year)" />
                 <x-admin.input name="website_url" type="url" label="Site du projet (optionnel)" :value="old('website_url', $project->website_url)" placeholder="https://" :maxlength="255" />
-                <x-admin.input name="slug" label="Adresse de la page (laisser vide pour la générer)" :value="old('slug', $project->slug)" placeholder="we-are-carthage" :maxlength="80" />
-                @unless($isNew)
-                    <x-admin.input name="sort_order" type="number" label="Ordre d’affichage" :value="old('sort_order', $project->sort_order)" />
-                @endunless
+                <x-admin.input name="sort_order" type="number" label="Ordre d’affichage" :value="old('sort_order', $project->sort_order)" />
                 <div class="field span-2 {{ $errors->has('cover') ? 'has-error' : '' }}">
                     <label for="p-cover">Image de couverture (jpg, png, webp — 4 Mo max)</label>
                     <input id="p-cover" type="file" name="cover" accept="image/png,image/jpeg,image/webp">
@@ -91,7 +86,7 @@
                     @endif
                     @error('cover')<p class="error">{{ $message }}</p>@enderror
                 </div>
-                <label class="check span-2"><input type="checkbox" name="is_published" value="1" @checked(old('is_published', $project->is_published))> Publier ce projet sur le site</label>
+                <label class="check span-2"><input type="checkbox" name="is_published" value="1" @checked(old('is_published', $project->is_published))> Afficher ce projet sur le site</label>
             </div>
         </div>
 
@@ -99,4 +94,12 @@
             <button type="submit" class="btn btn-primary"><x-admin.icon name="check" :size="16" /> Enregistrer</button>
         </div>
     </form>
+
+    @if($project->exists)
+        <form method="post" action="{{ route('admin.projects.destroy', ['scope' => $project->scope]) }}" style="max-width:860px;margin-top:12px" onsubmit="return confirm('Effacer le contenu de cette page (textes, chiffres, couverture) ?')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger btn-sm"><x-admin.icon name="trash" :size="15" /> Effacer le contenu de la page</button>
+        </form>
+    @endif
 @endsection

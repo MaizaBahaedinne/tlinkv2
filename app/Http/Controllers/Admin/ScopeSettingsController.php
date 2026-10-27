@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ScopeSettingsController extends AdminController
@@ -18,6 +19,7 @@ class ScopeSettingsController extends AdminController
     private const HIERARCHY_KEY = 'scope_hierarchy';
     private const DESCRIPTIONS_KEY = 'scopes_descriptions';
     private const LOGOS_KEY = 'scopes_logos';
+    private const TYPES_KEY = 'scopes_types';
     private const LOGO_RULES = ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:1024'];
 
     public function edit(): View
@@ -31,6 +33,8 @@ class ScopeSettingsController extends AdminController
                 ->map(fn (string $path) => Storage::disk('public')->url($path))
                 ->all(),
             'coreScopes' => OrgScopes::CORE,
+            'types' => OrgScopes::types(),
+            'typeLabels' => OrgScopes::TYPES,
         ]);
     }
 
@@ -45,6 +49,7 @@ class ScopeSettingsController extends AdminController
             $rules['label.'.$slug] = ['required', 'string', 'max:60'];
             $rules['description.'.$slug] = ['nullable', 'string', 'max:300'];
             $rules['parent.'.$slug] = ['nullable', 'in:'.$allowedParents];
+            $rules['type.'.$slug] = ['nullable', Rule::in(array_keys(OrgScopes::TYPES))];
             $rules['delete.'.$slug] = ['nullable', 'boolean'];
             $rules['logo.'.$slug] = self::LOGO_RULES;
             $rules['remove_logo.'.$slug] = ['nullable', 'boolean'];
@@ -56,6 +61,7 @@ class ScopeSettingsController extends AdminController
         $rules['new_label'] = ['nullable', 'string', 'max:60'];
         $rules['new_description'] = ['nullable', 'string', 'max:300'];
         $rules['new_parent'] = ['nullable', 'in:'.$allowedParents];
+        $rules['new_type'] = ['nullable', Rule::in(array_keys(OrgScopes::TYPES))];
 
         $data = $request->validate($rules);
         $labels = $data['label'] ?? [];
@@ -130,6 +136,20 @@ class ScopeSettingsController extends AdminController
 
         $logos = $this->syncLogos($request, array_keys($catalog), $newSlug, $data['remove_logo'] ?? []);
 
+        // Type : valeur saisie, sinon type actuel (un champ absent ne change rien).
+        $currentTypes = OrgScopes::types();
+        $types = [];
+
+        foreach (array_keys($catalog) as $slug) {
+            $input = $slug === $newSlug ? ($data['new_type'] ?? null) : ($data['type'][$slug] ?? null);
+            $types[$slug] = $input ?: ($currentTypes[$slug] ?? 'project');
+        }
+
+        Setting::query()->updateOrCreate(
+            ['group' => self::GROUP, 'key' => self::TYPES_KEY],
+            ['value' => json_encode($types, JSON_UNESCAPED_UNICODE)]
+        );
+
         Setting::query()->updateOrCreate(
             ['group' => self::GROUP, 'key' => self::LOGOS_KEY],
             ['value' => json_encode($logos, JSON_UNESCAPED_UNICODE)]
@@ -153,7 +173,7 @@ class ScopeSettingsController extends AdminController
         OrgScopes::flushCache();
 
         $setting = Setting::query()->where('group', self::GROUP)->where('key', self::CATALOG_KEY)->first();
-        $this->audit($request, 'admin.scopes.updated', $setting, ['catalog' => $catalog, 'hierarchy' => $hierarchy, 'descriptions' => $descriptions]);
+        $this->audit($request, 'admin.scopes.updated', $setting, ['catalog' => $catalog, 'hierarchy' => $hierarchy, 'descriptions' => $descriptions, 'types' => $types]);
 
         return back()->with('status', 'Périmètres et héritages mis à jour.');
     }

@@ -161,16 +161,19 @@ class SiteController extends Controller
 
     public function projects(): View
     {
-        return $this->render('site.projects.index', ['projects' => SiteProject::query()->published()->ordered()->get()]);
+        return $this->render('site.projects.index', ['projects' => SiteProject::publicPages()]);
     }
 
     public function projectShow(string $slug): View
     {
-        $project = SiteProject::query()->published()->where('slug', $slug)->firstOrFail();
+        $pages = SiteProject::publicPages();
+        $project = $pages->firstWhere('scope', $slug);
+
+        abort_if($project === null, 404);
 
         return $this->render('site.projects.show', [
             'project' => $project,
-            'others' => SiteProject::query()->published()->whereKeyNot($project->id)->ordered()->limit(3)->get(),
+            'others' => $pages->where('scope', '!=', $slug)->take(3)->values(),
         ]);
     }
 

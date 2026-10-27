@@ -21,6 +21,21 @@ final class OrgScopes
 
     public const CORE = ['foundation', 'university', 'high-school', 'alumni'];
 
+    /** Types de périmètre : clé => libellé. */
+    public const TYPES = [
+        'management' => 'Management',
+        'chapter' => 'Chapitre',
+        'project' => 'Projet',
+    ];
+
+    /** Type des périmètres système tant qu'aucun type n'est enregistré ; les autres sont des projets par défaut. */
+    public const DEFAULT_TYPES = [
+        'foundation' => 'management',
+        'university' => 'chapter',
+        'high-school' => 'chapter',
+        'alumni' => 'project',
+    ];
+
     /** Branche de clubs de l'organigramme par perimetre : perimetre => [cle systeme, categorie]. */
     public const CLUB_BRANCHES = [
         'university' => ['university-clubs', 'university_club'],
@@ -38,6 +53,9 @@ final class OrgScopes
 
     /** @var array<string, string>|null */
     private static ?array $logosCache = null;
+
+    /** @var array<string, string>|null */
+    private static ?array $typesCache = null;
 
     /**
      * @return array<string, string>
@@ -172,6 +190,50 @@ final class OrgScopes
     }
 
     /**
+     * Type de chaque périmètre (management, chapter, project).
+     *
+     * @return array<string, string>
+     */
+    public static function types(): array
+    {
+        if (self::$typesCache !== null) {
+            return self::$typesCache;
+        }
+
+        $stored = [];
+
+        if (Schema::hasTable('settings')) {
+            $setting = Setting::query()->where('group', 'org')->where('key', 'scopes_types')->value('value');
+            $decoded = is_string($setting) ? json_decode($setting, true) : null;
+            $stored = is_array($decoded) ? $decoded : [];
+        }
+
+        $out = [];
+
+        foreach (self::slugs() as $slug) {
+            $type = $stored[$slug] ?? null;
+            $out[$slug] = is_string($type) && isset(self::TYPES[$type]) ? $type : (self::DEFAULT_TYPES[$slug] ?? 'project');
+        }
+
+        self::$typesCache = $out;
+
+        return self::$typesCache;
+    }
+
+    public static function type(?string $scope): ?string
+    {
+        return $scope === null ? null : (self::types()[$scope] ?? null);
+    }
+
+    /**
+     * @return array<int, string> slugs des périmètres du type donné
+     */
+    public static function slugsOfType(string $type): array
+    {
+        return array_keys(array_filter(self::types(), fn (string $current): bool => $current === $type));
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function slugs(): array
@@ -251,6 +313,7 @@ final class OrgScopes
         self::$catalogCache = null;
         self::$descriptionsCache = null;
         self::$logosCache = null;
+        self::$typesCache = null;
     }
 
     /**

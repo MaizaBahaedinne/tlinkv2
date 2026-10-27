@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Setting;
 use App\Models\SiteProject;
 use App\Models\User;
+use App\Support\OrgScopes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -15,10 +17,28 @@ class ProjectsTest extends TestCase
     use GrantsAccess;
     use RefreshDatabase;
 
-    private function makeProject(array $overrides = []): SiteProject
+    /** Catalogue : un projet, un chapitre personnalisé, et les périmètres système (alumni passe en chapitre pour une liste vide). */
+    private function defineScopes(): void
+    {
+        $catalog = ['we-are-carthage' => 'We Are Carthage', 'club-tunis' => 'Club Tunis'] + OrgScopes::DEFAULT;
+
+        Setting::query()->updateOrCreate(['group' => 'org', 'key' => 'scopes_catalog'], ['value' => json_encode($catalog)]);
+        Setting::query()->updateOrCreate(['group' => 'org', 'key' => 'scopes_types'], ['value' => json_encode([
+            'foundation' => 'management',
+            'university' => 'chapter',
+            'high-school' => 'chapter',
+            'alumni' => 'chapter',
+            'club-tunis' => 'chapter',
+            'we-are-carthage' => 'project',
+        ])]);
+        OrgScopes::flushCache();
+    }
+
+    private function makePage(array $overrides = []): SiteProject
     {
         return SiteProject::query()->create($overrides + [
             'slug' => 'we-are-carthage',
+            'scope' => 'we-are-carthage',
             'name' => ['fr' => 'We Are Carthage', 'en' => 'We Are Carthage EN', 'ar' => ''],
             'summary' => ['fr' => 'Résumé du projet.'],
             'body' => ['fr' => "Premier paragraphe.\n\nSecond paragraphe."],
@@ -33,13 +53,72 @@ class ProjectsTest extends TestCase
         ]);
     }
 
+    public function test_scope_types_have_defaults_and_can_be_changed_by_admin(): void
+    {
+        $this->assertSame('management', OrgScopes::type('foundation'));
+        $this->assertSame('chapter', OrgScopes::type('university'));
+        $this->assertSame('chapter', OrgScopes::type('high-school'));
+
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'global_admin');
+        $this->actingAs($admin)->get('/admin/structure/perimetres')->assertOk()->assertSee('Management')->assertSee('Chapitre')->assertSee('Projet');
+
+        $this->actingAs($admin)->put('/admin/structure/perimetres', [
+            'label' => OrgScopes::all(),
+            'type' => ['alumni' => 'chapter', 'university' => 'project'],
+            'new_slug' => 'we-are-campers',
+            'new_label' => 'We Are Campers',
+            'new_type' => 'project',
+        ])->assertSessionHasNoErrors();
+
+        OrgScopes::flushCache();
+        $this->assertSame('chapter', OrgScopes::type('alumni'));
+        $this->assertSame('project', OrgScopes::type('university'));
+        $this->assertSame('project', OrgScopes::type('we-are-campers'));
+        $this->assertSame('management', OrgScopes::type('foundation')); // champ absent : inchangé
+
+        $this->actingAs($admin)->put('/admin/structure/perimetres', [
+            'label' => OrgScopes::all(),
+            'type' => ['alumni' => 'inconnu'],
+        ])->assertSessionHasErrors('type.alumni');
+    }
+
+    public function test_menu_always_links_to_projects_in_each_locale(): void
+    {
+        foreach (['fr', 'en', 'ar'] as $locale) {
+            $this->get("/{$locale}")->assertOk()->assertSee("/{$locale}/projets", false)->assertSee(__('site.nav.projects', [], $locale));
+        }
+    }
+
+    public function test_list_shows_only_scopes_of_type_project(): void
+    {
+        $this->defineScopes();
+        $this->get('/fr/projets')->assertOk()->assertSee('We Are Carthage')->assertDontSee('Club Tunis')->assertDontSee('High School');
+
+        Setting::query()->where('key', 'scopes_types')->update(['value' => json_encode(['we-are-carthage' => 'chapter', 'club-tunis' => 'chapter', 'alumni' => 'chapter'])]);
+        OrgScopes::flushCache();
+        $this->get('/fr/projets')->assertOk()->assertSee(__('site.projects.empty'));
+    }
+
+    public function test_project_scope_without_page_content_uses_scope_name_and_description(): void
+    {
+        $this->defineScopes();
+        Setting::query()->updateOrCreate(['group' => 'org', 'key' => 'scopes_descriptions'], ['value' => json_encode(['we-are-carthage' => 'Description du périmètre.'])]);
+        OrgScopes::flushCache();
+
+        $this->get('/fr/projets/we-are-carthage')->assertOk()->assertSee('We Are Carthage')->assertSee('Description du périmètre.');
+        $this->get('/fr/projets/club-tunis')->assertNotFound(); // chapitre
+        $this->get('/fr/projets/foundation')->assertNotFound(); // management
+        $this->get('/fr/projets/inconnu')->assertNotFound();
+    }
+
     public function test_project_page_shows_presentation_and_figures_in_each_locale(): void
     {
-        $this->makeProject();
+        $this->defineScopes();
+        $this->makePage();
 
         $this->get('/fr/projets/we-are-carthage')
             ->assertOk()
-            ->assertSee('We Are Carthage')
             ->assertSee('Résumé du projet.')
             ->assertSee('1 200')
             ->assertSee('Jeunes formés')
@@ -50,44 +129,36 @@ class ProjectsTest extends TestCase
         $this->get('/ar/projets/we-are-carthage')->assertOk()->assertSee('We Are Carthage'); // repli français
     }
 
-    public function test_menu_always_links_to_projects_in_each_locale(): void
+    public function test_unpublished_page_is_hidden(): void
     {
-        foreach (['fr', 'en', 'ar'] as $locale) {
-            $this->get("/{$locale}")->assertOk()->assertSee("/{$locale}/projets", false)->assertSee(__('site.nav.projects', [], $locale));
-        }
-    }
+        $this->defineScopes();
+        $this->makePage(['is_published' => false]);
 
-    public function test_list_shows_only_published_projects(): void
-    {
-        $this->get('/fr/projets')->assertOk()->assertSee(__('site.projects.empty'));
-
-        $this->makeProject();
-        $this->makeProject(['slug' => 'brouillon', 'name' => ['fr' => 'Projet Brouillon'], 'is_published' => false]);
-
-        $this->get('/fr/projets')->assertOk()->assertSee('We Are Carthage')->assertDontSee('Projet Brouillon');
-        $this->get('/fr/projets/brouillon')->assertNotFound();
-        $this->get('/fr/projets/inconnu')->assertNotFound();
+        $this->get('/fr/projets/we-are-carthage')->assertNotFound();
+        $this->get('/fr/projets')->assertOk()->assertDontSee('We Are Carthage');
     }
 
     public function test_unsafe_project_link_is_not_rendered(): void
     {
-        $this->makeProject(['website_url' => 'javascript:alert(1)']);
+        $this->defineScopes();
+        $this->makePage(['website_url' => 'javascript:alert(1)']);
 
         $this->get('/fr/projets/we-are-carthage')->assertOk()->assertDontSee('javascript:alert', false);
     }
 
-    public function test_admin_can_create_update_and_delete_a_project(): void
+    public function test_admin_lists_project_scopes_and_edits_their_page(): void
     {
         Storage::fake('public');
+        $this->defineScopes();
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'global_admin');
 
-        $this->actingAs($admin)->get('/admin/projets')->assertOk();
-        $this->actingAs($admin)->get('/admin/projets/nouveau')->assertOk();
+        $this->actingAs($admin)->get('/admin/projets')->assertOk()->assertSee('We Are Carthage')->assertDontSee('Club Tunis');
+        $this->actingAs($admin)->get('/admin/projets/we-are-carthage/modifier')->assertOk();
+        $this->actingAs($admin)->get('/admin/projets/club-tunis/modifier')->assertNotFound();
 
-        $this->actingAs($admin)->post('/admin/projets', [
-            'name' => ['fr' => 'We Are Campers', 'en' => '', 'ar' => ''],
-            'summary' => ['fr' => 'Camps d\'été.'],
+        $this->actingAs($admin)->put('/admin/projets/we-are-carthage', [
+            'summary' => ['fr' => 'Camps de vacances.'],
             'status' => 'ongoing',
             'is_published' => '1',
             'cover' => UploadedFile::fake()->image('cover.jpg', 800, 400),
@@ -97,55 +168,43 @@ class ProjectsTest extends TestCase
             ],
         ])->assertRedirect()->assertSessionHasNoErrors();
 
-        $project = SiteProject::query()->where('slug', 'we-are-campers')->firstOrFail();
-        $this->assertSame([['value' => '500', 'label' => ['fr' => 'Campeurs', 'en' => 'Campers', 'ar' => '']]], $project->stats);
+        $page = SiteProject::query()->where('scope', 'we-are-carthage')->firstOrFail();
+        $this->assertSame([['value' => '500', 'label' => ['fr' => 'Campeurs', 'en' => 'Campers', 'ar' => '']]], $page->stats);
         $this->assertNotEmpty(Storage::disk('public')->allFiles('projects/covers'));
-        $this->get('/fr/projets/we-are-campers')->assertOk()->assertSee('500');
+        $this->get('/fr/projets/we-are-carthage')->assertOk()->assertSee('500')->assertSee('Camps de vacances.');
 
-        $this->actingAs($admin)->get("/admin/projets/{$project->id}/modifier")->assertOk()->assertSee('We Are Campers');
-        $this->actingAs($admin)->put("/admin/projets/{$project->id}", [
-            'name' => ['fr' => 'We Are Campers 2'],
-            'status' => 'completed',
-            'cover_remove' => '1',
-            'sort_order' => 3,
-        ])->assertRedirect()->assertSessionHasNoErrors();
-
-        $project->refresh();
-        $this->assertFalse($project->is_published);
-        $this->assertNull($project->cover_path);
+        $this->actingAs($admin)->put('/admin/projets/we-are-carthage', ['status' => 'completed', 'cover_remove' => '1'])->assertSessionHasNoErrors();
+        $page->refresh();
+        $this->assertFalse($page->is_published);
+        $this->assertNull($page->cover_path);
         $this->assertSame([], Storage::disk('public')->allFiles('projects/covers'));
 
-        $this->actingAs($admin)->delete("/admin/projets/{$project->id}")->assertRedirect(route('admin.projects.index'));
-        $this->assertDatabaseMissing('site_projects', ['id' => $project->id]);
+        $this->actingAs($admin)->delete('/admin/projets/we-are-carthage')->assertRedirect(route('admin.projects.index'));
+        $this->assertDatabaseMissing('site_projects', ['scope' => 'we-are-carthage']);
+        $this->get('/fr/projets/we-are-carthage')->assertOk(); // retour à la page par défaut du périmètre
     }
 
-    public function test_figure_label_without_value_and_duplicate_slug_are_rejected(): void
+    public function test_figure_label_without_value_is_rejected(): void
     {
+        $this->defineScopes();
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'global_admin');
-        $this->makeProject();
 
-        $this->actingAs($admin)->post('/admin/projets', [
-            'name' => ['fr' => 'Autre'], 'status' => 'ongoing',
+        $this->actingAs($admin)->put('/admin/projets/we-are-carthage', [
+            'status' => 'ongoing',
             'stats' => [['value' => '', 'label' => ['fr' => 'Sans chiffre']]],
         ])->assertSessionHasErrors('stats.0.value');
-
-        $this->actingAs($admin)->post('/admin/projets', [
-            'name' => ['fr' => 'Autre'], 'status' => 'ongoing', 'slug' => 'we-are-carthage',
-        ])->assertSessionHasErrors('slug');
-
-        $this->actingAs($admin)->post('/admin/projets', ['name' => ['fr' => 'We Are Carthage'], 'status' => 'ongoing'])->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('site_projects', ['slug' => 'we-are-carthage-2']);
     }
 
     public function test_scoped_admin_and_guests_cannot_manage_projects(): void
     {
+        $this->defineScopes();
         $this->get('/admin/projets')->assertRedirect(route('login'));
 
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'entity_admin', 'university');
 
         $this->actingAs($admin)->get('/admin/projets')->assertForbidden();
-        $this->actingAs($admin)->post('/admin/projets', ['name' => ['fr' => 'X'], 'status' => 'ongoing'])->assertForbidden();
+        $this->actingAs($admin)->put('/admin/projets/we-are-carthage', ['status' => 'ongoing'])->assertForbidden();
     }
 }

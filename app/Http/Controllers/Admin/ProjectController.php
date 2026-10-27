@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\SiteProject;
+use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Pages « projet » du site vitrine : présentation traduite et chiffres clés (réservé à l'administration globale).
+ * Pages « projet » du site vitrine. Un projet est un périmètre de type « Projet » (Structure > Périmètres) :
+ * ici on rédige sa page (présentation et chiffres clés). Réservé à l'administration globale.
  */
 class ProjectController extends AdminController
 {
@@ -20,46 +21,26 @@ class ProjectController extends AdminController
     {
         $this->authorizeGlobal($request);
 
-        return view('admin.projects.index', ['projects' => SiteProject::query()->ordered()->get()]);
+        return view('admin.projects.index', ['projects' => SiteProject::allPages()]);
     }
 
-    public function create(Request $request): View
+    public function edit(Request $request, string $scope): View
     {
         $this->authorizeGlobal($request);
+        $this->assertProjectScope($scope);
 
-        return view('admin.projects.form', ['project' => new SiteProject(['status' => 'ongoing', 'is_published' => false]), 'locales' => config('site.locales')]);
+        return view('admin.projects.form', ['project' => SiteProject::forScope($scope), 'locales' => config('site.locales')]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function update(Request $request, string $scope): RedirectResponse
     {
         $this->authorizeGlobal($request);
+        $this->assertProjectScope($scope);
 
-        $values = $this->validated($request, null);
-        $values['sort_order'] = ((int) SiteProject::query()->max('sort_order')) + 1;
-
-        if ($request->hasFile('cover')) {
-            $values['cover_path'] = $request->file('cover')->store('projects/covers', 'public');
-        }
-
-        $project = SiteProject::query()->create($values);
-
-        $this->audit($request, 'admin.project.created', $project, ['name' => $project->text('name', 'fr')]);
-
-        return redirect()->route('admin.projects.edit', $project)->with('status', 'Projet créé.');
-    }
-
-    public function edit(Request $request, SiteProject $project): View
-    {
-        $this->authorizeGlobal($request);
-
-        return view('admin.projects.form', ['project' => $project, 'locales' => config('site.locales')]);
-    }
-
-    public function update(Request $request, SiteProject $project): RedirectResponse
-    {
-        $this->authorizeGlobal($request);
-
-        $values = $this->validated($request, $project);
+        $project = SiteProject::forScope($scope);
+        $values = $this->validated($request);
+        $values['slug'] = $scope;
+        $values['scope'] = $scope;
         $values['sort_order'] = (int) $request->input('sort_order', $project->sort_order);
         $oldCover = null;
 
@@ -71,38 +52,44 @@ class ProjectController extends AdminController
             $values['cover_path'] = null;
         }
 
-        $project->update($values);
+        $project->fill($values)->save();
         $this->deleteCover($oldCover);
 
-        $this->audit($request, 'admin.project.updated', $project, ['name' => $project->text('name', 'fr'), 'published' => $project->is_published]);
+        $this->audit($request, $project->wasRecentlyCreated ? 'admin.project.created' : 'admin.project.updated', $project, ['scope' => $scope, 'published' => $project->is_published]);
 
-        return back()->with('status', 'Projet enregistré.');
+        return redirect()->route('admin.projects.edit', ['scope' => $scope])->with('status', 'Page du projet enregistrée.');
     }
 
-    public function destroy(Request $request, SiteProject $project): RedirectResponse
+    /** Efface le contenu de la page : le projet reste affiché avec les informations de son périmètre. */
+    public function destroy(Request $request, string $scope): RedirectResponse
     {
         $this->authorizeGlobal($request);
+        $this->assertProjectScope($scope);
 
-        $this->audit($request, 'admin.project.deleted', $project, ['name' => $project->text('name', 'fr')]);
+        $project = SiteProject::query()->where('scope', $scope)->firstOrFail();
+
+        $this->audit($request, 'admin.project.deleted', $project, ['scope' => $scope]);
 
         $cover = $project->cover_path;
         $project->delete();
         $this->deleteCover($cover);
 
-        return redirect()->route('admin.projects.index')->with('status', 'Projet supprimé.');
+        return redirect()->route('admin.projects.index')->with('status', 'Contenu de la page supprimé.');
+    }
+
+    private function assertProjectScope(string $scope): void
+    {
+        abort_unless(OrgScopes::type($scope) === 'project', 404);
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function validated(Request $request, ?SiteProject $project): array
+    private function validated(Request $request): array
     {
         $data = $request->validate([
-            'slug' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('site_projects', 'slug')->ignore($project?->id)],
-            'name' => ['required', 'array'],
-            'name.fr' => ['required', 'string', 'max:160'],
-            'name.en' => ['nullable', 'string', 'max:160'],
-            'name.ar' => ['nullable', 'string', 'max:160'],
+            'name' => ['nullable', 'array'],
+            'name.*' => ['nullable', 'string', 'max:160'],
             'summary' => ['nullable', 'array'],
             'summary.*' => ['nullable', 'string', 'max:400'],
             'body' => ['nullable', 'array'],
@@ -117,18 +104,9 @@ class ProjectController extends AdminController
             'stats.*.label.en' => ['nullable', 'string', 'max:80'],
             'stats.*.label.ar' => ['nullable', 'string', 'max:80'],
         ], [
-            'slug.regex' => 'L’adresse ne peut contenir que des minuscules, des chiffres et des tirets.',
-            'slug.unique' => 'Cette adresse est déjà utilisée par un autre projet.',
-            'name.fr.required' => 'Le nom en français est obligatoire.',
             'stats.*.value.required_with' => 'Indiquez le chiffre pour chaque libellé.',
             'stats.*.label.fr.required_with' => 'Indiquez le libellé français de chaque chiffre.',
         ]);
-
-        $slug = trim((string) ($data['slug'] ?? ''));
-
-        if ($slug === '') {
-            $slug = $this->uniqueSlug(Str::slug($data['name']['fr']), $project);
-        }
 
         $figures = collect($data['stats'] ?? [])
             ->map(fn (array $row): array => [
@@ -140,8 +118,7 @@ class ProjectController extends AdminController
             ->all();
 
         return [
-            'slug' => $slug,
-            'name' => $this->localized($data['name']),
+            'name' => $this->localized($data['name'] ?? []),
             'summary' => $this->localized($data['summary'] ?? []),
             'body' => $this->localized($data['body'] ?? []),
             'stats' => $figures,
@@ -159,19 +136,6 @@ class ProjectController extends AdminController
     private function localized(array $values): array
     {
         return array_map(fn ($value): string => trim((string) $value), Arr::only($values, ['fr', 'en', 'ar']));
-    }
-
-    private function uniqueSlug(string $base, ?SiteProject $project): string
-    {
-        $base = $base !== '' ? Str::limit($base, 70, '') : 'projet';
-        $slug = $base;
-        $i = 2;
-
-        while (SiteProject::query()->where('slug', $slug)->when($project, fn ($query) => $query->whereKeyNot($project->id))->exists()) {
-            $slug = $base.'-'.$i++;
-        }
-
-        return $slug;
     }
 
     private function deleteCover(?string $path): void
