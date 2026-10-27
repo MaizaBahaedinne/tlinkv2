@@ -72,6 +72,31 @@ class MyOfficeTest extends TestCase
             ->assertDontSee('Conseiller rattaché');
     }
 
+    public function test_only_positions_are_listed_and_ordered_by_level(): void
+    {
+        $unit = $this->node('Unité Alpha', $this->top);
+        $unit->update(['kind' => 'unit']);
+        $department = $this->node('Département Beta', $this->top);
+        $department->update(['kind' => 'department']);
+
+        // Sous mon poste : un chef via une unité (niveau 1), puis son adjoint (niveau 2), puis un autre chef direct (niveau 1).
+        $first = $this->node('Chef Premier', $unit);
+        $deputy = $this->node('Adjoint Profond', $first);
+        $second = $this->node('Chef Second', $department);
+        $first->update(['sort_order' => 1]);
+        $second->update(['sort_order' => 2]);
+
+        $html = $this->actingAs($this->place($this->top, 'Karim Directeur'))->get('/mon-bureau')->assertOk()
+            ->assertDontSee('Unité Alpha')
+            ->assertDontSee('Département Beta')
+            ->assertSee('Niveau −1')
+            ->assertSee('Niveau −2')
+            ->getContent();
+
+        $this->assertLessThan(strpos($html, 'Adjoint Profond'), strpos($html, 'Chef Second'), 'le niveau 1 passe avant le niveau 2');
+        $this->assertLessThan(strpos($html, 'Chef Second'), strpos($html, 'Chef Premier'));
+    }
+
     public function test_an_attached_position_has_no_hierarchical_superior(): void
     {
         $this->place($this->top, 'Karim Directeur');

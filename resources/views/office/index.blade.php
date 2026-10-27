@@ -24,7 +24,9 @@
         @endif
 
         @forelse($offices as $office)
-            @php($node = $office['node'])
+            @php
+                $node = $office['node'];
+            @endphp
             <section class="card overflow-hidden">
                 <div class="border-b border-slate-100 bg-white p-5">
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mon poste</p>
@@ -36,8 +38,8 @@
                 <div class="p-5">
                     <h3 class="mb-3 text-sm font-semibold text-slate-800"><i class="fa-solid fa-arrow-up mr-2 text-slate-400"></i>Mes supérieurs</h3>
 
-                    @if($office['attached_to'])
-                        <p class="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">Ce poste est rattaché à « {{ $office['attached_to']->title }} » sans lien hiérarchique : il n’a pas de supérieur.</p>
+                    @if($office['detached'])
+                        <p class="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">@if($office['attached_to'])Ce poste est rattaché à « {{ $office['attached_to']->title }} » sans lien hiérarchique : il n’a pas de supérieur.@else Ce poste est rattaché sans lien hiérarchique : il n’a pas de supérieur.@endif</p>
                     @endif
 
                     <ol class="space-y-2">
@@ -45,11 +47,10 @@
                             <li class="rounded-xl border border-slate-200 bg-white px-4 py-3">
                                 <p class="text-sm font-semibold text-slate-800">
                                     {{ $superior['node']->title }}
-                                    @if($index === 0)<span class="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">Supérieur direct</span>@endif
+                                    <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Niveau +{{ $index + 1 }}</span>
+                                    @if($index === 0)<span class="ml-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">Supérieur direct</span>@endif
                                 </p>
-                                @if($superior['node']->kind !== 'position')
-                                    <p class="text-xs text-slate-500">Bloc de l’organigramme</p>
-                                @elseif($superior['holders'] === [])
+                                @if($superior['holders'] === [])
                                     <p class="text-xs text-slate-500">Poste vacant.</p>
                                 @else
                                     <ul class="mt-1 space-y-0.5 text-sm text-slate-700">
@@ -74,15 +75,23 @@
                 <div class="border-t border-slate-100 p-5">
                     <h3 class="mb-3 text-sm font-semibold text-slate-800"><i class="fa-solid fa-arrow-down mr-2 text-slate-400"></i>Mon équipe (postes sous le mien)</h3>
 
+                    @php
+                        $currentLevel = null;
+                    @endphp
                     @forelse($office['team'] as $row)
-                        @php($member = $row['node'])
-                        <div class="mb-2 rounded-xl border border-slate-200 bg-white px-4 py-3" style="margin-left: {{ min($row['depth'] - 1, 6) * 1.25 }}rem">
+                        @php
+                            $member = $row['node'];
+                        @endphp
+                        @if($currentLevel !== $row['depth'])
+                            @php
+                                $currentLevel = $row['depth'];
+                            @endphp
+                            <h4 class="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500 first:mt-0">Niveau −{{ $row['depth'] }}@if($row['depth'] === 1) · sous mon poste @endif</h4>
+                        @endif
+                        <div class="mb-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
                             <div class="flex flex-wrap items-start justify-between gap-2">
                                 <div>
                                     <p class="text-sm font-semibold text-slate-800">{{ $member->title }}</p>
-                                    @if($member->kind !== 'position')
-                                        <p class="text-xs text-slate-500">Bloc de l’organigramme</p>
-                                    @endif
                                 </div>
                             </div>
 

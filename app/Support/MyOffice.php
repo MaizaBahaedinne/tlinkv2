@@ -100,6 +100,10 @@ final class MyOffice
 
             if ($held->parent_id !== null && $held->relation_type !== 'hierarchy') {
                 $attachedTo = $all[$held->parent_id] ?? null;
+
+                if ($attachedTo !== null && $attachedTo->kind !== 'position') {
+                    $attachedTo = null;
+                }
             }
 
             $current = $held;
@@ -111,7 +115,11 @@ final class MyOffice
                     break;
                 }
 
-                $superiors[] = $parent;
+                // Unités, départements et clubs ne sont pas des postes : on les traverse sans les lister.
+                if ($parent->kind === 'position') {
+                    $superiors[] = $parent;
+                }
+
                 $current = $parent;
             }
 
@@ -119,7 +127,10 @@ final class MyOffice
             $truncated = false;
             self::walk($heldId, 1, $children, $all, $team, $truncated);
 
-            $plans[] = ['node' => $held, 'attached_to' => $attachedTo, 'superiors' => $superiors, 'team' => $team, 'truncated' => $truncated];
+            // Par niveau (1 = juste sous mon poste), puis dans l'ordre de l'organigramme au sein d'un même niveau.
+            usort($team, fn (array $a, array $b): int => [$a['depth'], $a['order']] <=> [$b['depth'], $b['order']]);
+
+            $plans[] = ['node' => $held, 'attached_to' => $attachedTo, 'detached' => $held->parent_id !== null && $held->relation_type !== 'hierarchy', 'superiors' => $superiors, 'team' => $team, 'truncated' => $truncated];
 
             $needed[$heldId] = true;
 
@@ -139,6 +150,7 @@ final class MyOffice
             $result[] = [
                 'node' => $plan['node'],
                 'attached_to' => $plan['attached_to'],
+                'detached' => $plan['detached'],
                 'superiors' => array_map(fn (OrgNode $node): array => ['node' => $node, 'holders' => $holders[$node->id] ?? []], $plan['superiors']),
                 'team' => array_map(function (array $row) use ($all, $holders, $grants): array {
                     $node = $all[$row['id']];
@@ -162,7 +174,7 @@ final class MyOffice
      *
      * @param array<int, array<int, int>> $children
      * @param \Illuminate\Support\Collection<int, OrgNode> $all
-     * @param array<int, array{id: int, depth: int}> $rows
+     * @param array<int, array{id: int, depth: int, order: int}> $rows
      */
     private static function walk(int $nodeId, int $depth, array $children, $all, array &$rows, bool &$truncated): void
     {
@@ -173,8 +185,13 @@ final class MyOffice
                 return;
             }
 
-            $rows[] = ['id' => $childId, 'depth' => $depth];
-            self::walk($childId, $depth + 1, $children, $all, $rows, $truncated);
+            // Seuls les postes comptent : un bloc (unité, département, club) est traversé sans ajouter de niveau.
+            if (($all[$childId]->kind ?? null) === 'position') {
+                $rows[] = ['id' => $childId, 'depth' => $depth, 'order' => count($rows)];
+                self::walk($childId, $depth + 1, $children, $all, $rows, $truncated);
+            } else {
+                self::walk($childId, $depth, $children, $all, $rows, $truncated);
+            }
         }
     }
 
