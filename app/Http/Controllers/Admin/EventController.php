@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
+use App\Models\Governorate;
 use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -63,6 +65,7 @@ class EventController extends AdminController
     public function store(Request $request): RedirectResponse
     {
         $event = FoundationEvent::query()->create($this->validated($request) + ['organizer_id' => $request->user()->id]);
+        $this->syncCover($request, $event);
 
         $this->audit($request, 'admin.event.created', $event, ['title' => $event->title, 'scope' => $event->scope]);
 
@@ -98,6 +101,7 @@ class EventController extends AdminController
         $this->authorizeScope($request, 'event.manage', $event->scope);
 
         $event->update($this->validated($request));
+        $this->syncCover($request, $event);
 
         $this->audit($request, 'admin.event.updated', $event, ['title' => $event->title, 'status' => $event->status]);
 
@@ -113,8 +117,10 @@ class EventController extends AdminController
         }
 
         $title = $event->title;
+        $cover = $event->cover_image_path;
         $this->audit($request, 'admin.event.deleted', $event, ['title' => $title]);
         $event->delete();
+        $this->deleteCover($cover);
 
         return redirect()->route('admin.events.index')->with('status', "Événement « {$title} » supprimé.");
     }
@@ -151,7 +157,30 @@ class EventController extends AdminController
             'statuses' => self::STATUSES,
             'scopes' => $this->scopeOptions($request, 'event.manage'),
             'canBeGlobal' => $this->context($request)->isGlobal('event.manage'),
+            'governorates' => Governorate::query()->orderBy('name')->pluck('name', 'id')->all(),
         ];
+    }
+
+    /** Enregistre, remplace ou retire la cover (disque public, dossier events/covers). */
+    private function syncCover(Request $request, FoundationEvent $event): void
+    {
+        $old = $event->cover_image_path;
+
+        if ($request->hasFile('cover')) {
+            $event->update(['cover_image_path' => $request->file('cover')->store('events/covers', 'public')]);
+            $this->deleteCover($old);
+        } elseif ($request->boolean('cover_remove') && $old) {
+            $event->update(['cover_image_path' => null]);
+            $this->deleteCover($old);
+        }
+    }
+
+    private function deleteCover(?string $path): void
+    {
+        // Seules les covers téléversées ici sont supprimées.
+        if ($path && str_starts_with($path, 'events/covers/')) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     /**
@@ -166,6 +195,9 @@ class EventController extends AdminController
             'description' => ['nullable', 'string', 'max:5000'],
             'scope' => [$scope === [] ? 'nullable' : 'required', Rule::in(array_keys($this->scopeOptions($request, 'event.manage')))],
             'location' => ['nullable', 'string', 'max:255'],
+            'governorate_id' => ['nullable', 'integer', Rule::exists('governorates', 'id')],
+            'price' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'cover' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'registration_starts_at' => ['nullable', 'date'],
@@ -176,6 +208,7 @@ class EventController extends AdminController
         ]);
 
         $data['approval_required'] = (bool) $data['approval_required'];
+        unset($data['cover']);
 
         return $data;
     }

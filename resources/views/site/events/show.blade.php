@@ -9,8 +9,8 @@
 
         <h1 class="mt-4 font-display text-3xl font-bold text-brand-900">{{ $event->title }}</h1>
 
-        @if($event->cover_image_path)
-            <img src="{{ asset('storage/'.ltrim($event->cover_image_path, '/')) }}" alt="" class="mt-6 w-full rounded-xl object-cover">
+        @if($coverUrl = $event->coverUrl())
+            <img src="{{ $coverUrl }}" alt="{{ $event->title }}" class="mt-6 max-h-[28rem] w-full rounded-xl object-cover">
         @endif
 
         <dl class="site-card mt-6 grid gap-4 p-5 sm:grid-cols-2">
@@ -23,10 +23,21 @@
                     @endif
                 </dd>
             </div>
-            @if($event->location)
+            @if($event->location || $event->governorate)
                 <div>
                     <dt class="text-xs font-bold uppercase tracking-wide text-slate-500">{{ __('site.events.where') }}</dt>
-                    <dd class="mt-1 font-semibold text-brand-900">{{ $event->location }}</dd>
+                    <dd class="mt-1 font-semibold text-brand-900">
+                        {{ $event->location }}
+                        @if($event->governorate)
+                            <span class="block {{ $event->location ? 'text-sm font-normal text-slate-600' : '' }}">{{ __('site.events.governorate') }} : {{ $event->governorate->name }}</span>
+                        @endif
+                    </dd>
+                </div>
+            @endif
+            @if($priceLabel = $event->priceLabel())
+                <div>
+                    <dt class="text-xs font-bold uppercase tracking-wide text-slate-500">{{ __('site.events.price') }}</dt>
+                    <dd class="mt-1 font-semibold text-brand-900">{{ $priceLabel }}</dd>
                 </div>
             @endif
         </dl>

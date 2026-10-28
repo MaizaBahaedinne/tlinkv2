@@ -390,6 +390,7 @@ class SiteController extends Controller
     private function publicEvents(): Builder
     {
         return FoundationEvent::query()
+            ->with('governorate')
             ->whereIn('status', ['published', 'completed'])
             ->whereNotNull('starts_at');
     }
@@ -397,6 +398,7 @@ class SiteController extends Controller
     private function upcomingEvents(): Builder
     {
         return FoundationEvent::query()
+            ->with('governorate')
             ->where('status', 'published')
             ->where('starts_at', '>=', now()->startOfDay())
             ->orderBy('starts_at');

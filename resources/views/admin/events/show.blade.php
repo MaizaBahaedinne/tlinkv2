@@ -4,7 +4,7 @@
 @section('section', 'Événements')
 
 @section('content')
-    <x-admin.page-header :title="$event->title" :subtitle="$event->location ?? 'Lieu non précisé'">
+    <x-admin.page-header :title="$event->title" :subtitle="collect([$event->location, $event->governorate?->name])->filter()->implode(' · ') ?: 'Lieu non précisé'">
         <x-slot:actions>
             <a href="{{ route('admin.events.index') }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour</a>
             <a href="{{ route('admin.events.edit', $event) }}" class="btn btn-primary"><x-admin.icon name="edit" :size="16" /> Modifier</a>
@@ -64,6 +64,9 @@
         <article class="card card-flush" style="align-self:start;min-width:0">
             <div class="card-head"><h2>Informations</h2><x-admin.badge :status="$event->status" /></div>
             <div class="card-body">
+                @if($coverUrl = $event->coverUrl())
+                    <img src="{{ $coverUrl }}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin-bottom:14px">
+                @endif
                 <dl class="kv">
                     <div><dt>Début</dt><dd>{{ $event->starts_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
                     <div><dt>Fin</dt><dd>{{ $event->ends_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
@@ -72,6 +75,8 @@
                     <div><dt>Ouverture inscr.</dt><dd>{{ $event->registration_starts_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
                     <div><dt>Clôture inscr.</dt><dd>{{ $event->registration_ends_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
                     <div><dt>Capacité</dt><dd>{{ $event->capacity ?? 'Illimitée' }}</dd></div>
+                    <div><dt>Gouvernorat</dt><dd>{{ $event->governorate?->name ?? '—' }}</dd></div>
+                    <div><dt>Prix</dt><dd>{{ $event->priceLabel() ?? '—' }}</dd></div>
                     <div><dt>Validation</dt><dd>{{ $event->approval_required ? 'Requise' : 'Automatique' }}</dd></div>
                 </dl>
                 @if($event->description)
