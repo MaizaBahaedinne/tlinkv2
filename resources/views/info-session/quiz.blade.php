@@ -1,10 +1,10 @@
 @extends('layouts.base', ['title' => $title.' | Quiz | T.Link'])
 
 @section('content')
-<div class="min-h-screen px-4 pb-16">
+<div class="min-h-screen pb-16">
     {{-- Compte à rebours : le serveur reste maître du temps (échéance enregistrée à l'ouverture du quiz). --}}
-    <div class="sticky top-0 z-30 -mx-4 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
-        <div class="flex w-full items-center justify-between gap-4">
+    <div class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 py-3 backdrop-blur">
+        <div class="app-container flex items-center justify-between gap-4">
             <p class="font-display text-lg font-semibold text-slate-900">{{ $title }}</p>
             <p class="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700" role="timer" aria-live="off">
                 Il te reste <span id="clock" class="tabular-nums text-tlink-blue">--:--</span>
@@ -12,7 +12,7 @@
         </div>
     </div>
 
-    <form method="post" action="{{ route('info-session.submit', $attempt) }}" id="quiz-form" class="mt-6 w-full space-y-5">
+    <form method="post" action="{{ route('info-session.submit', $attempt) }}" id="quiz-form" class="app-container mt-6 space-y-5">
         @csrf
         <p class="text-sm text-slate-600">Tu as {{ $minutes }} minutes pour répondre. Les questions et les réponses sont dans un ordre aléatoire.</p>
 

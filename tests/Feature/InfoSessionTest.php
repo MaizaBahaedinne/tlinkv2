@@ -55,16 +55,17 @@ class InfoSessionTest extends TestCase
         $this->assertMatchesRegularExpression('/id="start-quiz"\s+disabled/', $page->getContent());
     }
 
-    public function test_unvalidated_members_see_a_banner_until_they_pass_the_quiz(): void
+    public function test_unvalidated_members_get_a_blocking_alert_until_they_pass_the_quiz(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->get('/profil')->assertOk()->assertSee('Compte non validé');
-        $this->actingAs($user)->get('/info-session')->assertDontSee('Compte non validé');
+        $this->actingAs($user)->get('/profil')->assertOk()->assertSee('account-gate', false)->assertSee('Compte non validé');
+        $this->actingAs($user)->get('/notifications')->assertOk()->assertSee('account-gate', false);
+        $this->actingAs($user)->get('/info-session')->assertDontSee('account-gate', false);
 
         $user->forceFill(['onboarding_completed_at' => now()])->save();
 
-        $this->actingAs($user)->get('/profil')->assertDontSee('Compte non validé');
+        $this->actingAs($user)->get('/profil')->assertDontSee('account-gate', false);
     }
 
     public function test_the_quiz_page_never_exposes_the_correct_answers_and_reuses_the_open_attempt(): void

@@ -1,8 +1,10 @@
 @extends('layouts.base', ['title' => 'Notifications | T.Link'])
 
 @section('content')
-<div class="min-h-screen bg-tlink-sand px-4 py-8">
-    <div class="w-full">
+<div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
+    @include('partials.app-header')
+
+    <div class="app-container py-6">
         <div class="mb-6 flex items-center justify-between">
             <div>
                 <h1 class="font-display text-2xl font-semibold text-tlink-blue">Notifications</h1>
