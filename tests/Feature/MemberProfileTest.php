@@ -200,6 +200,34 @@ class MemberProfileTest extends TestCase
         $this->assertSame(['php'], $settings['skill_keywords']);
     }
 
+    public function test_experiences_and_educations_are_listed_from_the_most_recent_start_date(): void
+    {
+        $member = User::factory()->create();
+        Profile::query()->create(['user_id' => $member->id, 'privacy_settings' => [
+            'professional_experiences' => [
+                ['company' => 'Alpha Ancienne', 'role' => 'Dev', 'start_date' => '2015-03-01', 'end_date' => '2017-01-01'],
+                ['company' => 'Gamma Recente', 'role' => 'Lead', 'start_date' => '2024-02-01', 'end_date' => ''],
+                ['company' => 'Beta Milieu', 'role' => 'Dev', 'start_date' => '2019-09-01', 'end_date' => '2023-06-01'],
+                ['company' => 'Zeta Sans Date', 'role' => 'Stage'],
+            ],
+            'educations' => [
+                ['diploma_name' => 'Licence', 'school' => 'Ecole A', 'start_date' => '2014-09-01'],
+                ['diploma_name' => 'Master', 'school' => 'Ecole B', 'start_date' => '2018-09-01'],
+            ],
+            'associative_experiences' => [
+                ['club_name' => 'Club Vieux', 'role' => 'Membre', 'start_date' => '2016-01-01'],
+                ['club_name' => 'Club Neuf', 'role' => 'Président', 'start_date' => '2022-01-01'],
+            ],
+        ]]);
+
+        $sections = (new ProfileOrganizations())->sections($member->profile);
+
+        $this->assertSame(['Gamma Recente', 'Beta Milieu', 'Alpha Ancienne', 'Zeta Sans Date'], $sections['professionalExperiences']->pluck('company')->all());
+        $this->assertSame(['Ecole B', 'Ecole A'], $sections['educations']->pluck('school')->all());
+        $this->assertSame(['Club Neuf', 'Club Vieux'], $sections['associativeExperiences']->pluck('club_name')->all());
+        $this->assertSame('Gamma Recente', $sections['highlights'][0]['name']);
+    }
+
     public function test_search_links_members_to_their_profile(): void
     {
         $member = User::factory()->create(['name' => 'Sana Ben Ali']);

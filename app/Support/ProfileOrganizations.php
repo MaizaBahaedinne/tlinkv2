@@ -178,8 +178,8 @@ class ProfileOrganizations
     public function sections(Profile $profile): array
     {
         $settings = is_array($profile->privacy_settings) ? $profile->privacy_settings : [];
-        $experiences = $this->withLogos($settings['professional_experiences'] ?? [], 'company');
-        $educations = $this->withLogos($settings['educations'] ?? [], 'school');
+        $experiences = $this->newestFirst($this->withLogos($settings['professional_experiences'] ?? [], 'company'));
+        $educations = $this->newestFirst($this->withLogos($settings['educations'] ?? [], 'school'));
 
         // En-tête du profil : entreprise actuelle (poste sans date de fin, sinon le premier) et établissement principal.
         $current = $experiences->first(fn (array $row): bool => blank($row['end_date'] ?? null) && filled($row['company'] ?? null))
@@ -194,10 +194,34 @@ class ProfileOrganizations
             'professionalExperiences' => $experiences,
             'educations' => $educations,
             'certifications' => collect($settings['certifications'] ?? [])->values(),
-            'associativeExperiences' => $this->withLogos($settings['associative_experiences'] ?? [], 'club'),
+            'associativeExperiences' => $this->newestFirst($this->withLogos($settings['associative_experiences'] ?? [], 'club')),
             'skillKeywords' => collect($settings['skill_keywords'] ?? [])->values(),
             'languageItems' => collect($settings['languages'] ?? [])->values(),
         ];
+    }
+
+    /**
+     * Du plus récent au plus ancien selon la date de début ; sans date de début en dernier,
+     * et à date égale l'expérience en cours (sans date de fin) d'abord.
+     *
+     * @param  Collection<int, array<string, mixed>>  $rows
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function newestFirst(Collection $rows): Collection
+    {
+        return $rows
+            ->sort(function (array $a, array $b): int {
+                $byStart = strcmp((string) ($b['start_date'] ?? ''), (string) ($a['start_date'] ?? ''));
+
+                if ($byStart !== 0) {
+                    return $byStart;
+                }
+
+                $end = fn (array $row): string => blank($row['end_date'] ?? null) ? '9999-12-31' : (string) $row['end_date'];
+
+                return strcmp($end($b), $end($a));
+            })
+            ->values();
     }
 
     /** Rattache les profils existants (entreprises créées au besoin, écoles et clubs retrouvés). */
