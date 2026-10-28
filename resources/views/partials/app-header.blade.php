@@ -1,72 +1,89 @@
-{{-- En-tête commun des pages T.Link (hors admin) : logo, boutons de navigation, recherche, menu utilisateur. --}}
+{{-- En-tête commun des pages T.Link (hors admin) : logo, navigation par icônes, recherche, notifications, avatar. --}}
 @php
+    $me = auth()->user();
+    $avatar = $me->profile?->photoUrl();
+    $initials = mb_strtoupper(collect(preg_split('/\s+/u', trim($me->name)))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''));
+    $unread = (int) ($unreadNotifications ?? 0);
+
     $navItems = array_values(array_filter([
         ['label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
         ['label' => 'Organigramme', 'href' => route('orgchart.index'), 'icon' => 'fa-solid fa-sitemap', 'active' => request()->routeIs('orgchart.*')],
         ($hasOffice ?? false) ? ['label' => 'Mon bureau', 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
-        ['label' => 'Notifications', 'href' => route('notifications.index'), 'icon' => 'fa-regular fa-bell', 'active' => request()->routeIs('notifications.*'), 'badge' => (int) ($unreadNotifications ?? 0)],
         ($canAdmin ?? false) ? ['label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
     ]));
 @endphp
 <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-    <div class="app-container flex flex-wrap items-center gap-x-4 gap-y-3 py-3">
-        <a href="{{ route('home') }}" class="order-1 flex shrink-0 items-center gap-3" aria-label="T.Link, accueil">
-            <img src="{{ asset('tlink-logo.webp') }}" alt="T.Link" width="447" height="169" class="h-10 w-auto">
-            <span class="hidden border-l border-slate-200 pl-3 text-xs leading-tight text-slate-500 2xl:block">Fondation<br>Tunivisions</span>
+    <div class="app-container flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
+        <a href="{{ route('home') }}" class="flex shrink-0 items-center" aria-label="T.Link, accueil">
+            <img src="{{ asset('tlink-logo.webp') }}" alt="T.Link" width="447" height="169" class="h-9 w-auto">
         </a>
 
-        <nav class="order-3 -mx-1 flex w-full gap-1 overflow-x-auto px-1 lg:order-2 lg:mx-0 lg:w-auto lg:overflow-visible lg:px-0" aria-label="Navigation de l'application">
+        <nav class="order-last flex w-full justify-around gap-1 border-t border-slate-100 pt-2 lg:order-none lg:w-auto lg:justify-start lg:border-0 lg:pt-0" aria-label="Navigation de l'application">
             @foreach($navItems as $item)
-                <a href="{{ $item['href'] }}" title="{{ $item['label'] }}" @if($item['active']) aria-current="page" @endif
-                   class="relative inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition {{ $item['active'] ? 'bg-rose-50 text-tlink-blue' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
-                    <i class="{{ $item['icon'] }} w-4 text-center" aria-hidden="true"></i>
-                    <span class="lg:hidden xl:inline">{{ $item['label'] }}</span>
-                    @if(($item['badge'] ?? 0) > 0)
-                        <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-tlink-blue px-1.5 text-[11px] font-bold leading-5 text-white" aria-label="{{ $item['badge'] }} non lues">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
-                    @endif
+                <a href="{{ $item['href'] }}" title="{{ $item['label'] }}" aria-label="{{ $item['label'] }}" @if($item['active']) aria-current="page" @endif
+                   class="grid h-10 w-10 place-items-center rounded-xl text-base transition {{ $item['active'] ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
+                    <i class="{{ $item['icon'] }}" aria-hidden="true"></i>
                 </a>
             @endforeach
         </nav>
 
         <form id="nav-search" action="{{ route('search.index') }}" method="get" role="search" data-suggest-url="{{ route('search.suggest') }}"
-              class="relative order-4 w-full lg:order-3 lg:ml-auto lg:w-72 xl:w-96">
+              class="relative min-w-0 flex-1 lg:max-w-md">
             <label for="nav-search-input" class="sr-only">Rechercher sur T.Link</label>
             <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
             <input id="nav-search-input" type="search" name="q" value="{{ request()->routeIs('search.index') ? request('q') : '' }}" maxlength="80" autocomplete="off"
-                   placeholder="Rechercher un membre, un club, un événement…"
+                   placeholder="Rechercher…"
                    role="combobox" aria-expanded="false" aria-controls="nav-search-results" aria-autocomplete="list"
-                   class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-tlink-blue focus:bg-white">
-            <div id="nav-search-results" role="listbox" hidden class="absolute left-0 right-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-soft"></div>
+                   class="w-full rounded-xl border border-transparent bg-slate-100 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-tlink-blue focus:bg-white">
+            <div id="nav-search-results" role="listbox" hidden class="absolute left-0 right-0 top-full z-40 mt-2 max-h-[70vh] min-w-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-soft"></div>
         </form>
 
-        <details class="relative order-2 ml-auto lg:order-4 lg:ml-0">
-            <summary class="list-none cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
-                <span class="inline-flex items-center gap-2">
-                    <i class="fa-regular fa-user"></i>
-                    <span class="hidden max-w-32 truncate sm:inline">{{ auth()->user()->name }}</span>
-                    <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
-                </span>
-            </summary>
-            <div class="absolute right-0 z-30 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-soft">
-                <a href="{{ route('profile.show') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2"></i>Profil</a>
-                @if($canAdmin ?? false)
-                    <a href="{{ route('admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-list-check mr-2"></i>Administration</a>
+        <div class="ml-auto flex items-center gap-1.5">
+            <a href="{{ route('notifications.index') }}" title="Notifications" aria-label="Notifications{{ $unread > 0 ? ' ('.$unread.' non lues)' : '' }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif
+               class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('notifications.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
+                <i class="fa-regular fa-bell" aria-hidden="true"></i>
+                @if($unread > 0)
+                    <span class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white" aria-label="{{ $unread }} non lues">{{ $unread > 99 ? '99+' : $unread }}</span>
                 @endif
-                <a href="{{ route('orgchart.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-sitemap mr-2"></i>Organigramme</a>
-                @if($hasOffice ?? false)
-                    <a href="{{ route('office.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-briefcase mr-2"></i>Mon bureau</a>
-                @endif
-                <a href="{{ route('notifications.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-bell mr-2"></i>Notifications</a>
-                <form action="{{ route('logout') }}" method="post" class="mt-1">
-                    @csrf
-                    <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">
-                        <i class="fa-solid fa-right-from-bracket mr-2"></i>Deconnexion
-                    </button>
-                </form>
-            </div>
-        </details>
+            </a>
+
+            <details class="relative" id="nav-user">
+                <summary class="grid h-10 w-10 cursor-pointer list-none place-items-center overflow-hidden rounded-full bg-tlink-blue text-sm font-semibold text-white ring-2 ring-white transition hover:ring-rose-100 [&::-webkit-details-marker]:hidden" title="{{ $me->name }}" aria-label="Menu de {{ $me->name }}">
+                    @if($avatar)
+                        <img src="{{ $avatar }}" alt="" class="h-full w-full object-cover">
+                    @else
+                        {{ $initials }}
+                    @endif
+                </summary>
+                <div class="absolute right-0 z-30 mt-2 w-60 rounded-2xl border border-slate-200 bg-white p-2 shadow-soft">
+                    <div class="border-b border-slate-100 px-3 pb-2.5 pt-1.5">
+                        <p class="truncate text-sm font-semibold text-slate-900">{{ $me->name }}</p>
+                        @unless(str_ends_with((string) $me->email, '@legacy.invalid'))
+                            <p class="truncate text-xs text-slate-500">{{ $me->email }}</p>
+                        @endunless
+                    </div>
+                    <a href="{{ route('profile.show') }}" class="mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2 w-4 text-center text-slate-500"></i>Mon profil</a>
+                    <form action="{{ route('logout') }}" method="post">
+                        @csrf
+                        <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">
+                            <i class="fa-solid fa-right-from-bracket mr-2 w-4 text-center"></i>Déconnexion
+                        </button>
+                    </form>
+                </div>
+            </details>
+        </div>
     </div>
 </header>
+
+<script>
+    // Le menu de l'avatar se referme au clic ailleurs ou sur Échap.
+    (function () {
+        var menu = document.getElementById('nav-user');
+        if (!menu) { return; }
+        document.addEventListener('click', function (event) { if (!menu.contains(event.target)) { menu.open = false; } });
+        document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { menu.open = false; } });
+    })();
+</script>
 
 <script>
     (function () {
