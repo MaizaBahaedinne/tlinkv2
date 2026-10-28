@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 type FeedPost = {
   id: number;
@@ -109,6 +109,48 @@ const sentimentChoices = [
   { value: 'inspired', icon: 'fa-lightbulb', title: 'Inspire' },
   { value: 'grateful', icon: 'fa-hands-praying', title: 'Reconnaissant' },
 ];
+
+const openMenu = ref<'visibility' | 'sentiment' | null>(null);
+const composerMenus = ref<HTMLElement | null>(null);
+
+const currentVisibility = computed(() => visibilityChoices.value.find((item) => item.value === form.visibility) ?? visibilityChoices.value[0]);
+const currentSentiment = computed(() => sentimentChoices.find((item) => item.value === form.sentiment) ?? sentimentChoices[0]);
+
+function toggleMenu(name: 'visibility' | 'sentiment') {
+  openMenu.value = openMenu.value === name ? null : name;
+}
+
+function chooseVisibility(value: string) {
+  form.visibility = value;
+  openMenu.value = null;
+}
+
+function chooseSentiment(value: string) {
+  form.sentiment = value;
+  openMenu.value = null;
+}
+
+function closeMenuOutside(event: Event) {
+  if (composerMenus.value && !composerMenus.value.contains(event.target as Node)) {
+    openMenu.value = null;
+  }
+}
+
+function closeMenuOnEscape(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    openMenu.value = null;
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', closeMenuOutside);
+  document.addEventListener('keydown', closeMenuOnEscape);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeMenuOutside);
+  document.removeEventListener('keydown', closeMenuOnEscape);
+});
 
 function triggerPhotos() {
   photoInput.value?.click();
@@ -260,32 +302,63 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
               <span v-if="uploadState.hasVideo" class="ml-1 text-xs text-slate-500">1</span>
             </button>
             <input type="hidden" name="visibility" :value="form.visibility" />
-            <div class="flex flex-wrap gap-1 rounded-xl border border-slate-300 p-1">
-              <button
-                v-for="item in visibilityChoices"
-                :key="item.value"
-                type="button"
-                :title="item.title"
-                class="rounded-lg px-2 py-1 text-sm"
-                :class="form.visibility === item.value ? 'bg-slate-100 text-tlink-blue' : 'text-slate-500 hover:bg-slate-50'"
-                @click="form.visibility = item.value"
-              >
-                <i class="fa-solid" :class="item.icon"></i>
-              </button>
-            </div>
             <input type="hidden" name="sentiment" :value="form.sentiment" />
-            <div class="flex flex-wrap gap-1 rounded-xl border border-slate-300 p-1">
-              <button
-                v-for="item in sentimentChoices"
-                :key="item.value"
-                type="button"
-                :title="item.title"
-                class="rounded-lg px-2 py-1 text-sm"
-                :class="form.sentiment === item.value ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-50'"
-                @click="form.sentiment = item.value"
-              >
-                <i class="fa-regular" :class="item.icon"></i>
-              </button>
+            <div ref="composerMenus" class="flex flex-wrap items-center gap-2">
+              <div class="relative">
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  aria-haspopup="listbox"
+                  :aria-expanded="openMenu === 'visibility'"
+                  title="Qui peut voir cette publication"
+                  @click="toggleMenu('visibility')"
+                >
+                  <i class="fa-solid w-4 text-center text-tlink-blue" :class="currentVisibility?.icon"></i>
+                  <span>{{ currentVisibility?.title }}</span>
+                  <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                </button>
+                <ul v-if="openMenu === 'visibility'" role="listbox" class="absolute left-0 z-20 mt-1 min-w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                  <li v-for="item in visibilityChoices" :key="item.value" role="option" :aria-selected="form.visibility === item.value">
+                    <button
+                      type="button"
+                      class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm"
+                      :class="form.visibility === item.value ? 'bg-slate-100 text-tlink-blue' : 'text-slate-700 hover:bg-slate-50'"
+                      @click="chooseVisibility(item.value)"
+                    >
+                      <i class="fa-solid w-4 text-center" :class="item.icon"></i>
+                      <span>{{ item.title }}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="relative">
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  aria-haspopup="listbox"
+                  :aria-expanded="openMenu === 'sentiment'"
+                  title="Ton de la publication"
+                  @click="toggleMenu('sentiment')"
+                >
+                  <i class="fa-regular w-4 text-center text-tlink-blue" :class="currentSentiment?.icon"></i>
+                  <span>{{ currentSentiment?.title }}</span>
+                  <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                </button>
+                <ul v-if="openMenu === 'sentiment'" role="listbox" class="absolute left-0 z-20 mt-1 min-w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                  <li v-for="item in sentimentChoices" :key="item.value" role="option" :aria-selected="form.sentiment === item.value">
+                    <button
+                      type="button"
+                      class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm"
+                      :class="form.sentiment === item.value ? 'bg-rose-50 text-tlink-blue' : 'text-slate-700 hover:bg-slate-50'"
+                      @click="chooseSentiment(item.value)"
+                    >
+                      <i class="fa-regular w-4 text-center" :class="item.icon"></i>
+                      <span>{{ item.title }}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
           <div class="mt-3 flex justify-end">
