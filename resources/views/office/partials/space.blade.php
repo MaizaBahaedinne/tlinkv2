@@ -4,14 +4,8 @@
     $eventUrl = fn ($event) => in_array($event->status, ['published', 'completed'], true) ? route('site.events.show', ['locale' => $siteLocale, 'event' => $event->id]) : null;
 @endphp
 
-<nav class="flex flex-wrap gap-2 text-sm" aria-label="Sections de la page">
-    @foreach([['en-cours', 'En cours', 'fa-solid fa-circle-check'], ['clubs', 'Mes clubs', 'fa-solid fa-people-group'], ['evenements', 'Événements', 'fa-solid fa-calendar-days'], ['parcours', 'Mon parcours', 'fa-solid fa-route'], ['postes', 'Mes postes', 'fa-solid fa-sitemap']] as [$anchor, $label, $icon])
-        <a href="#{{ $anchor }}" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-700 hover:bg-slate-50"><i class="{{ $icon }} mr-1.5 text-slate-400"></i>{{ $label }}</a>
-    @endforeach
-</nav>
-
 {{-- Adhésions et mandats en cours --}}
-<section id="en-cours" class="scroll-mt-24 grid gap-4 md:grid-cols-2">
+<section id="en-cours" role="tabpanel" aria-labelledby="tab-en-cours" data-tab-panel class="grid gap-4 md:grid-cols-2">
     <div class="card p-5">
         <h2 class="font-display text-lg font-semibold text-slate-900"><i class="fa-solid fa-id-card mr-2 text-slate-400"></i>Mes adhésions en cours</h2>
         <ul class="mt-3 space-y-2">
@@ -51,7 +45,7 @@
 </section>
 
 {{-- Mes clubs et leur hiérarchie --}}
-<section id="clubs" class="scroll-mt-24 space-y-4">
+<section id="clubs" role="tabpanel" aria-labelledby="tab-clubs" data-tab-panel class="space-y-4">
     <h2 class="font-display text-lg font-semibold text-slate-900"><i class="fa-solid fa-people-group mr-2 text-slate-400"></i>Mes clubs</h2>
 
     @forelse($space['clubs'] as $club)
@@ -100,7 +94,7 @@
 </section>
 
 {{-- Événements --}}
-<section id="evenements" class="scroll-mt-24 space-y-4">
+<section id="evenements" role="tabpanel" aria-labelledby="tab-evenements" data-tab-panel class="space-y-4">
     <h2 class="font-display text-lg font-semibold text-slate-900"><i class="fa-solid fa-calendar-days mr-2 text-slate-400"></i>Événements</h2>
 
     @foreach([['À venir', $space['upcoming'], 'Aucun événement à venir.'], ['Passés', $space['past'], 'Aucun événement passé.']] as [$heading, $events, $empty])
@@ -137,7 +131,7 @@
 </section>
 
 {{-- Parcours --}}
-<section id="parcours" class="scroll-mt-24 card p-5">
+<section id="parcours" role="tabpanel" aria-labelledby="tab-parcours" data-tab-panel class="card p-5">
     <h2 class="font-display text-lg font-semibold text-slate-900"><i class="fa-solid fa-route mr-2 text-slate-400"></i>Mon parcours</h2>
     <p class="text-sm text-slate-600">Vos adhésions, vos mandats et votre participation aux événements, du plus récent au plus ancien.</p>
 

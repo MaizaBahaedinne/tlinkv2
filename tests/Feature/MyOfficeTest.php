@@ -229,6 +229,24 @@ class MyOfficeTest extends TestCase
         $this->actingAs($middle)->get('/mon-bureau')->assertNotFound();
     }
 
+    public function test_the_page_is_organised_in_tabs_without_the_header_buttons(): void
+    {
+        $admin = $this->place($this->top, 'Karim Directeur');
+
+        $html = $this->actingAs($admin)->get('/mon-bureau')->assertOk()
+            ->assertSee('role="tablist"', false)
+            ->assertSee('id="tab-en-cours"', false)
+            ->assertSee('id="tab-clubs"', false)
+            ->assertSee('id="tab-evenements"', false)
+            ->assertSee('id="tab-parcours"', false)
+            ->assertSee('id="tab-postes"', false)
+            ->assertDontSee('>Retour<', false)
+            ->getContent();
+
+        $this->assertStringNotContainsString('>Organigramme<', $html);
+        $this->assertStringNotContainsString('>Administration<', $html);
+    }
+
     public function test_the_menu_link_only_shows_for_position_holders(): void
     {
         $holder = $this->place($this->middle, 'Sonia Cheffe');
