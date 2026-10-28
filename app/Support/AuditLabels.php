@@ -89,6 +89,16 @@ class AuditLabels
         'admin.module.created' => 'Module de l’application ajouté',
         'admin.module.updated' => 'Module de l’application modifié',
         'admin.module.deleted' => 'Module de l’application supprimé',
+        'admin.badge.created' => 'Badge créé',
+        'admin.badge.updated' => 'Badge modifié',
+        'admin.badge.deleted' => 'Badge supprimé',
+        'admin.badge.mission.created' => 'Mission de badge ajoutée',
+        'admin.badge.mission.updated' => 'Mission de badge modifiée',
+        'admin.badge.mission.deleted' => 'Mission de badge supprimée',
+        'admin.badge.checkpoint.created' => 'Point de contrôle ajouté',
+        'admin.badge.checkpoint.updated' => 'Point de contrôle modifié',
+        'admin.badge.checkpoint.deleted' => 'Point de contrôle supprimé',
+        'admin.badge.synced' => 'Badges recalculés pour tous les membres',
         'orgchart.module_permissions.updated' => 'Habilitations CRUD d’un poste modifiées',
     ];
 

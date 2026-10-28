@@ -72,6 +72,7 @@ class ProfileController extends Controller
             'skillKeywords' => $skillKeywords,
             'languageItems' => $languageItems,
             'recentPosts' => $recentPosts,
+            'earnedBadges' => \App\Models\UserBadge::earnedBy($user->id),
             'stats' => [
                 'posts_count' => $user->posts()->count(),
                 'comments_count' => Comment::query()->where('user_id', $user->id)->count(),

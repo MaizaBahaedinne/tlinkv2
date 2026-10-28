@@ -82,6 +82,12 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'gamification', 'name' => 'Badges et missions', 'description' => 'Missions, niveaux et badges des membres.',
+                'children' => [
+                    ['key' => 'gamification.badges', 'name' => 'Badges et missions', 'description' => 'Créer les badges (bronze, argent, or, platine), leurs missions et leurs points de contrôle.', 'actions' => self::CRUD],
+                ],
+            ],
+            [
                 'key' => 'notifications', 'name' => 'Notifications', 'description' => 'Notifications des membres.',
                 'children' => [
                     ['key' => 'notifications.inbox', 'name' => 'Boîte de notifications', 'description' => 'Consulter et marquer comme lues.', 'actions' => ['read', 'update', 'delete']],

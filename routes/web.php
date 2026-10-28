@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
 use App\Http\Controllers\MyOfficeController;
@@ -51,6 +52,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/posts/{post}/view', [FeedController::class, 'view'])->name('posts.view');
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
+    Route::get('/badges', [BadgeController::class, 'index'])->name('badges.index');
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
     Route::get('/recherche', [SearchController::class, 'index'])->name('search.index');
@@ -152,6 +154,18 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             // Site public de la Fondation
             Route::get('site-public', [Admin\SiteSettingsController::class, 'edit'])->name('site.edit');
             Route::put('site-public', [Admin\SiteSettingsController::class, 'update'])->name('site.update');
+            Route::get('badges', [Admin\BadgeController::class, 'index'])->name('badges.index');
+            Route::post('badges', [Admin\BadgeController::class, 'store'])->name('badges.store');
+            Route::post('badges/recalculer', [Admin\BadgeController::class, 'sync'])->name('badges.sync');
+            Route::get('badges/{badge}/modifier', [Admin\BadgeController::class, 'edit'])->name('badges.edit');
+            Route::put('badges/{badge}', [Admin\BadgeController::class, 'update'])->name('badges.update');
+            Route::delete('badges/{badge}', [Admin\BadgeController::class, 'destroy'])->name('badges.destroy');
+            Route::post('badges/{badge}/missions', [Admin\BadgeController::class, 'storeMission'])->name('badges.missions.store');
+            Route::put('badges/missions/{mission}', [Admin\BadgeController::class, 'updateMission'])->name('badges.missions.update');
+            Route::delete('badges/missions/{mission}', [Admin\BadgeController::class, 'destroyMission'])->name('badges.missions.destroy');
+            Route::post('badges/missions/{mission}/points', [Admin\BadgeController::class, 'storeCheckpoint'])->name('badges.checkpoints.store');
+            Route::put('badges/points/{checkpoint}', [Admin\BadgeController::class, 'updateCheckpoint'])->name('badges.checkpoints.update');
+            Route::delete('badges/points/{checkpoint}', [Admin\BadgeController::class, 'destroyCheckpoint'])->name('badges.checkpoints.destroy');
             Route::get('partenaires', [Admin\PartnerController::class, 'index'])->name('partners.index');
             Route::post('partenaires', [Admin\PartnerController::class, 'store'])->name('partners.store');
             Route::put('partenaires/{partner}', [Admin\PartnerController::class, 'update'])->name('partners.update');

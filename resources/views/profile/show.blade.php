@@ -70,6 +70,26 @@
                     <p class="mt-3 whitespace-pre-line text-sm leading-6 text-slate-700">{{ $profile->bio ?: 'Ajoutez une bio claire pour presenter votre impact, vos valeurs et vos objectifs.' }}</p>
                 </section>
 
+                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft" id="badges">
+                    <div class="flex items-center justify-between gap-3">
+                        <h2 class="font-display text-xl font-semibold text-slate-900">Badges</h2>
+                        <a href="{{ route('badges.index') }}" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50">Voir les missions</a>
+                    </div>
+                    @if($earnedBadges->isEmpty())
+                        <p class="mt-3 text-sm text-slate-500">Aucun badge pour l'instant : relevez des missions pour en obtenir.</p>
+                    @else
+                        <ul class="mt-4 flex flex-wrap gap-4">
+                            @foreach($earnedBadges as $earned)
+                                <li class="flex w-24 flex-col items-center gap-1 text-center">
+                                    <x-badge-medal :badge="$earned->badge" />
+                                    <span class="text-xs font-semibold text-slate-800">{{ $earned->badge->name }}</span>
+                                    <span class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide {{ $earned->badge->chip() }}">{{ $earned->badge->tierLabel() }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </section>
+
                 <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
                     <div class="flex items-center justify-between gap-3">
                         <h2 class="font-display text-xl font-semibold text-slate-900">Experience pro</h2>

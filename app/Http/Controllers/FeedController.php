@@ -138,7 +138,18 @@ class FeedController extends Controller
                     'logo_url' => $partner->logoUrl(),
                     'url' => $partner->safeUrl(),
                 ])->values(),
-            'links' => ['mission' => route('site.about', ['locale' => $this->siteLocale()]).'#mission'],
+            'links' => [
+                'mission' => route('site.about', ['locale' => $this->siteLocale()]).'#mission',
+                'badges' => route('badges.index'),
+            ],
+            'myBadges' => $request->user() === null ? [] : \App\Models\UserBadge::earnedBy($request->user()->id)
+                ->map(fn (\App\Models\UserBadge $earned): array => [
+                    'id' => $earned->badge->id,
+                    'name' => $earned->badge->name,
+                    'tier' => $earned->badge->tierLabel(),
+                    'icon' => $earned->badge->iconClass(),
+                    'gradient' => $earned->badge->gradient(),
+                ])->values(),
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
     }

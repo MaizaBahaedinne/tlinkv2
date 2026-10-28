@@ -43,7 +43,8 @@ type RootData = {
     allowed_visibilities: string[];
   };
   partners?: Array<{ id: number; name: string; logo_url: string; url: string | null }>;
-  links?: { mission?: string };
+  links?: { mission?: string; badges?: string };
+  myBadges?: Array<{ id: number; name: string; tier: string; icon: string; gradient: string }>;
   governorates: Array<{ id: number; name: string; slug: string }>;
   csrf: string;
 };
@@ -54,6 +55,7 @@ const data = (window.__TLINK__ ?? {
   composer: { can_publish_public: false, allowed_visibilities: ['authenticated', 'entity', 'department', 'club', 'restricted'] },
   partners: [],
   links: {},
+  myBadges: [],
   governorates: [],
   csrf: '',
 }) as RootData;
@@ -262,12 +264,25 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
             </nav>
 
             <section class="card p-4">
-              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Mes badges</p>
-              <div class="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                <i class="fa-solid fa-award text-lg text-slate-400"></i>
-                <span>Vos badges apparaîtront ici.</span>
-                <span class="ml-auto rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Soon</span>
+              <div class="mb-2 flex items-center justify-between">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mes badges</p>
+                <a :href="data.links?.badges ?? '/badges'" class="text-xs font-semibold text-tlink-blue hover:underline">Missions</a>
               </div>
+              <ul v-if="data.myBadges?.length" class="flex flex-wrap gap-2">
+                <li v-for="badge in data.myBadges" :key="badge.id">
+                  <span
+                    class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-base text-white shadow-soft ring-2 ring-white"
+                    :class="badge.gradient"
+                    :title="`${badge.name} · ${badge.tier}`"
+                  >
+                    <i :class="badge.icon" aria-hidden="true"></i>
+                  </span>
+                </li>
+              </ul>
+              <a v-else :href="data.links?.badges ?? '/badges'" class="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600 hover:bg-slate-100">
+                <i class="fa-solid fa-award text-lg text-slate-400"></i>
+                <span>Relevez des missions pour gagner vos premiers badges.</span>
+              </a>
             </section>
           </div>
         </aside>

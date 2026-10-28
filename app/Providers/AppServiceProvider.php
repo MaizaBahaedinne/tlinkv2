@@ -25,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Badges : le recalcul se déclenche à l'enregistrement des modèles listés dans le catalogue d'activités.
+        \App\Support\Gamification\ActivityCatalog::listen();
+
         RateLimiter::for('api', function (Request $request) {
             $key = $request->user()?->id ? 'user:'.$request->user()->id : 'ip:'.$request->ip();
 

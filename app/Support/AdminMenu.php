@@ -43,6 +43,7 @@ class AdminMenu
         'admin.newsletter.*' => 'website.newsletter',
         'admin.approvals.*' => 'governance.approvals',
         'admin.events.*' => 'events.events',
+        'admin.badges.*' => 'gamification.badges',
     ];
 
     /**
@@ -103,6 +104,7 @@ class AdminMenu
                     ['label' => 'Utilisateurs', 'route' => 'admin.users.index', 'icon' => 'user', 'match' => 'admin.users.*', 'perms' => ['entity.manage', 'membership.manage']],
                     ['label' => 'Adhésions', 'route' => 'admin.memberships.index', 'icon' => 'user-check', 'match' => 'admin.memberships.*', 'perms' => ['membership.manage'], 'badge' => 'memberships'],
                     ['label' => 'Membres de mon entité', 'route' => 'admin.members.index', 'icon' => 'user', 'match' => 'admin.members.*', 'perms' => ['membership.manage']],
+                    ['label' => 'Badges et missions', 'route' => 'admin.badges.index', 'icon' => 'award', 'match' => 'admin.badges.*', 'perms' => ['entity.manage']],
                 ],
             ],
             [

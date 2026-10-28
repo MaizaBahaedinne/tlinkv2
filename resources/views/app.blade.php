@@ -30,6 +30,7 @@
             composer: @json($composer),
             partners: @json($partners),
             links: @json($links),
+            myBadges: @json($myBadges ?? []),
             governorates: @json($governorates),
             csrf: @json(csrf_token()),
         };

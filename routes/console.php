@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Gamification\GamificationEngine;
 use App\Support\LegacyClubImporter;
 use App\Support\Legacy\LegacyUserImporter;
 use App\Support\OrgChart\OrgChartInstaller;
@@ -10,6 +11,12 @@ use Illuminate\Support\Facades\Artisan;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('gamification:sync', function () {
+    $result = GamificationEngine::refreshEveryone();
+
+    $this->info($result['users'].' membre(s) recalculé(s), '.$result['awarded'].' badge(s) décerné(s).');
+})->purpose('Recalcule les missions de tous les membres et décerne les badges manquants');
 
 Artisan::command('legacy:import-clubs {path? : Chemin du dump SQL legacy}', function (?string $path = null) {
     $dumpPath = $path ?? collect([
