@@ -1,18 +1,19 @@
 @extends('layouts.base', ['title' => $title.' | Quiz | T.Link'])
 
 @section('content')
-<div class="min-h-screen pb-16">
-    {{-- Compte à rebours : le serveur reste maître du temps (échéance enregistrée à l'ouverture du quiz). --}}
-    <div class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 py-3 backdrop-blur">
-        <div class="app-container flex items-center justify-between gap-4">
-            <p class="font-display text-lg font-semibold text-slate-900">{{ $title }}</p>
-            <p class="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700" role="timer" aria-live="off">
-                Il te reste <span id="clock" class="tabular-nums text-tlink-blue">--:--</span>
-            </p>
-        </div>
+<div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
+    @include('partials.app-header')
+
+    <main class="app-container py-6">
+    {{-- Compte à rebours : le serveur reste maître du temps (échéance enregistrée à l'ouverture du quiz). Collé sous l'en-tête. --}}
+    <div class="sticky top-[4.75rem] z-10 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/95 px-5 py-3 shadow-soft backdrop-blur">
+        <p class="font-display text-lg font-semibold text-slate-900">{{ $title }}</p>
+        <p class="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700" role="timer" aria-live="off">
+            Il te reste <span id="clock" class="tabular-nums text-tlink-blue">--:--</span>
+        </p>
     </div>
 
-    <form method="post" action="{{ route('info-session.submit', $attempt) }}" id="quiz-form" class="app-container mt-6 space-y-5">
+    <form method="post" action="{{ route('info-session.submit', $attempt) }}" id="quiz-form" class="mt-6 space-y-5">
         @csrf
         <p class="text-sm text-slate-600">Tu as {{ $minutes }} minutes pour répondre. Les questions et les réponses sont dans un ordre aléatoire.</p>
 
@@ -39,6 +40,7 @@
             <button type="submit" id="send" class="rounded-xl bg-tlink-blue px-8 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-tlink-blue-700 disabled:opacity-50">Envoyer mes réponses</button>
         </div>
     </form>
+    </main>
 </div>
 
 <script>

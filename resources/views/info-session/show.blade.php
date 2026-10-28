@@ -5,16 +5,10 @@
     $result = session('quiz_result') ? $last : null;
     $statusLabels = \App\Models\QuizAttempt::STATUSES;
 @endphp
-<div class="min-h-screen py-8">
-    <div class="app-container">
-        <header class="mb-6 flex items-center justify-between">
-            <a href="{{ route('home') }}" class="inline-flex items-center gap-3">
-                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-tlink-blue font-display text-lg font-bold text-white shadow-soft">T</span>
-                <span class="font-display text-xl font-semibold text-tlink-blue">T.Link</span>
-            </a>
-            <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50">Retour au fil</a>
-        </header>
+<div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
+    @include('partials.app-header')
 
+    <main class="app-container py-6">
         @if($validated)
             <div class="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-900" role="status">
                 <span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">&#10003;</span>
@@ -140,7 +134,7 @@
                 </ol>
             </section>
         @endif
-    </div>
+    </main>
 </div>
 
 @if($videoId)
