@@ -42,7 +42,8 @@ type RootData = {
     can_publish_public: boolean;
     allowed_visibilities: string[];
   };
-  entities: Array<{ id: number | string; name: string; slug: string }>;
+  partners?: Array<{ id: number; name: string; logo_url: string; url: string | null }>;
+  links?: { mission?: string };
   governorates: Array<{ id: number; name: string; slug: string }>;
   csrf: string;
 };
@@ -51,7 +52,8 @@ const data = (window.__TLINK__ ?? {
   auth: { isAuthenticated: false },
   feed: [],
   composer: { can_publish_public: false, allowed_visibilities: ['authenticated', 'entity', 'department', 'club', 'restricted'] },
-  entities: [],
+  partners: [],
+  links: {},
   governorates: [],
   csrf: '',
 }) as RootData;
@@ -227,53 +229,45 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <aside class="hidden lg:col-span-3 lg:block">
           <div class="sticky top-24 space-y-4">
-            <nav class="card p-4">
+            <nav class="card p-4" aria-label="Menu">
               <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Menu</p>
               <ul class="space-y-2 text-sm">
                 <li>
-                  <a href="/feed" class="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-slate-800">
-                    <i class="fa-solid fa-house text-slate-500"></i>
+                  <a href="/feed" aria-current="page" class="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-slate-800">
+                    <i class="fa-solid fa-house w-4 text-center text-slate-500"></i>
                     <span>Accueil</span>
                   </a>
                 </li>
                 <li>
-                  <a href="/profil" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-regular fa-user text-slate-500"></i>
-                    <span>Profil</span>
+                  <a :href="data.links?.mission ?? '#'" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                    <i class="fa-solid fa-bullseye w-4 text-center text-slate-500"></i>
+                    <span>Mission</span>
                   </a>
                 </li>
                 <li>
-                  <a href="/notifications" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-regular fa-bell text-slate-500"></i>
-                    <span>Notifications</span>
-                  </a>
+                  <span class="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-slate-500" aria-disabled="true">
+                    <i class="fa-solid fa-graduation-cap w-4 text-center text-slate-400"></i>
+                    <span>Academy</span>
+                    <span class="ml-auto rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Soon</span>
+                  </span>
                 </li>
                 <li>
-                  <a href="/organigramme" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-solid fa-sitemap text-slate-500"></i>
-                    <span>Organigramme</span>
-                  </a>
-                </li>
-                <li v-if="data.auth.hasOffice">
-                  <a href="/mon-bureau" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-solid fa-briefcase text-slate-500"></i>
-                    <span>Mon bureau</span>
-                  </a>
-                </li>
-                <li v-if="data.auth.canAdmin">
-                  <a href="/admin" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-solid fa-list-check text-slate-500"></i>
-                    <span>Administration</span>
-                  </a>
+                  <span class="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-slate-500" aria-disabled="true">
+                    <i class="fa-solid fa-store w-4 text-center text-slate-400"></i>
+                    <span>Store</span>
+                    <span class="ml-auto rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Soon</span>
+                  </span>
                 </li>
               </ul>
             </nav>
 
             <section class="card p-4">
-              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Entites</p>
-              <ul class="space-y-1 text-sm text-slate-700">
-                <li v-for="entity in data.entities.slice(0, 5)" :key="entity.id">{{ entity.name }}</li>
-              </ul>
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Mes badges</p>
+              <div class="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                <i class="fa-solid fa-award text-lg text-slate-400"></i>
+                <span>Vos badges apparaîtront ici.</span>
+                <span class="ml-auto rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Soon</span>
+              </div>
             </section>
           </div>
         </aside>
@@ -609,18 +603,25 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
               </div>
             </section>
 
-            <section class="card p-4">
-              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sponsor</p>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-                Tunivisions Campus Tour 2027
-              </div>
-            </section>
-
-            <section class="card p-4">
-              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Annonce</p>
-              <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
-                Ouverture des inscriptions aux clubs partenaires.
-              </div>
+            <section v-if="data.partners?.length" class="card p-4">
+              <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Partenaires</p>
+              <ul class="grid grid-cols-2 gap-3">
+                <li v-for="partner in data.partners" :key="partner.id">
+                  <a
+                    v-if="partner.url"
+                    :href="partner.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    :title="partner.name"
+                    class="flex h-16 items-center justify-center rounded-xl border border-slate-200 bg-white p-2 hover:border-slate-300"
+                  >
+                    <img :src="partner.logo_url" :alt="partner.name" loading="lazy" class="max-h-full max-w-full object-contain" />
+                  </a>
+                  <span v-else :title="partner.name" class="flex h-16 items-center justify-center rounded-xl border border-slate-200 bg-white p-2">
+                    <img :src="partner.logo_url" :alt="partner.name" loading="lazy" class="max-h-full max-w-full object-contain" />
+                  </span>
+                </li>
+              </ul>
             </section>
           </div>
         </aside>

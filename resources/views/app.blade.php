@@ -28,7 +28,8 @@
             },
             feed: @json($feedPayload),
             composer: @json($composer),
-            entities: @json($entities),
+            partners: @json($partners),
+            links: @json($links),
             governorates: @json($governorates),
             csrf: @json(csrf_token()),
         };

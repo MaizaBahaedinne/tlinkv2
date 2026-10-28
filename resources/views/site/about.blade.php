@@ -64,7 +64,7 @@
     @endif
 
     {{-- Mission et vision --}}
-    <section class="mx-auto mt-14 grid max-w-6xl gap-6 px-4 md:grid-cols-2">
+    <section id="mission" class="mx-auto mt-14 grid max-w-6xl scroll-mt-24 gap-6 px-4 md:grid-cols-2">
         <article class="mv-card" data-reveal>
             <svg viewBox="0 0 24 24" class="relative h-9 w-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
             <h2 class="relative mt-4 font-display text-2xl font-bold">{{ __('site.about.mission_title') }}</h2>

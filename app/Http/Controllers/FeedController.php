@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Governorate;
-use App\Support\OrgScopes;
+use App\Models\Partner;
 use App\Support\AccessScope;
 use App\Models\Post;
 use App\Models\PostAttachment;
@@ -131,9 +131,24 @@ class FeedController extends Controller
                 'can_publish_public' => $canPublishPublic,
                 'allowed_visibilities' => $allowedVisibilities,
             ],
-            'entities' => collect(OrgScopes::all())->map(fn (string $name, string $slug): array => ['id' => $slug, 'name' => $name, 'slug' => $slug])->values(),
+            'partners' => Partner::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
+                ->map(fn (Partner $partner): array => [
+                    'id' => $partner->id,
+                    'name' => $partner->name,
+                    'logo_url' => $partner->logoUrl(),
+                    'url' => $partner->safeUrl(),
+                ])->values(),
+            'links' => ['mission' => route('site.about', ['locale' => $this->siteLocale()]).'#mission'],
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
+    }
+
+    /** Langue du site vitrine pour les liens vers ses pages. */
+    private function siteLocale(): string
+    {
+        $locale = app()->getLocale();
+
+        return array_key_exists($locale, config('site.locales')) ? $locale : config('site.default_locale');
     }
 
     public function storePost(Request $request): RedirectResponse
