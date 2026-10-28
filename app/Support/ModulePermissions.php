@@ -28,6 +28,7 @@ final class ModulePermissions
         'members.info_session' => 'entity.manage',
         'website.content' => 'entity.manage',
         'website.partners' => 'entity.manage',
+        'members.companies' => 'entity.manage',
         'gamification.badges' => 'entity.manage',
         'website.projects' => 'entity.manage',
         'website.news' => 'entity.manage',

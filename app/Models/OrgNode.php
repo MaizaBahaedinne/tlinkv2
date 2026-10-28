@@ -65,6 +65,7 @@ class OrgNode extends Model
         'charter_signed',
         'institution_name',
         'institution_type',
+        'logo_path',
         'validation_status',
         'validation_note',
         'children_layout',
@@ -110,6 +111,12 @@ class OrgNode extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /** Logo de l'établissement ou du club, affiché sur les profils des membres. */
+    public function logoUrl(): ?string
+    {
+        return $this->logo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->logo_path) : null;
     }
 
     public function children(): HasMany

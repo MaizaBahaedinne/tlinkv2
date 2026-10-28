@@ -104,7 +104,9 @@ class SearchController extends Controller
                     'title' => $person->displayName(),
                     'subtitle' => collect([$person->job_title, $node?->title])->filter()->unique()->implode(' · ') ?: null,
                     'image' => $person->photoUrl(),
-                    'url' => $node ? route('orgchart.index', ['bloc' => $node->id]) : route('orgchart.index'),
+                    'url' => $person->user_id
+                        ? route('member.show', $person->user_id)
+                        : ($node ? route('orgchart.index', ['bloc' => $node->id]) : route('orgchart.index')),
                 ];
             })
             ->all();

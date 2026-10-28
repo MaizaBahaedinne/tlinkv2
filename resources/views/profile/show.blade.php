@@ -90,77 +90,7 @@
                     @endif
                 </section>
 
-                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                    <div class="flex items-center justify-between gap-3">
-                        <h2 class="font-display text-xl font-semibold text-slate-900">Experience pro</h2>
-                        <button type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50" onclick="openProfileModal('modal-professional')">Modifier</button>
-                    </div>
-                    <div class="mt-4 space-y-3">
-                        @forelse ($professionalExperiences as $item)
-                            <article class="rounded-2xl border border-slate-200 px-4 py-3">
-                                <p class="text-sm font-semibold text-slate-900">{{ $item['role'] ?? 'Poste' }} · {{ $item['company'] ?? 'Societe' }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $item['start_date'] ?? '-' }} - {{ $item['end_date'] ?? 'En cours' }}</p>
-                                <p class="mt-2 text-sm text-slate-700">{{ $item['description'] ?? '' }}</p>
-                            </article>
-                        @empty
-                            <p class="text-sm text-slate-500">Aucune experience professionnelle ajoutee.</p>
-                        @endforelse
-                    </div>
-                </section>
-
-                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                    <div class="flex items-center justify-between gap-3">
-                        <h2 class="font-display text-xl font-semibold text-slate-900">Formation</h2>
-                        <button type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50" onclick="openProfileModal('modal-education')">Modifier</button>
-                    </div>
-                    <div class="mt-4 space-y-3">
-                        @forelse ($educations as $item)
-                            <article class="rounded-2xl border border-slate-200 px-4 py-3">
-                                <p class="text-sm font-semibold text-slate-900">{{ $item['degree_type'] ?? 'Diplome' }} · {{ $item['diploma_name'] ?? 'Intitule' }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $item['school'] ?? 'Ecole' }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $item['start_date'] ?? '-' }} - {{ $item['end_date'] ?? 'En cours' }}</p>
-                            </article>
-                        @empty
-                            <p class="text-sm text-slate-500">Aucune formation ajoutee.</p>
-                        @endforelse
-                    </div>
-                </section>
-
-                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                    <div class="flex items-center justify-between gap-3">
-                        <h2 class="font-display text-xl font-semibold text-slate-900">Certification</h2>
-                        <button type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50" onclick="openProfileModal('modal-certification')">Modifier</button>
-                    </div>
-                    <div class="mt-4 space-y-3">
-                        @forelse ($certifications as $item)
-                            <article class="rounded-2xl border border-slate-200 px-4 py-3">
-                                <p class="text-sm font-semibold text-slate-900">{{ $item['name'] ?? 'Certification' }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $item['issuer'] ?? 'Organisme' }} · {{ $item['date_obtained'] ?? '-' }}</p>
-                            </article>
-                        @empty
-                            <p class="text-sm text-slate-500">Aucune certification ajoutee.</p>
-                        @endforelse
-                    </div>
-                </section>
-
-                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                    <div class="flex items-center justify-between gap-3">
-                        <h2 class="font-display text-xl font-semibold text-slate-900">Experience associatif</h2>
-                        <button type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50" onclick="openProfileModal('modal-associative')">Modifier</button>
-                    </div>
-                    <div class="mt-4 space-y-3">
-                        @forelse ($associativeExperiences as $item)
-                            <article class="rounded-2xl border border-slate-200 px-4 py-3">
-                                <p class="text-sm font-semibold text-slate-900">{{ $item['role'] ?? 'Poste' }} · {{ $item['club_name'] ?? 'Club' }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $item['department'] ?? 'Departement' }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $item['start_date'] ?? '-' }} - {{ $item['end_date'] ?? 'En cours' }}</p>
-                                <p class="mt-2 text-sm text-slate-700">{{ $item['description'] ?? '' }}</p>
-                            </article>
-                        @empty
-                            <p class="text-sm text-slate-500">Aucune experience associative ajoutee.</p>
-                        @endforelse
-                    </div>
-                </section>
+                @include('profile.partials.details', ['editable' => true])
 
                 <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
                     <h2 class="font-display text-xl font-semibold text-slate-900">Activite recente</h2>
@@ -293,7 +223,7 @@
         <div id="professional-list" class="space-y-3" data-row-kind="professional">
             @foreach($professionalExperiences as $index => $item)
                 <div class="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-2">
-                    <input name="items[{{ $index }}][company]" value="{{ $item['company'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de societe">
+                    <input name="items[{{ $index }}][company]" value="{{ $item['company'] ?? '' }}" list="company-options" autocomplete="off" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de societe">
                     <input name="items[{{ $index }}][role]" value="{{ $item['role'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Poste">
                     <input type="date" name="items[{{ $index }}][start_date]" value="{{ $item['start_date'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
                     <input type="date" name="items[{{ $index }}][end_date]" value="{{ $item['end_date'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
@@ -302,6 +232,7 @@
             @endforeach
         </div>
         <button type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs" onclick="addProfileRow('professional-list')">Ajouter experience</button>
+        <p class="text-xs text-slate-500">Choisissez votre société dans la liste ; si elle n'existe pas encore, elle sera ajoutée à la base et son logo s'affichera dès qu'il sera renseigné.</p>
         <button class="w-full rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700">Enregistrer</button>
     </form>
 </dialog>
@@ -326,13 +257,14 @@
                         @endforeach
                     </select>
                     <input name="items[{{ $index }}][diploma_name]" value="{{ $item['diploma_name'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de diplome">
-                    <input name="items[{{ $index }}][school]" value="{{ $item['school'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2" placeholder="Ecole">
+                    <input name="items[{{ $index }}][school]" value="{{ $item['school'] ?? '' }}" list="school-options" autocomplete="off" class="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2" placeholder="Ecole (choisissez dans la liste)">
                     <input type="date" name="items[{{ $index }}][start_date]" value="{{ $item['start_date'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
                     <input type="date" name="items[{{ $index }}][end_date]" value="{{ $item['end_date'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 </div>
             @endforeach
         </div>
         <button type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs" onclick="addProfileRow('education-list')">Ajouter formation</button>
+        <p class="text-xs text-slate-500">Les écoles de la liste proviennent des clubs de la Fondation : leur logo s'affiche sur votre profil.</p>
         <button class="w-full rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700">Enregistrer</button>
     </form>
 </dialog>
@@ -376,7 +308,7 @@
         <div id="associative-list" class="space-y-3" data-row-kind="associative">
             @foreach($associativeExperiences as $index => $item)
                 <div class="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-2">
-                    <input name="items[{{ $index }}][club_name]" value="{{ $item['club_name'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de club">
+                    <input name="items[{{ $index }}][club_name]" value="{{ $item['club_name'] ?? '' }}" list="club-options" autocomplete="off" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de club">
                     <input name="items[{{ $index }}][role]" value="{{ $item['role'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Poste">
                     <input name="items[{{ $index }}][department]" value="{{ $item['department'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2" placeholder="Departement">
                     <input type="date" name="items[{{ $index }}][start_date]" value="{{ $item['start_date'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
@@ -434,9 +366,19 @@
     </form>
 </dialog>
 
+<datalist id="company-options">
+    @foreach($companyOptions as $option)<option value="{{ $option }}"></option>@endforeach
+</datalist>
+<datalist id="school-options">
+    @foreach($schoolOptions as $option)<option value="{{ $option }}"></option>@endforeach
+</datalist>
+<datalist id="club-options">
+    @foreach($clubOptions as $option)<option value="{{ $option }}"></option>@endforeach
+</datalist>
+
 <template id="tpl-professional">
     <div class="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-2">
-        <input name="items[__INDEX__][company]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de societe">
+        <input name="items[__INDEX__][company]" list="company-options" autocomplete="off" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de societe">
         <input name="items[__INDEX__][role]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Poste">
         <input type="date" name="items[__INDEX__][start_date]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
         <input type="date" name="items[__INDEX__][end_date]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
@@ -456,7 +398,7 @@
             <option value="autre">Autre</option>
         </select>
         <input name="items[__INDEX__][diploma_name]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de diplome">
-        <input name="items[__INDEX__][school]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2" placeholder="Ecole">
+        <input name="items[__INDEX__][school]" list="school-options" autocomplete="off" class="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2" placeholder="Ecole (choisissez dans la liste)">
         <input type="date" name="items[__INDEX__][start_date]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
         <input type="date" name="items[__INDEX__][end_date]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
     </div>
@@ -472,7 +414,7 @@
 
 <template id="tpl-associative">
     <div class="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-2">
-        <input name="items[__INDEX__][club_name]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de club">
+        <input name="items[__INDEX__][club_name]" list="club-options" autocomplete="off" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom de club">
         <input name="items[__INDEX__][role]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Poste">
         <input name="items[__INDEX__][department]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2" placeholder="Departement">
         <input type="date" name="items[__INDEX__][start_date]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">

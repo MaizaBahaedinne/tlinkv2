@@ -33,7 +33,7 @@
     <div class="grid-3-1">
         <div style="display:grid;gap:22px;align-content:start">
             {{-- Fiche --}}
-            <form method="post" action="{{ route('admin.postes.update', $node) }}" class="card card-flush">
+            <form method="post" action="{{ route('admin.postes.update', $node) }}" class="card card-flush" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="card-head"><div><h2>Fiche</h2></div></div>
@@ -104,6 +104,20 @@
                                 <x-admin.select name="institution_type" label="Type d’établissement" :options="$institutionTypes" :value="$node->institution_type" placeholder="Non renseigné" />
                                 <x-admin.input name="email" type="email" label="E-mail" :value="$node->email" :maxlength="255" />
                                 <x-admin.input name="facebook_url" type="url" label="Page Facebook" :value="$node->facebook_url" :maxlength="500" />
+                                <div class="field span-2">
+                                    <label for="f-logo">Logo de l’établissement / du club</label>
+                                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                                        @if($node->logoUrl())
+                                            <img src="{{ $node->logoUrl() }}" alt="Logo" style="width:64px;height:48px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px">
+                                        @endif
+                                        <input id="f-logo" type="file" name="logo" accept="image/png,image/jpeg,image/webp">
+                                        @if($node->logo_path)
+                                            <label class="check"><input type="checkbox" name="remove_logo" value="1"> Retirer le logo</label>
+                                        @endif
+                                    </div>
+                                    <p class="hint">Affiché sur les profils des membres dont la formation ou l’expérience associative cite cet établissement (jpg, png, webp — 3 Mo max).</p>
+                                    @error('logo')<p class="error">{{ $message }}</p>@enderror
+                                </div>
                                 <x-admin.input name="founded_on" type="date" label="Date de fondation" :value="$node->founded_on?->format('Y-m-d')" />
                                 <div class="field">
                                     <label>&nbsp;</label>

@@ -45,6 +45,7 @@ final class ModuleCatalog
                     ['key' => 'members.memberships', 'name' => 'Adhésions', 'description' => 'Demandes d’adhésion à un périmètre ou à un club.', 'actions' => self::CRUD],
                     ['key' => 'members.entity_members', 'name' => 'Membres de mon entité', 'description' => 'Liste, ajout, suspension et retrait des membres de sa propre entité (sans les sous-entités).', 'actions' => ['create', 'read', 'update']],
                     ['key' => 'members.info_session', 'name' => 'Info session et quiz', 'description' => 'Vidéo d’accueil et quiz de validation du compte.', 'actions' => ['read', 'update']],
+                    ['key' => 'members.companies', 'name' => 'Entreprises', 'description' => 'Base des entreprises citées dans les profils, avec leur logo.', 'actions' => self::CRUD],
                 ],
             ],
             [

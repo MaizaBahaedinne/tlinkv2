@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
+use App\Http\Controllers\MemberProfileController;
 use App\Http\Controllers\MyOfficeController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
@@ -53,6 +54,7 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/badges', [BadgeController::class, 'index'])->name('badges.index');
+    Route::get('/membres/{user}', [MemberProfileController::class, 'show'])->whereNumber('user')->name('member.show');
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
     Route::get('/recherche', [SearchController::class, 'index'])->name('search.index');
@@ -166,6 +168,10 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('badges/missions/{mission}/points', [Admin\BadgeController::class, 'storeCheckpoint'])->name('badges.checkpoints.store');
             Route::put('badges/points/{checkpoint}', [Admin\BadgeController::class, 'updateCheckpoint'])->name('badges.checkpoints.update');
             Route::delete('badges/points/{checkpoint}', [Admin\BadgeController::class, 'destroyCheckpoint'])->name('badges.checkpoints.destroy');
+            Route::get('entreprises', [Admin\CompanyController::class, 'index'])->name('companies.index');
+            Route::post('entreprises', [Admin\CompanyController::class, 'store'])->name('companies.store');
+            Route::put('entreprises/{company}', [Admin\CompanyController::class, 'update'])->name('companies.update');
+            Route::delete('entreprises/{company}', [Admin\CompanyController::class, 'destroy'])->name('companies.destroy');
             Route::get('partenaires', [Admin\PartnerController::class, 'index'])->name('partners.index');
             Route::post('partenaires', [Admin\PartnerController::class, 'store'])->name('partners.store');
             Route::put('partenaires/{partner}', [Admin\PartnerController::class, 'update'])->name('partners.update');

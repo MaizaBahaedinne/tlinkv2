@@ -18,12 +18,14 @@ type FeedPost = {
     id: number;
     content: string;
     author: string;
+    author_id?: number | null;
     author_avatar_url?: string | null;
     created_at: string | null;
     replies: Array<{
       id: number;
       content: string;
       author: string;
+      author_id?: number | null;
       author_avatar_url?: string | null;
       created_at: string | null;
     }>;
@@ -395,7 +397,10 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                 {{ authorInitials(post.author?.name) }}
               </span>
               <div>
-                <p class="text-sm font-semibold text-slate-800">{{ post.author?.name ?? 'Membre Tunivisions' }}</p>
+                <p class="text-sm font-semibold text-slate-800">
+                  <a v-if="post.author?.id" :href="`/membres/${post.author.id}`" class="hover:text-tlink-blue hover:underline">{{ post.author.name }}</a>
+                  <template v-else>Membre Tunivisions</template>
+                </p>
                 <p class="text-xs text-slate-500">{{ post.author?.headline || 'Membre Tunivisions' }}</p>
                 <p class="mt-0.5 text-xs text-slate-400">
                   <i class="fa-regular fa-clock mr-1"></i>{{ formatPublishedAt(post.published_at) }}
@@ -530,7 +535,10 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                 </span>
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2">
-                    <strong>{{ comment.author }}</strong>
+                    <strong>
+                      <a v-if="comment.author_id" :href="`/membres/${comment.author_id}`" class="hover:text-tlink-blue hover:underline">{{ comment.author }}</a>
+                      <template v-else>{{ comment.author }}</template>
+                    </strong>
                     <span class="text-[11px] text-slate-400">{{ formatCommentAt(comment.created_at) }}</span>
                   </div>
                   <p class="mt-0.5 whitespace-pre-line text-xs text-slate-700">{{ comment.content }}</p>
@@ -553,7 +561,10 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                         </span>
                         <div class="min-w-0 flex-1">
                           <div class="flex items-center gap-2">
-                            <strong>{{ reply.author }}</strong>
+                            <strong>
+                              <a v-if="reply.author_id" :href="`/membres/${reply.author_id}`" class="hover:text-tlink-blue hover:underline">{{ reply.author }}</a>
+                              <template v-else>{{ reply.author }}</template>
+                            </strong>
                             <span class="text-[11px] text-slate-400">{{ formatCommentAt(reply.created_at) }}</span>
                           </div>
                           <p class="mt-0.5 whitespace-pre-line text-xs text-slate-700">{{ reply.content }}</p>

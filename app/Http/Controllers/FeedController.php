@@ -98,6 +98,7 @@ class FeedController extends Controller
                             'id' => $comment->id,
                             'content' => $comment->content,
                             'author' => $comment->author ? $comment->author->name : 'Membre',
+                            'author_id' => $comment->user_id,
                             'author_avatar_url' => ($authorPhotoPath && Storage::disk('public')->exists($authorPhotoPath))
                                 ? Storage::disk('public')->url($authorPhotoPath)
                                 : null,
@@ -112,6 +113,7 @@ class FeedController extends Controller
                                         'id' => $reply->id,
                                         'content' => $reply->content,
                                         'author' => $reply->author ? $reply->author->name : 'Membre',
+                                        'author_id' => $reply->user_id,
                                         'author_avatar_url' => ($replyPhotoPath && Storage::disk('public')->exists($replyPhotoPath))
                                             ? Storage::disk('public')->url($replyPhotoPath)
                                             : null,

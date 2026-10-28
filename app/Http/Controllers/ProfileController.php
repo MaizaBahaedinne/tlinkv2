@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\PostReaction;
+use App\Support\ProfileOrganizations;
 use Illuminate\Support\Str;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,6 @@ class ProfileController extends Controller
     {
         $user = $request->user()->loadMissing('profile');
         $profile = $user->profile()->firstOrCreate([]);
-        $settings = is_array($profile->privacy_settings) ? $profile->privacy_settings : [];
 
         $skills = collect(explode(',', (string) $profile->skills))
             ->map(fn (string $item) => trim($item))
@@ -38,12 +38,8 @@ class ProfileController extends Controller
             ->filter()
             ->values();
 
-        $professionalExperiences = collect($settings['professional_experiences'] ?? [])->values();
-        $educations = collect($settings['educations'] ?? [])->values();
-        $certifications = collect($settings['certifications'] ?? [])->values();
-        $associativeExperiences = collect($settings['associative_experiences'] ?? [])->values();
-        $skillKeywords = collect($settings['skill_keywords'] ?? [])->values();
-        $languageItems = collect($settings['languages'] ?? [])->values();
+        $organizations = new ProfileOrganizations();
+        $sections = $organizations->sections($profile);
 
         $recentPosts = $user->posts()
             ->withCount(['comments', 'reactions'])
@@ -65,12 +61,10 @@ class ProfileController extends Controller
             'languages' => $languages,
             'educationItems' => $educationItems,
             'experienceItems' => $experienceItems,
-            'professionalExperiences' => $professionalExperiences,
-            'educations' => $educations,
-            'certifications' => $certifications,
-            'associativeExperiences' => $associativeExperiences,
-            'skillKeywords' => $skillKeywords,
-            'languageItems' => $languageItems,
+            ...$sections,
+            'companyOptions' => $organizations->companyOptions(),
+            'schoolOptions' => $organizations->schoolOptions(),
+            'clubOptions' => $organizations->clubOptions(),
             'recentPosts' => $recentPosts,
             'earnedBadges' => \App\Models\UserBadge::earnedBy($user->id),
             'stats' => [
@@ -225,7 +219,7 @@ class ProfileController extends Controller
             $settings['languages'] = $this->cleanRows($data['items'] ?? [], ['name', 'level']);
         }
 
-        $profile->privacy_settings = $settings;
+        $profile->privacy_settings = (new ProfileOrganizations())->link($settings, $request->user()->id);
         $profile->save();
 
         return back()->with('status', 'Section mise a jour.');

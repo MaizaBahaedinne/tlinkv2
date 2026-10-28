@@ -528,6 +528,8 @@ class StructureController extends AdminController
             'institution_name' => ['nullable', 'string', 'max:255'],
             'institution_type' => ['nullable', Rule::in(array_keys(OrgNode::INSTITUTION_TYPES))],
             'governorate_id' => ['nullable', 'integer', 'exists:governorates,id'],
+            'logo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            'remove_logo' => ['nullable', 'boolean'],
         ]);
 
         $kind = $node->kind === 'club' ? 'club' : ($data['kind'] ?? $node->kind);
@@ -538,6 +540,7 @@ class StructureController extends AdminController
 
         $attributes = Arr::only($data, ['title', 'subtitle', 'description', 'scope']) + ['kind' => $kind, 'parent_id' => $parentId];
         $legacyRights = null;
+        $oldLogo = null;
 
         if ($kind === 'position') {
             $attributes['capacity'] = $data['capacity'] ?? $node->capacity ?? 'single';
@@ -566,6 +569,15 @@ class StructureController extends AdminController
             $attributes += Arr::only($data, self::CLUB_FIELDS);
             $attributes['charter_signed'] = $request->boolean('charter_signed');
             $attributes['status'] = $data['status'] ?? $node->status;
+
+            // Logo de l'établissement : affiché sur les profils des membres (formation et expérience associative).
+            if ($request->hasFile('logo')) {
+                $oldLogo = $node->logo_path;
+                $attributes['logo_path'] = $request->file('logo')->store('clubs/logos', 'public');
+            } elseif ($request->boolean('remove_logo')) {
+                $oldLogo = $node->logo_path;
+                $attributes['logo_path'] = null;
+            }
         }
 
         if ($parentId !== $node->parent_id) {
@@ -587,6 +599,10 @@ class StructureController extends AdminController
 
             $this->rules->assertCanHold($node, $this->rules->currentPeopleCount($node));
         });
+
+        if ($oldLogo !== null && str_starts_with($oldLogo, 'clubs/logos/')) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldLogo);
+        }
 
         $changes = [];
 

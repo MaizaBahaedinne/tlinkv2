@@ -99,6 +99,9 @@ class AuditLabels
         'admin.badge.checkpoint.updated' => 'Point de contrôle modifié',
         'admin.badge.checkpoint.deleted' => 'Point de contrôle supprimé',
         'admin.badge.synced' => 'Badges recalculés pour tous les membres',
+        'admin.company.created' => 'Entreprise ajoutée',
+        'admin.company.updated' => 'Entreprise modifiée',
+        'admin.company.deleted' => 'Entreprise supprimée',
         'orgchart.module_permissions.updated' => 'Habilitations CRUD d’un poste modifiées',
     ];
 
