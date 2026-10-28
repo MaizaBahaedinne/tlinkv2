@@ -4,7 +4,7 @@
 <div class="min-h-screen px-4 pb-16">
     {{-- Compte à rebours : le serveur reste maître du temps (échéance enregistrée à l'ouverture du quiz). --}}
     <div class="sticky top-0 z-30 -mx-4 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
-        <div class="mx-auto flex w-full max-w-3xl items-center justify-between gap-4">
+        <div class="flex w-full items-center justify-between gap-4">
             <p class="font-display text-lg font-semibold text-slate-900">{{ $title }}</p>
             <p class="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700" role="timer" aria-live="off">
                 Il te reste <span id="clock" class="tabular-nums text-tlink-blue">--:--</span>
@@ -12,7 +12,7 @@
         </div>
     </div>
 
-    <form method="post" action="{{ route('info-session.submit', $attempt) }}" id="quiz-form" class="mx-auto mt-6 w-full max-w-3xl space-y-5">
+    <form method="post" action="{{ route('info-session.submit', $attempt) }}" id="quiz-form" class="mt-6 w-full space-y-5">
         @csrf
         <p class="text-sm text-slate-600">Tu as {{ $minutes }} minutes pour répondre. Les questions et les réponses sont dans un ordre aléatoire.</p>
 

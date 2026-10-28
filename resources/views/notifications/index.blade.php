@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="min-h-screen bg-tlink-sand px-4 py-8">
-    <div class="mx-auto w-full max-w-4xl">
+    <div class="w-full">
         <div class="mb-6 flex items-center justify-between">
             <div>
                 <h1 class="font-display text-2xl font-semibold text-tlink-blue">Notifications</h1>

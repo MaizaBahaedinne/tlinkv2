@@ -82,7 +82,7 @@ body.adm-body { margin: 0; background: var(--bg); color: var(--text); font-famil
 .adm-user-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: 13.5px; text-align: left; text-decoration: none; cursor: pointer; }
 .adm-user-item:hover { background: var(--neutral-bg); }
 .adm-content { padding: 28px; }
-.adm-container { max-width: 1280px; margin: 0 auto; display: grid; gap: 22px; }
+.adm-container { width: 100%; max-width: none; margin: 0; display: grid; gap: 22px; }
 .adm-overlay { display: none; }
 
 /* ---------- Page header ---------- */

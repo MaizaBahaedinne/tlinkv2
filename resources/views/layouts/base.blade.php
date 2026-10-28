@@ -25,7 +25,7 @@
     @auth
         @if (auth()->user()->onboarding_completed_at === null && ! request()->routeIs('info-session.*'))
             <div class="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-amber-900" role="status">
-                <div class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 text-sm">
+                <div class="flex w-full flex-wrap items-center justify-between gap-2 text-sm">
                     <p><strong class="font-semibold">Compte non validé.</strong> Regarde l'info session et réussis le quiz pour valider ton compte.</p>
                     <a href="{{ route('info-session.show') }}" class="rounded-lg bg-tlink-blue px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-tlink-blue-700">Valider mon compte</a>
                 </div>

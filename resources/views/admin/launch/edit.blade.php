@@ -18,7 +18,7 @@
         <div class="alert alert-success" role="status"><x-admin.icon name="check" /> <span>Le compte à rebours est désactivé : le site est <strong>ouvert à tous</strong>.</span></div>
     @endif
 
-    <form method="post" action="{{ route('admin.launch.update') }}" class="card card-flush" style="max-width:760px">
+    <form method="post" action="{{ route('admin.launch.update') }}" class="card card-flush">
         @csrf
         @method('PUT')
 

@@ -41,7 +41,6 @@ body {
 .admin-layout {
     display: flex;
     width: 100%;
-    max-width: 1500px;
     margin: 0 auto;
     gap: 1rem;
 }

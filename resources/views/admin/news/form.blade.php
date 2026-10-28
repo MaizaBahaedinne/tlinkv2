@@ -14,7 +14,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    <form method="post" action="{{ $item->exists ? route('admin.news.update', $item) : route('admin.news.store') }}" class="card card-flush" style="max-width:860px" enctype="multipart/form-data">
+    <form method="post" action="{{ $item->exists ? route('admin.news.update', $item) : route('admin.news.store') }}" class="card card-flush" enctype="multipart/form-data">
         @csrf
         @if($item->exists)
             @method('PUT')
@@ -97,7 +97,7 @@
     </form>
 
     @if($item->exists)
-        <form method="post" action="{{ route('admin.news.destroy', $item) }}" style="max-width:860px;margin-top:12px" onsubmit="return confirm('Supprimer définitivement cette actualité et son image ?')">
+        <form method="post" action="{{ route('admin.news.destroy', $item) }}" style="margin-top:12px" onsubmit="return confirm('Supprimer définitivement cette actualité et son image ?')">
             @csrf
             @method('DELETE')
             <button type="submit" class="btn btn-danger btn-sm"><x-admin.icon name="trash" :size="15" /> Supprimer l’actualité</button>

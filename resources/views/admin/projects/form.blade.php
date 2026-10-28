@@ -13,7 +13,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    <form method="post" action="{{ route('admin.projects.update', ['scope' => $project->scope]) }}" class="card card-flush" style="max-width:860px" enctype="multipart/form-data">
+    <form method="post" action="{{ route('admin.projects.update', ['scope' => $project->scope]) }}" class="card card-flush" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 
@@ -96,7 +96,7 @@
     </form>
 
     @if($project->exists)
-        <form method="post" action="{{ route('admin.projects.destroy', ['scope' => $project->scope]) }}" style="max-width:860px;margin-top:12px" onsubmit="return confirm('Effacer le contenu de cette page (textes, chiffres, couverture) ?')">
+        <form method="post" action="{{ route('admin.projects.destroy', ['scope' => $project->scope]) }}" style="margin-top:12px" onsubmit="return confirm('Effacer le contenu de cette page (textes, chiffres, couverture) ?')">
             @csrf
             @method('DELETE')
             <button type="submit" class="btn btn-danger btn-sm"><x-admin.icon name="trash" :size="15" /> Effacer le contenu de la page</button>

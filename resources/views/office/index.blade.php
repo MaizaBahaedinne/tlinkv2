@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="min-h-screen bg-tlink-sand px-4 py-8">
-    <div class="mx-auto w-full max-w-5xl space-y-6">
+    <div class="w-full space-y-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="font-display text-2xl font-semibold text-tlink-blue">Mon bureau</h1>

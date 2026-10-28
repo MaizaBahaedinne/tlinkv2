@@ -13,7 +13,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    <form method="post" action="{{ $editing ? route('admin.events.update', $event) : route('admin.events.store') }}" class="card card-flush" style="max-width:860px">
+    <form method="post" action="{{ $editing ? route('admin.events.update', $event) : route('admin.events.store') }}" class="card card-flush">
         @csrf
         @if($editing) @method('PUT') @endif
 

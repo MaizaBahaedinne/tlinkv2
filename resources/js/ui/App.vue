@@ -182,7 +182,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
 <template>
   <div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
     <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
+      <div class="flex w-full items-center justify-between px-4 py-3 lg:px-8">
         <div class="flex items-center gap-3">
           <div class="h-10 w-10 rounded-2xl bg-tlink-blue p-2 text-white shadow-soft">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -233,7 +233,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
       </div>
     </header>
 
-    <main class="mx-auto mt-6 w-full max-w-7xl px-4 lg:px-8">
+    <main class="mt-6 w-full px-4 lg:px-8">
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <aside class="hidden lg:col-span-3 lg:block">
           <div class="sticky top-24 space-y-4">

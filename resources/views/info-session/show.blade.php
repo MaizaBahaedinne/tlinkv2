@@ -6,7 +6,7 @@
     $statusLabels = \App\Models\QuizAttempt::STATUSES;
 @endphp
 <div class="min-h-screen px-4 py-8">
-    <div class="mx-auto w-full max-w-4xl">
+    <div class="w-full">
         <header class="mb-6 flex items-center justify-between">
             <a href="{{ route('home') }}" class="inline-flex items-center gap-3">
                 <span class="grid h-11 w-11 place-items-center rounded-2xl bg-tlink-blue font-display text-lg font-bold text-white shadow-soft">T</span>

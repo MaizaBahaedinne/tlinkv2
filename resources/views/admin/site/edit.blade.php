@@ -10,7 +10,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    <form method="post" action="{{ route('admin.site.update') }}" class="card card-flush" style="max-width:860px" enctype="multipart/form-data">
+    <form method="post" action="{{ route('admin.site.update') }}" class="card card-flush" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 
