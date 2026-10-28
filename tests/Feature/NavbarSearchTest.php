@@ -120,7 +120,8 @@ class NavbarSearchTest extends TestCase
             $this->actingAs($user)->get($page)->assertOk()
                 ->assertSee('id="nav-search"', false)
                 ->assertSee('Navigation de l\'application', false)
-                ->assertSee(route('orgchart.index'), false)
+                ->assertSee(route('notifications.index'), false)
+                ->assertDontSee('title="Organigramme"', false)
                 ->assertSee('1 non lues', false);
         }
 

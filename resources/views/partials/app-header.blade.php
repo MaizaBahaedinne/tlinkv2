@@ -7,18 +7,17 @@
 
     $navItems = array_values(array_filter([
         ['label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
-        ['label' => 'Organigramme', 'href' => route('orgchart.index'), 'icon' => 'fa-solid fa-sitemap', 'active' => request()->routeIs('orgchart.*')],
         ($hasOffice ?? false) ? ['label' => 'Mon bureau', 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
         ($canAdmin ?? false) ? ['label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
     ]));
 @endphp
 <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
     <div class="app-container flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
-        <a href="{{ route('home') }}" class="flex shrink-0 items-center" aria-label="T.Link, accueil">
+        <a href="{{ route('home') }}" class="flex shrink-0 items-center lg:flex-1 lg:basis-0" aria-label="T.Link, accueil">
             <img src="{{ asset('tlink-logo.webp') }}" alt="T.Link" width="447" height="169" class="h-9 w-auto">
         </a>
 
-        <nav class="order-last flex w-full justify-around gap-1 border-t border-slate-100 pt-2 lg:order-none lg:w-auto lg:justify-start lg:border-0 lg:pt-0" aria-label="Navigation de l'application">
+        <nav class="order-last flex w-full justify-center gap-2 border-t border-slate-100 pt-2 lg:order-none lg:w-auto lg:border-0 lg:pt-0" aria-label="Navigation de l'application">
             @foreach($navItems as $item)
                 <a href="{{ $item['href'] }}" title="{{ $item['label'] }}" aria-label="{{ $item['label'] }}" @if($item['active']) aria-current="page" @endif
                    class="grid h-10 w-10 place-items-center rounded-xl text-base transition {{ $item['active'] ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
@@ -27,18 +26,18 @@
             @endforeach
         </nav>
 
-        <form id="nav-search" action="{{ route('search.index') }}" method="get" role="search" data-suggest-url="{{ route('search.suggest') }}"
-              class="relative min-w-0 flex-1 lg:max-w-md">
-            <label for="nav-search-input" class="sr-only">Rechercher sur T.Link</label>
-            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
-            <input id="nav-search-input" type="search" name="q" value="{{ request()->routeIs('search.index') ? request('q') : '' }}" maxlength="80" autocomplete="off"
-                   placeholder="Rechercher…"
-                   role="combobox" aria-expanded="false" aria-controls="nav-search-results" aria-autocomplete="list"
-                   class="w-full rounded-xl border border-transparent bg-slate-100 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-tlink-blue focus:bg-white">
-            <div id="nav-search-results" role="listbox" hidden class="absolute left-0 right-0 top-full z-40 mt-2 max-h-[70vh] min-w-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-soft"></div>
-        </form>
+        <div class="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1.5 lg:basis-0">
+            <form id="nav-search" action="{{ route('search.index') }}" method="get" role="search" data-suggest-url="{{ route('search.suggest') }}"
+                  class="relative min-w-0 max-w-40 flex-1 transition-[max-width] duration-200 focus-within:max-w-60">
+                <label for="nav-search-input" class="sr-only">Rechercher sur T.Link</label>
+                <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
+                <input id="nav-search-input" type="search" name="q" value="{{ request()->routeIs('search.index') ? request('q') : '' }}" maxlength="80" autocomplete="off"
+                       placeholder="Rechercher…"
+                       role="combobox" aria-expanded="false" aria-controls="nav-search-results" aria-autocomplete="list"
+                       class="w-full rounded-xl border border-transparent bg-slate-100 py-1.5 pl-8 pr-2 text-sm outline-none transition focus:border-tlink-blue focus:bg-white">
+                <div id="nav-search-results" role="listbox" hidden class="absolute right-0 top-full z-40 mt-2 max-h-[70vh] w-80 max-w-[90vw] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-soft"></div>
+            </form>
 
-        <div class="ml-auto flex items-center gap-1.5">
             <a href="{{ route('notifications.index') }}" title="Notifications" aria-label="Notifications{{ $unread > 0 ? ' ('.$unread.' non lues)' : '' }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif
                class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('notifications.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
                 <i class="fa-regular fa-bell" aria-hidden="true"></i>
