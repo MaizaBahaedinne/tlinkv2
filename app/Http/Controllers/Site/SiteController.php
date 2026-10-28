@@ -206,10 +206,42 @@ class SiteController extends Controller
 
         abort_if($project === null, 404);
 
+        // Le projet et ses éventuels sous-espaces : leur bureau, leurs actualités et leurs événements lui sont rattachés.
+        $scopes = $this->scopeWithDescendants($slug);
+        $teamGroups = PublicOrgChart::teamByScope();
+
         return $this->render('site.projects.show', [
             'project' => $project,
             'others' => $pages->where('scope', '!=', $slug)->take(3)->values(),
+            'team' => collect($scopes)->flatMap(fn (string $scope) => $teamGroups[$scope] ?? collect())->values(),
+            'news' => SiteNews::query()->visible()->whereIn('scope', $scopes)->limit(3)->get(),
+            'upcomingEvents' => $this->upcomingEvents()->whereIn('scope', $scopes)->limit(6)->get(),
+            'pastEvents' => $this->publicEvents()
+                ->whereIn('scope', $scopes)
+                ->where('starts_at', '<', now()->startOfDay())
+                ->orderByDesc('starts_at')
+                ->limit(3)
+                ->get(),
         ]);
+    }
+
+    /**
+     * @return array<int, string> le périmètre et tous ses sous-périmètres
+     */
+    private function scopeWithDescendants(string $slug): array
+    {
+        $hierarchy = OrgScopes::hierarchy();
+        $found = [$slug];
+
+        for ($i = 0; $i < count($found); $i++) {
+            foreach ($hierarchy as $child => $parent) {
+                if ($parent === $found[$i] && ! in_array((string) $child, $found, true)) {
+                    $found[] = (string) $child;
+                }
+            }
+        }
+
+        return $found;
     }
 
     public function clubs(Request $request): View

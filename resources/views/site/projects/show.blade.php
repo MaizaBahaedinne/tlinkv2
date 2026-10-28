@@ -7,6 +7,7 @@
     $figures = $project->figures();
     $cover = $project->coverUrl();
     $body = $project->text('body');
+    $logo = $project->logoUrl();
 @endphp
 
 @section('content')
@@ -16,6 +17,11 @@
         @endif
         <div class="relative mx-auto max-w-6xl px-4 py-14 md:py-20">
             <a href="{{ route('site.projects') }}" class="text-sm font-bold text-white/80 hover:text-white">← {{ __('site.projects.title') }}</a>
+            @if($logo)
+                <div class="mt-5 inline-flex rounded-2xl bg-white p-3 shadow-lg">
+                    <img src="{{ $logo }}" alt="{{ $project->text('name') }}" class="h-16 w-auto max-w-56 object-contain md:h-20" loading="eager" decoding="async">
+                </div>
+            @endif
             <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold">
                 <span class="rounded-full bg-white/15 px-3 py-1">{{ __('site.projects.status_'.$project->status) }}</span>
                 @if($project->started_year)
@@ -59,6 +65,74 @@
             </p>
         @endif
     </article>
+
+    @if($team->isNotEmpty())
+        <section class="mx-auto mt-16 max-w-6xl px-4" aria-labelledby="project-team">
+            <h2 id="project-team" class="font-display text-2xl font-bold text-brand-900">{{ __('site.projects.team') }}</h2>
+            <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach($team as $node)
+                    @foreach($node->assignments as $assignment)
+                        @php($person = $assignment->person)
+                        @continue(! $person)
+                        @php($photo = $person->photoUrl())
+                        <div class="site-card flex items-center gap-4 p-4">
+                            @if($photo)
+                                <img src="{{ $photo }}" alt="" loading="lazy" class="h-16 w-16 shrink-0 rounded-full object-cover">
+                            @else
+                                <span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-100 font-display text-xl font-bold text-brand-800">{{ mb_strtoupper(mb_substr($person->displayName(), 0, 1)) }}</span>
+                            @endif
+                            <div class="min-w-0">
+                                <p class="font-display font-bold text-brand-900">{{ $person->displayName() }}</p>
+                                <p class="text-sm text-slate-600">{{ $node->title }}</p>
+                                @if($node->subtitle)
+                                    <p class="text-xs text-slate-500">{{ $node->subtitle }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if($upcomingEvents->isNotEmpty() || $pastEvents->isNotEmpty())
+        <section class="mx-auto mt-16 max-w-6xl px-4" aria-labelledby="project-events">
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <h2 id="project-events" class="font-display text-2xl font-bold text-brand-900">{{ __('site.projects.events') }}</h2>
+                <a href="{{ route('site.events', ['scope' => $project->scope]) }}" class="text-sm font-bold text-brand-600 hover:text-brand-800">{{ __('site.projects.all_events') }} →</a>
+            </div>
+            @if($upcomingEvents->isNotEmpty())
+                <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-500">{{ __('site.events.upcoming') }}</h3>
+                <div class="mt-3 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    @foreach($upcomingEvents as $event)
+                        @include('site.partials.event-card', ['event' => $event])
+                    @endforeach
+                </div>
+            @endif
+            @if($pastEvents->isNotEmpty())
+                <h3 class="mt-6 text-sm font-bold uppercase tracking-wide text-slate-500">{{ __('site.events.past') }}</h3>
+                <div class="mt-3 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    @foreach($pastEvents as $event)
+                        @include('site.partials.event-card', ['event' => $event])
+                    @endforeach
+                </div>
+            @endif
+        </section>
+    @endif
+
+    @if($news->isNotEmpty())
+        <section class="mx-auto mt-16 max-w-6xl px-4" aria-labelledby="project-news">
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <h2 id="project-news" class="font-display text-2xl font-bold text-brand-900">{{ __('site.projects.news') }}</h2>
+                <a href="{{ route('site.news', ['scope' => $project->scope]) }}" class="text-sm font-bold text-brand-600 hover:text-brand-800">{{ __('site.projects.all_news') }} →</a>
+            </div>
+            <div class="mt-5 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                @foreach($news as $item)
+                    @include('site.partials.news-card', ['item' => $item])
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     @if($others->isNotEmpty())
         <section class="mx-auto mt-16 max-w-6xl px-4">

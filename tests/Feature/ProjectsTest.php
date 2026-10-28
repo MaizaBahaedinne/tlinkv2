@@ -3,6 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Setting;
+use App\Models\FoundationEvent;
+use App\Models\OrgAssignment;
+use App\Models\OrgNode;
+use App\Models\OrgPerson;
+use App\Models\SiteNews;
 use App\Models\SiteProject;
 use App\Models\User;
 use App\Support\OrgScopes;
@@ -110,6 +115,60 @@ class ProjectsTest extends TestCase
         $this->get('/fr/projets/club-tunis')->assertNotFound(); // chapitre
         $this->get('/fr/projets/foundation')->assertNotFound(); // management
         $this->get('/fr/projets/inconnu')->assertNotFound();
+    }
+
+    public function test_project_page_shows_its_team_events_and_news_only(): void
+    {
+        $this->defineScopes();
+        $this->makePage();
+
+        $position = OrgNode::query()->create(['kind' => 'position', 'category' => 'project', 'scope' => 'we-are-carthage', 'title' => 'Cheffe de projet', 'access_level' => 'none']);
+        $other = OrgNode::query()->create(['kind' => 'position', 'category' => 'university', 'scope' => 'university', 'title' => 'Responsable campus', 'access_level' => 'none']);
+
+        foreach ([[$position, 'Leila Carthage'], [$other, 'Karim Campus']] as [$node, $name]) {
+            $person = OrgPerson::query()->create(['full_name' => $name, 'email' => 'secret@example.test']);
+            OrgAssignment::query()->create(['node_id' => $node->id, 'person_id' => $person->id]);
+        }
+
+        FoundationEvent::query()->create(['title' => 'Gala Carthage', 'scope' => 'we-are-carthage', 'status' => 'published', 'starts_at' => now()->addDays(5)]);
+        FoundationEvent::query()->create(['title' => 'Atelier Campus', 'scope' => 'university', 'status' => 'published', 'starts_at' => now()->addDays(5)]);
+        SiteNews::query()->create(['title' => ['fr' => 'Bilan Carthage'], 'scope' => 'we-are-carthage', 'status' => 'published', 'published_at' => now()->subHour()]);
+        SiteNews::query()->create(['title' => ['fr' => 'Actu Campus'], 'scope' => 'university', 'status' => 'published', 'published_at' => now()->subHour()]);
+
+        $this->get('/fr/projets/we-are-carthage')
+            ->assertOk()
+            ->assertSee(__('site.projects.team', [], 'fr'))
+            ->assertSee('Leila Carthage')
+            ->assertSee('Cheffe de projet')
+            ->assertSee('Gala Carthage')
+            ->assertSee('Bilan Carthage')
+            ->assertDontSee('secret@example.test')
+            ->assertDontSee('Karim Campus')
+            ->assertDontSee('Atelier Campus')
+            ->assertDontSee('Actu Campus');
+    }
+
+    public function test_project_page_hides_empty_team_events_and_news_sections(): void
+    {
+        $this->defineScopes();
+        $this->makePage();
+
+        $this->get('/fr/projets/we-are-carthage')
+            ->assertOk()
+            ->assertDontSee(__('site.projects.team', [], 'fr'))
+            ->assertDontSee(__('site.projects.events', [], 'fr'))
+            ->assertDontSee(__('site.projects.news', [], 'fr'));
+    }
+
+    public function test_project_page_shows_the_scope_logo(): void
+    {
+        Storage::fake('public');
+        $this->defineScopes();
+        Storage::disk('public')->put('scopes/logos/carthage.png', 'x');
+        Setting::query()->updateOrCreate(['group' => 'org', 'key' => 'scopes_logos'], ['value' => json_encode(['we-are-carthage' => 'scopes/logos/carthage.png'])]);
+        OrgScopes::flushCache();
+
+        $this->get('/fr/projets/we-are-carthage')->assertOk()->assertSee('scopes/logos/carthage.png', false);
     }
 
     public function test_project_page_shows_presentation_and_figures_in_each_locale(): void
