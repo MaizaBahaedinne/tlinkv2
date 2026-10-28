@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\Governorate;
+use App\Models\Institution;
 use App\Models\Membership;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
@@ -138,10 +139,11 @@ class MemberProfileTest extends TestCase
         $this->actingAs(User::factory()->create())->get('/membres/'.$first->id)->assertSee('/storage/companies/logos/tt.png', false);
     }
 
-    public function test_a_school_is_selected_from_the_clubs_and_never_created(): void
+    public function test_a_school_is_selected_from_the_institutions_and_never_created(): void
     {
         $club = $this->universityClub('ESPRIT');
-        $club->update(['logo_path' => 'clubs/logos/esprit.png']);
+        $institution = Institution::query()->where('slug', 'esprit')->firstOrFail();
+        $institution->update(['logo_path' => 'institutions/logos/esprit.png', 'type' => 'university']);
         $member = User::factory()->create();
 
         $this->saveSection($member, 'educations', [
@@ -150,19 +152,20 @@ class MemberProfileTest extends TestCase
         ]);
 
         $rows = $member->fresh()->profile->privacy_settings['educations'];
-        $this->assertSame($club->id, $rows[0]['school_id']);
+        $this->assertSame($institution->id, $rows[0]['school_id']);
         $this->assertNull($rows[1]['school_id']);
         $this->assertSame(0, Company::query()->count());
+        $this->assertSame(1, Institution::query()->count());
 
         $this->actingAs(User::factory()->create())->get('/membres/'.$member->id)
             ->assertSee('Génie logiciel')
             ->assertSee('Ecole Inconnue')
-            ->assertSee('/storage/clubs/logos/esprit.png', false);
+            ->assertSee('/storage/institutions/logos/esprit.png', false);
 
         $this->actingAs($member)->get('/profil')
             ->assertOk()
             ->assertSee('<option value="ESPRIT">', false)
-            ->assertSee('/storage/clubs/logos/esprit.png', false);
+            ->assertSee('/storage/institutions/logos/esprit.png', false);
     }
 
     public function test_an_associative_experience_is_linked_to_its_club(): void
@@ -193,7 +196,7 @@ class MemberProfileTest extends TestCase
         $settings = $member->fresh()->profile->privacy_settings;
         $this->assertSame(1, Company::query()->where('slug', 'orange-tunisie')->count());
         $this->assertSame(Company::query()->value('id'), $settings['professional_experiences'][0]['company_id']);
-        $this->assertSame($club->id, $settings['educations'][0]['school_id']);
+        $this->assertSame($club->institution_id, $settings['educations'][0]['school_id']);
         $this->assertSame(['php'], $settings['skill_keywords']);
     }
 
@@ -257,7 +260,7 @@ class MemberProfileTest extends TestCase
         $club = $this->universityClub('ESPRIT');
         $admin = $this->admin();
 
-        $this->actingAs($admin)->get('/admin/structure/postes/'.$club->id.'/modifier')->assertOk()->assertSee('Logo de l’établissement');
+        $this->actingAs($admin)->get('/admin/structure/postes/'.$club->id.'/modifier')->assertOk()->assertSee('Logo du club');
 
         $this->actingAs($admin)->put('/admin/structure/postes/'.$club->id, [
             'title' => $club->title, 'status' => 'active', 'institution_name' => 'ESPRIT',

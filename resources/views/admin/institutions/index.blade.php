@@ -52,8 +52,8 @@
                         @endif
                         <div class="grow" style="min-width:220px">
                             <strong style="display:inline">{{ $institution->name }}</strong>
-                            <x-admin.badge>{{ $institution->typeLabel() }}</x-admin.badge>
-                            @unless($institution->is_active)<x-admin.badge>Inactif</x-admin.badge>@endunless
+                            <x-admin.badge :status="$institution->type === 'faculty' ? 'draft' : $institution->type" :label="$institution->typeLabel()" />
+                            @unless($institution->is_active)<x-admin.badge status="inactive" />@endunless
                             <div class="text-sm text-muted">
                                 {{ collect([$institution->parent?->name, $institution->governorate?->name, $institution->address])->filter()->implode(' · ') }}
                             </div>
