@@ -34,6 +34,7 @@
                     <div class="min-w-0 flex-1 sm:pb-1">
                         <h1 class="font-display text-2xl font-semibold text-slate-900">{{ $user->name }}</h1>
                         <p class="text-sm text-slate-600">{{ $profile->headline ?: 'Ajoutez un titre professionnel impactant.' }}</p>
+                        @include('profile.partials.highlights')
                         <p class="mt-1 truncate text-xs text-slate-500">{{ $user->email }}</p>
                     </div>
                     <div class="sm:pb-1">

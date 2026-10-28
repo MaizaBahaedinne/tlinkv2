@@ -97,7 +97,7 @@ class MemberProfileController extends Controller
     {
         for ($guard = 0; $guard < 20 && $node !== null; $guard++) {
             if ($node->kind === 'club') {
-                return $node;
+                return $node->loadMissing('institution');
             }
 
             $node = $node->parent_id !== null ? OrgNode::query()->find($node->parent_id) : null;

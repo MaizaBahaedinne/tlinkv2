@@ -38,7 +38,7 @@ use Illuminate\View\View;
  */
 class StructureController extends AdminController
 {
-    private const CLUB_FIELDS = ['status', 'email', 'facebook_url', 'founded_on', 'charter_signed', 'institution_name', 'institution_type', 'governorate_id'];
+    private const CLUB_FIELDS = ['status', 'email', 'facebook_url', 'founded_on', 'charter_signed', 'institution_name', 'institution_type', 'institution_id', 'governorate_id'];
 
     public function __construct(
         private readonly OrgChartRules $rules,
@@ -498,7 +498,9 @@ class StructureController extends AdminController
             'capacities' => OrgNode::CAPACITIES,
             'governorates' => Governorate::query()->orderBy('name')->pluck('name', 'id')->all(),
             'clubStatuses' => OrgNode::CLUB_STATUSES,
-            'institutionTypes' => OrgNode::INSTITUTION_TYPES,
+            'institutionOptions' => \App\Models\Institution::query()
+                ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $node->institution_id))
+                ->orderBy('name')->pluck('name', 'id')->all(),
             'hasChildren' => $node->children()->exists(),
         ]);
     }
@@ -527,6 +529,7 @@ class StructureController extends AdminController
             'charter_signed' => ['nullable', 'boolean'],
             'institution_name' => ['nullable', 'string', 'max:255'],
             'institution_type' => ['nullable', Rule::in(array_keys(OrgNode::INSTITUTION_TYPES))],
+            'institution_id' => ['nullable', 'integer', 'exists:institutions,id'],
             'governorate_id' => ['nullable', 'integer', 'exists:governorates,id'],
             'logo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             'remove_logo' => ['nullable', 'boolean'],

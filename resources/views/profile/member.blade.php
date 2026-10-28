@@ -27,6 +27,7 @@
                     <div class="min-w-0 flex-1 sm:pb-1">
                         <h1 class="font-display text-2xl font-semibold text-slate-900">{{ $member->name }}</h1>
                         <p class="text-sm text-slate-600">{{ $profile->headline ?: 'Membre Tunivisions' }}</p>
+                        @include('profile.partials.highlights')
                     </div>
                 </div>
 

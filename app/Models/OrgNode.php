@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class OrgNode extends Model
@@ -65,6 +66,7 @@ class OrgNode extends Model
         'charter_signed',
         'institution_name',
         'institution_type',
+        'institution_id',
         'logo_path',
         'validation_status',
         'validation_note',
@@ -106,6 +108,59 @@ class OrgNode extends Model
                 $node->permissions = null;
             }
         });
+
+        static::saving(function (self $node): void {
+            $node->syncInstitution();
+        });
+    }
+
+    /**
+     * Garde le club et sa fiche d'établissement cohérents : choisir un établissement recopie son nom/type ;
+     * saisir un nom (import, installation) retrouve ou crée la fiche correspondante.
+     */
+    protected function syncInstitution(): void
+    {
+        if ($this->kind !== 'club' || ! Schema::hasTable('institutions') || ! Schema::hasColumn('org_nodes', 'institution_id')) {
+            return;
+        }
+
+        $idChanged = $this->isDirty('institution_id');
+        $nameChanged = $this->isDirty('institution_name');
+
+        if ($idChanged && $this->institution_id !== null) {
+            $institution = Institution::query()->find($this->institution_id);
+
+            if ($institution === null) {
+                $this->institution_id = null;
+            } else {
+                $this->institution_name = $institution->name;
+                $this->institution_type = $institution->clubType();
+
+                return;
+            }
+        }
+
+        if ($idChanged && ! $nameChanged) {
+            $this->institution_name = null;
+            $this->institution_type = null;
+
+            return;
+        }
+
+        if ($nameChanged) {
+            $institution = filled($this->institution_name)
+                ? Institution::resolve((string) $this->institution_name, $this->institution_type, $this->governorate_id)
+                : null;
+
+            $this->institution_id = $institution?->id;
+            $this->institution_name = $institution?->name;
+            $this->institution_type = $institution?->clubType();
+        }
+    }
+
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
     }
 
     public function parent(): BelongsTo
@@ -113,10 +168,14 @@ class OrgNode extends Model
         return $this->belongsTo(self::class, 'parent_id');
     }
 
-    /** Logo de l'établissement ou du club, affiché sur les profils des membres. */
+    /** Logo du club ; à défaut celui de son établissement (si la relation est chargée). */
     public function logoUrl(): ?string
     {
-        return $this->logo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->logo_path) : null;
+        if ($this->logo_path) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($this->logo_path);
+        }
+
+        return $this->relationLoaded('institution') ? $this->institution?->logoUrl() : null;
     }
 
     public function children(): HasMany

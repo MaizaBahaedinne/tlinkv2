@@ -56,6 +56,7 @@ final class ModuleCatalog
                     ['key' => 'organization.positions', 'name' => 'Postes et droits', 'description' => 'Postes, titulaires, niveaux d’accès et périmètres.', 'actions' => self::CRUD],
                     ['key' => 'organization.applications', 'name' => 'Candidatures aux postes', 'description' => 'Candidatures déposées via le lien d’inscription d’un poste.', 'actions' => ['create', 'read', 'update']],
                     ['key' => 'organization.clubs', 'name' => 'Clubs', 'description' => 'Clubs régionaux, universitaires et lycées.', 'actions' => self::CRUD],
+                    ['key' => 'organization.institutions', 'name' => 'Établissements', 'description' => 'Lycées, universités, facultés et écoles liés aux clubs, avec leur logo.', 'actions' => self::CRUD],
                     ['key' => 'organization.mandates', 'name' => 'Mandats', 'description' => 'Mandats et bureaux successifs.', 'actions' => self::CRUD],
                     ['key' => 'organization.scopes', 'name' => 'Périmètres', 'description' => 'Hiérarchie des périmètres (espaces) de la Fondation.', 'actions' => self::CRUD],
                 ],

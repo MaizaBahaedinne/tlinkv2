@@ -16,6 +16,7 @@
                     <x-org-logo :url="$item['logo_url'] ?? null" :name="$item['company'] ?? ''" icon="fa-solid fa-building" />
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold text-slate-900">{{ $item['role'] ?? 'Poste' }} · {{ $item['company'] ?? 'Societe' }}</p>
+                        @if(! empty($item['url']))<a href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer" class="mt-1 block truncate text-xs text-sky-700 hover:underline">{{ $item['url'] }}</a>@endif
                         <p class="mt-1 text-xs text-slate-500">{{ $item['start_date'] ?? '-' }} - {{ ($item['end_date'] ?? '') !== '' ? $item['end_date'] : 'En cours' }}</p>
                         @if(($item['description'] ?? '') !== '')<p class="mt-2 text-sm text-slate-700">{{ $item['description'] }}</p>@endif
                     </div>
@@ -40,6 +41,8 @@
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold text-slate-900">{{ $item['degree_type'] ?? 'Diplome' }} · {{ $item['diploma_name'] ?? 'Intitule' }}</p>
                         <p class="mt-1 text-xs text-slate-500">{{ $item['school'] ?? 'Ecole' }}</p>
+                        @if(! empty($item['info']))<p class="mt-1 text-xs text-slate-500">{{ $item['info'] }}</p>@endif
+                        @if(! empty($item['url']))<a href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer" class="mt-1 block truncate text-xs text-sky-700 hover:underline">{{ $item['url'] }}</a>@endif
                         <p class="mt-1 text-xs text-slate-500">{{ $item['start_date'] ?? '-' }} - {{ ($item['end_date'] ?? '') !== '' ? $item['end_date'] : 'En cours' }}</p>
                     </div>
                 </article>
@@ -82,6 +85,7 @@
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold text-slate-900">{{ $item['role'] ?? 'Poste' }} · {{ $item['club_name'] ?? 'Club' }}</p>
                         @if(($item['department'] ?? '') !== '')<p class="mt-1 text-xs text-slate-500">{{ $item['department'] }}</p>@endif
+                        @if(! empty($item['info']))<p class="mt-1 text-xs text-slate-500">{{ $item['info'] }}</p>@endif
                         <p class="mt-1 text-xs text-slate-500">{{ $item['start_date'] ?? '-' }} - {{ ($item['end_date'] ?? '') !== '' ? $item['end_date'] : 'En cours' }}</p>
                         @if(($item['description'] ?? '') !== '')<p class="mt-2 text-sm text-slate-700">{{ $item['description'] }}</p>@endif
                     </div>

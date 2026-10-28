@@ -168,6 +168,10 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('badges/missions/{mission}/points', [Admin\BadgeController::class, 'storeCheckpoint'])->name('badges.checkpoints.store');
             Route::put('badges/points/{checkpoint}', [Admin\BadgeController::class, 'updateCheckpoint'])->name('badges.checkpoints.update');
             Route::delete('badges/points/{checkpoint}', [Admin\BadgeController::class, 'destroyCheckpoint'])->name('badges.checkpoints.destroy');
+            Route::get('etablissements', [Admin\InstitutionController::class, 'index'])->name('institutions.index');
+            Route::post('etablissements', [Admin\InstitutionController::class, 'store'])->name('institutions.store');
+            Route::put('etablissements/{institution}', [Admin\InstitutionController::class, 'update'])->name('institutions.update');
+            Route::delete('etablissements/{institution}', [Admin\InstitutionController::class, 'destroy'])->name('institutions.destroy');
             Route::get('entreprises', [Admin\CompanyController::class, 'index'])->name('companies.index');
             Route::post('entreprises', [Admin\CompanyController::class, 'store'])->name('companies.store');
             Route::put('entreprises/{company}', [Admin\CompanyController::class, 'update'])->name('companies.update');

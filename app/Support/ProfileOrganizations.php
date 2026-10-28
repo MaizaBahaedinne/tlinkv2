@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Company;
+use App\Models\Institution;
 use App\Models\OrgNode;
 use App\Models\Profile;
 use Illuminate\Support\Collection;
@@ -11,7 +12,7 @@ use Illuminate\Support\Str;
 /**
  * Relie les expériences d'un profil aux bases de la plateforme, pour y afficher leurs logos :
  *  - entreprise (expérience pro) : sélectionnée dans la base si elle existe, sinon créée ;
- *  - école (formation) : retrouvée parmi les établissements des clubs (jamais créée) ;
+ *  - école (formation) : retrouvée parmi les établissements de la plateforme (jamais créée) ;
  *  - club (expérience associative) : retrouvé parmi les clubs.
  * Les profils gardent le nom saisi (texte libre) ; le lien (`company_id`, `school_id`, `club_id`) ne sert qu'à retrouver le logo.
  */
@@ -37,7 +38,7 @@ class ProfileOrganizations
     /** @return array<int, string> */
     public function schoolOptions(): array
     {
-        return $this->clubs()->pluck('institution_name')->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all();
+        return Institution::query()->where('is_active', true)->orderBy('name')->pluck('name')->all();
     }
 
     /** @return array<int, string> */
@@ -59,15 +60,26 @@ class ProfileOrganizations
         return Company::query()->firstOrCreate(['slug' => $slug], ['name' => Str::limit($name, 160, ''), 'created_by' => $creatorId]);
     }
 
-    /** Club dont l'établissement porte ce nom (celui qui a un logo est préféré). */
-    public function findSchool(string $name): ?OrgNode
+    /** Établissement de la plateforme portant ce nom. */
+    public function findSchool(string $name): ?Institution
     {
-        return $this->match($name, 'institution_name') ?? $this->match($name, 'title');
+        $key = self::key($name);
+
+        return $key === '' ? null : Institution::query()->where('slug', $key)->first();
     }
 
+    /** Club portant ce nom (celui qui a un logo est préféré). */
     public function findClub(string $name): ?OrgNode
     {
-        return $this->match($name, 'title') ?? $this->match($name, 'institution_name');
+        $key = self::key($name);
+
+        if ($key === '') {
+            return null;
+        }
+
+        $matches = $this->clubs()->filter(fn (OrgNode $node): bool => self::key((string) $node->title) === $key);
+
+        return $matches->first(fn (OrgNode $node): bool => $node->logoUrl() !== null || $node->institution?->logoUrl() !== null) ?? $matches->first();
     }
 
     /**
@@ -125,15 +137,34 @@ class ProfileOrganizations
                 $company = $companies->firstWhere('id', (int) ($row[$idKey] ?? 0))
                     ?? $companies->firstWhere('slug', self::key((string) ($row[$nameKey] ?? '')));
                 $row['logo_url'] = $company?->logoUrl();
+                $row['url'] = $company?->safeUrl();
 
                 return $row;
             });
         }
 
-        return $rows->map(function (array $row) use ($type, $nameKey, $idKey): array {
-            $node = $this->clubs()->firstWhere('id', (int) ($row[$idKey] ?? 0))
-                ?? ($type === 'school' ? $this->findSchool((string) ($row[$nameKey] ?? '')) : $this->findClub((string) ($row[$nameKey] ?? '')));
-            $row['logo_url'] = $node?->logoUrl();
+        if ($type === 'school') {
+            $ids = $rows->pluck($idKey)->filter()->map(fn ($id): int => (int) $id)->all();
+            $slugs = $rows->map(fn (array $row): string => self::key((string) ($row[$nameKey] ?? '')))->filter()->all();
+            $institutions = Institution::query()->with(['parent:id,name', 'governorate:id,name'])
+                ->where(fn ($query) => $query->whereIn('id', $ids)->orWhereIn('slug', $slugs))->get();
+
+            return $rows->map(function (array $row) use ($institutions, $nameKey, $idKey): array {
+                $institution = $institutions->firstWhere('id', (int) ($row[$idKey] ?? 0))
+                    ?? $institutions->firstWhere('slug', self::key((string) ($row[$nameKey] ?? '')));
+                $row['logo_url'] = $institution?->logoUrl();
+                $row['url'] = $institution?->safeUrl();
+                $row['info'] = $institution?->summary();
+
+                return $row;
+            });
+        }
+
+        return $rows->map(function (array $row) use ($nameKey, $idKey): array {
+            $club = $this->clubs()->firstWhere('id', (int) ($row[$idKey] ?? 0)) ?? $this->findClub((string) ($row[$nameKey] ?? ''));
+            $row['logo_url'] = $club?->logoUrl() ?? $club?->institution?->logoUrl();
+            $row['url'] = null;
+            $row['info'] = $club ? collect([$club->governorate?->name, $club->institution?->name])->filter()->implode(' · ') : null;
 
             return $row;
         });
@@ -147,10 +178,21 @@ class ProfileOrganizations
     public function sections(Profile $profile): array
     {
         $settings = is_array($profile->privacy_settings) ? $profile->privacy_settings : [];
+        $experiences = $this->withLogos($settings['professional_experiences'] ?? [], 'company');
+        $educations = $this->withLogos($settings['educations'] ?? [], 'school');
+
+        // En-tête du profil : entreprise actuelle (poste sans date de fin, sinon le premier) et établissement principal.
+        $current = $experiences->first(fn (array $row): bool => blank($row['end_date'] ?? null) && filled($row['company'] ?? null))
+            ?? $experiences->first(fn (array $row): bool => filled($row['company'] ?? null));
+        $school = $educations->first(fn (array $row): bool => filled($row['school'] ?? null));
 
         return [
-            'professionalExperiences' => $this->withLogos($settings['professional_experiences'] ?? [], 'company'),
-            'educations' => $this->withLogos($settings['educations'] ?? [], 'school'),
+            'highlights' => collect([
+                $current ? ['kind' => 'company', 'name' => $current['company'], 'role' => $current['role'] ?? null, 'logo_url' => $current['logo_url'], 'url' => $current['url'] ?? null, 'info' => null] : null,
+                $school ? ['kind' => 'school', 'name' => $school['school'], 'role' => $school['diploma_name'] ?? null, 'logo_url' => $school['logo_url'], 'url' => $school['url'] ?? null, 'info' => $school['info'] ?? null] : null,
+            ])->filter()->values(),
+            'professionalExperiences' => $experiences,
+            'educations' => $educations,
             'certifications' => collect($settings['certifications'] ?? [])->values(),
             'associativeExperiences' => $this->withLogos($settings['associative_experiences'] ?? [], 'club'),
             'skillKeywords' => collect($settings['skill_keywords'] ?? [])->values(),
@@ -182,19 +224,7 @@ class ProfileOrganizations
     /** @return Collection<int, OrgNode> */
     private function clubs(): Collection
     {
-        return $this->clubs ??= OrgNode::query()->where('kind', 'club')->orderBy('id')->get(['id', 'title', 'institution_name', 'logo_path']);
-    }
-
-    private function match(string $name, string $field): ?OrgNode
-    {
-        $key = self::key($name);
-
-        if ($key === '') {
-            return null;
-        }
-
-        $matches = $this->clubs()->filter(fn (OrgNode $node): bool => $node->{$field} !== null && self::key((string) $node->{$field}) === $key);
-
-        return $matches->first(fn (OrgNode $node): bool => $node->logo_path !== null) ?? $matches->first();
+        return $this->clubs ??= OrgNode::query()->where('kind', 'club')->with(['governorate:id,name', 'institution:id,name,logo_path'])->orderBy('id')
+            ->get(['id', 'title', 'institution_name', 'institution_id', 'governorate_id', 'logo_path']);
     }
 }

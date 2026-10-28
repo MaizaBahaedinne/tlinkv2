@@ -23,6 +23,7 @@ final class ModulePermissions
         'organization.positions' => 'entity.manage',
         'organization.applications' => 'entity.manage',
         'organization.clubs' => 'entity.manage',
+        'organization.institutions' => 'entity.manage',
         'organization.mandates' => 'entity.manage',
         'organization.scopes' => 'entity.manage',
         'members.info_session' => 'entity.manage',
