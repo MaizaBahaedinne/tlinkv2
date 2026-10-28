@@ -2,6 +2,9 @@
 
 @section('content')
     @php($composer = $composerCapabilities ?? ['can_publish_public' => false, 'allowed_visibilities' => ['authenticated', 'entity', 'department', 'club', 'restricted']])
+    @auth
+        @include('partials.app-header')
+    @endauth
     <div id="tlink-app">
         <main style="max-width:960px;margin:32px auto;padding:24px;font-family:system-ui,sans-serif;line-height:1.5;">
             <h1 style="margin:0 0 8px;color:#d00031;">T.Link</h1>

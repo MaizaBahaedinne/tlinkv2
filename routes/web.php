@@ -10,6 +10,7 @@ use App\Http\Controllers\MyOfficeController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
 use App\Http\Controllers\PositionJoinController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +51,10 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/posts/{post}/view', [FeedController::class, 'view'])->name('posts.view');
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
+
+    // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
+    Route::get('/recherche', [SearchController::class, 'index'])->name('search.index');
+    Route::get('/recherche/suggestions', [SearchController::class, 'suggest'])->middleware('throttle:60,1')->name('search.suggest');
 
     // Mon bureau : supérieurs, équipe, et gestion des titulaires des postes situés sous les siens.
     Route::get('/mon-bureau', [MyOfficeController::class, 'index'])->name('office.index');

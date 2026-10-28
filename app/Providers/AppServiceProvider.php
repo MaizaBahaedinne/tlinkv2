@@ -50,5 +50,12 @@ class AppServiceProvider extends ServiceProvider
             $view->with('canAdmin', $request->user() !== null && AdminMenu::hasAccess(AdminContext::of($request)));
             $view->with('hasOffice', $request->user() !== null && \App\Support\MyOffice::enabled() && \App\Support\MyOffice::holdsPosition($request->user()));
         });
+
+        // Pastille de notifications non lues de la barre de navigation T.Link.
+        View::composer('partials.app-header', function ($view): void {
+            $user = request()->user();
+
+            $view->with('unreadNotifications', $user === null ? 0 : \App\Models\AppNotification::query()->where('user_id', $user->id)->whereNull('read_at')->count());
+        });
     }
 }

@@ -1,38 +1,188 @@
-{{-- En-tête commun des pages T.Link (hors admin) : même gabarit que le fil, contenu à 80 % de la largeur. --}}
+{{-- En-tête commun des pages T.Link (hors admin) : logo, boutons de navigation, recherche, menu utilisateur. --}}
+@php
+    $navItems = array_values(array_filter([
+        ['label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
+        ['label' => 'Organigramme', 'href' => route('orgchart.index'), 'icon' => 'fa-solid fa-sitemap', 'active' => request()->routeIs('orgchart.*')],
+        ($hasOffice ?? false) ? ['label' => 'Mon bureau', 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
+        ['label' => 'Notifications', 'href' => route('notifications.index'), 'icon' => 'fa-regular fa-bell', 'active' => request()->routeIs('notifications.*'), 'badge' => (int) ($unreadNotifications ?? 0)],
+        ($canAdmin ?? false) ? ['label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
+    ]));
+@endphp
 <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-    <div class="app-container flex items-center justify-between py-3">
-        <a href="{{ route('home') }}" class="flex items-center gap-3" aria-label="T.Link, accueil">
+    <div class="app-container flex flex-wrap items-center gap-x-4 gap-y-3 py-3">
+        <a href="{{ route('home') }}" class="order-1 flex shrink-0 items-center gap-3" aria-label="T.Link, accueil">
             <img src="{{ asset('tlink-logo.webp') }}" alt="T.Link" width="447" height="169" class="h-10 w-auto">
-            <span class="hidden border-l border-slate-200 pl-3 text-xs leading-tight text-slate-500 sm:block">Fondation<br>Tunivisions</span>
+            <span class="hidden border-l border-slate-200 pl-3 text-xs leading-tight text-slate-500 2xl:block">Fondation<br>Tunivisions</span>
         </a>
-        <div class="flex items-center gap-3">
-            <a href="{{ route('home') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">Accueil</a>
-            <details class="relative">
-                <summary class="list-none cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
-                    <span class="inline-flex items-center gap-2">
-                        <i class="fa-regular fa-user"></i>
-                        <span>{{ auth()->user()->name }}</span>
-                        <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
-                    </span>
-                </summary>
-                <div class="absolute right-0 z-30 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-soft">
-                    <a href="{{ route('profile.show') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2"></i>Profil</a>
-                    @if($canAdmin ?? false)
-                        <a href="{{ route('admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-list-check mr-2"></i>Administration</a>
+
+        <nav class="order-3 -mx-1 flex w-full gap-1 overflow-x-auto px-1 lg:order-2 lg:mx-0 lg:w-auto lg:overflow-visible lg:px-0" aria-label="Navigation de l'application">
+            @foreach($navItems as $item)
+                <a href="{{ $item['href'] }}" title="{{ $item['label'] }}" @if($item['active']) aria-current="page" @endif
+                   class="relative inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition {{ $item['active'] ? 'bg-rose-50 text-tlink-blue' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
+                    <i class="{{ $item['icon'] }} w-4 text-center" aria-hidden="true"></i>
+                    <span class="lg:hidden xl:inline">{{ $item['label'] }}</span>
+                    @if(($item['badge'] ?? 0) > 0)
+                        <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-tlink-blue px-1.5 text-[11px] font-bold leading-5 text-white" aria-label="{{ $item['badge'] }} non lues">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
                     @endif
-                    <a href="{{ route('orgchart.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-sitemap mr-2"></i>Organigramme</a>
-                    @if($hasOffice ?? false)
-                        <a href="{{ route('office.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-briefcase mr-2"></i>Mon bureau</a>
-                    @endif
-                    <a href="{{ route('notifications.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-bell mr-2"></i>Notifications</a>
-                    <form action="{{ route('logout') }}" method="post" class="mt-1">
-                        @csrf
-                        <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">
-                            <i class="fa-solid fa-right-from-bracket mr-2"></i>Deconnexion
-                        </button>
-                    </form>
-                </div>
-            </details>
-        </div>
+                </a>
+            @endforeach
+        </nav>
+
+        <form id="nav-search" action="{{ route('search.index') }}" method="get" role="search" data-suggest-url="{{ route('search.suggest') }}"
+              class="relative order-4 w-full lg:order-3 lg:ml-auto lg:w-72 xl:w-96">
+            <label for="nav-search-input" class="sr-only">Rechercher sur T.Link</label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true"></i>
+            <input id="nav-search-input" type="search" name="q" value="{{ request()->routeIs('search.index') ? request('q') : '' }}" maxlength="80" autocomplete="off"
+                   placeholder="Rechercher un membre, un club, un événement…"
+                   role="combobox" aria-expanded="false" aria-controls="nav-search-results" aria-autocomplete="list"
+                   class="w-full rounded-xl border border-slate-300 bg-slate-50 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-tlink-blue focus:bg-white">
+            <div id="nav-search-results" role="listbox" hidden class="absolute left-0 right-0 top-full z-40 mt-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-soft"></div>
+        </form>
+
+        <details class="relative order-2 ml-auto lg:order-4 lg:ml-0">
+            <summary class="list-none cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
+                <span class="inline-flex items-center gap-2">
+                    <i class="fa-regular fa-user"></i>
+                    <span class="hidden max-w-32 truncate sm:inline">{{ auth()->user()->name }}</span>
+                    <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+                </span>
+            </summary>
+            <div class="absolute right-0 z-30 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-soft">
+                <a href="{{ route('profile.show') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2"></i>Profil</a>
+                @if($canAdmin ?? false)
+                    <a href="{{ route('admin.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-list-check mr-2"></i>Administration</a>
+                @endif
+                <a href="{{ route('orgchart.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-sitemap mr-2"></i>Organigramme</a>
+                @if($hasOffice ?? false)
+                    <a href="{{ route('office.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-briefcase mr-2"></i>Mon bureau</a>
+                @endif
+                <a href="{{ route('notifications.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-bell mr-2"></i>Notifications</a>
+                <form action="{{ route('logout') }}" method="post" class="mt-1">
+                    @csrf
+                    <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">
+                        <i class="fa-solid fa-right-from-bracket mr-2"></i>Deconnexion
+                    </button>
+                </form>
+            </div>
+        </details>
     </div>
 </header>
+
+<script>
+    (function () {
+        var form = document.getElementById('nav-search');
+        if (!form) { return; }
+
+        var input = document.getElementById('nav-search-input');
+        var box = document.getElementById('nav-search-results');
+        var endpoint = form.getAttribute('data-suggest-url');
+        var timer = null;
+        var pending = null;
+        var links = [];
+        var active = -1;
+
+        function el(tag, className, text) {
+            var node = document.createElement(tag);
+            if (className) { node.className = className; }
+            if (text) { node.textContent = text; }
+            return node;
+        }
+
+        function open() { box.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+        function close() { box.hidden = true; input.setAttribute('aria-expanded', 'false'); setActive(-1); }
+
+        function setActive(index) {
+            links.forEach(function (link, i) {
+                link.classList.toggle('bg-slate-100', i === index);
+                link.setAttribute('aria-selected', i === index ? 'true' : 'false');
+            });
+            active = index;
+            if (links[index]) { links[index].scrollIntoView({ block: 'nearest' }); }
+        }
+
+        function render(data) {
+            box.textContent = '';
+            links = [];
+            active = -1;
+
+            if (!data.groups.length) {
+                box.appendChild(el('p', 'px-3 py-4 text-sm text-slate-500', 'Aucun résultat pour « ' + data.term + ' ».'));
+                open();
+                return;
+            }
+
+            data.groups.forEach(function (group) {
+                box.appendChild(el('p', 'px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-slate-400', group.label));
+
+                group.items.forEach(function (item) {
+                    var link = el('a', 'flex items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-slate-50');
+                    link.href = item.url;
+                    link.setAttribute('role', 'option');
+
+                    if (item.image) {
+                        var img = el('img', 'h-9 w-9 shrink-0 rounded-full object-cover');
+                        img.src = item.image;
+                        img.alt = '';
+                        link.appendChild(img);
+                    } else {
+                        link.appendChild(el('span', 'grid h-9 w-9 shrink-0 place-items-center rounded-full bg-rose-50 text-xs font-bold text-tlink-blue', (item.title || '?').charAt(0).toUpperCase()));
+                    }
+
+                    var text = el('span', 'min-w-0');
+                    text.appendChild(el('span', 'block truncate font-semibold text-slate-800', item.title));
+                    if (item.subtitle) { text.appendChild(el('span', 'block truncate text-xs text-slate-500', item.subtitle)); }
+                    link.appendChild(text);
+
+                    box.appendChild(link);
+                    links.push(link);
+                });
+            });
+
+            var all = el('a', 'mt-1 block rounded-xl border-t border-slate-100 px-3 py-2.5 text-center text-sm font-semibold text-tlink-blue hover:bg-slate-50', 'Voir tous les résultats');
+            all.href = data.all_url;
+            box.appendChild(all);
+            links.push(all);
+            open();
+        }
+
+        function fetchSuggestions() {
+            var term = input.value.trim();
+            if (term.length < 2) { close(); return; }
+
+            if (pending) { pending.abort(); }
+            pending = new AbortController();
+
+            fetch(endpoint + '?q=' + encodeURIComponent(term), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                signal: pending.signal
+            }).then(function (response) {
+                return response.ok ? response.json() : null;
+            }).then(function (data) {
+                if (data && input.value.trim() === data.term) { render(data); }
+            }).catch(function () { /* requête annulée ou réseau indisponible : la recherche complète reste possible */ });
+        }
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(fetchSuggestions, 220);
+        });
+
+        input.addEventListener('focus', function () {
+            if (links.length) { open(); }
+        });
+
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') { close(); return; }
+            if (box.hidden || !links.length) { return; }
+
+            if (event.key === 'ArrowDown') { event.preventDefault(); setActive((active + 1) % links.length); }
+            else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(active <= 0 ? links.length - 1 : active - 1); }
+            else if (event.key === 'Enter' && active >= 0) { event.preventDefault(); window.location.href = links[active].href; }
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!form.contains(event.target)) { close(); }
+        });
+    })();
+</script>

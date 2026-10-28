@@ -177,58 +177,10 @@ function formatCommentAt(value: string | null): string {
 if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
   form.visibility = visibilityChoices.value[0]?.value ?? 'authenticated';
 }
-
-// Fichier statique de /public : lié par une variable pour que Vite ne tente pas de le résoudre.
-const logoUrl = '/tlink-logo.webp';
 </script>
 
 <template>
-  <div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
-    <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div class="app-container flex items-center justify-between py-3">
-        <a href="/feed" class="flex items-center gap-3" aria-label="T.Link, accueil">
-          <img :src="logoUrl" alt="T.Link" width="447" height="169" class="h-10 w-auto" />
-          <span class="hidden border-l border-slate-200 pl-3 text-xs leading-tight text-slate-500 sm:block">Fondation<br />Tunivisions</span>
-        </a>
-        <div class="flex items-center gap-3">
-          <a
-            v-if="!data.auth.isAuthenticated"
-            href="/connexion"
-            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
-            >Connexion</a
-          >
-          <a
-            v-if="!data.auth.isAuthenticated"
-            href="/inscription"
-            class="rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700"
-            >Inscription</a
-          >
-          <details v-if="data.auth.isAuthenticated" class="relative">
-            <summary class="list-none cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
-              <span class="inline-flex items-center gap-2">
-                <i class="fa-regular fa-user"></i>
-                <span>{{ data.auth.user?.name }}</span>
-                <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
-              </span>
-            </summary>
-            <div class="absolute right-0 z-30 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-soft">
-              <a href="/profil" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2"></i>Profil</a>
-              <a v-if="data.auth.canAdmin" href="/admin" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-list-check mr-2"></i>Administration</a>
-              <a href="/organigramme" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-sitemap mr-2"></i>Organigramme</a>
-              <a v-if="data.auth.hasOffice" href="/mon-bureau" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-briefcase mr-2"></i>Mon bureau</a>
-              <a href="/notifications" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-bell mr-2"></i>Notifications</a>
-              <form action="/deconnexion" method="post" class="mt-1">
-                <input type="hidden" name="_token" :value="data.csrf" />
-                <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">
-                  <i class="fa-solid fa-right-from-bracket mr-2"></i>Deconnexion
-                </button>
-              </form>
-            </div>
-          </details>
-        </div>
-      </div>
-    </header>
-
+  <div class="bg-tlink-sand pb-12 text-slate-800">
     <main class="app-container mt-6">
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <aside class="hidden lg:col-span-3 lg:block">
