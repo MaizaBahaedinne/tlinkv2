@@ -70,6 +70,72 @@
         });
     }
 
+    // Fenetres modales de formulaire : [data-modal-open="id"] ouvre, [data-modal-close] ferme, [data-modal-autoopen] s'ouvre au chargement (erreurs).
+    document.querySelectorAll('[data-modal-open]').forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+            var modal = document.getElementById(trigger.getAttribute('data-modal-open'));
+            if (modal && typeof modal.showModal === 'function') { modal.showModal(); }
+        });
+    });
+    document.querySelectorAll('dialog.modal').forEach(function (modal) {
+        modal.querySelectorAll('[data-modal-close]').forEach(function (button) {
+            button.addEventListener('click', function () { modal.close(); });
+        });
+        modal.addEventListener('mousedown', function (event) {
+            if (event.target === modal) { modal.close(); }
+        });
+        if (modal.hasAttribute('data-modal-autoopen') && typeof modal.showModal === 'function') { modal.showModal(); }
+    });
+
+    // Champ logo : choix du fichier, apercu immediat, controle du format et de la taille avant l'envoi.
+    document.querySelectorAll('[data-logo-field]').forEach(function (field) {
+        var input = field.querySelector('[data-logo-input]');
+        var pick = field.querySelector('[data-logo-pick]');
+        var preview = field.querySelector('[data-logo-preview]');
+        var placeholder = field.querySelector('[data-logo-placeholder]');
+        var label = field.querySelector('[data-logo-name]');
+        var error = field.querySelector('[data-logo-error]');
+        var remove = field.querySelector('[data-logo-remove]');
+        var maxBytes = (parseFloat(field.getAttribute('data-max-mb')) || 3) * 1024 * 1024;
+        var allowed = ['image/png', 'image/jpeg', 'image/webp'];
+        var objectUrl = null;
+
+        if (!input || !pick) { return; }
+
+        var fail = function (message) {
+            input.value = '';
+            error.textContent = message;
+            error.hidden = false;
+        };
+
+        pick.addEventListener('click', function () { input.click(); });
+
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            error.hidden = true;
+            if (!file) { return; }
+            if (allowed.indexOf(file.type) === -1) { return fail('Format non accepté : choisissez un fichier jpg, png ou webp.'); }
+            if (file.size > maxBytes) { return fail('Fichier trop lourd (' + (file.size / 1048576).toFixed(1).replace('.', ',') + ' Mo) : ' + (maxBytes / 1048576) + ' Mo maximum.'); }
+
+            if (objectUrl) { URL.revokeObjectURL(objectUrl); }
+            objectUrl = URL.createObjectURL(file);
+            preview.src = objectUrl;
+            preview.hidden = false;
+            if (placeholder) { placeholder.hidden = true; }
+            if (label) { label.textContent = file.name; }
+            if (remove) { remove.checked = false; }
+        });
+
+        if (remove) {
+            remove.addEventListener('change', function () {
+                if (remove.checked) {
+                    input.value = '';
+                    error.hidden = true;
+                }
+            });
+        }
+    });
+
     // Selects dependants: <select data-depends-on="entity_id"> avec options data-parent="ID"
     document.querySelectorAll('select[data-depends-on]').forEach(function (child) {
         var parent = document.querySelector('[name="' + child.getAttribute('data-depends-on') + '"]');

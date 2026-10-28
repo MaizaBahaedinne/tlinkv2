@@ -75,6 +75,30 @@ class InstitutionTest extends TestCase
         Storage::disk('public')->assertMissing($oldLogo);
     }
 
+    public function test_the_add_form_is_a_modal_with_a_logo_picker(): void
+    {
+        $this->actingAs($this->admin())->get('/admin/etablissements')->assertOk()
+            ->assertSee('data-modal-open="institution-create"', false)
+            ->assertSee('<dialog id="institution-create"', false)
+            ->assertSee('data-logo-pick', false)
+            ->assertDontSee('data-modal-autoopen', false);
+    }
+
+    public function test_a_rejected_logo_reopens_the_modal_with_the_message_and_the_input(): void
+    {
+        Storage::fake('public');
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->from('/admin/etablissements')->followingRedirects()->post('/admin/etablissements', [
+            '_form' => 'new', 'name' => 'Lycée Test', 'type' => 'high_school',
+            'logo' => UploadedFile::fake()->image('big.png', 200, 100)->size(4000),
+        ])->assertOk()
+            ->assertSee('data-modal-autoopen', false)
+            ->assertSee('Le logo est trop lourd')
+            ->assertSee('value="Lycée Test"', false);
+        $this->assertSame(0, Institution::query()->count());
+    }
+
     public function test_a_faculty_cannot_be_its_own_parent_and_a_lycee_has_none(): void
     {
         $admin = $this->admin();

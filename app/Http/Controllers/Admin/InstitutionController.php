@@ -124,6 +124,11 @@ class InstitutionController extends AdminController
             'logo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             'remove_logo' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
+        ], [
+            'logo.uploaded' => 'Le logo n’a pas pu être envoyé : le fichier dépasse la taille acceptée par le serveur.',
+            'logo.max' => 'Le logo est trop lourd (3 Mo maximum).',
+            'logo.image' => 'Le logo doit être une image (jpg, png ou webp).',
+            'logo.mimes' => 'Le logo doit être au format jpg, png ou webp.',
         ]);
 
         $data['name'] = trim(preg_replace('/\s+/u', ' ', $data['name']) ?? '');

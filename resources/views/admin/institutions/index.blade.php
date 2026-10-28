@@ -5,20 +5,29 @@
 
 @section('content')
     <x-admin.page-header title="Établissements" subtitle="Lycées, universités, facultés et écoles. Chaque club d’université ou de lycée est rattaché à son établissement ; le logo et les informations s’affichent sur les profils des membres.">
+        <x-slot:actions>
+            <button type="button" class="btn btn-primary" data-modal-open="institution-create"><x-admin.icon name="plus" :size="16" /> Ajouter un établissement</button>
+        </x-slot:actions>
     </x-admin.page-header>
 
     @error('institution')<p class="error" style="margin-bottom:12px">{{ $message }}</p>@enderror
 
-    <article class="card card-flush" style="margin-bottom:16px">
-        <div class="card-head"><h2>Ajouter un établissement</h2></div>
-        <form method="post" action="{{ route('admin.institutions.store') }}" enctype="multipart/form-data" class="grid" style="gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));padding:12px 16px 18px">
+    <dialog id="institution-create" class="modal" aria-labelledby="institution-create-title" @if(old('_form') === 'new' && $errors->any()) data-modal-autoopen @endif>
+        <div class="modal-head">
+            <h2 id="institution-create-title">Ajouter un établissement</h2>
+            <button type="button" class="btn btn-ghost btn-sm" data-modal-close aria-label="Fermer">✕</button>
+        </div>
+        <form method="post" action="{{ route('admin.institutions.store') }}" enctype="multipart/form-data" class="modal-form">
             @csrf
-            @include('admin.institutions._form', ['institution' => null, 'prefix' => 'new'])
-            <div style="grid-column:1/-1;display:flex;justify-content:flex-end">
+            <div class="modal-body">
+                @include('admin.institutions._form', ['institution' => null, 'prefix' => 'new'])
+            </div>
+            <div class="modal-foot">
+                <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
                 <button type="submit" class="btn btn-primary"><x-admin.icon name="plus" :size="16" /> Ajouter</button>
             </div>
         </form>
-    </article>
+    </dialog>
 
     <article class="card card-flush">
         <div class="toolbar">
@@ -73,7 +82,7 @@
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm"><x-admin.icon name="trash" :size="15" /> Supprimer</button>
                         </form>
-                        <details style="flex-basis:100%">
+                        <details style="flex-basis:100%" @if(old('_form') === 'i'.$institution->id && $errors->any()) open @endif>
                             <summary class="btn btn-secondary btn-sm" style="cursor:pointer">Modifier</summary>
                             <form method="post" action="{{ route('admin.institutions.update', $institution) }}" enctype="multipart/form-data" class="grid" style="gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:10px">
                                 @csrf
