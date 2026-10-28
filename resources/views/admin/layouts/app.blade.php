@@ -14,12 +14,9 @@
 <body class="adm-body">
 <div class="adm">
     <aside class="adm-sidebar" aria-label="Navigation administration">
-        <a href="{{ route('admin.dashboard') }}" class="adm-brand">
-            <span class="adm-brand-mark">T</span>
-            <span>
-                <span class="adm-brand-name">T.Link</span><br>
-                <span class="adm-brand-sub">Administration</span>
-            </span>
+        <a href="{{ route('admin.dashboard') }}" class="adm-brand" aria-label="T.Link, administration">
+            <img src="{{ asset('tlink-logo-white.webp') }}" alt="T.Link" width="447" height="169" class="adm-brand-logo">
+            <span class="adm-brand-sub">Administration</span>
         </a>
 
         <nav class="adm-nav">

@@ -14,7 +14,7 @@
         body:before{width:420px;height:420px;left:-120px;top:-120px;background:rgba(255,255,255,.08)}
         body:after{width:520px;height:520px;right:-160px;bottom:-180px;background:rgba(245,166,35,.22);filter:blur(30px)}
         main{position:relative;z-index:1;display:grid;gap:28px;justify-items:center;max-width:760px;width:100%}
-        .brand{display:inline-flex;align-items:center;gap:12px;font-size:22px;font-weight:700}
+        .brand img{display:block;height:64px;width:auto}
         .mark{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:#fff;color:#a30027;font-weight:800;font-size:22px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
         .tag{display:inline-block;padding:5px 14px;border:1px solid rgba(255,255,255,.3);border-radius:999px;background:rgba(255,255,255,.1);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
         h1{margin:0;font-size:clamp(30px,6vw,52px);line-height:1.1;font-weight:800}
@@ -31,7 +31,7 @@
 </head>
 <body>
     <main>
-        <div class="brand"><span class="mark">T</span><span>T.Link</span></div>
+        <div class="brand"><img src="{{ asset('tlink-logo-white.webp') }}" alt="T.Link" width="447" height="169"></div>
         <span class="tag">Fondation Tunivisions</span>
         <h1>{{ $title }}</h1>
         <p class="msg">{{ $message }}</p>

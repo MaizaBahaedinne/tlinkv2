@@ -22,9 +22,8 @@
         </div>
 
         <div class="flex items-center justify-between">
-            <a href="{{ url('/') }}" class="inline-flex items-center gap-3">
-                <span class="grid h-11 w-11 place-items-center rounded-2xl bg-white font-display text-lg font-bold text-tlink-blue shadow-lg">T</span>
-                <span class="font-display text-xl font-semibold tracking-tight">T.Link</span>
+            <a href="{{ url('/') }}" class="inline-flex items-center" aria-label="T.Link">
+                <img src="{{ asset('tlink-logo-white.webp') }}" alt="T.Link" width="447" height="169" class="h-12 w-auto">
             </a>
             <a href="{{ url('/') }}" class="text-sm font-medium text-white/80 transition hover:text-white">&larr; Site de la Fondation</a>
         </div>

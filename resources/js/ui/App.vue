@@ -177,23 +177,19 @@ function formatCommentAt(value: string | null): string {
 if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
   form.visibility = visibilityChoices.value[0]?.value ?? 'authenticated';
 }
+
+// Fichier statique de /public : lié par une variable pour que Vite ne tente pas de le résoudre.
+const logoUrl = '/tlink-logo.webp';
 </script>
 
 <template>
   <div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
     <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div class="app-container flex items-center justify-between py-3">
-        <div class="flex items-center gap-3">
-          <div class="h-10 w-10 rounded-2xl bg-tlink-blue p-2 text-white shadow-soft">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v13a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 18.5v-13zm3.75 1.25a1 1 0 100 2h8.5a1 1 0 100-2h-8.5zm0 4a1 1 0 100 2h8.5a1 1 0 100-2h-8.5zm0 4a1 1 0 100 2h5.25a1 1 0 100-2H7.75z"/>
-            </svg>
-          </div>
-          <div>
-            <p class="font-display text-xl font-semibold text-tlink-blue">T.Link</p>
-            <p class="text-xs text-slate-500">Fondation Tunivisions</p>
-          </div>
-        </div>
+        <a href="/feed" class="flex items-center gap-3" aria-label="T.Link, accueil">
+          <img :src="logoUrl" alt="T.Link" width="447" height="169" class="h-10 w-auto" />
+          <span class="hidden border-l border-slate-200 pl-3 text-xs leading-tight text-slate-500 sm:block">Fondation<br />Tunivisions</span>
+        </a>
         <div class="flex items-center gap-3">
           <a
             v-if="!data.auth.isAuthenticated"

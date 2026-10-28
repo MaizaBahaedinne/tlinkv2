@@ -46,7 +46,8 @@ body.adm-body { margin: 0; background: var(--bg); color: var(--text); font-famil
 /* ---------- Shell ---------- */
 .adm { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100vh; }
 .adm-sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; padding: 20px 14px 16px; color: #dfcdd1; background: radial-gradient(120% 80% at 0% 0%, rgba(208, 0, 49, 0.28), transparent 55%), linear-gradient(180deg, var(--navy-900), var(--navy-950)); scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent; }
-.adm-brand { display: flex; align-items: center; gap: 12px; padding: 4px 10px 22px; }
+.adm-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 4px 10px 22px; }
+.adm-brand-logo { display: block; height: 38px; width: auto; }
 .adm-brand-mark { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; font: 700 20px var(--font-display); background: linear-gradient(135deg, #ef2b5b, var(--navy-700)); box-shadow: 0 8px 20px rgba(208, 0, 49, 0.45); }
 .adm-brand-name { font: 700 18px var(--font-display); color: #fff; line-height: 1.1; }
 .adm-brand-sub { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #aa8d94; }
