@@ -9,6 +9,7 @@ use App\Models\OrgPerson;
 use App\Models\User;
 use App\Support\AuditLogger;
 use App\Support\MyOffice;
+use App\Support\MyOfficeSpace;
 use App\Support\OrgChart\OrgChartRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,6 +57,7 @@ class MyOfficeController extends Controller
         return view('office.index', [
             'user' => $user,
             'offices' => MyOffice::overview($user),
+            'space' => MyOfficeSpace::build($user),
             'searchNode' => $searchNode,
             'term' => $term,
             'results' => $results,

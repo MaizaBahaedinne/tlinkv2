@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\AppModule;
 use App\Models\AppNotification;
+use App\Models\EventRegistration;
+use App\Models\FoundationEvent;
+use App\Models\Membership;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
@@ -234,5 +237,63 @@ class MyOfficeTest extends TestCase
         $this->actingAs($holder)->get('/profil')->assertOk()->assertSee('/mon-bureau', false);
         $this->actingAs($other)->get('/profil')->assertOk()->assertDontSee('/mon-bureau', false);
         $this->actingAs($other)->get('/mon-bureau')->assertOk()->assertSee('aucun poste');
+    }
+
+    public function test_members_without_a_position_see_their_membership_club_events_and_journey(): void
+    {
+        $club = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Robotique Sfax', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
+        $department = OrgNode::query()->create(['parent_id' => $club->id, 'kind' => 'club_department', 'title' => 'Pôle Média', 'category' => 'university_club']);
+        $president = $this->node('Présidente du club', $club);
+        $this->node('Responsable média', $department);
+        $this->place($president, 'Amel Présidente');
+
+        $member = User::factory()->create(['name' => 'Yosra Membre']);
+        Membership::query()->create(['user_id' => $member->id, 'scope' => 'university', 'node_id' => $club->id, 'status' => 'approved', 'starts_at' => now()->subYear()]);
+        Membership::query()->create(['user_id' => $member->id, 'scope' => 'high-school', 'status' => 'archived', 'starts_at' => now()->subYears(4), 'ends_at' => now()->subYears(2)]);
+
+        $coming = FoundationEvent::query()->create(['title' => 'Hackathon du club', 'status' => 'published', 'node_id' => $club->id, 'starts_at' => now()->addDays(10)]);
+        $gone = FoundationEvent::query()->create(['title' => 'Journée portes ouvertes', 'status' => 'completed', 'node_id' => $club->id, 'starts_at' => now()->subDays(20)]);
+        $foreign = FoundationEvent::query()->create(['title' => 'Salon d\'un autre club', 'status' => 'published', 'starts_at' => now()->addDays(3)]);
+        $draft = FoundationEvent::query()->create(['title' => 'Brouillon du club', 'status' => 'draft', 'node_id' => $club->id, 'starts_at' => now()->addDays(4)]);
+        EventRegistration::query()->create(['event_id' => $gone->id, 'user_id' => $member->id, 'status' => 'attended', 'registered_at' => now()->subDays(25)]);
+
+        $this->actingAs($member)->get('/profil')->assertOk()->assertSee('/mon-bureau', false);
+
+        $this->actingAs($member)->get('/mon-bureau')->assertOk()
+            ->assertSee('Mes adhésions en cours')
+            ->assertSee('Aucun mandat en cours.')
+            ->assertSee('Mes clubs')
+            ->assertSee('Club Robotique Sfax')
+            ->assertSee('Hiérarchie du club')
+            ->assertSee('Pôle Média')
+            ->assertSee('Présidente du club')
+            ->assertSee('Amel Présidente')
+            ->assertSee('Responsable média')
+            ->assertSee('Hackathon du club')
+            ->assertSee('Journée portes ouvertes')
+            ->assertSee('Présent(e)')
+            ->assertSee('Mon parcours')
+            ->assertSee('Adhésion · Club Robotique Sfax')
+            ->assertSee('Événement · Journée portes ouvertes')
+            ->assertDontSee('Salon d\'un autre club', false)
+            ->assertDontSee('Brouillon du club');
+    }
+
+    public function test_the_journey_keeps_ended_mandates_and_hides_them_from_the_current_list(): void
+    {
+        $user = $this->place($this->low, 'Yassine Assistant');
+        $past = $this->node('Ancien poste de trésorier', $this->top);
+        $person = OrgPerson::query()->where('user_id', $user->id)->firstOrFail();
+        OrgAssignment::query()->create(['node_id' => $past->id, 'person_id' => $person->id, 'starts_at' => now()->subYears(3), 'ends_at' => now()->subYear()]);
+
+        $html = $this->actingAs($user)->get('/mon-bureau')->assertOk()
+            ->assertSee('Mandat · Assistant de pôle')
+            ->assertSee('Mandat · Ancien poste de trésorier')
+            ->assertSee('Terminé')
+            ->getContent();
+
+        $current = substr($html, strpos($html, 'id="en-cours"'), strpos($html, 'id="clubs"') - strpos($html, 'id="en-cours"'));
+        $this->assertStringContainsString('Assistant de pôle', $current);
+        $this->assertStringNotContainsString('Ancien poste de trésorier', $current);
     }
 }

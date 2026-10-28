@@ -8,7 +8,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="font-display text-2xl font-semibold text-tlink-blue">Mon bureau</h1>
-                <p class="text-sm text-slate-600">Vos postes, vos supérieurs et votre équipe.</p>
+                <p class="text-sm text-slate-600">Vos adhésions et mandats en cours, vos clubs, vos événements et votre parcours.</p>
             </div>
             <div class="flex gap-2">
                 <a href="{{ route('orgchart.index') }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Organigramme</a>
@@ -24,6 +24,10 @@
                 @foreach($errors->all() as $message){{ $message }} @endforeach
             </div>
         @endif
+
+        @include('office.partials.space', ['space' => $space])
+
+        <h2 id="postes" class="scroll-mt-24 pt-2 font-display text-lg font-semibold text-slate-900"><i class="fa-solid fa-sitemap mr-2 text-slate-400"></i>Mes postes, supérieurs et équipe</h2>
 
         @forelse($offices as $office)
             @php

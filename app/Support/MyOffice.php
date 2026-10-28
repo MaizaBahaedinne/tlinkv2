@@ -300,7 +300,7 @@ final class MyOffice
      * @param array<int, int> $nodeIds
      * @return array<int, array<int, array<string, mixed>>>
      */
-    private static function holders(array $nodeIds, User $viewer): array
+    public static function holders(array $nodeIds, User $viewer): array
     {
         $assignments = OrgAssignment::query()
             ->whereIn('node_id', $nodeIds)
