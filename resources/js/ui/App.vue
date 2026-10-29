@@ -45,7 +45,7 @@ type RootData = {
     allowed_visibilities: string[];
   };
   partners?: Array<{ id: number; name: string; logo_url: string; url: string | null }>;
-  links?: { mission?: string; badges?: string };
+  links?: { mission?: string; badges?: string; academy?: string };
   myBadges?: Array<{ id: number; name: string; tier: string; icon: string; gradient: string }>;
   governorates: Array<{ id: number; name: string; slug: string }>;
   csrf: string;
@@ -249,11 +249,10 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                   </a>
                 </li>
                 <li>
-                  <span class="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-slate-500" aria-disabled="true">
-                    <i class="fa-solid fa-graduation-cap w-4 text-center text-slate-400"></i>
+                  <a :href="data.links?.academy ?? '/academy'" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                    <i class="fa-solid fa-graduation-cap w-4 text-center text-slate-500"></i>
                     <span>Academy</span>
-                    <span class="ml-auto rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Soon</span>
-                  </span>
+                  </a>
                 </li>
                 <li>
                   <span class="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-slate-500" aria-disabled="true">

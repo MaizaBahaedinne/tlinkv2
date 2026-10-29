@@ -143,6 +143,7 @@ class FeedController extends Controller
             'links' => [
                 'mission' => route('site.about', ['locale' => $this->siteLocale()]).'#mission',
                 'badges' => route('badges.index'),
+                'academy' => route('academy.index'),
             ],
             'myBadges' => $request->user() === null ? [] : \App\Models\UserBadge::earnedBy($request->user()->id)
                 ->map(fn (\App\Models\UserBadge $earned): array => [
