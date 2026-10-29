@@ -115,21 +115,31 @@ final class GamificationEngine
     /**
      * Recalcule tous les membres (après une modification des missions, ou pour rattraper l'historique).
      *
-     * @return array{users: int, awarded: int}
+     * @return array{users: int, awarded: int, failed: int}
      */
     public static function refreshEveryone(): array
     {
+        // Le recalcul parcourt tous les membres : il ne doit pas être coupé par la limite d'exécution du serveur.
+        @set_time_limit(0);
+
         $users = 0;
         $awarded = 0;
+        $failed = 0;
 
-        User::query()->select('id')->chunkById(200, function ($chunk) use (&$users, &$awarded): void {
+        User::query()->select('id')->chunkById(200, function ($chunk) use (&$users, &$awarded, &$failed): void {
             foreach ($chunk as $user) {
-                $users++;
-                $awarded += self::refresh((int) $user->id)->count();
+                // Un membre en erreur ne bloque pas les autres ; l'erreur est consignée dans les journaux.
+                try {
+                    $awarded += self::refresh((int) $user->id)->count();
+                    $users++;
+                } catch (\Throwable $exception) {
+                    $failed++;
+                    report($exception);
+                }
             }
         });
 
-        return ['users' => $users, 'awarded' => $awarded];
+        return ['users' => $users, 'awarded' => $awarded, 'failed' => $failed];
     }
 
     /**

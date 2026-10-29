@@ -156,7 +156,7 @@ class BadgeController extends AdminController
 
         $this->audit($request, 'admin.badge.synced', $request->user(), $result);
 
-        return back()->with('status', $result['users'].' membre(s) recalculé(s), '.$result['awarded'].' badge(s) décerné(s).');
+        return back()->with('status', $result['users'].' membre(s) recalculé(s), '.$result['awarded'].' badge(s) décerné(s).'.($result['failed'] > 0 ? ' '.$result['failed'].' membre(s) en erreur : voir storage/logs/laravel.log.' : ''));
     }
 
     /**

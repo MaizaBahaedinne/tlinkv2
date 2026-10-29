@@ -252,6 +252,18 @@ class GamificationTest extends TestCase
         $this->assertDatabaseHas('user_badges', ['user_id' => $member->id]);
     }
 
+    public function test_recalculation_reports_members_in_error_instead_of_failing(): void
+    {
+        $this->actingAs($this->admin());
+        User::factory()->create();
+
+        $badge = Badge::query()->create(['slug' => 'cassé', 'name' => 'Cassé', 'tier' => 'bronze']);
+        $badge->missions()->create(['title' => 'M'])->checkpoints()->create(['title' => 'C', 'trigger_key' => 'academy.lessons_completed', 'target' => 1]);
+        \Illuminate\Support\Facades\Schema::drop('academy_lesson_completions');
+
+        $this->post('/admin/badges/recalculer')->assertSessionHas('status', fn (string $status): bool => str_contains($status, 'en erreur'));
+    }
+
     public function test_non_admin_cannot_manage_badges(): void
     {
         $badge = $this->speakerBadge();
