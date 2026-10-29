@@ -243,6 +243,9 @@ class MyOfficeTest extends TestCase
             ->assertDontSee('>Retour<', false)
             ->getContent();
 
+        // La navigation de l'application (barre du bas sur mobile) affiche « Administration » : seul le contenu de la page compte ici.
+        $html = preg_replace('#<nav\b.*?</nav>#s', '', $html);
+
         $this->assertStringNotContainsString('>Organigramme<', $html);
         $this->assertStringNotContainsString('>Administration<', $html);
     }

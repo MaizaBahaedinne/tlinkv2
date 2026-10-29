@@ -4,7 +4,7 @@
     $dockProfile = $dockUser?->profile;
 @endphp
 <div id="mg-dock"
-     class="pointer-events-none fixed bottom-0 right-4 z-40 hidden items-end gap-3 md:flex [&>*]:pointer-events-auto"
+     class="pointer-events-none fixed bottom-14 right-4 z-40 hidden items-end gap-3 md:flex lg:bottom-0 [&>*]:pointer-events-auto"
      data-me="{{ $dockUser->id }}"
      data-me-name="{{ $dockUser->name }}"
      data-me-avatar="{{ $dockProfile?->photoUrl() }}"

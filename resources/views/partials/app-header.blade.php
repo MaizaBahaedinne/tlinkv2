@@ -12,17 +12,19 @@
         ($canAdmin ?? false) ? ['label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
     ]));
 @endphp
-<header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+<header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 lg:backdrop-blur">
     <div class="app-container flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
         <a href="{{ route('home') }}" class="flex shrink-0 items-center lg:flex-1 lg:basis-0" aria-label="T.Link, accueil">
             <img src="{{ asset('tlink-logo.webp') }}" alt="T.Link" width="447" height="169" class="h-9 w-auto">
         </a>
 
-        <nav class="order-last flex w-full justify-center gap-2 border-t border-slate-100 pt-2 lg:order-none lg:w-auto lg:border-0 lg:pt-0" aria-label="Navigation de l'application">
+        {{-- Mobile et tablette : barre d'onglets fixée en pied de page ; ordinateur : icônes centrées dans l'en-tête. --}}
+        <nav class="app-bottom-nav fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] lg:static lg:z-auto lg:w-auto lg:gap-2 lg:border-0 lg:bg-transparent lg:pb-0 lg:shadow-none" aria-label="Navigation de l'application">
             @foreach($navItems as $item)
                 <a href="{{ $item['href'] }}" title="{{ $item['label'] }}" aria-label="{{ $item['label'] }}" @if($item['active']) aria-current="page" @endif
-                   class="grid h-10 w-10 place-items-center rounded-xl text-base transition {{ $item['active'] ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
+                   class="flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-base transition lg:h-10 lg:w-10 lg:flex-none lg:rounded-xl {{ $item['active'] ? 'text-tlink-blue lg:bg-rose-50' : 'text-slate-500 hover:text-slate-900 lg:hover:bg-slate-100' }}">
                     <i class="{{ $item['icon'] }}" aria-hidden="true"></i>
+                    <span class="max-w-full truncate px-1 text-[10px] font-medium leading-none lg:hidden">{{ $item['label'] }}</span>
                 </a>
             @endforeach
         </nav>

@@ -24,7 +24,7 @@
                  data-url-typing="{{ route('messenger.typing', $activeId) }}"
                  data-url-leave="{{ route('messenger.leave', $activeId) }}"
              @endif
-             class="grid h-[calc(100dvh-7rem)] min-h-[26rem] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]">
+             class="grid h-[calc(100dvh-9rem)] min-h-[26rem] lg:h-[calc(100dvh-7rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]">
 
             {{-- Liste des conversations --}}
             <aside id="mg-list-pane" class="{{ $activeId ? 'hidden lg:flex' : 'flex' }} min-h-0 flex-col border-slate-200 lg:border-r">

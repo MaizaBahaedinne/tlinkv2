@@ -52,6 +52,13 @@ body {
     }
 }
 
+/* Mobile et tablette : la navigation T.Link est fixée en pied de page, on réserve sa place. */
+@media (max-width: 1023.98px) {
+    body:has(.app-bottom-nav) {
+        padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+    }
+}
+
 .admin-layout {
     display: flex;
     width: 100%;
