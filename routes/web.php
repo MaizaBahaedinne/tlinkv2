@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AcademyController;
+use App\Http\Controllers\AcademyQuizController;
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -70,6 +71,10 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/lecons/{lesson}/terminer', [AcademyController::class, 'complete'])->whereNumber('lesson')->name('lessons.complete');
         Route::post('/abonnements/{plan}/souscrire', [AcademyController::class, 'subscribe'])->whereNumber('plan')->middleware('throttle:20,1')->name('plans.subscribe');
         Route::get('/commandes/{order}', [AcademyController::class, 'order'])->whereNumber('order')->name('orders.show');
+        Route::get('/quiz/{quiz}', [AcademyQuizController::class, 'show'])->whereNumber('quiz')->name('quizzes.show');
+        Route::post('/quiz/{quiz}/commencer', [AcademyQuizController::class, 'start'])->whereNumber('quiz')->middleware('throttle:30,1')->name('quizzes.start');
+        Route::get('/quiz/tentatives/{attempt}', [AcademyQuizController::class, 'attempt'])->whereNumber('attempt')->name('attempts.show');
+        Route::post('/quiz/tentatives/{attempt}', [AcademyQuizController::class, 'submit'])->whereNumber('attempt')->middleware('throttle:30,1')->name('attempts.submit');
     });
     Route::get('/membres/{user}', [MemberProfileController::class, 'show'])->whereNumber('user')->name('member.show');
 
@@ -201,6 +206,13 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('academy/modules/{module}/lecons', [Admin\AcademyCourseController::class, 'storeLesson'])->whereNumber('module')->name('academy.courses.lessons.store');
             Route::put('academy/lecons/{lesson}', [Admin\AcademyCourseController::class, 'updateLesson'])->whereNumber('lesson')->name('academy.courses.lessons.update');
             Route::delete('academy/lecons/{lesson}', [Admin\AcademyCourseController::class, 'destroyLesson'])->whereNumber('lesson')->name('academy.courses.lessons.destroy');
+            Route::post('academy/cours/{course}/quiz', [Admin\AcademyQuizController::class, 'store'])->whereNumber('course')->name('academy.courses.quiz.store');
+            Route::get('academy/quiz/{quiz}/modifier', [Admin\AcademyQuizController::class, 'edit'])->whereNumber('quiz')->name('academy.courses.quiz.edit');
+            Route::put('academy/quiz/{quiz}', [Admin\AcademyQuizController::class, 'update'])->whereNumber('quiz')->name('academy.courses.quiz.update');
+            Route::delete('academy/quiz/{quiz}', [Admin\AcademyQuizController::class, 'destroy'])->whereNumber('quiz')->name('academy.courses.quiz.destroy');
+            Route::post('academy/quiz/{quiz}/questions', [Admin\AcademyQuizController::class, 'storeQuestion'])->whereNumber('quiz')->name('academy.courses.quiz.questions.store');
+            Route::put('academy/quiz/questions/{question}', [Admin\AcademyQuizController::class, 'updateQuestion'])->whereNumber('question')->name('academy.courses.quiz.questions.update');
+            Route::delete('academy/quiz/questions/{question}', [Admin\AcademyQuizController::class, 'destroyQuestion'])->whereNumber('question')->name('academy.courses.quiz.questions.destroy');
             Route::get('academy/commandes', [Admin\AcademyOrderController::class, 'index'])->name('academy.orders.index');
             Route::post('academy/commandes/{order}/payer', [Admin\AcademyOrderController::class, 'pay'])->whereNumber('order')->name('academy.orders.pay');
             Route::post('academy/commandes/{order}/annuler', [Admin\AcademyOrderController::class, 'cancel'])->whereNumber('order')->name('academy.orders.cancel');

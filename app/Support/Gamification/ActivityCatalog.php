@@ -4,6 +4,7 @@ namespace App\Support\Gamification;
 
 use App\Models\AcademyEnrollment;
 use App\Models\AcademyLessonCompletion;
+use App\Models\AcademyQuizAttempt;
 use App\Models\Comment;
 use App\Models\EventRegistration;
 use App\Models\Membership;
@@ -104,6 +105,12 @@ final class ActivityCatalog
                 'group' => 'Tunivisions Academy',
                 'count' => fn (int $userId): int => AcademyEnrollment::query()->where('user_id', $userId)->whereNotNull('completed_at')->count(),
                 'models' => [AcademyEnrollment::class => $viaUser],
+            ],
+            'academy.quizzes_passed' => [
+                'label' => 'Quiz Academy réussis (quiz distincts)',
+                'group' => 'Tunivisions Academy',
+                'count' => fn (int $userId): int => AcademyQuizAttempt::query()->where('user_id', $userId)->where('status', 'passed')->distinct()->count('quiz_id'),
+                'models' => [AcademyQuizAttempt::class => $viaUser],
             ],
             'academy.points' => [
                 'label' => 'Points Academy (leçons terminées + bonus de fin de cours)',

@@ -7,6 +7,7 @@ use App\Models\AcademyEnrollment;
 use App\Models\AcademyLesson;
 use App\Models\AcademyOrder;
 use App\Models\AcademyPlan;
+use App\Models\AcademyQuizAttempt;
 use App\Models\AcademySession;
 use App\Models\AcademySubscription;
 use App\Models\FoundationEvent;
@@ -58,10 +59,14 @@ class AcademyController extends Controller
         $course->load(['modules.lessons', 'badge']);
 
         $enrollment = AcademyAccess::enrollment($user, $course);
+        $quizzes = $course->quizzes()->whereHas('questions')->withCount('questions')->get();
 
         return view('academy.course', [
             'course' => $course,
             'enrollment' => $enrollment,
+            'quizByModule' => $quizzes->whereNotNull('module_id')->keyBy('module_id'),
+            'finalQuiz' => $quizzes->whereNull('module_id')->first(),
+            'passedQuizIds' => AcademyQuizAttempt::query()->where('user_id', $user->id)->where('status', 'passed')->whereIn('quiz_id', $quizzes->pluck('id'))->pluck('quiz_id')->all(),
             'canAccess' => AcademyAccess::canAccess($user, $course),
             'progress' => AcademyLearning::progress($user, $course),
             'sessions' => $course->sessions()->where('is_published', true)->where('starts_at', '>=', now())->orderBy('starts_at')->limit(5)->get(),

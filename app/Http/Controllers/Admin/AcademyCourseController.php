@@ -55,7 +55,7 @@ class AcademyCourseController extends AdminController
 
     public function edit(AcademyCourse $course): View
     {
-        $course->load('modules.lessons');
+        $course->load(['modules.lessons', 'quizzes' => fn ($query) => $query->withCount('questions')]);
 
         return view('admin.academy.courses.form', ['course' => $course, 'badges' => $this->badges()]);
     }

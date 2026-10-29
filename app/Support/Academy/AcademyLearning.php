@@ -6,6 +6,8 @@ use App\Models\AcademyCourse;
 use App\Models\AcademyEnrollment;
 use App\Models\AcademyLesson;
 use App\Models\AcademyLessonCompletion;
+use App\Models\AcademyQuiz;
+use App\Models\AcademyQuizAttempt;
 use App\Models\AppNotification;
 use App\Models\Badge;
 use App\Models\User;
@@ -54,20 +56,32 @@ final class AcademyLearning
             ->whereIn('lesson_id', $course->modules->flatMap->lessons->pluck('id'))->pluck('lesson_id')->all();
 
         $allDone = true;
-        $hasLessons = false;
+        $hasContent = false;
+
+        // Quiz obligatoires (et non vides) du cours : chacun doit avoir été réussi au moins une fois.
+        $quizzes = AcademyQuiz::query()->where('course_id', $course->id)->where('is_required', true)->whereHas('questions')->get();
+        $passed = AcademyQuizAttempt::query()->where('user_id', $user->id)->where('status', 'passed')
+            ->whereIn('quiz_id', $quizzes->pluck('id'))->pluck('quiz_id')->all();
+        $quizzesOf = fn (?int $moduleId) => $quizzes->filter(fn (AcademyQuiz $quiz): bool => $quiz->module_id === $moduleId);
+        $quizzesPassed = fn (?int $moduleId): bool => $quizzesOf($moduleId)->every(fn (AcademyQuiz $quiz): bool => in_array($quiz->id, $passed, true));
 
         foreach ($course->modules as $module) {
             $ids = $module->lessons->pluck('id');
-            $moduleDone = $ids->isNotEmpty() && $ids->every(fn (int $id): bool => in_array($id, $done, true));
-            $hasLessons = $hasLessons || $ids->isNotEmpty();
-            $allDone = $allDone && ($ids->isEmpty() || $moduleDone);
+            $hasQuiz = $quizzesOf($module->id)->isNotEmpty();
+            $moduleDone = ($ids->isNotEmpty() || $hasQuiz)
+                && $ids->every(fn (int $id): bool => in_array($id, $done, true))
+                && $quizzesPassed($module->id);
+            $hasContent = $hasContent || $ids->isNotEmpty() || $hasQuiz;
+            $allDone = $allDone && ($moduleDone || ($ids->isEmpty() && ! $hasQuiz));
 
             if ($moduleDone && $module->badge_id !== null && ($badge = Badge::query()->find($module->badge_id)) !== null) {
                 GamificationEngine::award($user->id, $badge);
             }
         }
 
-        if (! $hasLessons || ! $allDone) {
+        $hasContent = $hasContent || $quizzesOf(null)->isNotEmpty();
+
+        if (! $hasContent || ! $allDone || ! $quizzesPassed(null)) {
             return;
         }
 

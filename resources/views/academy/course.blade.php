@@ -86,11 +86,22 @@
                                 <span class="text-xs text-slate-500">{{ $lesson->points }} pt @if($lesson->duration_minutes) · {{ $lesson->duration_minutes }} min @endif</span>
                             </li>
                         @endforeach
+                        @if($quizByModule->has($module->id))
+                            @include('academy._quiz-row', ['quiz' => $quizByModule[$module->id], 'isPassed' => in_array($quizByModule[$module->id]->id, $passedQuizIds, true)])
+                        @endif
                     </ul>
                 </article>
             @empty
                 <p class="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">Le programme de ce cours arrive bientôt.</p>
             @endforelse
+            @if($finalQuiz)
+                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
+                    <h3 class="font-display text-base font-semibold text-slate-900">Évaluation finale</h3>
+                    <ul class="mt-2">
+                        @include('academy._quiz-row', ['quiz' => $finalQuiz, 'isPassed' => in_array($finalQuiz->id, $passedQuizIds, true)])
+                    </ul>
+                </article>
+            @endif
         </section>
 
         @if($sessions->isNotEmpty())

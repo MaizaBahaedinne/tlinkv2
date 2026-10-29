@@ -34,6 +34,11 @@ class AcademyCourse extends Model
         return $this->hasMany(AcademyEnrollment::class, 'course_id');
     }
 
+    public function quizzes(): HasMany
+    {
+        return $this->hasMany(AcademyQuiz::class, 'course_id');
+    }
+
     public function sessions(): HasMany
     {
         return $this->hasMany(AcademySession::class, 'course_id');

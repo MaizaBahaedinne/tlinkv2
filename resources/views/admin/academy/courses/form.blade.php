@@ -5,6 +5,8 @@
     $mine = old('_form') === 'course';
     $val = fn (string $field, $default = null) => $mine ? old($field, $default) : $default;
     $err = fn (string $field): ?string => $mine ? $errors->first($field) : null;
+    $moduleQuizzes = $editing ? $course->quizzes->filter(fn ($quiz) => $quiz->module_id !== null)->keyBy('module_id') : collect();
+    $finalQuiz = $editing ? $course->quizzes->first(fn ($quiz) => $quiz->module_id === null) : null;
 @endphp
 
 @section('title', $editing ? $course->title : 'Nouveau cours')
@@ -166,6 +168,20 @@
                                 <div style="grid-column:1/-1;display:flex;justify-content:flex-end"><button type="submit" class="btn btn-primary btn-sm">Ajouter la leçon</button></div>
                             </form>
                         </details>
+                        <div style="border-top:1px dashed var(--line);padding:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <x-admin.icon name="award" :size="15" />
+                            @if($moduleQuizzes->has($module->id))
+                                @php $moduleQuiz = $moduleQuizzes[$module->id]; @endphp
+                                <span>Quiz du module : {{ $moduleQuiz->questions_count }} question(s), seuil {{ $moduleQuiz->pass_percent }} %@if(! $moduleQuiz->is_required) (facultatif)@endif</span>
+                                <a href="{{ route('admin.academy.courses.quiz.edit', $moduleQuiz) }}" class="btn btn-secondary btn-sm"><x-admin.icon name="edit" :size="14" /> Gérer le quiz</a>
+                            @else
+                                <form method="post" action="{{ route('admin.academy.courses.quiz.store', $course) }}">
+                                    @csrf
+                                    <input type="hidden" name="module_id" value="{{ $module->id }}">
+                                    <button type="submit" class="btn btn-ghost btn-sm"><x-admin.icon name="plus" :size="14" /> Ajouter un quiz à ce module</button>
+                                </form>
+                            @endif
+                        </div>
                     </div>
                 </div>
             @endforeach
@@ -180,6 +196,20 @@
                     </form>
                 </details>
             </div>
+        </article>
+
+        <article class="card" style="margin-top:16px">
+            <h2 style="margin-top:0">Quiz final du cours</h2>
+            <p class="text-sm text-muted">Un quiz pour évaluer le niveau de l’apprenant : questions et réponses en ordre aléatoire, score minimal pour réussir. Obligatoire, il conditionne le certificat et le badge de fin de cours.</p>
+            @if($finalQuiz)
+                <p>{{ $finalQuiz->questions_count }} question(s), seuil de réussite {{ $finalQuiz->pass_percent }} %@if($finalQuiz->questions_per_attempt), {{ $finalQuiz->questions_per_attempt }} tirée(s) au sort par tentative @endif @if(! $finalQuiz->is_required)(facultatif)@endif</p>
+                <a href="{{ route('admin.academy.courses.quiz.edit', $finalQuiz) }}" class="btn btn-primary"><x-admin.icon name="edit" :size="15" /> Gérer le quiz final</a>
+            @else
+                <form method="post" action="{{ route('admin.academy.courses.quiz.store', $course) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-primary"><x-admin.icon name="plus" :size="15" /> Ajouter un quiz final</button>
+                </form>
+            @endif
         </article>
 
         <article class="card" style="margin-top:16px">
