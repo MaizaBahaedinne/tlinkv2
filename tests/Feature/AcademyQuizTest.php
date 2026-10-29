@@ -281,6 +281,17 @@ class AcademyQuizTest extends TestCase
         $this->assertSame(0, AcademyQuizAttempt::query()->count());
     }
 
+    public function test_lesson_page_shows_outline_and_progress_sidebar(): void
+    {
+        $user = User::factory()->create();
+        $course = $this->course();
+        $this->quiz($course);
+        $lesson = $course->modules()->first()->lessons()->first();
+
+        $this->actingAs($user)->get(route('academy.lessons.show', $lesson))->assertOk()
+            ->assertSee('Votre avancement')->assertSee('Modules et leçons')->assertSee('0 / 1 leçon(s)')->assertSee('Quiz test')->assertSee('lg:col-span-2');
+    }
+
     public function test_quizzes_passed_trigger_counts_distinct_quizzes(): void
     {
         $user = User::factory()->create();

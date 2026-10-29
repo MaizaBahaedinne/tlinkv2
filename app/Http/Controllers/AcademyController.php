@@ -114,10 +114,14 @@ class AcademyController extends Controller
         $lessons = $course->modules->flatMap->lessons->values();
         $index = $lessons->search(fn (AcademyLesson $item): bool => $item->id === $lesson->id);
         $progress = AcademyLearning::progress($user, $course);
+        $quizzes = $course->quizzes()->whereHas('questions')->withCount('questions')->get();
 
         return view('academy.lesson', [
             'lesson' => $lesson,
             'course' => $course,
+            'quizByModule' => $quizzes->whereNotNull('module_id')->keyBy('module_id'),
+            'finalQuiz' => $quizzes->whereNull('module_id')->first(),
+            'passedQuizIds' => AcademyQuizAttempt::query()->where('user_id', $user->id)->where('status', 'passed')->whereIn('quiz_id', $quizzes->pluck('id'))->pluck('quiz_id')->all(),
             'previous' => $index > 0 ? $lessons[$index - 1] : null,
             'next' => $lessons[$index + 1] ?? null,
             'progress' => $progress,
