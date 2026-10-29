@@ -358,6 +358,45 @@ class MentoringTest extends TestCase
         $this->assertNull(MentoringMentor::query()->find($row->id));
     }
 
+    public function test_a_position_with_the_ticket_rights_in_its_matrix_acts_as_mentor_coordinator(): void
+    {
+        $coordinator = $this->holder('Coordinateur mentors', ['mentoring.tickets' => ['read', 'update']]);
+        $observer = $this->holder('Observateur mentorat', ['mentoring.tickets' => ['read']]);
+        $mentor = $this->mentor();
+        $requester = User::factory()->create(['name' => 'Salma Ben Ali']);
+
+        $this->actingAs($requester)->post('/mentorat', $this->payload(['title' => 'Besoin de soutien']))->assertRedirect();
+        $ticket = MentoringTicket::query()->firstOrFail();
+
+        // Le coordinateur est prévenu, voit la liste et instruit le ticket comme un manager mentor.
+        $this->assertSame(1, AppNotification::query()->where('user_id', $coordinator->id)->where('type', 'mentoring.ticket')->count());
+        $this->actingAs($coordinator)->get('/mentorat')->assertOk()->assertSee('Gestion des tickets');
+        $this->actingAs($coordinator)->get('/mentorat/gestion')->assertOk()->assertSee('Besoin de soutien');
+        $this->actingAs($coordinator)->post(route('mentoring.qualify', $ticket), ['category' => 'other', 'priority' => 'normal'])->assertRedirect();
+        $this->actingAs($coordinator)->post(route('mentoring.assign', $ticket), ['mentor_id' => $mentor->id])->assertRedirect();
+        $this->assertSame('assigned', $ticket->fresh()->status);
+        $this->actingAs($coordinator)->get('/mentorat/mentors')->assertOk()->assertDontSee('Aucun manager mentor actif');
+
+        // Le droit de consultation seule donne la liste et la fiche, sans aucune action.
+        $this->assertSame(0, AppNotification::query()->where('user_id', $observer->id)->count());
+        $this->actingAs($observer)->get('/mentorat/gestion')->assertOk()->assertSee('Besoin de soutien');
+        $this->actingAs($observer)->get(route('mentoring.show', $ticket))->assertOk()->assertDontSee('Ajouter un message');
+        $this->actingAs($observer)->post(route('mentoring.comment', $ticket), ['body' => 'Coucou'])->assertForbidden();
+        $this->actingAs($observer)->post(route('mentoring.close', $ticket))->assertForbidden();
+        $this->actingAs($observer)->get('/mentorat/mentors')->assertForbidden();
+    }
+
+    /** @param array<string, array<int, string>> $matrix */
+    private function holder(string $title, array $matrix): User
+    {
+        $user = User::factory()->create();
+        $position = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'position', 'category' => 'direction', 'title' => $title, 'sort_order' => 0, 'module_permissions' => $matrix]);
+        $person = \App\Models\OrgPerson::query()->create(['full_name' => $user->name, 'user_id' => $user->id]);
+        \App\Models\OrgAssignment::query()->create(['node_id' => $position->id, 'person_id' => $person->id]);
+
+        return $user->fresh();
+    }
+
     public function test_navigation_link_and_notification_links(): void
     {
         $manager = $this->mentor(true);

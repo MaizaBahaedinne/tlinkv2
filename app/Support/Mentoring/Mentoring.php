@@ -54,9 +54,58 @@ final class Mentoring
         return self::mentorRow($user) !== null;
     }
 
+    /** Manager mentor : inscrit comme tel dans l'annuaire, ou poste dont la matrice de droits autorise « modifier » sur les tickets. */
     public static function isManager(User $user): bool
     {
-        return MentoringMentor::query()->where('user_id', $user->id)->where('is_active', true)->where('is_manager', true)->exists();
+        return MentoringMentor::query()->where('user_id', $user->id)->where('is_active', true)->where('is_manager', true)->exists()
+            || in_array('update', self::matrixActions($user), true);
+    }
+
+    /** Lecture seule : poste dont la matrice autorise « consulter » les tickets, sans les gérer. */
+    public static function isObserver(User $user): bool
+    {
+        return ! self::isManager($user) && in_array('read', self::matrixActions($user), true);
+    }
+
+    /** Consulter la liste de tous les tickets (manager mentor ou lecture seule). */
+    public static function canSeeAll(User $user): bool
+    {
+        return self::isManager($user) || self::isObserver($user);
+    }
+
+    /**
+     * Actions accordées sur les tickets par la matrice des postes occupés (périmètre sans objet : le mentorat est national).
+     *
+     * @return array<int, string>
+     */
+    private static function matrixActions(User $user): array
+    {
+        $actions = [];
+
+        foreach (self::matrixAssignments()->whereHas('person', fn ($query) => $query->where('user_id', $user->id))->get() as $assignment) {
+            $actions = array_merge($actions, self::nodeActions($assignment));
+        }
+
+        return array_values(array_unique($actions));
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Builder<OrgAssignment> */
+    private static function matrixAssignments()
+    {
+        $today = now()->toDateString();
+
+        return OrgAssignment::query()
+            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
+            ->whereHas('node', fn ($query) => $query->where('kind', 'position')->whereNotNull('module_permissions'))
+            ->with('node');
+    }
+
+    /** @return array<int, string> */
+    private static function nodeActions(OrgAssignment $assignment): array
+    {
+        $matrix = (array) $assignment->node?->module_permissions;
+
+        return array_map('strval', (array) ($matrix[self::MODULE] ?? []));
     }
 
     /** Gérer l'annuaire des mentors : manager mentor, ou administrateur de toute la plateforme (qui ne lit pas pour autant les tickets). */
@@ -89,7 +138,15 @@ final class Mentoring
     /** Ids des managers mentors actifs. @return array<int, int> */
     public static function managerIds(): array
     {
-        return MentoringMentor::query()->where('is_manager', true)->where('is_active', true)->pluck('user_id')->map(fn ($id): int => (int) $id)->all();
+        $ids = MentoringMentor::query()->where('is_manager', true)->where('is_active', true)->pluck('user_id')->map(fn ($id): int => (int) $id)->all();
+
+        foreach (self::matrixAssignments()->whereHas('person', fn ($query) => $query->whereNotNull('user_id'))->with('person:id,user_id')->get() as $assignment) {
+            if (in_array('update', self::nodeActions($assignment), true)) {
+                $ids[] = (int) $assignment->person->user_id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /** Mentors disponibles pour une affectation. @return Collection<int, MentoringMentor> */

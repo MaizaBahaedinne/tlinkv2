@@ -82,7 +82,7 @@
                         @endforeach
                     </ul>
 
-                    @if($canComment)
+                    @if($canComment && ! $observer)
                         <form method="post" action="{{ route('mentoring.comment', $ticket) }}" class="mt-5 space-y-3 border-t border-slate-100 pt-5">
                             @csrf
                             <label for="comment-body" class="text-sm font-semibold text-slate-700">Ajouter un message</label>
@@ -100,14 +100,14 @@
                 </section>
 
                 {{-- REX : réservé à l'équipe de mentors --}}
-                @if($staff && ($rex !== null || in_array($ticket->status, ['in_progress', 'resolved'], true)))
+                @if(($staff || $observer) && ($rex !== null || in_array($ticket->status, ['in_progress', 'resolved'], true)))
                     <section id="rex" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <h2 class="font-display text-lg font-semibold text-slate-900">Retour d’expérience (REX)</h2>
                             @if($rex !== null)<span class="text-xs text-slate-500">Rédigé par {{ $rex->author?->name ?? 'un ancien mentor' }} · mis à jour le {{ $rex->updated_at->format('d/m/Y') }}</span>@endif
                         </div>
 
-                        @if(in_array($ticket->status, ['in_progress', 'resolved'], true))
+                        @if($staff && in_array($ticket->status, ['in_progress', 'resolved'], true))
                             <form method="post" action="{{ route('mentoring.rex', $ticket) }}" class="mt-4 space-y-4">
                                 @csrf
                                 @method('PUT')
@@ -151,7 +151,7 @@
                             <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Priorité</dt><dd class="text-slate-700">{{ \App\Models\MentoringTicket::PRIORITIES[$ticket->priority] ?? $ticket->priority }}</dd></div>
                         @endif
                         @if($ticket->resolved_at)<div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Résolue le</dt><dd class="text-slate-700">{{ $ticket->resolved_at->format('d/m/Y') }}</dd></div>@endif
-                        @if($staff && filled($ticket->qualification_note))
+                        @if(($staff || $observer) && filled($ticket->qualification_note))
                             <div><dt class="text-xs font-semibold uppercase tracking-wide text-amber-600">Analyse du manager (interne)</dt><dd class="whitespace-pre-line text-slate-700">{{ $ticket->qualification_note }}</dd></div>
                         @endif
                     </dl>

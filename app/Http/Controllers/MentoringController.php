@@ -81,7 +81,7 @@ class MentoringController extends Controller
     {
         $this->open();
         $user = $request->user();
-        abort_unless(Mentoring::isManager($user), 403);
+        abort_unless(Mentoring::canSeeAll($user), 403);
 
         $filters = $request->validate([
             'statut' => ['nullable', 'string', 'max:12'],
@@ -132,19 +132,21 @@ class MentoringController extends Controller
     {
         $this->open();
         $user = $request->user();
-        abort_unless(Mentoring::canView($ticket, $user), 403);
+        $observer = ! Mentoring::canView($ticket, $user) && Mentoring::isObserver($user);
+        abort_unless($observer || Mentoring::canView($ticket, $user), 403);
 
         $staff = Mentoring::isStaff($ticket, $user);
         $ticket->load(['requester', 'mentor', 'node', 'rex.author']);
 
         $events = $ticket->events()->with('author')
-            ->when(! $staff, fn ($query) => $query->whereIn('kind', \App\Models\MentoringEvent::PUBLIC_KINDS))
+            ->when(! $staff && ! $observer, fn ($query) => $query->whereIn('kind', \App\Models\MentoringEvent::PUBLIC_KINDS))
             ->get();
 
         return view('mentoring.show', [
             'ticket' => $ticket,
             'events' => $events,
             'staff' => $staff,
+            'observer' => $observer,
             'manager' => Mentoring::isManagerOf($ticket, $user),
             'mentors' => Mentoring::isManagerOf($ticket, $user) ? Mentoring::mentors()->where('user_id', '!=', $ticket->requester_id)->values() : collect(),
             'workload' => Mentoring::isManagerOf($ticket, $user) ? Mentoring::workload() : [],
@@ -333,7 +335,7 @@ class MentoringController extends Controller
             $tabs[] = ['label' => 'Mes accompagnements', 'route' => 'mentoring.assigned', 'match' => ['mentoring.assigned']];
         }
 
-        if (Mentoring::isManager($user)) {
+        if (Mentoring::canSeeAll($user)) {
             $tabs[] = ['label' => 'Gestion des tickets', 'route' => 'mentoring.manage', 'match' => ['mentoring.manage']];
         }
 

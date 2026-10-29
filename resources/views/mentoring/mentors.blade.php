@@ -3,7 +3,7 @@
 @section('content')
 @php
     $input = 'rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-tlink-blue';
-    $managers = $rows->where('is_manager', true)->where('is_active', true)->count();
+    $managers = count(\App\Support\Mentoring\Mentoring::managerIds());
 @endphp
 <div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
     @include('partials.app-header')
