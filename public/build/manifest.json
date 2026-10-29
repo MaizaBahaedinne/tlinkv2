@@ -72,7 +72,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-HNR8dMps.css",
+    "file": "assets/app-DGIOrC-Z.css",
     "name": "app",
     "names": [
       "app.css"
@@ -81,7 +81,7 @@
     "isEntry": true
   },
   "resources/css/site.css": {
-    "file": "assets/site-DmPOjzKA.css",
+    "file": "assets/site-u5oqvIce.css",
     "name": "site",
     "names": [
       "site.css"
@@ -90,13 +90,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-DUfwrzTQ.js",
+    "file": "assets/main-DEUdFbus.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-HNR8dMps.css"
+      "assets/app-DGIOrC-Z.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",
@@ -104,6 +104,12 @@
       "assets/fa-solid-900-IAB4Droh.woff2",
       "assets/fa-v4compatibility-CErXDOsT.woff2"
     ]
+  },
+  "resources/js/messenger.js": {
+    "file": "assets/messenger-QicptthC.js",
+    "name": "messenger",
+    "src": "resources/js/messenger.js",
+    "isEntry": true
   },
   "resources/js/site-map.js": {
     "file": "assets/site-map-BmVqgubr.js",

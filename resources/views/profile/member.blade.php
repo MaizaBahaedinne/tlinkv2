@@ -29,6 +29,12 @@
                         <p class="text-sm text-slate-600">{{ $profile->headline ?: 'Membre Tunivisions' }}</p>
                         @include('profile.partials.highlights')
                     </div>
+                    @if(\App\Support\Messenger\Messenger::enabled())
+                        <form method="post" action="{{ route('messenger.direct', $member) }}" class="sm:pb-1">
+                            @csrf
+                            <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90"><i class="fa-regular fa-comment-dots" aria-hidden="true"></i> Envoyer un message</button>
+                        </form>
+                    @endif
                 </div>
 
                 @if($positions->isNotEmpty() || $clubs->isNotEmpty())

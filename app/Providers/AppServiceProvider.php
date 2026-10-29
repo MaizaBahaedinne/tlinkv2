@@ -59,6 +59,11 @@ class AppServiceProvider extends ServiceProvider
             $user = request()->user();
 
             $view->with('unreadNotifications', $user === null ? 0 : \App\Models\AppNotification::query()->where('user_id', $user->id)->whereNull('read_at')->count());
+
+            // T.Link Messenger : lien et pastille des messages non lus (uniquement si la messagerie est ouverte).
+            $messengerOpen = $user !== null && \App\Support\Messenger\Messenger::enabled();
+            $view->with('messengerEnabled', $messengerOpen);
+            $view->with('unreadMessages', $messengerOpen ? \App\Support\Messenger\Messenger::unreadCount($user) : 0);
         });
     }
 }

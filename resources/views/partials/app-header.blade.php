@@ -39,6 +39,15 @@
                 <div id="nav-search-results" role="listbox" hidden class="absolute right-0 top-full z-40 mt-2 max-h-[70vh] w-80 max-w-[90vw] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-soft"></div>
             </form>
 
+            @if($messengerEnabled ?? false)
+                @php $unreadMessages = (int) ($unreadMessages ?? 0); @endphp
+                <a href="{{ route('messenger.index') }}" title="Messages" aria-label="Messages" @if(request()->routeIs('messenger.*')) aria-current="page" @endif id="nav-messages" data-unread-url="{{ route('messenger.unread') }}"
+                   class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('messenger.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
+                    <i class="fa-regular fa-comments" aria-hidden="true"></i>
+                    <span id="nav-messages-badge" @if($unreadMessages < 1) hidden @endif class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white">{{ $unreadMessages > 99 ? '99+' : $unreadMessages }}</span>
+                </a>
+            @endif
+
             <a href="{{ route('notifications.index') }}" title="Notifications" aria-label="Notifications{{ $unread > 0 ? ' ('.$unread.' non lues)' : '' }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif
                class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('notifications.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
                 <i class="fa-regular fa-bell" aria-hidden="true"></i>
@@ -74,6 +83,33 @@
         </div>
     </div>
 </header>
+
+<script>
+    // Pastille des messages non lus : mise à jour par T.Link Messenger, ou toutes les 30 s ailleurs dans l'application.
+    (function () {
+        var link = document.getElementById('nav-messages');
+        if (!link) { return; }
+        var badge = document.getElementById('nav-messages-badge');
+
+        window.tlinkMessengerBadge = function (count) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.hidden = count < 1;
+        };
+
+        if (document.getElementById('messenger')) { return; }
+
+        function refresh() {
+            if (document.hidden) { return; }
+            fetch(link.getAttribute('data-unread-url'), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                .then(function (response) { return response.ok ? response.json() : null; })
+                .then(function (data) { if (data) { window.tlinkMessengerBadge(data.unread || 0); } })
+                .catch(function () { /* badge conservé */ });
+        }
+
+        setInterval(refresh, 30000);
+        document.addEventListener('visibilitychange', refresh);
+    })();
+</script>
 
 <script>
     // Le menu de l'avatar se referme au clic ailleurs ou sur Échap.

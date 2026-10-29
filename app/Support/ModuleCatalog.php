@@ -71,6 +71,12 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'messenger', 'name' => 'T.Link Messenger', 'description' => 'Messagerie instantanée entre membres.',
+                'children' => [
+                    ['key' => 'messenger.chat', 'name' => 'Messagerie', 'description' => 'Conversations directes et de groupe entre membres, en temps réel. Désactiver ce module ferme la messagerie pour tous.', 'actions' => ['read', 'update']],
+                ],
+            ],
+            [
                 'key' => 'governance', 'name' => 'Gouvernance', 'description' => 'Validation, modération et traçabilité.',
                 'children' => [
                     ['key' => 'governance.approvals', 'name' => 'Approbations', 'description' => 'Demandes en attente de validation.', 'actions' => ['read', 'update']],

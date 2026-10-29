@@ -10,6 +10,7 @@ use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
 use App\Http\Controllers\MemberProfileController;
+use App\Http\Controllers\MessengerController;
 use App\Http\Controllers\MyOfficeController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
@@ -78,6 +79,26 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/quiz/tentatives/{attempt}', [AcademyQuizController::class, 'submit'])->whereNumber('attempt')->middleware('throttle:30,1')->name('attempts.submit');
     });
     Route::get('/membres/{user}', [MemberProfileController::class, 'show'])->whereNumber('user')->name('member.show');
+
+    // T.Link Messenger : messagerie instantanée (pages + JSON interrogé par le navigateur).
+    Route::prefix('messagerie')->name('messenger.')->group(function (): void {
+        Route::get('/', [MessengerController::class, 'index'])->name('index');
+        Route::get('/conversations', [MessengerController::class, 'conversations'])->middleware('throttle:90,1')->name('conversations');
+        Route::get('/non-lus', [MessengerController::class, 'unread'])->middleware('throttle:60,1')->name('unread');
+        Route::get('/membres', [MessengerController::class, 'members'])->middleware('throttle:60,1')->name('members');
+        Route::post('/directe/{user}', [MessengerController::class, 'direct'])->whereNumber('user')->middleware('throttle:30,1')->name('direct');
+        Route::post('/groupes', [MessengerController::class, 'storeGroup'])->middleware('throttle:10,1')->name('groups.store');
+        Route::post('/bloquer/{user}', [MessengerController::class, 'block'])->whereNumber('user')->name('block');
+        Route::delete('/bloquer/{user}', [MessengerController::class, 'unblock'])->whereNumber('user')->name('unblock');
+        Route::delete('/messages/{message}', [MessengerController::class, 'destroyMessage'])->whereNumber('message')->name('messages.destroy');
+        Route::get('/messages/{message}/image', [MessengerController::class, 'image'])->whereNumber('message')->name('image');
+        Route::get('/{conversation}', [MessengerController::class, 'index'])->whereNumber('conversation')->name('show');
+        Route::get('/{conversation}/messages', [MessengerController::class, 'messages'])->whereNumber('conversation')->middleware('throttle:150,1')->name('messages');
+        Route::post('/{conversation}/messages', [MessengerController::class, 'send'])->whereNumber('conversation')->middleware('throttle:40,1')->name('send');
+        Route::post('/{conversation}/lu', [MessengerController::class, 'read'])->whereNumber('conversation')->middleware('throttle:90,1')->name('read');
+        Route::post('/{conversation}/ecriture', [MessengerController::class, 'typing'])->whereNumber('conversation')->middleware('throttle:60,1')->name('typing');
+        Route::post('/{conversation}/quitter', [MessengerController::class, 'leave'])->whereNumber('conversation')->name('leave');
+    });
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
     Route::get('/recherche', [SearchController::class, 'index'])->name('search.index');
