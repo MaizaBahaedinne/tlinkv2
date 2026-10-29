@@ -402,6 +402,84 @@ class AcademyTest extends TestCase
         $this->assertSame(0, AcademyPlan::query()->count());
     }
 
+    private function issuedCertificateCode(): string
+    {
+        $user = User::factory()->create();
+        [, $lessons] = $this->course();
+        foreach ($lessons as $lesson) {
+            AcademyLearning::completeLesson($user, $lesson);
+        }
+
+        return AcademyEnrollment::query()->firstOrFail()->certificate_code;
+    }
+
+    public function test_certificate_shows_foundation_logo_and_default_signature_titles(): void
+    {
+        $code = $this->issuedCertificateCode();
+
+        $this->get('/certificats/'.$code)->assertOk()
+            ->assertSee('logoFondation')
+            ->assertSee('Chef de projet Tunivisions Academy')
+            ->assertSee('Président de la Fondation Tunivisions')
+            ->assertDontSee('storage/academy/certificate');
+    }
+
+    public function test_admin_configures_certificate_logo_and_signatures(): void
+    {
+        Storage::fake('public');
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->put('/admin/academy/reglages/certificat', [
+            'logo' => UploadedFile::fake()->image('logo.png'),
+            'manager_signature' => UploadedFile::fake()->image('chef.png'),
+            'president_signature' => UploadedFile::fake()->image('president.webp'),
+            'manager_name' => 'Sami Ben Ali',
+            'manager_title' => 'Chef de projet',
+            'president_name' => 'Leila Trabelsi',
+            'president_title' => 'Présidente de la Fondation',
+        ])->assertSessionHasNoErrors();
+
+        $settings = AcademySettings::all();
+        foreach (['logo_path', 'manager_signature_path', 'president_signature_path'] as $key) {
+            $this->assertStringStartsWith('academy/certificate/', $settings[$key]);
+            Storage::disk('public')->assertExists($settings[$key]);
+        }
+
+        $code = $this->issuedCertificateCode();
+        $this->get('/certificats/'.$code)->assertOk()
+            ->assertSee('storage/academy/certificate', false)
+            ->assertSee('Sami Ben Ali')
+            ->assertSee('Leila Trabelsi')
+            ->assertSee('Présidente de la Fondation');
+
+        $oldLogo = $settings['logo_path'];
+        $this->actingAs($admin)->put('/admin/academy/reglages/certificat', [
+            'remove_logo' => '1',
+            'manager_name' => 'Sami Ben Ali',
+            'manager_title' => 'Chef de projet',
+            'president_name' => 'Leila Trabelsi',
+            'president_title' => 'Présidente de la Fondation',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('', AcademySettings::get('logo_path'));
+        Storage::disk('public')->assertMissing($oldLogo);
+        $this->assertNotSame('', AcademySettings::get('manager_signature_path'));
+    }
+
+    public function test_certificate_settings_reject_non_admins_and_invalid_files(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs(User::factory()->create())
+            ->put('/admin/academy/reglages/certificat', ['logo' => UploadedFile::fake()->image('logo.png')])
+            ->assertForbidden();
+
+        $this->actingAs($this->admin())
+            ->put('/admin/academy/reglages/certificat', ['logo' => UploadedFile::fake()->create('virus.pdf', 10, 'application/pdf')])
+            ->assertSessionHasErrors('logo');
+        $this->assertSame('', AcademySettings::get('logo_path'));
+    }
+
     public function test_engine_award_is_idempotent(): void
     {
         $user = User::factory()->create();

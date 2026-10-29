@@ -277,7 +277,14 @@ class AcademyController extends Controller
         $enrollment = AcademyEnrollment::query()->with(['user', 'course'])
             ->where('certificate_code', $code)->whereNotNull('completed_at')->firstOrFail();
 
-        return view('academy.certificate', ['enrollment' => $enrollment, 'name' => AcademySettings::NAME]);
+        return view('academy.certificate', [
+            'enrollment' => $enrollment,
+            'name' => AcademySettings::NAME,
+            'settings' => AcademySettings::all(),
+            'logoUrl' => AcademySettings::fileUrl('logo_path'),
+            'managerSignatureUrl' => AcademySettings::fileUrl('manager_signature_path'),
+            'presidentSignatureUrl' => AcademySettings::fileUrl('president_signature_path'),
+        ]);
     }
 
     private function published(AcademyCourse $course): AcademyCourse

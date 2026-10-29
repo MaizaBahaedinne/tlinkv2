@@ -4,6 +4,7 @@ namespace App\Support\Academy;
 
 use App\Models\Setting;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Réglages de Tunivisions Academy, stockés en base (modifiables depuis l'administration, pas dans .env).
@@ -24,11 +25,20 @@ final class AcademySettings
         // Consignes affichées au membre qui paie hors ligne (virement, espèces, etc.).
         'manual_instructions' => "Réglez par virement ou en espèces auprès de l'équipe Tunivisions, en indiquant la référence de votre commande. Votre accès est activé dès que le paiement est validé.",
         'contact_email' => '',
+        // Certificat : logo du projet, signataires (nom, fonction, image de signature) — fichiers sur le disque public.
+        'logo_path' => '',
+        'manager_name' => '',
+        'manager_title' => 'Chef de projet Tunivisions Academy',
+        'manager_signature_path' => '',
+        'president_name' => '',
+        'president_title' => 'Président de la Fondation Tunivisions',
+        'president_signature_path' => '',
     ];
 
-    /**
-     * @return array{sales_enabled: bool, gateway: string, manual_instructions: string, contact_email: string}
-     */
+    /** Dossier (disque public) des images du certificat. */
+    public const FILES_DIR = 'academy/certificate';
+
+    /** @return array<string, mixed> */
     public static function all(): array
     {
         $stored = [];
@@ -38,12 +48,22 @@ final class AcademySettings
             $stored = is_array($decoded) ? $decoded : [];
         }
 
-        return [
-            'sales_enabled' => (bool) ($stored['sales_enabled'] ?? self::DEFAULTS['sales_enabled']),
-            'gateway' => (string) ($stored['gateway'] ?? self::DEFAULTS['gateway']),
-            'manual_instructions' => (string) ($stored['manual_instructions'] ?? self::DEFAULTS['manual_instructions']),
-            'contact_email' => (string) ($stored['contact_email'] ?? self::DEFAULTS['contact_email']),
-        ];
+        $values = [];
+
+        foreach (self::DEFAULTS as $key => $default) {
+            $value = $stored[$key] ?? $default;
+            $values[$key] = is_bool($default) ? (bool) $value : (string) $value;
+        }
+
+        return $values;
+    }
+
+    /** URL publique d'une image du certificat (logo, signature), ou null si elle n'est pas renseignée. */
+    public static function fileUrl(string $key): ?string
+    {
+        $path = (string) self::get($key);
+
+        return str_starts_with($path, self::FILES_DIR.'/') ? Storage::disk('public')->url($path) : null;
     }
 
     public static function get(string $key): mixed

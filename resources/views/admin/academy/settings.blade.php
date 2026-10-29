@@ -41,6 +41,49 @@
         </form>
     </article>
 
+    <article class="card" style="margin-top:16px">
+        <h2 style="margin-top:0">Certificat de réussite</h2>
+        <p class="hint" style="margin-top:-6px">Le certificat affiche le logo d’Academy, le logo de la Fondation Tunivisions et la signature du chef de projet et du président de la Fondation. Sans image de signature, une ligne de signature avec le nom et la fonction est affichée.</p>
+        <form method="post" action="{{ route('admin.academy.settings.certificate') }}" enctype="multipart/form-data" class="grid" style="gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+            @csrf
+            @method('PUT')
+            @php
+                $files = [
+                    'logo' => ['Logo Tunivisions Academy', 'logo_path', 'Affiché en haut du certificat, à côté du logo de la Fondation.'],
+                    'manager_signature' => ['Signature du chef de projet', 'manager_signature_path', 'Image de la signature sur fond blanc ou transparent.'],
+                    'president_signature' => ['Signature du président de la Fondation', 'president_signature_path', 'Image de la signature sur fond blanc ou transparent.'],
+                ];
+            @endphp
+            @foreach($files as $input => [$label, $key, $hint])
+                <div>
+                    <label class="text-sm" for="c-{{ $input }}">{{ $label }}</label>
+                    @if($certificateFiles[$key])
+                        <img src="{{ $certificateFiles[$key] }}" alt="{{ $label }}" style="display:block;margin:6px 0;max-width:100%;height:64px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px">
+                        <label class="check"><input type="checkbox" name="remove_{{ $input }}" value="1"> <span class="text-sm">Retirer l’image</span></label>
+                    @endif
+                    <input id="c-{{ $input }}" type="file" name="{{ $input }}" accept="image/png,image/jpeg,image/webp">
+                    @error($input)<p class="error">{{ $message }}</p>@enderror
+                    <p class="hint">{{ $hint }} jpg, png ou webp — 2 Mo max.</p>
+                </div>
+            @endforeach
+            @foreach(['manager' => 'Chef de projet', 'president' => 'Président de la Fondation'] as $prefix => $role)
+                <div>
+                    <label class="text-sm" for="c-{{ $prefix }}-name">{{ $role }} : nom</label>
+                    <input id="c-{{ $prefix }}-name" type="text" name="{{ $prefix }}_name" value="{{ old($prefix.'_name', $settings[$prefix.'_name']) }}" maxlength="120">
+                    @error($prefix.'_name')<p class="error">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label class="text-sm" for="c-{{ $prefix }}-title">{{ $role }} : fonction affichée</label>
+                    <input id="c-{{ $prefix }}-title" type="text" name="{{ $prefix }}_title" value="{{ old($prefix.'_title', $settings[$prefix.'_title']) }}" maxlength="160">
+                    @error($prefix.'_title')<p class="error">{{ $message }}</p>@enderror
+                </div>
+            @endforeach
+            <div style="grid-column:1/-1;display:flex;justify-content:flex-end">
+                <button type="submit" class="btn btn-primary">Enregistrer le certificat</button>
+            </div>
+        </form>
+    </article>
+
     <article class="card card-flush" style="margin-top:16px">
         <div class="card-head"><h2>Abonnements</h2></div>
         @if($plans->count())

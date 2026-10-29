@@ -267,6 +267,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('academy/commandes/{order}/rembourser', [Admin\AcademyOrderController::class, 'refund'])->whereNumber('order')->name('academy.orders.refund');
             Route::get('academy/reglages', [Admin\AcademySettingsController::class, 'edit'])->name('academy.settings.edit');
             Route::put('academy/reglages', [Admin\AcademySettingsController::class, 'update'])->name('academy.settings.update');
+            Route::put('academy/reglages/certificat', [Admin\AcademySettingsController::class, 'updateCertificate'])->name('academy.settings.certificate');
             Route::post('academy/reglages/abonnements', [Admin\AcademySettingsController::class, 'storePlan'])->name('academy.settings.plans.store');
             Route::put('academy/reglages/abonnements/{plan}', [Admin\AcademySettingsController::class, 'updatePlan'])->whereNumber('plan')->name('academy.settings.plans.update');
             Route::delete('academy/reglages/abonnements/{plan}', [Admin\AcademySettingsController::class, 'destroyPlan'])->whereNumber('plan')->name('academy.settings.plans.destroy');

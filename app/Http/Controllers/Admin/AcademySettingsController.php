@@ -7,6 +7,7 @@ use App\Support\Academy\AcademySettings;
 use App\Support\Academy\Payments\PaymentGateways;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -20,6 +21,11 @@ class AcademySettingsController extends AdminController
     {
         return view('admin.academy.settings', [
             'settings' => AcademySettings::all(),
+            'certificateFiles' => [
+                'logo_path' => AcademySettings::fileUrl('logo_path'),
+                'manager_signature_path' => AcademySettings::fileUrl('manager_signature_path'),
+                'president_signature_path' => AcademySettings::fileUrl('president_signature_path'),
+            ],
             'gateways' => PaymentGateways::all(),
             'plans' => AcademyPlan::query()->orderBy('sort_order')->orderBy('id')->get(),
         ]);
@@ -43,6 +49,52 @@ class AcademySettingsController extends AdminController
         $this->audit($request, 'admin.academy.settings.updated', $request->user(), ['gateway' => $data['gateway']]);
 
         return back()->with('status', 'Réglages enregistrés.');
+    }
+
+    public function updateCertificate(Request $request): RedirectResponse
+    {
+        $image = ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'];
+        $data = $request->validate([
+            'logo' => $image,
+            'manager_signature' => $image,
+            'president_signature' => $image,
+            'manager_name' => ['nullable', 'string', 'max:120'],
+            'manager_title' => ['nullable', 'string', 'max:160'],
+            'president_name' => ['nullable', 'string', 'max:120'],
+            'president_title' => ['nullable', 'string', 'max:160'],
+        ]);
+
+        $current = AcademySettings::all();
+        $values = [];
+
+        foreach (['manager_name', 'manager_title', 'president_name', 'president_title'] as $field) {
+            $values[$field] = trim((string) ($data[$field] ?? ''));
+        }
+
+        // Image envoyée : elle remplace l'ancienne ; case « Retirer » cochée : on la supprime.
+        foreach (['logo' => 'logo_path', 'manager_signature' => 'manager_signature_path', 'president_signature' => 'president_signature_path'] as $input => $key) {
+            if ($request->hasFile($input)) {
+                $values[$key] = $request->file($input)->store(AcademySettings::FILES_DIR, 'public');
+            } elseif ($request->boolean('remove_'.$input)) {
+                $values[$key] = '';
+            } else {
+                continue;
+            }
+
+            $this->deleteFile((string) $current[$key]);
+        }
+
+        AcademySettings::save($values);
+        $this->audit($request, 'admin.academy.settings.updated', $request->user(), ['certificate' => true]);
+
+        return back()->with('status', 'Certificat enregistré.');
+    }
+
+    private function deleteFile(string $path): void
+    {
+        if (str_starts_with($path, AcademySettings::FILES_DIR.'/')) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     public function storePlan(Request $request): RedirectResponse
