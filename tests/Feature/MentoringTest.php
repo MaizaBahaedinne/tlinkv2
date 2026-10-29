@@ -373,7 +373,7 @@ class MentoringTest extends TestCase
 
         // Le coordinateur est prévenu, voit la liste et instruit le ticket comme un manager mentor.
         $this->assertSame(1, AppNotification::query()->where('user_id', $coordinator->id)->where('type', 'mentoring.ticket')->count());
-        $this->actingAs($coordinator)->get('/mentorat')->assertOk()->assertSee('Gestion des tickets');
+        $this->actingAs($coordinator)->get('/mentorat')->assertOk()->assertDontSee('Gestion des tickets');
         $this->actingAs($coordinator)->get('/admin/mentorat')->assertOk()->assertSee('Besoin de soutien');
         $this->actingAs($coordinator)->post(route('mentoring.qualify', $ticket), ['category' => 'other', 'priority' => 'normal'])->assertRedirect();
         $this->actingAs($coordinator)->post(route('mentoring.assign', $ticket), ['mentor_id' => $mentor->id])->assertRedirect();
@@ -422,7 +422,7 @@ class MentoringTest extends TestCase
 
         // Le mentor affecté reste côté membre et y trouve le lien d'accompagnement, pas celui de gestion.
         $this->actingAs($mentor)->get(route('mentoring.show', $ticket))->assertOk()->assertDontSee('Ouvrir dans l’administration');
-        $this->actingAs($manager)->get('/mentorat')->assertOk()->assertSee(route('admin.mentoring.tickets.index'), false);
+        $this->actingAs($manager)->get('/mentorat')->assertOk()->assertDontSee(route('admin.mentoring.tickets.index'), false);
 
         // Sa propre demande se suit côté membre, même pour un manager.
         $own = $this->ticket($manager);

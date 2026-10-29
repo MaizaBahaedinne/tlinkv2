@@ -250,14 +250,6 @@ class MentoringController extends Controller
             $tabs[] = ['label' => 'Mes accompagnements', 'route' => 'mentoring.assigned', 'match' => ['mentoring.assigned']];
         }
 
-        if (Mentoring::canSeeAll($user)) {
-            $tabs[] = ['label' => 'Gestion des tickets', 'route' => 'admin.mentoring.tickets.index', 'match' => ['admin.mentoring.tickets.*']];
-        }
-
-        if (Mentoring::canAdminister($user)) {
-            $tabs[] = ['label' => 'Mentors', 'route' => 'admin.mentoring.mentors.index', 'match' => ['admin.mentoring.mentors.*']];
-        }
-
         return $tabs;
     }
 }
