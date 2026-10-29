@@ -72,7 +72,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BeuGu-jA.css",
+    "file": "assets/app-2ikhkJ5W.css",
     "name": "app",
     "names": [
       "app.css"
@@ -81,7 +81,7 @@
     "isEntry": true
   },
   "resources/css/site.css": {
-    "file": "assets/site-CDIi00N-.css",
+    "file": "assets/site-DifrgGbB.css",
     "name": "site",
     "names": [
       "site.css"
@@ -90,13 +90,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-DC33oRM_.js",
+    "file": "assets/main-CVeE-cYL.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-BeuGu-jA.css"
+      "assets/app-2ikhkJ5W.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",
@@ -104,6 +104,12 @@
       "assets/fa-solid-900-IAB4Droh.woff2",
       "assets/fa-v4compatibility-CErXDOsT.woff2"
     ]
+  },
+  "resources/js/messenger-dock.js": {
+    "file": "assets/messenger-dock-DD43xgXO.js",
+    "name": "messenger-dock",
+    "src": "resources/js/messenger-dock.js",
+    "isEntry": true
   },
   "resources/js/messenger.js": {
     "file": "assets/messenger-QicptthC.js",

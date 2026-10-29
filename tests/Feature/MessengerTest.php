@@ -297,4 +297,26 @@ class MessengerTest extends TestCase
         $this->actingAs($bob)->get('/notifications')->assertOk()->assertDontSee('id="nav-messages"', false);
         $this->actingAs($alice)->get(route('member.show', $bob))->assertOk()->assertDontSee('Envoyer un message');
     }
+
+    public function test_floating_dock_is_on_regular_pages_but_not_on_the_messenger_page_or_when_disabled(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/notifications')->assertOk()->assertSee('id="mg-dock"', false)->assertSee('data-url-direct', false);
+        $this->actingAs($user)->get('/messagerie')->assertOk()->assertDontSee('id="mg-dock"', false);
+
+        AppModule::query()->where('key', 'messenger.chat')->update(['is_active' => false]);
+        $this->actingAs($user)->get('/notifications')->assertOk()->assertDontSee('id="mg-dock"', false);
+    }
+
+    public function test_direct_conversation_can_be_opened_as_json_for_the_dock(): void
+    {
+        [$alice, $bob] = User::factory()->count(2)->create();
+        $bob = $bob->fresh();
+
+        $id = $this->actingAs($alice->fresh())->postJson(route('messenger.direct', $bob))->assertOk()->json('conversation');
+        $this->assertSame(MessengerConversation::query()->firstOrFail()->id, $id);
+
+        $this->actingAs($alice->fresh())->postJson(route('messenger.direct', $alice))->assertStatus(422);
+    }
 }

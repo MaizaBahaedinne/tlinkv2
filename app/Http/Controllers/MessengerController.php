@@ -49,10 +49,16 @@ class MessengerController extends Controller
         return response()->json(['members' => Messenger::searchMembers($request->user(), (string) ($data['q'] ?? ''))]);
     }
 
-    public function direct(Request $request, User $user): RedirectResponse
+    public function direct(Request $request, User $user): RedirectResponse|JsonResponse
     {
         $this->open();
         $conversation = Messenger::direct($request->user(), $user);
+
+        if ($request->expectsJson()) {
+            return $conversation === null
+                ? response()->json(['message' => 'Vous ne pouvez pas écrire à ce membre.'], 422)
+                : response()->json(['conversation' => $conversation->id]);
+        }
 
         return $conversation === null
             ? redirect()->route('messenger.index')->with('status', 'Vous ne pouvez pas écrire à ce membre.')

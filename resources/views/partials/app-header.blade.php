@@ -84,6 +84,10 @@
     </div>
 </header>
 
+@if(($messengerEnabled ?? false) && ! request()->routeIs('messenger.*'))
+    @include('messenger.dock')
+@endif
+
 <script>
     // Pastille des messages non lus : mise à jour par T.Link Messenger, ou toutes les 30 s ailleurs dans l'application.
     (function () {
@@ -99,7 +103,7 @@
         if (document.getElementById('messenger')) { return; }
 
         function refresh() {
-            if (document.hidden) { return; }
+            if (document.hidden || document.getElementById('mg-dock')) { return; }
             fetch(link.getAttribute('data-unread-url'), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
                 .then(function (response) { return response.ok ? response.json() : null; })
                 .then(function (data) { if (data) { window.tlinkMessengerBadge(data.unread || 0); } })
