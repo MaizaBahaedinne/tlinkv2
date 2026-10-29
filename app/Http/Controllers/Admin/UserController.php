@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Badge;
 use App\Models\Governorate;
-use App\Models\OrgAssignment;
 use App\Models\Profile;
 use App\Models\User;
+use App\Models\UserBadge;
 use App\Support\AccessLevels;
+use App\Support\MemberJourney;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -66,13 +68,34 @@ class UserController extends AdminController
         }
 
         $user->load('profile');
+        $profile = $user->profile;
+        $journey = new MemberJourney();
+
+        $earned = UserBadge::query()->where('user_id', $user->id)->pluck('awarded_at', 'badge_id');
+        $badges = Badge::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
+            ->each(fn (Badge $badge) => $badge->setAttribute('awarded_at', $earned[$badge->id] ?? null))
+            ->sortByDesc(fn (Badge $badge) => $badge->awarded_at !== null)
+            ->values();
+
+        $split = fn (?string $value, string $separator) => collect(preg_split($separator, (string) $value))->map(fn ($item) => trim((string) $item))->filter()->values();
 
         return view('admin.users.show', [
             'user' => $user,
+            'profile' => $profile,
+            'avatarUrl' => $profile?->photo_path ? Storage::disk('public')->url($profile->photo_path) : null,
+            'coverUrl' => $profile?->cover_path ? Storage::disk('public')->url($profile->cover_path) : null,
+            'governorate' => $profile?->governorate_id ? Governorate::query()->whereKey($profile->governorate_id)->value('name') : null,
+            'skills' => $split($profile?->skills, '/,/'),
+            'languages' => $split($profile?->languages, '/,/'),
             'canEdit' => $this->context($request)->isGlobal('entity.manage'),
             'canImpersonate' => ImpersonationController::canImpersonate($request, $user),
-            'memberships' => $user->memberships()->with(['node:id,title'])->latest('id')->get(),
-            'orgPositions' => $this->orgPositions($user),
+            'canLinkPeople' => $this->visibleScopes($request) === null,
+            'currentMandate' => $journey->currentMandate(),
+            'currentPositions' => $journey->currentPositions($user),
+            'journey' => $journey->byMandate($user),
+            'badges' => $badges,
+            'badgesEarned' => $earned->count(),
+            'postsCount' => $user->posts()->count(),
             'recentPosts' => $user->posts()->latest('id')->limit(5)->get(['id', 'content', 'type', 'created_at']),
         ]);
     }
@@ -221,22 +244,5 @@ class UserController extends AdminController
     private function restrictToScopes($query, array $scopes)
     {
         return $query->whereHas('memberships', fn ($memberships) => $memberships->whereIn('scope', $scopes));
-    }
-
-    /**
-     * Postes actuellement occupés par l'utilisateur dans l'organigramme.
-     *
-     * @return \Illuminate\Support\Collection<int, OrgAssignment>
-     */
-    private function orgPositions(User $user)
-    {
-        $today = now()->toDateString();
-
-        return OrgAssignment::query()
-            ->whereHas('person', fn ($person) => $person->where('user_id', $user->id))
-            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
-            ->with(['node:id,title,subtitle,access_level', 'person:id,user_id,job_title'])
-            ->orderBy('id')
-            ->get();
     }
 }
