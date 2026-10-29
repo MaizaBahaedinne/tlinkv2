@@ -287,7 +287,57 @@ dialog.modal[open] { display: flex; flex-direction: column; }
 .logo-field-preview [hidden] { display: none; }
 .logo-field-actions { display: grid; gap: 6px; justify-items: start; min-width: 0; }
 
+/* ---------- Fiche d'un ticket de mentorat ---------- */
+.stack { display: grid; gap: 14px; }
+.btn-block { width: 100%; }
+.kv.kv-1 { grid-template-columns: 1fr; }
+.prose { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.65; }
+.callout { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--warning-bg); color: var(--warning); font-size: 13px; font-weight: 600; }
+.callout.is-danger { background: var(--danger-bg); color: var(--danger); }
+.ticket-hero { display: grid; gap: 20px; padding: 22px 24px; }
+.ticket-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.ticket-ref { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; color: var(--muted); }
+.ticket-hero h2 { font-size: 22px; line-height: 1.25; }
+.ticket-who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted); font-size: 12.5px; }
+.ticket-who strong { color: var(--text); }
+.stepper { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); counter-reset: step; }
+.stepper li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: 12px; font-weight: 700; color: var(--faint); counter-increment: step; }
+.stepper li::before { content: counter(step); position: relative; z-index: 1; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--neutral-bg); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line-strong); color: var(--faint); font-weight: 800; }
+.stepper li::after { content: ''; position: absolute; top: 14px; left: calc(50% + 18px); right: calc(-50% + 18px); height: 2px; background: var(--line-strong); }
+.stepper li:last-child::after { display: none; }
+.stepper li.is-done { color: var(--text); }
+.stepper li.is-done::before { content: '\2713'; background: var(--success-bg); box-shadow: 0 0 0 1px #bfe8d6; color: var(--success); }
+.stepper li.is-done::after { background: var(--success); }
+.stepper li.is-current { color: var(--navy-800); }
+.stepper li.is-current::before { background: var(--navy-800); box-shadow: 0 0 0 1px var(--navy-800), 0 6px 14px rgba(125, 0, 32, 0.25); color: #fff; }
+.stepper li.is-current::after { background: var(--line-strong); }
+.thread { display: grid; gap: 16px; padding: 20px; }
+.msg { display: flex; gap: 12px; align-items: flex-start; }
+.msg-body { flex: 1; min-width: 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 4px 14px 14px 14px; background: #fff; }
+.msg.is-team .msg-body { background: var(--info-bg); border-color: #f6c1cd; }
+.msg.is-internal .msg-body { background: var(--warning-bg); border: 1px dashed #e0a24a; }
+.msg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 4px; color: var(--muted); font-size: 12.5px; }
+.msg-head strong { color: var(--text); font-weight: 700; }
+.msg-text { white-space: pre-line; overflow-wrap: anywhere; }
+.log { display: flex; align-items: center; gap: 12px; padding-left: 14px; color: var(--muted); font-size: 12.5px; }
+.log::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.log time { color: var(--faint); white-space: nowrap; }
+.composer { display: grid; gap: 12px; padding: 16px 20px 18px; border-top: 1px solid var(--line); background: #fefbfc; }
+.composer-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.rex-list { display: grid; gap: 18px; margin: 0; padding: 20px; }
+.rex-list dt { color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.rex-list dd { margin: 4px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+.person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.person-label { display: block; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.person-name { display: block; font-weight: 700; overflow-wrap: anywhere; }
+.person-sub { display: block; color: var(--muted); font-size: 12.5px; }
+
 /* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+    .stepper { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 0; }
+    .stepper li::after { display: none; }
+    .ticket-hero { padding: 18px; }
+}
 @media (max-width: 1100px) {
     .grid-2, .grid-3-1 { grid-template-columns: 1fr; }
 }
