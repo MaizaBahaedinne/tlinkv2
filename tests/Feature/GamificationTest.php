@@ -239,6 +239,14 @@ class GamificationTest extends TestCase
         $this->post("/admin/badges/missions/{$mission->id}/points", ['title' => 'Zéro', 'trigger_key' => 'post.created', 'target' => 0])->assertSessionHasErrors('target');
     }
 
+    public function test_admin_badge_list_loads_the_icon_font_so_medals_are_visible(): void
+    {
+        $this->actingAs($this->admin());
+        $this->speakerBadge();
+
+        $this->get('/admin/badges')->assertOk()->assertSee('Orateur')->assertSee('admin-icons', false);
+    }
+
     public function test_admin_can_recalculate_every_member(): void
     {
         $this->actingAs($this->admin());

@@ -3,6 +3,12 @@
 @section('title', 'Badges et missions')
 @section('section', 'Badges et missions')
 
+@push('head')
+    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite(['resources/css/admin-icons.css'])
+    @endif
+@endpush
+
 @php
     $tierColors = ['bronze' => '#b45309', 'silver' => '#64748b', 'gold' => '#ca8a04', 'platinum' => '#7c3aed'];
 @endphp
