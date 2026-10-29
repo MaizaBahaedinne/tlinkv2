@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MentoringMentor;
 use App\Models\MentoringTicket;
 use App\Models\User;
 use App\Support\Mentoring\Mentoring;
@@ -77,79 +76,32 @@ class MentoringController extends Controller
         ]);
     }
 
-    public function manage(Request $request): View
-    {
-        $this->open();
-        $user = $request->user();
-        abort_unless(Mentoring::canSeeAll($user), 403);
-
-        $filters = $request->validate([
-            'statut' => ['nullable', 'string', 'max:12'],
-            'priorite' => ['nullable', Rule::in(array_keys(MentoringTicket::PRIORITIES))],
-            'public' => ['nullable', Rule::in(array_keys(MentoringTicket::AUDIENCES))],
-            'q' => ['nullable', 'string', 'max:80'],
-        ]);
-
-        $status = $filters['statut'] ?? 'open';
-        $query = MentoringTicket::query()->with(['requester', 'mentor', 'node']);
-
-        if ($status === 'open') {
-            $query->whereIn('status', MentoringTicket::OPEN);
-        } elseif (isset(MentoringTicket::STATUSES[$status])) {
-            $query->where('status', $status);
-        } else {
-            $status = 'all';
-        }
-
-        if (! empty($filters['priorite'])) {
-            $query->where('priority', $filters['priorite']);
-        }
-
-        if (! empty($filters['public'])) {
-            $query->where('audience', $filters['public']);
-        }
-
-        if (! empty($filters['q'])) {
-            $term = '%'.addcslashes(trim($filters['q']), '\\%_').'%';
-            $query->where(fn ($inner) => $inner->where('title', 'like', $term)->orWhere('reference', 'like', $term)
-                ->orWhereHas('requester', fn ($requester) => $requester->where('name', 'like', $term)));
-        }
-
-        $counts = MentoringTicket::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all();
-
-        return view('mentoring.manage', [
-            'tickets' => $query->orderByRaw("case priority when 'urgent' then 0 when 'high' then 1 when 'normal' then 2 else 3 end")->latest('id')->paginate(20)->withQueryString(),
-            'counts' => $counts,
-            'status' => $status,
-            'filters' => $filters,
-            'tabs' => $this->tabs($user),
-        ]);
-    }
-
     // ───────────── Fiche d'un ticket ─────────────
 
-    public function show(Request $request, MentoringTicket $ticket): View
+    public function show(Request $request, MentoringTicket $ticket): View|RedirectResponse
     {
         $this->open();
         $user = $request->user();
-        $observer = ! Mentoring::canView($ticket, $user) && Mentoring::isObserver($user);
-        abort_unless($observer || Mentoring::canView($ticket, $user), 403);
+
+        // Le tri (qualifier, affecter, clore) se fait dans l'administration : le manager mentor et les postes habilités y sont envoyés.
+        if (! $this->isRequester($ticket, $user) && (int) $ticket->mentor_id !== (int) $user->id && Mentoring::canSeeAll($user)) {
+            return redirect()->route('admin.mentoring.tickets.show', $ticket);
+        }
+
+        abort_unless(Mentoring::canView($ticket, $user), 403);
 
         $staff = Mentoring::isStaff($ticket, $user);
         $ticket->load(['requester', 'mentor', 'node', 'rex.author']);
 
         $events = $ticket->events()->with('author')
-            ->when(! $staff && ! $observer, fn ($query) => $query->whereIn('kind', \App\Models\MentoringEvent::PUBLIC_KINDS))
+            ->when(! $staff, fn ($query) => $query->whereIn('kind', \App\Models\MentoringEvent::PUBLIC_KINDS))
             ->get();
 
         return view('mentoring.show', [
             'ticket' => $ticket,
             'events' => $events,
             'staff' => $staff,
-            'observer' => $observer,
-            'manager' => Mentoring::isManagerOf($ticket, $user),
-            'mentors' => Mentoring::isManagerOf($ticket, $user) ? Mentoring::mentors()->where('user_id', '!=', $ticket->requester_id)->values() : collect(),
-            'workload' => Mentoring::isManagerOf($ticket, $user) ? Mentoring::workload() : [],
+            'adminUrl' => Mentoring::canSeeAll($user) ? route('admin.mentoring.tickets.show', $ticket) : null,
             'tabs' => $this->tabs($user),
         ]);
     }
@@ -161,7 +113,7 @@ class MentoringController extends Controller
 
         Mentoring::comment($ticket, $user, $data['body'], (bool) ($data['internal'] ?? false));
 
-        return redirect()->route('mentoring.show', $ticket)->withFragment('fil');
+        return $this->backTo($request, $ticket)->withFragment('fil');
     }
 
     public function qualify(Request $request, MentoringTicket $ticket): RedirectResponse
@@ -175,7 +127,7 @@ class MentoringController extends Controller
 
         Mentoring::qualify($ticket, $user, $data['category'], $data['priority'], $data['qualification_note'] ?? null);
 
-        return redirect()->route('mentoring.show', $ticket)->with('status', 'Ticket qualifié.');
+        return $this->backTo($request, $ticket)->with('status', 'Ticket qualifié.');
     }
 
     public function reject(Request $request, MentoringTicket $ticket): RedirectResponse
@@ -185,7 +137,7 @@ class MentoringController extends Controller
 
         Mentoring::reject($ticket, $user, $data['reason']);
 
-        return redirect()->route('mentoring.show', $ticket)->with('status', 'Ticket écarté.');
+        return $this->backTo($request, $ticket)->with('status', 'Ticket écarté.');
     }
 
     public function assign(Request $request, MentoringTicket $ticket): RedirectResponse
@@ -195,14 +147,14 @@ class MentoringController extends Controller
 
         Mentoring::assign($ticket, $user, (int) $data['mentor_id']);
 
-        return redirect()->route('mentoring.show', $ticket)->with('status', 'Ticket affecté.');
+        return $this->backTo($request, $ticket)->with('status', 'Ticket affecté.');
     }
 
     public function start(Request $request, MentoringTicket $ticket): RedirectResponse
     {
         Mentoring::start($ticket, $this->staffActor($request, $ticket));
 
-        return redirect()->route('mentoring.show', $ticket)->with('status', 'Accompagnement démarré.');
+        return $this->backTo($request, $ticket)->with('status', 'Accompagnement démarré.');
     }
 
     public function rex(Request $request, MentoringTicket $ticket): RedirectResponse
@@ -219,82 +171,45 @@ class MentoringController extends Controller
 
         Mentoring::saveRex($ticket, $user, $data);
 
-        return redirect()->route('mentoring.show', $ticket)->with('status', 'REX enregistré.')->withFragment('rex');
+        return $this->backTo($request, $ticket)->with('status', 'REX enregistré.')->withFragment('rex');
     }
 
     public function resolve(Request $request, MentoringTicket $ticket): RedirectResponse
     {
         Mentoring::resolve($ticket, $this->staffActor($request, $ticket));
 
-        return redirect()->route('mentoring.show', $ticket)->with('status', 'Ticket résolu.');
+        return $this->backTo($request, $ticket)->with('status', 'Ticket résolu.');
     }
 
     public function close(Request $request, MentoringTicket $ticket): RedirectResponse
     {
         Mentoring::close($ticket, $this->managerActor($request, $ticket));
 
-        return redirect()->route('mentoring.show', $ticket)->with('status', 'Ticket clôturé.');
+        return $this->backTo($request, $ticket)->with('status', 'Ticket clôturé.');
     }
 
     public function reopen(Request $request, MentoringTicket $ticket): RedirectResponse
     {
         Mentoring::reopen($ticket, $this->managerActor($request, $ticket));
 
-        return redirect()->route('mentoring.show', $ticket)->with('status', 'Ticket rouvert.');
-    }
-
-    // ───────────── Annuaire des mentors ─────────────
-
-    public function mentors(Request $request): View
-    {
-        $this->open();
-        $user = $request->user();
-        abort_unless(Mentoring::canAdminister($user), 403);
-
-        $term = trim((string) $request->query('q', ''));
-
-        return view('mentoring.mentors', [
-            'rows' => MentoringMentor::query()->with('user')->get()->sortBy(fn (MentoringMentor $row): string => mb_strtolower((string) $row->user?->name))->values(),
-            'workload' => Mentoring::workload(),
-            'term' => $term,
-            'found' => Mentoring::searchMembers($term),
-            'tabs' => $this->tabs($user),
-        ]);
-    }
-
-    public function storeMentor(Request $request): RedirectResponse
-    {
-        $this->open();
-        abort_unless(Mentoring::canAdminister($request->user()), 403);
-        $data = $request->validate(['user_id' => ['required', 'integer'], 'manager' => ['nullable', 'boolean'], 'specialties' => ['nullable', 'string', 'max:255']]);
-
-        Mentoring::saveMentor($request->user(), (int) $data['user_id'], (bool) ($data['manager'] ?? false), $data['specialties'] ?? null);
-
-        return redirect()->route('mentoring.mentors')->with('status', 'Mentor ajouté à l’annuaire.');
-    }
-
-    public function updateMentor(Request $request, MentoringMentor $mentor): RedirectResponse
-    {
-        $this->open();
-        abort_unless(Mentoring::canAdminister($request->user()), 403);
-        $data = $request->validate(['specialties' => ['nullable', 'string', 'max:255'], 'manager' => ['nullable', 'boolean'], 'active' => ['nullable', 'boolean']]);
-
-        Mentoring::updateMentor($mentor, $request->user(), (bool) ($data['manager'] ?? false), (bool) ($data['active'] ?? false), $data['specialties'] ?? null);
-
-        return redirect()->route('mentoring.mentors')->with('status', 'Mentor mis à jour.');
-    }
-
-    public function destroyMentor(Request $request, MentoringMentor $mentor): RedirectResponse
-    {
-        $this->open();
-        abort_unless(Mentoring::canAdminister($request->user()), 403);
-
-        Mentoring::removeMentor($mentor, $request->user());
-
-        return redirect()->route('mentoring.mentors')->with('status', 'Mentor retiré de l’annuaire.');
+        return $this->backTo($request, $ticket)->with('status', 'Ticket rouvert.');
     }
 
     // ───────────── Aides ─────────────
+
+    /** Retour sur la fiche du ticket : dans l'administration quand l'action en vient (manager mentor), sinon côté membre. */
+    private function backTo(Request $request, MentoringTicket $ticket): RedirectResponse
+    {
+        $user = $request->user();
+        $admin = $request->input('ctx') === 'admin' && ! $this->isRequester($ticket, $user) && Mentoring::canSeeAll($user);
+
+        return redirect()->route($admin ? 'admin.mentoring.tickets.show' : 'mentoring.show', $ticket);
+    }
+
+    private function isRequester(MentoringTicket $ticket, User $user): bool
+    {
+        return (int) $ticket->requester_id === (int) $user->id;
+    }
 
     private function open(): void
     {
@@ -336,11 +251,11 @@ class MentoringController extends Controller
         }
 
         if (Mentoring::canSeeAll($user)) {
-            $tabs[] = ['label' => 'Gestion des tickets', 'route' => 'mentoring.manage', 'match' => ['mentoring.manage']];
+            $tabs[] = ['label' => 'Gestion des tickets', 'route' => 'admin.mentoring.tickets.index', 'match' => ['admin.mentoring.tickets.*']];
         }
 
         if (Mentoring::canAdminister($user)) {
-            $tabs[] = ['label' => 'Mentors', 'route' => 'mentoring.mentors', 'match' => ['mentoring.mentors']];
+            $tabs[] = ['label' => 'Mentors', 'route' => 'admin.mentoring.mentors.index', 'match' => ['admin.mentoring.mentors.*']];
         }
 
         return $tabs;

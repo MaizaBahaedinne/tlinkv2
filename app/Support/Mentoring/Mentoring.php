@@ -37,9 +37,33 @@ final class Mentoring
     /** Le mentorat est ouvert : module actif et tables migrées. */
     public static function enabled(): bool
     {
-        self::$ready ??= Schema::hasTable('mentoring_tickets');
+        return self::tablesReady() && ModuleCatalog::isActive(self::MODULE);
+    }
 
-        return self::$ready && ModuleCatalog::isActive(self::MODULE);
+    private static function tablesReady(): bool
+    {
+        return self::$ready ??= Schema::hasTable('mentoring_tickets');
+    }
+
+    /**
+     * Actions sur les tickets que l'administration ouvre à cet utilisateur : manager mentor de l'annuaire (tout),
+     * ou actions cochées dans la matrice de son poste. Vide pour qui n'a aucun rôle de gestion.
+     *
+     * @return array<int, string>
+     */
+    public static function adminActions(User $user): array
+    {
+        if (! self::tablesReady()) {
+            return [];
+        }
+
+        $actions = self::matrixActions($user);
+
+        if (MentoringMentor::query()->where('user_id', $user->id)->where('is_active', true)->where('is_manager', true)->exists()) {
+            $actions = array_merge($actions, ['read', 'update']);
+        }
+
+        return array_values(array_unique($actions));
     }
 
     // ───────────────────────── Rôles et droits ─────────────────────────

@@ -107,11 +107,9 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/nouvelle', [MentoringController::class, 'create'])->name('create');
         Route::post('/', [MentoringController::class, 'store'])->middleware('throttle:mentoring-submit')->name('store');
         Route::get('/accompagnements', [MentoringController::class, 'assigned'])->name('assigned');
-        Route::get('/gestion', [MentoringController::class, 'manage'])->name('manage');
-        Route::get('/mentors', [MentoringController::class, 'mentors'])->name('mentors');
-        Route::post('/mentors', [MentoringController::class, 'storeMentor'])->middleware('throttle:mentoring-action')->name('mentors.store');
-        Route::patch('/mentors/{mentor}', [MentoringController::class, 'updateMentor'])->whereNumber('mentor')->middleware('throttle:mentoring-action')->name('mentors.update');
-        Route::delete('/mentors/{mentor}', [MentoringController::class, 'destroyMentor'])->whereNumber('mentor')->middleware('throttle:mentoring-action')->name('mentors.destroy');
+        // Anciennes adresses de la gestion : elle se fait désormais dans l'administration.
+        Route::redirect('/gestion', '/admin/mentorat');
+        Route::redirect('/mentors', '/admin/mentorat/mentors');
         Route::get('/{ticket}', [MentoringController::class, 'show'])->whereNumber('ticket')->name('show');
         Route::middleware('throttle:mentoring-action')->group(function (): void {
             Route::post('/{ticket}/commentaires', [MentoringController::class, 'comment'])->whereNumber('ticket')->name('comment');
@@ -197,7 +195,7 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
 | Chaque section est protegee par `admin.can:<permissions>` (au moins une).
 | Le perimetre (global ou limite a des perimetres) est ensuite applique dans les controleurs.
 */
-Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.review,post.moderate,event.manage', 'admin.module'])
+Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.review,post.moderate,event.manage,mentoring.manage,mentoring.roster', 'admin.module'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function (): void {
@@ -323,6 +321,20 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('structure/roles', [Admin\StructureController::class, 'updateRoles'])->name('roles.update');
             Route::get('structure/perimetres', [Admin\ScopeSettingsController::class, 'edit'])->name('scopes.edit');
             Route::put('structure/perimetres', [Admin\ScopeSettingsController::class, 'update'])->name('scopes.update');
+        });
+
+        // Mentorat : tickets (manager mentor, selon la matrice du poste) et annuaire des mentors. Les actions sur un ticket
+        // (qualifier, affecter, clore…) sont les routes `mentoring.*`, qui contrôlent elles-mêmes le rôle de l'utilisateur.
+        Route::middleware('admin.can:mentoring.manage,mentoring.roster')->prefix('mentorat')->name('mentoring.mentors.')->group(function (): void {
+            Route::get('mentors', [Admin\MentoringController::class, 'mentors'])->name('index');
+            Route::post('mentors', [Admin\MentoringController::class, 'storeMentor'])->name('store');
+            Route::patch('mentors/{mentor}', [Admin\MentoringController::class, 'updateMentor'])->whereNumber('mentor')->name('update');
+            Route::delete('mentors/{mentor}', [Admin\MentoringController::class, 'destroyMentor'])->whereNumber('mentor')->name('destroy');
+        });
+
+        Route::middleware('admin.can:mentoring.manage')->prefix('mentorat')->name('mentoring.tickets.')->group(function (): void {
+            Route::get('/', [Admin\MentoringController::class, 'index'])->name('index');
+            Route::get('{ticket}', [Admin\MentoringController::class, 'show'])->whereNumber('ticket')->name('show');
         });
 
         // Communaute

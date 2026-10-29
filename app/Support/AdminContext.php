@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AppModule;
 use App\Models\User;
+use App\Support\Mentoring\Mentoring;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -14,6 +15,12 @@ use Illuminate\Support\Facades\Schema;
 class AdminContext
 {
     public const ATTRIBUTE = 'admin.context';
+
+    /** Permission virtuelle : accès à la gestion des tickets de mentorat (jamais stockée sur un poste). */
+    public const MENTORING_PERMISSION = 'mentoring.manage';
+
+    /** Permission virtuelle : tenir l'annuaire des mentors (administrateur de toute la plateforme). */
+    public const MENTORING_ROSTER_PERMISSION = 'mentoring.roster';
 
     /** Modules jamais désactivables : on ne doit pas pouvoir se verrouiller hors de la gestion des droits. */
     private const ALWAYS_ENABLED = ['governance.modules', 'organization.positions'];
@@ -31,7 +38,21 @@ class AdminContext
     {
         // Les droits viennent des postes occupés dans l'organigramme (niveau d'accès du poste).
         $this->positions = OrgAccess::positions($user);
+
+        // Mentorat : le rôle de manager mentor (annuaire) et la matrice du poste ouvrent la section « Mentorat » de l'administration.
+        $mentoring = Mentoring::adminActions($user);
+
+        if ($mentoring !== []) {
+            $this->positions[] = ['permissions' => [self::MENTORING_PERMISSION], 'scope' => null, 'matrix' => [Mentoring::MODULE => $mentoring]];
+        }
+
         $this->permissionScopes = OrgAccess::aggregate($this->positions);
+
+        // L'annuaire des mentors est tenu par l'administrateur de toute la plateforme (qui ne lit pas pour autant les tickets).
+        if (in_array(null, $this->permissionScopes['entity.manage'] ?? [], true)) {
+            $this->positions[] = ['permissions' => [self::MENTORING_ROSTER_PERMISSION], 'scope' => null, 'matrix' => null];
+            $this->permissionScopes[self::MENTORING_ROSTER_PERMISSION] = [null];
+        }
     }
 
     public static function of(Request $request): self

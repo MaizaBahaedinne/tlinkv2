@@ -130,13 +130,16 @@ class MentoringTest extends TestCase
         $url = route('mentoring.show', $ticket);
         $this->actingAs($requester)->get($url)->assertOk();
         $this->actingAs($assigned)->get($url)->assertOk();
-        $this->actingAs($manager)->get($url)->assertOk();
+        $this->actingAs($manager)->get($url)->assertRedirect(route('admin.mentoring.tickets.show', $ticket));
+        $this->actingAs($manager)->get(route('admin.mentoring.tickets.show', $ticket))->assertOk();
         $this->actingAs($stranger)->get($url)->assertForbidden();
         $this->actingAs($other)->get($url)->assertForbidden();
         $this->actingAs($admin)->get($url)->assertForbidden();
+        $this->actingAs($admin)->get(route('admin.mentoring.tickets.show', $ticket))->assertForbidden();
+        $this->actingAs($assigned)->get(route('admin.mentoring.tickets.show', $ticket))->assertForbidden();
 
         $this->actingAs($stranger)->post(route('mentoring.comment', $ticket), ['body' => 'Coucou'])->assertForbidden();
-        $this->actingAs($other)->get('/mentorat/gestion')->assertForbidden();
+        $this->actingAs($other)->get('/admin/mentorat')->assertForbidden();
         $this->actingAs($requester)->get('/mentorat/accompagnements')->assertForbidden();
     }
 
@@ -283,10 +286,10 @@ class MentoringTest extends TestCase
         Mentoring::qualify($urgent, $manager, 'resources', 'urgent', null);
         $this->ticket($requester, ['title' => 'Question sur les statuts', 'audience' => 'collective', 'collective_name' => 'Chapter Tunis']);
 
-        $this->actingAs($manager)->get('/mentorat/gestion')->assertOk()->assertSee('Budget bloqué')->assertSee('Question sur les statuts')->assertSee('Salma Ben Ali');
-        $this->actingAs($manager)->get('/mentorat/gestion?statut=qualified')->assertOk()->assertSee('Budget bloqué')->assertDontSee('Question sur les statuts');
-        $this->actingAs($manager)->get('/mentorat/gestion?public=collective')->assertOk()->assertSee('Question sur les statuts')->assertDontSee('Budget bloqué');
-        $this->actingAs($manager)->get('/mentorat/gestion?q=MT-00001')->assertOk()->assertSee('Budget bloqué')->assertDontSee('Question sur les statuts');
+        $this->actingAs($manager)->get('/admin/mentorat')->assertOk()->assertSee('Budget bloqué')->assertSee('Question sur les statuts')->assertSee('Salma Ben Ali');
+        $this->actingAs($manager)->get('/admin/mentorat?statut=qualified')->assertOk()->assertSee('Budget bloqué')->assertDontSee('Question sur les statuts');
+        $this->actingAs($manager)->get('/admin/mentorat?public=collective')->assertOk()->assertSee('Question sur les statuts')->assertDontSee('Budget bloqué');
+        $this->actingAs($manager)->get('/admin/mentorat?q=MT-00001')->assertOk()->assertSee('Budget bloqué')->assertDontSee('Question sur les statuts');
     }
 
     public function test_the_mentor_sees_only_the_tickets_assigned_to_them(): void
@@ -311,12 +314,12 @@ class MentoringTest extends TestCase
         $member = User::factory()->create(['name' => 'Karim Mentor']);
         $plain = User::factory()->create();
 
-        $this->actingAs($plain)->get('/mentorat/mentors')->assertForbidden();
-        $this->actingAs($plain)->post('/mentorat/mentors', ['user_id' => $member->id])->assertForbidden();
+        $this->actingAs($plain)->get('/admin/mentorat/mentors')->assertForbidden();
+        $this->actingAs($plain)->post('/admin/mentorat/mentors', ['user_id' => $member->id])->assertForbidden();
 
-        $this->actingAs($admin)->get('/mentorat/mentors')->assertOk()->assertSee('Aucun manager mentor actif');
-        $this->actingAs($admin)->get('/mentorat/mentors?q=Karim')->assertOk()->assertSee('Karim Mentor');
-        $this->actingAs($admin)->post('/mentorat/mentors', ['user_id' => $member->id, 'manager' => '1', 'specialties' => 'Gouvernance'])->assertRedirect();
+        $this->actingAs($admin)->get('/admin/mentorat/mentors')->assertOk()->assertSee('Aucun manager mentor actif');
+        $this->actingAs($admin)->get('/admin/mentorat/mentors?q=Karim')->assertOk()->assertSee('Karim Mentor');
+        $this->actingAs($admin)->post('/admin/mentorat/mentors', ['user_id' => $member->id, 'manager' => '1', 'specialties' => 'Gouvernance'])->assertRedirect(route('admin.mentoring.mentors.index'));
 
         $row = MentoringMentor::query()->where('user_id', $member->id)->firstOrFail();
         $this->assertTrue($row->is_manager);
@@ -328,9 +331,9 @@ class MentoringTest extends TestCase
         $this->actingAs($admin)->get(route('mentoring.show', $ticket))->assertForbidden();
 
         // Un manager peut à son tour gérer l'annuaire.
-        $this->actingAs($member->fresh())->get('/mentorat/mentors')->assertOk()->assertDontSee('Aucun manager mentor actif');
+        $this->actingAs($member->fresh())->get('/admin/mentorat/mentors')->assertOk()->assertDontSee('Aucun manager mentor actif');
 
-        $this->actingAs($admin)->patch(route('mentoring.mentors.update', $row), ['specialties' => 'Projets', 'active' => '1'])->assertRedirect();
+        $this->actingAs($admin)->patch(route('admin.mentoring.mentors.update', $row), ['specialties' => 'Projets', 'active' => '1'])->assertRedirect();
         $this->assertFalse($row->fresh()->is_manager);
         $this->assertSame('Projets', $row->fresh()->specialties);
     }
@@ -347,14 +350,14 @@ class MentoringTest extends TestCase
         Mentoring::qualify($ticket, $manager, 'other', 'normal', null);
         Mentoring::assign($ticket->fresh(), $manager, $mentor->id);
 
-        $this->actingAs($admin)->patch(route('mentoring.mentors.update', $row), ['manager' => '0'])->assertSessionHasErrors('mentor');
-        $this->actingAs($admin)->delete(route('mentoring.mentors.destroy', $row))->assertSessionHasErrors('mentor');
+        $this->actingAs($admin)->patch(route('admin.mentoring.mentors.update', $row), ['manager' => '0'])->assertSessionHasErrors('mentor');
+        $this->actingAs($admin)->delete(route('admin.mentoring.mentors.destroy', $row))->assertSessionHasErrors('mentor');
         $this->assertTrue($row->fresh()->is_active);
         $this->assertNotNull(MentoringMentor::query()->find($row->id));
 
         // Une fois le ticket résolu, le retrait est possible.
         $ticket->fresh()->update(['status' => 'closed']);
-        $this->actingAs($admin)->delete(route('mentoring.mentors.destroy', $row))->assertRedirect();
+        $this->actingAs($admin)->delete(route('admin.mentoring.mentors.destroy', $row))->assertRedirect();
         $this->assertNull(MentoringMentor::query()->find($row->id));
     }
 
@@ -371,19 +374,65 @@ class MentoringTest extends TestCase
         // Le coordinateur est prévenu, voit la liste et instruit le ticket comme un manager mentor.
         $this->assertSame(1, AppNotification::query()->where('user_id', $coordinator->id)->where('type', 'mentoring.ticket')->count());
         $this->actingAs($coordinator)->get('/mentorat')->assertOk()->assertSee('Gestion des tickets');
-        $this->actingAs($coordinator)->get('/mentorat/gestion')->assertOk()->assertSee('Besoin de soutien');
+        $this->actingAs($coordinator)->get('/admin/mentorat')->assertOk()->assertSee('Besoin de soutien');
         $this->actingAs($coordinator)->post(route('mentoring.qualify', $ticket), ['category' => 'other', 'priority' => 'normal'])->assertRedirect();
         $this->actingAs($coordinator)->post(route('mentoring.assign', $ticket), ['mentor_id' => $mentor->id])->assertRedirect();
         $this->assertSame('assigned', $ticket->fresh()->status);
-        $this->actingAs($coordinator)->get('/mentorat/mentors')->assertOk()->assertDontSee('Aucun manager mentor actif');
+        $this->actingAs($coordinator)->get('/admin/mentorat/mentors')->assertOk()->assertDontSee('Aucun manager mentor actif');
 
         // Le droit de consultation seule donne la liste et la fiche, sans aucune action.
         $this->assertSame(0, AppNotification::query()->where('user_id', $observer->id)->count());
-        $this->actingAs($observer)->get('/mentorat/gestion')->assertOk()->assertSee('Besoin de soutien');
-        $this->actingAs($observer)->get(route('mentoring.show', $ticket))->assertOk()->assertDontSee('Ajouter un message');
+        $this->actingAs($observer)->get('/admin/mentorat')->assertOk()->assertSee('Besoin de soutien');
+        $this->actingAs($observer)->get(route('admin.mentoring.tickets.show', $ticket))->assertOk()->assertDontSee('Ajouter un message')->assertDontSee('Qualifier le ticket');
         $this->actingAs($observer)->post(route('mentoring.comment', $ticket), ['body' => 'Coucou'])->assertForbidden();
         $this->actingAs($observer)->post(route('mentoring.close', $ticket))->assertForbidden();
-        $this->actingAs($observer)->get('/mentorat/mentors')->assertForbidden();
+        $this->actingAs($observer)->get('/admin/mentorat/mentors')->assertOk()->assertDontSee('Ajouter un membre');
+        $this->actingAs($observer)->post('/admin/mentorat/mentors', ['user_id' => $mentor->id])->assertForbidden();
+    }
+
+    public function test_ticket_management_lives_in_the_administration(): void
+    {
+        $manager = $this->mentor(true);
+        $mentor = $this->mentor();
+        $requester = User::factory()->create();
+        $admin = User::factory()->create();
+        $this->grantPlatformAdmin($admin);
+        $ticket = $this->ticket($requester, ['title' => 'Conflit entre deux membres']);
+
+        // Menu de l'administration : le manager voit les deux entrées, l'administrateur global seulement l'annuaire.
+        $this->actingAs($manager)->get('/admin')->assertOk()->assertSee('Tickets de mentorat')->assertSee('Mentors');
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee('Mentors')->assertDontSee('Tickets de mentorat');
+        $this->actingAs($mentor)->get('/admin')->assertForbidden();
+
+        // Les anciennes adresses du fil renvoient vers l'administration.
+        $this->actingAs($manager)->get('/mentorat/gestion')->assertRedirect('/admin/mentorat');
+        $this->actingAs($manager)->get('/mentorat/mentors')->assertRedirect('/admin/mentorat/mentors');
+
+        // La fiche d'administration porte toutes les actions du manager.
+        $this->actingAs($manager)->get(route('admin.mentoring.tickets.show', $ticket))->assertOk()
+            ->assertSee('Conflit entre deux membres')->assertSee('Qualifier le ticket')->assertSee('name="ctx" value="admin"', false);
+
+        // Les actions lancées depuis l'administration y ramènent le manager.
+        $this->actingAs($manager)->post(route('mentoring.qualify', $ticket), ['category' => 'relations', 'priority' => 'high', 'ctx' => 'admin'])
+            ->assertRedirect(route('admin.mentoring.tickets.show', $ticket));
+        $this->actingAs($manager)->post(route('mentoring.assign', $ticket), ['mentor_id' => $mentor->id, 'ctx' => 'admin'])
+            ->assertRedirect(route('admin.mentoring.tickets.show', $ticket));
+        $this->actingAs($manager)->post(route('mentoring.comment', $ticket), ['body' => 'Point de situation'])
+            ->assertRedirect(route('mentoring.show', $ticket).'#fil');
+
+        // Le mentor affecté reste côté membre et y trouve le lien d'accompagnement, pas celui de gestion.
+        $this->actingAs($mentor)->get(route('mentoring.show', $ticket))->assertOk()->assertDontSee('Ouvrir dans l’administration');
+        $this->actingAs($manager)->get('/mentorat')->assertOk()->assertSee(route('admin.mentoring.tickets.index'), false);
+
+        // Sa propre demande se suit côté membre, même pour un manager.
+        $own = $this->ticket($manager);
+        $this->actingAs($manager)->get(route('admin.mentoring.tickets.show', $own))->assertRedirect(route('mentoring.show', $own));
+        $this->actingAs($manager)->get(route('mentoring.show', $own))->assertOk();
+
+        // Module désactivé : plus rien dans l'administration.
+        AppModule::query()->where('key', 'mentoring.tickets')->update(['is_active' => false]);
+        $this->actingAs($manager)->get('/admin/mentorat')->assertForbidden();
+        $this->actingAs($manager)->get('/admin')->assertForbidden();
     }
 
     /** @param array<string, array<int, string>> $matrix */

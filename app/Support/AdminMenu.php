@@ -5,8 +5,10 @@ namespace App\Support;
 use App\Models\ApprovalRequest;
 use App\Models\ContactMessage;
 use App\Models\Membership;
+use App\Models\MentoringTicket;
 use App\Models\ModerationReport;
 use App\Models\PositionApplication;
+use App\Support\Mentoring\Mentoring;
 
 /**
  * Construit la navigation de l'espace admin en fonction des permissions de l'utilisateur.
@@ -50,6 +52,8 @@ class AdminMenu
         'admin.academy.sessions.*' => 'academy.sessions',
         'admin.academy.orders.*' => 'academy.orders',
         'admin.academy.settings.*' => 'academy.plans',
+        'admin.mentoring.tickets.*' => 'mentoring.tickets',
+        'admin.mentoring.mentors.*' => 'mentoring.tickets',
     ];
 
     /**
@@ -136,6 +140,13 @@ class AdminMenu
                     ['label' => 'Calendrier des sessions', 'route' => 'admin.academy.sessions.index', 'icon' => 'calendar', 'match' => 'admin.academy.sessions.*', 'perms' => ['event.manage']],
                     ['label' => 'Commandes et paiements', 'route' => 'admin.academy.orders.index', 'icon' => 'file-text', 'match' => 'admin.academy.orders.*', 'perms' => ['entity.manage']],
                     ['label' => 'Abonnements et réglages', 'route' => 'admin.academy.settings.edit', 'icon' => 'layers', 'match' => 'admin.academy.settings.*', 'perms' => ['entity.manage']],
+                ],
+            ],
+            [
+                'title' => 'Mentorat',
+                'items' => [
+                    ['label' => 'Tickets de mentorat', 'route' => 'admin.mentoring.tickets.index', 'icon' => 'file-text', 'match' => 'admin.mentoring.tickets.*', 'perms' => ['mentoring.manage'], 'badge' => 'mentoring'],
+                    ['label' => 'Mentors', 'route' => 'admin.mentoring.mentors.index', 'icon' => 'users', 'match' => 'admin.mentoring.mentors.*', 'perms' => ['mentoring.manage', 'mentoring.roster']],
                 ],
             ],
             [
@@ -228,6 +239,7 @@ class AdminMenu
             'reports' => ModerationReport::query()->where('status', 'pending')->count(),
             'messages' => ContactMessage::query()->where('status', 'new')->count(),
             'applications' => PositionApplication::query()->where('status', 'pending')->count(),
+            'mentoring' => Mentoring::enabled() ? MentoringTicket::query()->where('status', 'new')->count() : 0,
             default => 0,
         };
 

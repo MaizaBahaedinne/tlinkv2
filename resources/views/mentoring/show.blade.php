@@ -82,7 +82,7 @@
                         @endforeach
                     </ul>
 
-                    @if($canComment && ! $observer)
+                    @if($canComment)
                         <form method="post" action="{{ route('mentoring.comment', $ticket) }}" class="mt-5 space-y-3 border-t border-slate-100 pt-5">
                             @csrf
                             <label for="comment-body" class="text-sm font-semibold text-slate-700">Ajouter un message</label>
@@ -100,7 +100,7 @@
                 </section>
 
                 {{-- REX : réservé à l'équipe de mentors --}}
-                @if(($staff || $observer) && ($rex !== null || in_array($ticket->status, ['in_progress', 'resolved'], true)))
+                @if($staff && ($rex !== null || in_array($ticket->status, ['in_progress', 'resolved'], true)))
                     <section id="rex" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <h2 class="font-display text-lg font-semibold text-slate-900">Retour d’expérience (REX)</h2>
@@ -151,7 +151,7 @@
                             <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Priorité</dt><dd class="text-slate-700">{{ \App\Models\MentoringTicket::PRIORITIES[$ticket->priority] ?? $ticket->priority }}</dd></div>
                         @endif
                         @if($ticket->resolved_at)<div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Résolue le</dt><dd class="text-slate-700">{{ $ticket->resolved_at->format('d/m/Y') }}</dd></div>@endif
-                        @if(($staff || $observer) && filled($ticket->qualification_note))
+                        @if($staff && filled($ticket->qualification_note))
                             <div><dt class="text-xs font-semibold uppercase tracking-wide text-amber-600">Analyse du manager (interne)</dt><dd class="whitespace-pre-line text-slate-700">{{ $ticket->qualification_note }}</dd></div>
                         @endif
                     </dl>
@@ -178,84 +178,12 @@
                     </section>
                 @endif
 
-                @if($manager)
-                    @if(in_array($ticket->status, ['new', 'qualified', 'assigned'], true))
-                        <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                            <h2 class="font-display text-lg font-semibold text-slate-900">Qualifier</h2>
-                            <form method="post" action="{{ route('mentoring.qualify', $ticket) }}" class="mt-3 space-y-3">
-                                @csrf
-                                <div>
-                                    <label for="q-category" class="text-xs font-semibold text-slate-600">Catégorie</label>
-                                    <select id="q-category" name="category" required class="{{ $input }}">
-                                        @if($ticket->category === null)<option value="">Choisir…</option>@endif
-                                        @foreach(\App\Models\MentoringTicket::CATEGORIES as $value => $label)
-                                            <option value="{{ $value }}" @selected(old('category', $ticket->category) === $value)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="q-priority" class="text-xs font-semibold text-slate-600">Priorité</label>
-                                    <select id="q-priority" name="priority" class="{{ $input }}">
-                                        @foreach(\App\Models\MentoringTicket::PRIORITIES as $value => $label)
-                                            <option value="{{ $value }}" @selected(old('priority', $ticket->priority) === $value)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="q-note" class="text-xs font-semibold text-slate-600">Analyse (interne)</label>
-                                    <textarea id="q-note" name="qualification_note" rows="3" maxlength="{{ \App\Support\Mentoring\Mentoring::MAX_TEXT }}" class="{{ $input }}">{{ old('qualification_note', $ticket->qualification_note) }}</textarea>
-                                </div>
-                                <button type="submit" class="{{ $primary }} w-full">{{ $ticket->category === null ? 'Qualifier le ticket' : 'Mettre à jour la qualification' }}</button>
-                            </form>
-                        </section>
-                    @endif
-
-                    @if(in_array($ticket->status, ['qualified', 'assigned', 'in_progress'], true))
-                        <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                            <h2 class="font-display text-lg font-semibold text-slate-900">{{ $ticket->mentor_id === null ? 'Affecter à un mentor' : 'Réaffecter' }}</h2>
-                            @if($mentors->isEmpty())
-                                <p class="mt-2 text-sm text-slate-500">Aucun mentor disponible. Ajoutez-en depuis l’onglet « Mentors ».</p>
-                            @else
-                                <form method="post" action="{{ route('mentoring.assign', $ticket) }}" class="mt-3 space-y-3">
-                                    @csrf
-                                    <label for="a-mentor" class="sr-only">Mentor</label>
-                                    <select id="a-mentor" name="mentor_id" required class="{{ $input }}">
-                                        <option value="">Choisir un mentor…</option>
-                                        @foreach($mentors as $row)
-                                            <option value="{{ $row->user_id }}" @selected((int) $ticket->mentor_id === (int) $row->user_id)>{{ $row->user?->name }} — {{ $workload[$row->user_id] ?? 0 }} en cours{{ filled($row->specialties) ? ' · '.$row->specialties : '' }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button type="submit" class="{{ $primary }} w-full">Affecter</button>
-                                </form>
-                            @endif
-                        </section>
-                    @endif
-
-                    @if(in_array($ticket->status, ['new', 'qualified'], true))
-                        <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                            <h2 class="font-display text-lg font-semibold text-slate-900">Écarter</h2>
-                            <form method="post" action="{{ route('mentoring.reject', $ticket) }}" class="mt-3 space-y-3">
-                                @csrf
-                                <label for="r-reason" class="text-xs font-semibold text-slate-600">Motif communiqué au demandeur</label>
-                                <textarea id="r-reason" name="reason" rows="2" required maxlength="1000" class="{{ $input }}"></textarea>
-                                <button type="submit" class="{{ $secondary }} w-full text-rose-700">Ne pas retenir la demande</button>
-                            </form>
-                        </section>
-                    @endif
-
-                    @if($ticket->status === 'resolved')
-                        <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                            <h2 class="font-display text-lg font-semibold text-slate-900">Clôture</h2>
-                            <div class="mt-3 grid gap-2">
-                                <form method="post" action="{{ route('mentoring.close', $ticket) }}">@csrf<button type="submit" class="{{ $primary }} w-full">Clôturer le ticket</button></form>
-                                <form method="post" action="{{ route('mentoring.reopen', $ticket) }}">@csrf<button type="submit" class="{{ $secondary }} w-full">Rouvrir l’accompagnement</button></form>
-                            </div>
-                        </section>
-                    @elseif($ticket->status === 'closed' && $ticket->mentor_id !== null)
-                        <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-                            <form method="post" action="{{ route('mentoring.reopen', $ticket) }}">@csrf<button type="submit" class="{{ $secondary }} w-full">Rouvrir l’accompagnement</button></form>
-                        </section>
-                    @endif
+                @if($adminUrl !== null)
+                    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
+                        <h2 class="font-display text-lg font-semibold text-slate-900">Gestion du ticket</h2>
+                        <p class="mt-1 text-xs text-slate-500">Qualification, affectation, clôture et réouverture se font dans l’administration.</p>
+                        <a href="{{ $adminUrl }}" class="{{ $secondary }} mt-3 block w-full text-center">Ouvrir dans l’administration</a>
+                    </section>
                 @endif
             </aside>
         </div>
