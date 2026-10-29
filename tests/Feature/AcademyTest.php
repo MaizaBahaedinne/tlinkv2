@@ -297,17 +297,19 @@ class AcademyTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/academy/cours/'.$course->id.'/modifier')->assertOk()->assertSee('Prise de parole');
 
-        $this->actingAs($admin)->post('/admin/academy/cours/'.$course->id.'/modules', ['title' => 'Module A'])->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post('/admin/academy/cours/'.$course->id.'/modules', ['title' => 'Module A', 'description' => '', 'badge_id' => '', 'sort_order' => ''])->assertSessionHasNoErrors();
         $module = AcademyModule::query()->firstOrFail();
+        $this->assertSame(1, $module->sort_order);
 
         $this->actingAs($admin)->post('/admin/academy/modules/'.$module->id.'/lecons', [
             'title' => 'Vidéo', 'kind' => 'video', 'video_url' => 'https://evil.example/x', 'points' => 5,
         ])->assertSessionHasErrors('video_url');
 
         $this->actingAs($admin)->post('/admin/academy/modules/'.$module->id.'/lecons', [
-            'title' => 'Vidéo', 'kind' => 'video', 'video_url' => 'https://youtu.be/dQw4w9WgXcQ', 'points' => 5, 'is_preview' => '1',
+            'title' => 'Vidéo', 'kind' => 'video', 'video_url' => 'https://youtu.be/dQw4w9WgXcQ', 'points' => 5, 'is_preview' => '1', 'sort_order' => '', 'duration_minutes' => '', 'content' => '',
         ])->assertSessionHasNoErrors();
         $lesson = AcademyLesson::query()->firstOrFail();
+        $this->assertSame(1, $lesson->sort_order);
         $this->assertTrue($lesson->is_preview);
         $this->actingAs($admin)->get('/admin/academy/cours/'.$course->id.'/modifier')->assertOk()->assertSee('Module A')->assertSee('Aperçu gratuit');
         $this->actingAs($admin)->get('/admin/academy/cours?q=Prise')->assertOk()->assertSee('Prise de parole');

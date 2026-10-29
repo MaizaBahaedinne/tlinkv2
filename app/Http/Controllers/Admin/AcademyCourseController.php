@@ -97,7 +97,8 @@ class AcademyCourseController extends AdminController
     public function storeModule(Request $request, AcademyCourse $course): RedirectResponse
     {
         $data = $this->validatedModule($request);
-        $module = $course->modules()->create($data + ['sort_order' => $data['sort_order'] ?? ((int) $course->modules()->max('sort_order')) + 1]);
+        $data['sort_order'] ??= ((int) $course->modules()->max('sort_order')) + 1;
+        $module = $course->modules()->create($data);
 
         $this->audit($request, 'admin.academy.module.saved', $module, ['title' => $module->title]);
 
@@ -123,7 +124,8 @@ class AcademyCourseController extends AdminController
     public function storeLesson(Request $request, AcademyModule $module): RedirectResponse
     {
         $data = $this->validatedLesson($request);
-        $lesson = $module->lessons()->create($data + ['sort_order' => $data['sort_order'] ?? ((int) $module->lessons()->max('sort_order')) + 1]);
+        $data['sort_order'] ??= ((int) $module->lessons()->max('sort_order')) + 1;
+        $lesson = $module->lessons()->create($data);
 
         $this->audit($request, 'admin.academy.lesson.saved', $lesson, ['title' => $lesson->title]);
 
