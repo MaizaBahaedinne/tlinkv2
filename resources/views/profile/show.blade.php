@@ -7,11 +7,12 @@
     <main class="app-container space-y-5 py-6">
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
             {{-- Cover : en arrière-plan, la photo de profil la chevauche (z-10). --}}
-            <div class="relative h-44 overflow-hidden bg-gradient-to-br from-tlink-blue to-slate-900 sm:h-56">
+            <div class="relative h-56 overflow-hidden bg-gradient-to-br from-tlink-blue to-slate-900 sm:h-72">
                 @if($coverUrl)
                     <img src="{{ $coverUrl }}" alt="" class="absolute inset-0 h-full w-full object-cover">
                 @endif
-                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/10 to-transparent"></div>
+                <h1 class="absolute bottom-4 left-4 right-4 truncate font-display text-2xl font-semibold text-white drop-shadow sm:left-[11.5rem] sm:text-3xl">{{ $user->name }}</h1>
                 <button type="button" class="absolute right-4 top-4 inline-flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-slate-800 shadow-soft hover:bg-white" onclick="openMediaModal('cover')">
                     <i class="fa-solid fa-camera"></i> Modifier la cover
                 </button>
@@ -32,7 +33,6 @@
                         </button>
                     </div>
                     <div class="min-w-0 flex-1 sm:pb-1">
-                        <h1 class="font-display text-2xl font-semibold text-slate-900">{{ $user->name }}</h1>
                         <p class="text-sm text-slate-600">{{ $profile->headline ?: 'Ajoutez un titre professionnel impactant.' }}</p>
                         @include('profile.partials.highlights')
                         <p class="mt-1 truncate text-xs text-slate-500">{{ $user->email }}</p>
@@ -41,21 +41,6 @@
                         <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-50" onclick="openProfileModal('modal-about')">
                             <i class="fa-solid fa-pen mr-1 text-xs"></i> Modifier le titre et la bio
                         </button>
-                    </div>
-                </div>
-
-                <div class="mt-6 grid gap-3 sm:grid-cols-3">
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Posts</p>
-                        <p class="mt-1 text-2xl font-semibold text-slate-900">{{ $stats['posts_count'] }}</p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Commentaires</p>
-                        <p class="mt-1 text-2xl font-semibold text-slate-900">{{ $stats['comments_count'] }}</p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Reactions</p>
-                        <p class="mt-1 text-2xl font-semibold text-slate-900">{{ $stats['reactions_count'] }}</p>
                     </div>
                 </div>
             </div>

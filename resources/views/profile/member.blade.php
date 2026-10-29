@@ -6,11 +6,12 @@
 
     <main class="app-container space-y-5 py-6">
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
-            <div class="relative h-44 overflow-hidden bg-gradient-to-br from-tlink-blue to-slate-900 sm:h-56">
+            <div class="relative h-56 overflow-hidden bg-gradient-to-br from-tlink-blue to-slate-900 sm:h-72">
                 @if($coverUrl)
                     <img src="{{ $coverUrl }}" alt="" class="absolute inset-0 h-full w-full object-cover">
                 @endif
-                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/10 to-transparent"></div>
+                <h1 class="absolute bottom-4 left-4 right-4 truncate font-display text-2xl font-semibold text-white drop-shadow sm:left-[11.5rem] sm:text-3xl">{{ $member->name }}</h1>
             </div>
 
             <div class="px-4 pb-6 sm:px-8">
@@ -25,7 +26,6 @@
                         </div>
                     </div>
                     <div class="min-w-0 flex-1 sm:pb-1">
-                        <h1 class="font-display text-2xl font-semibold text-slate-900">{{ $member->name }}</h1>
                         <p class="text-sm text-slate-600">{{ $profile->headline ?: 'Membre Tunivisions' }}</p>
                         @include('profile.partials.highlights')
                     </div>
