@@ -41,13 +41,13 @@
                     <ul class="mt-5 flex flex-wrap gap-2" aria-label="Postes et clubs">
                         @foreach($positions as $position)
                             <li class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-3 text-xs font-semibold text-slate-700">
-                                <x-org-logo :url="$position['club']?->logoUrl()" :name="$position['club']?->title ?? ''" icon="fa-solid fa-briefcase" size="sm" class="!h-7 !w-7 !rounded-full" />
+                                <x-org-logo :url="$position['club']?->logoUrl()" :name="$position['club']?->title ?? ''" icon="fa-solid fa-briefcase" size="sm" class="!h-14 !w-14 !rounded-full" />
                                 {{ $position['title'] }}
                             </li>
                         @endforeach
                         @foreach($clubs as $club)
                             <li class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-3 text-xs font-semibold text-slate-700">
-                                <x-org-logo :url="$club->logoUrl()" :name="$club->title" icon="fa-solid fa-people-group" size="sm" class="!h-7 !w-7 !rounded-full" />
+                                <x-org-logo :url="$club->logoUrl()" :name="$club->title" icon="fa-solid fa-people-group" size="sm" class="!h-14 !w-14 !rounded-full" />
                                 {{ $club->title }}
                             </li>
                         @endforeach

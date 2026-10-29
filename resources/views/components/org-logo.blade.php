@@ -1,6 +1,6 @@
 @props(['url' => null, 'name' => '', 'icon' => 'fa-solid fa-building', 'size' => 'md'])
 @php
-    $dimensions = $size === 'sm' ? 'h-9 w-9 text-sm' : 'h-12 w-12 text-lg';
+    $dimensions = $size === 'sm' ? 'h-16 w-16 text-xl' : 'h-24 w-24 text-3xl';
 @endphp
 <span {{ $attributes->class(['inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-400', $dimensions]) }}>
     @if($url)
