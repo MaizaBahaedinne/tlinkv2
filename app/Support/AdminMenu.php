@@ -46,6 +46,10 @@ class AdminMenu
         'admin.events.*' => 'events.events',
         'admin.badges.*' => 'gamification.badges',
         'admin.companies.*' => 'members.companies',
+        'admin.academy.courses.*' => 'academy.courses',
+        'admin.academy.sessions.*' => 'academy.sessions',
+        'admin.academy.orders.*' => 'academy.orders',
+        'admin.academy.settings.*' => 'academy.plans',
     ];
 
     /**
@@ -123,6 +127,15 @@ class AdminMenu
                     ['label' => 'Info session et quiz', 'route' => 'admin.info-session.edit', 'icon' => 'graduation', 'match' => 'admin.info-session.*', 'perms' => ['entity.manage']],
                     ['label' => 'Messages du site', 'route' => 'admin.messages.index', 'icon' => 'file-text', 'match' => 'admin.messages.*', 'perms' => ['entity.manage'], 'badge' => 'messages'],
                     ['label' => 'Newsletter', 'route' => 'admin.newsletter.index', 'icon' => 'user', 'match' => 'admin.newsletter.*', 'perms' => ['entity.manage']],
+                ],
+            ],
+            [
+                'title' => 'Tunivisions Academy',
+                'items' => [
+                    ['label' => 'Cours', 'route' => 'admin.academy.courses.index', 'icon' => 'graduation', 'match' => 'admin.academy.courses.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Calendrier des sessions', 'route' => 'admin.academy.sessions.index', 'icon' => 'calendar', 'match' => 'admin.academy.sessions.*', 'perms' => ['event.manage']],
+                    ['label' => 'Commandes et paiements', 'route' => 'admin.academy.orders.index', 'icon' => 'file-text', 'match' => 'admin.academy.orders.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Abonnements et réglages', 'route' => 'admin.academy.settings.edit', 'icon' => 'layers', 'match' => 'admin.academy.settings.*', 'perms' => ['entity.manage']],
                 ],
             ],
             [

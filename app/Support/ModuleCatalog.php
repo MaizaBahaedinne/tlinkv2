@@ -62,6 +62,15 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'academy', 'name' => 'Tunivisions Academy', 'description' => 'Cours en ligne, abonnements, paiements et calendrier des sessions.',
+                'children' => [
+                    ['key' => 'academy.courses', 'name' => 'Cours', 'description' => 'Cours, modules, leçons, badges et points associés.', 'actions' => self::CRUD],
+                    ['key' => 'academy.sessions', 'name' => 'Calendrier des sessions', 'description' => 'Sessions en direct du calendrier Academy.', 'actions' => self::CRUD],
+                    ['key' => 'academy.orders', 'name' => 'Commandes et paiements', 'description' => 'Validation des paiements et accès accordés.', 'actions' => ['read', 'update']],
+                    ['key' => 'academy.plans', 'name' => 'Abonnements et réglages', 'description' => 'Formules d’abonnement et réglages du paiement.', 'actions' => self::CRUD],
+                ],
+            ],
+            [
                 'key' => 'governance', 'name' => 'Gouvernance', 'description' => 'Validation, modération et traçabilité.',
                 'children' => [
                     ['key' => 'governance.approvals', 'name' => 'Approbations', 'description' => 'Demandes en attente de validation.', 'actions' => ['read', 'update']],

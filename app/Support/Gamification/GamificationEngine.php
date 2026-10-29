@@ -73,6 +73,28 @@ final class GamificationEngine
     }
 
     /**
+     * Décerne directement un badge (fin de cours ou de module Academy), sans passer par des missions.
+     * Renvoie true si le badge vient d'être obtenu.
+     */
+    public static function award(int $userId, Badge $badge): bool
+    {
+        if (! $badge->is_active) {
+            return false;
+        }
+
+        $created = UserBadge::query()->firstOrCreate(
+            ['user_id' => $userId, 'badge_id' => $badge->id],
+            ['awarded_at' => now()],
+        );
+
+        if ($created->wasRecentlyCreated) {
+            self::notify($userId, $badge);
+        }
+
+        return $created->wasRecentlyCreated;
+    }
+
+    /**
      * Version appelée depuis les observateurs de modèles : une erreur de gamification ne doit jamais bloquer l'action du membre.
      *
      * @param  array<int, string>|null  $keys

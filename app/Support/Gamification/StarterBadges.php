@@ -92,4 +92,32 @@ final class StarterBadges
 
         return true;
     }
+
+    /**
+     * Badges de départ de Tunivisions Academy ; idempotent (un badge déjà présent n'est jamais recréé).
+     */
+    public static function installAcademy(): int
+    {
+        $badges = [
+            ['apprenant', 'Apprenant(e)', 'bronze', 'fa-solid fa-book-open', 'Terminer sa première leçon sur Tunivisions Academy.', 'Premiers pas', 'Terminer 1 leçon', 'academy.lessons_completed', 1],
+            ['studieux', 'Studieux(se)', 'silver', 'fa-solid fa-user-graduate', 'Cumuler 100 points Academy.', 'Régularité', 'Cumuler 100 points Academy', 'academy.points', 100],
+            ['diplome', 'Diplômé(e)', 'gold', 'fa-solid fa-graduation-cap', 'Terminer un cours complet et obtenir son certificat.', 'Aller au bout', 'Terminer 1 cours', 'academy.courses_completed', 1],
+        ];
+
+        $created = 0;
+        $order = ((int) Badge::query()->max('sort_order')) + 1;
+
+        foreach ($badges as [$slug, $name, $tier, $icon, $description, $missionTitle, $checkpointTitle, $trigger, $target]) {
+            if (Badge::query()->where('slug', $slug)->exists()) {
+                continue;
+            }
+
+            $badge = Badge::query()->create(['slug' => $slug, 'name' => $name, 'tier' => $tier, 'icon' => $icon, 'description' => $description, 'sort_order' => $order++]);
+            $mission = $badge->missions()->create(['title' => $missionTitle, 'description' => $description, 'sort_order' => 1]);
+            $mission->checkpoints()->create(['title' => $checkpointTitle, 'trigger_key' => $trigger, 'target' => $target, 'sort_order' => 1]);
+            $created++;
+        }
+
+        return $created;
+    }
 }

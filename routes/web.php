@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AcademyController;
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -19,6 +20,9 @@ use Illuminate\Support\Facades\Route;
 
 // Site vitrine de la Fondation : racine du site (/ puis /fr, /ar, /en).
 require base_path('routes/site.php');
+
+// Certificat Academy : page publique, vérifiable grâce à son code.
+Route::get('/certificats/{code}', [AcademyController::class, 'certificate'])->where('code', 'TA-[A-Z0-9]{10}')->middleware('throttle:60,1')->name('academy.certificate');
 
 // Lien d'inscription direct d'un poste de l'organigramme (public : jeton non devinable, candidature a valider).
 Route::get('/rejoindre/{token}', [PositionJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('position.join');
@@ -54,6 +58,19 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/badges', [BadgeController::class, 'index'])->name('badges.index');
+
+    // Tunivisions Academy : catalogue, cours, leçons, commandes et calendrier.
+    Route::prefix('academy')->name('academy.')->group(function (): void {
+        Route::get('/', [AcademyController::class, 'index'])->name('index');
+        Route::get('/calendrier', [AcademyController::class, 'calendar'])->name('calendar');
+        Route::get('/cours/{course:slug}', [AcademyController::class, 'show'])->name('courses.show');
+        Route::post('/cours/{course:slug}/commencer', [AcademyController::class, 'start'])->name('courses.start');
+        Route::post('/cours/{course:slug}/acheter', [AcademyController::class, 'buyCourse'])->middleware('throttle:20,1')->name('courses.buy');
+        Route::get('/lecons/{lesson}', [AcademyController::class, 'lesson'])->whereNumber('lesson')->name('lessons.show');
+        Route::post('/lecons/{lesson}/terminer', [AcademyController::class, 'complete'])->whereNumber('lesson')->name('lessons.complete');
+        Route::post('/abonnements/{plan}/souscrire', [AcademyController::class, 'subscribe'])->whereNumber('plan')->middleware('throttle:20,1')->name('plans.subscribe');
+        Route::get('/commandes/{order}', [AcademyController::class, 'order'])->whereNumber('order')->name('orders.show');
+    });
     Route::get('/membres/{user}', [MemberProfileController::class, 'show'])->whereNumber('user')->name('member.show');
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
@@ -170,6 +187,29 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::delete('badges/points/{checkpoint}', [Admin\BadgeController::class, 'destroyCheckpoint'])->name('badges.checkpoints.destroy');
             Route::get('etablissements', [Admin\InstitutionController::class, 'index'])->name('institutions.index');
             Route::post('etablissements', [Admin\InstitutionController::class, 'store'])->name('institutions.store');
+
+            // Tunivisions Academy : cours, commandes, abonnements et réglages
+            Route::get('academy/cours', [Admin\AcademyCourseController::class, 'index'])->name('academy.courses.index');
+            Route::get('academy/cours/creer', [Admin\AcademyCourseController::class, 'create'])->name('academy.courses.create');
+            Route::post('academy/cours', [Admin\AcademyCourseController::class, 'store'])->name('academy.courses.store');
+            Route::get('academy/cours/{course}/modifier', [Admin\AcademyCourseController::class, 'edit'])->whereNumber('course')->name('academy.courses.edit');
+            Route::put('academy/cours/{course}', [Admin\AcademyCourseController::class, 'update'])->whereNumber('course')->name('academy.courses.update');
+            Route::delete('academy/cours/{course}', [Admin\AcademyCourseController::class, 'destroy'])->whereNumber('course')->name('academy.courses.destroy');
+            Route::post('academy/cours/{course}/modules', [Admin\AcademyCourseController::class, 'storeModule'])->whereNumber('course')->name('academy.courses.modules.store');
+            Route::put('academy/modules/{module}', [Admin\AcademyCourseController::class, 'updateModule'])->whereNumber('module')->name('academy.courses.modules.update');
+            Route::delete('academy/modules/{module}', [Admin\AcademyCourseController::class, 'destroyModule'])->whereNumber('module')->name('academy.courses.modules.destroy');
+            Route::post('academy/modules/{module}/lecons', [Admin\AcademyCourseController::class, 'storeLesson'])->whereNumber('module')->name('academy.courses.lessons.store');
+            Route::put('academy/lecons/{lesson}', [Admin\AcademyCourseController::class, 'updateLesson'])->whereNumber('lesson')->name('academy.courses.lessons.update');
+            Route::delete('academy/lecons/{lesson}', [Admin\AcademyCourseController::class, 'destroyLesson'])->whereNumber('lesson')->name('academy.courses.lessons.destroy');
+            Route::get('academy/commandes', [Admin\AcademyOrderController::class, 'index'])->name('academy.orders.index');
+            Route::post('academy/commandes/{order}/payer', [Admin\AcademyOrderController::class, 'pay'])->whereNumber('order')->name('academy.orders.pay');
+            Route::post('academy/commandes/{order}/annuler', [Admin\AcademyOrderController::class, 'cancel'])->whereNumber('order')->name('academy.orders.cancel');
+            Route::post('academy/commandes/{order}/rembourser', [Admin\AcademyOrderController::class, 'refund'])->whereNumber('order')->name('academy.orders.refund');
+            Route::get('academy/reglages', [Admin\AcademySettingsController::class, 'edit'])->name('academy.settings.edit');
+            Route::put('academy/reglages', [Admin\AcademySettingsController::class, 'update'])->name('academy.settings.update');
+            Route::post('academy/reglages/abonnements', [Admin\AcademySettingsController::class, 'storePlan'])->name('academy.settings.plans.store');
+            Route::put('academy/reglages/abonnements/{plan}', [Admin\AcademySettingsController::class, 'updatePlan'])->whereNumber('plan')->name('academy.settings.plans.update');
+            Route::delete('academy/reglages/abonnements/{plan}', [Admin\AcademySettingsController::class, 'destroyPlan'])->whereNumber('plan')->name('academy.settings.plans.destroy');
             Route::put('etablissements/{institution}', [Admin\InstitutionController::class, 'update'])->name('institutions.update');
             Route::delete('etablissements/{institution}', [Admin\InstitutionController::class, 'destroy'])->name('institutions.destroy');
             Route::get('entreprises', [Admin\CompanyController::class, 'index'])->name('companies.index');
@@ -261,5 +301,11 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('evenements/{event}', [Admin\EventController::class, 'update'])->name('events.update');
             Route::delete('evenements/{event}', [Admin\EventController::class, 'destroy'])->name('events.destroy');
             Route::patch('evenements/{event}/inscriptions/{registration}', [Admin\EventController::class, 'updateRegistration'])->name('events.registrations.update');
+
+            // Tunivisions Academy : calendrier des sessions en direct
+            Route::get('academy/sessions', [Admin\AcademySessionController::class, 'index'])->name('academy.sessions.index');
+            Route::post('academy/sessions', [Admin\AcademySessionController::class, 'store'])->name('academy.sessions.store');
+            Route::put('academy/sessions/{session}', [Admin\AcademySessionController::class, 'update'])->whereNumber('session')->name('academy.sessions.update');
+            Route::delete('academy/sessions/{session}', [Admin\AcademySessionController::class, 'destroy'])->whereNumber('session')->name('academy.sessions.destroy');
         });
     });

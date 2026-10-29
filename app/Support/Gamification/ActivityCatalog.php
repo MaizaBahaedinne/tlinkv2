@@ -2,6 +2,8 @@
 
 namespace App\Support\Gamification;
 
+use App\Models\AcademyEnrollment;
+use App\Models\AcademyLessonCompletion;
 use App\Models\Comment;
 use App\Models\EventRegistration;
 use App\Models\Membership;
@@ -10,6 +12,7 @@ use App\Models\Post;
 use App\Models\PostReaction;
 use App\Models\Profile;
 use App\Models\User;
+use App\Support\Academy\AcademyLearning;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -83,6 +86,30 @@ final class ActivityCatalog
                 'group' => 'Événements',
                 'count' => fn (int $userId): int => EventRegistration::query()->where('user_id', $userId)->where('status', 'attended')->count(),
                 'models' => [EventRegistration::class => $viaUser],
+            ],
+            'academy.enrolled' => [
+                'label' => 'Cours Academy suivis (inscriptions)',
+                'group' => 'Tunivisions Academy',
+                'count' => fn (int $userId): int => AcademyEnrollment::query()->where('user_id', $userId)->count(),
+                'models' => [AcademyEnrollment::class => $viaUser],
+            ],
+            'academy.lessons_completed' => [
+                'label' => 'Leçons Academy terminées',
+                'group' => 'Tunivisions Academy',
+                'count' => fn (int $userId): int => AcademyLessonCompletion::query()->where('user_id', $userId)->count(),
+                'models' => [AcademyLessonCompletion::class => $viaUser],
+            ],
+            'academy.courses_completed' => [
+                'label' => 'Cours Academy terminés',
+                'group' => 'Tunivisions Academy',
+                'count' => fn (int $userId): int => AcademyEnrollment::query()->where('user_id', $userId)->whereNotNull('completed_at')->count(),
+                'models' => [AcademyEnrollment::class => $viaUser],
+            ],
+            'academy.points' => [
+                'label' => 'Points Academy (leçons terminées + bonus de fin de cours)',
+                'group' => 'Tunivisions Academy',
+                'count' => fn (int $userId): int => AcademyLearning::points($userId),
+                'models' => [AcademyLessonCompletion::class => $viaUser, AcademyEnrollment::class => $viaUser],
             ],
             'membership.approved' => [
                 'label' => 'Adhésions validées (entités et clubs)',

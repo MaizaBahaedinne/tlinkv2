@@ -47,6 +47,10 @@ final class ModulePermissions
         'feed.public_posts' => 'post.publish_public',
         'events.events' => 'event.manage',
         'events.registrations' => 'event.manage',
+        'academy.courses' => 'entity.manage',
+        'academy.sessions' => 'event.manage',
+        'academy.orders' => 'entity.manage',
+        'academy.plans' => 'entity.manage',
     ];
 
     /**
