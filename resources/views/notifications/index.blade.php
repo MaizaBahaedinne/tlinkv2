@@ -24,7 +24,14 @@
                 @forelse($notifications as $notification)
                     <div class="flex items-start justify-between gap-3 p-4 {{ $notification->read_at ? 'bg-white' : 'bg-rose-50/60' }}">
                         <div>
-                            <p class="font-semibold text-slate-800">{{ $notification->title }}</p>
+                            @php
+                                $target = $notification->data['url'] ?? null;
+                            @endphp
+                            @if(is_string($target) && str_starts_with($target, '/') && ! str_starts_with($target, '//'))
+                                <a href="{{ $target }}" class="font-semibold text-slate-800 hover:text-tlink-blue hover:underline">{{ $notification->title }}</a>
+                            @else
+                                <p class="font-semibold text-slate-800">{{ $notification->title }}</p>
+                            @endif
                             <p class="mt-1 text-sm text-slate-600">{{ $notification->body }}</p>
                             <p class="mt-1 text-xs text-slate-500">{{ $notification->created_at }}</p>
                         </div>

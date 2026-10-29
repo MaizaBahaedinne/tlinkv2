@@ -10,6 +10,7 @@ use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
 use App\Http\Controllers\MemberProfileController;
+use App\Http\Controllers\MentoringController;
 use App\Http\Controllers\MessengerController;
 use App\Http\Controllers\MyOfficeController;
 use App\Http\Controllers\NotificationPageController;
@@ -98,6 +99,31 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/{conversation}/lu', [MessengerController::class, 'read'])->whereNumber('conversation')->middleware('throttle:messenger-action')->name('read');
         Route::post('/{conversation}/ecriture', [MessengerController::class, 'typing'])->whereNumber('conversation')->middleware('throttle:messenger-action')->name('typing');
         Route::post('/{conversation}/quitter', [MessengerController::class, 'leave'])->whereNumber('conversation')->name('leave');
+    });
+
+    // Mentorat : les membres remontent demandes et incidents, le manager mentor qualifie et affecte, le mentor accompagne et rédige le REX.
+    Route::prefix('mentorat')->name('mentoring.')->group(function (): void {
+        Route::get('/', [MentoringController::class, 'index'])->name('index');
+        Route::get('/nouvelle', [MentoringController::class, 'create'])->name('create');
+        Route::post('/', [MentoringController::class, 'store'])->middleware('throttle:mentoring-submit')->name('store');
+        Route::get('/accompagnements', [MentoringController::class, 'assigned'])->name('assigned');
+        Route::get('/gestion', [MentoringController::class, 'manage'])->name('manage');
+        Route::get('/mentors', [MentoringController::class, 'mentors'])->name('mentors');
+        Route::post('/mentors', [MentoringController::class, 'storeMentor'])->middleware('throttle:mentoring-action')->name('mentors.store');
+        Route::patch('/mentors/{mentor}', [MentoringController::class, 'updateMentor'])->whereNumber('mentor')->middleware('throttle:mentoring-action')->name('mentors.update');
+        Route::delete('/mentors/{mentor}', [MentoringController::class, 'destroyMentor'])->whereNumber('mentor')->middleware('throttle:mentoring-action')->name('mentors.destroy');
+        Route::get('/{ticket}', [MentoringController::class, 'show'])->whereNumber('ticket')->name('show');
+        Route::middleware('throttle:mentoring-action')->group(function (): void {
+            Route::post('/{ticket}/commentaires', [MentoringController::class, 'comment'])->whereNumber('ticket')->name('comment');
+            Route::post('/{ticket}/qualification', [MentoringController::class, 'qualify'])->whereNumber('ticket')->name('qualify');
+            Route::post('/{ticket}/rejet', [MentoringController::class, 'reject'])->whereNumber('ticket')->name('reject');
+            Route::post('/{ticket}/affectation', [MentoringController::class, 'assign'])->whereNumber('ticket')->name('assign');
+            Route::post('/{ticket}/demarrer', [MentoringController::class, 'start'])->whereNumber('ticket')->name('start');
+            Route::put('/{ticket}/rex', [MentoringController::class, 'rex'])->whereNumber('ticket')->name('rex');
+            Route::post('/{ticket}/resolution', [MentoringController::class, 'resolve'])->whereNumber('ticket')->name('resolve');
+            Route::post('/{ticket}/cloture', [MentoringController::class, 'close'])->whereNumber('ticket')->name('close');
+            Route::post('/{ticket}/reouverture', [MentoringController::class, 'reopen'])->whereNumber('ticket')->name('reopen');
+        });
     });
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).

@@ -77,6 +77,12 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'mentoring', 'name' => 'Mentorat', 'description' => 'Accompagnement des membres et de leurs collectifs par des mentors.',
+                'children' => [
+                    ['key' => 'mentoring.tickets', 'name' => 'Tickets de mentorat', 'description' => 'Demandes, incidents et problèmes remontés par les membres ou leur collectif : qualification par le manager mentor, affectation à un mentor, suivi et REX. Désactiver ce module ferme le mentorat pour tous.', 'actions' => ['read', 'update']],
+                ],
+            ],
+            [
                 'key' => 'governance', 'name' => 'Gouvernance', 'description' => 'Validation, modération et traçabilité.',
                 'children' => [
                     ['key' => 'governance.approvals', 'name' => 'Approbations', 'description' => 'Demandes en attente de validation.', 'actions' => ['read', 'update']],

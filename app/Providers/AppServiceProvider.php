@@ -42,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
             'messenger-poll' => 240,
             'messenger-action' => 120,
             'messenger-start' => 30,
+            'mentoring-submit' => 10,
+            'mentoring-action' => 60,
             'search-suggest' => 60,
             'academy-action' => 20,
             'academy-quiz' => 30,
@@ -80,6 +82,9 @@ class AppServiceProvider extends ServiceProvider
             $messengerOpen = $user !== null && \App\Support\Messenger\Messenger::enabled();
             $view->with('messengerEnabled', $messengerOpen);
             $view->with('unreadMessages', $messengerOpen ? \App\Support\Messenger\Messenger::unreadCount($user) : 0);
+
+            // Mentorat : entrée de la navigation (uniquement si le module est ouvert).
+            $view->with('mentoringEnabled', $user !== null && \App\Support\Mentoring\Mentoring::enabled());
         });
     }
 }
