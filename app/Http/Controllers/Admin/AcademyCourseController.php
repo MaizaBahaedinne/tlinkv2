@@ -45,6 +45,7 @@ class AcademyCourseController extends AdminController
         $course = AcademyCourse::query()->create($data + [
             'slug' => $this->uniqueSlug($data['title']),
             'cover_path' => $request->hasFile('cover') ? $request->file('cover')->store('academy/covers', 'public') : null,
+            'instructor_photo_path' => $request->hasFile('instructor_photo') ? $request->file('instructor_photo')->store('academy/instructors', 'public') : null,
             'sort_order' => ((int) AcademyCourse::query()->max('sort_order')) + 1,
         ]);
 
@@ -56,14 +57,24 @@ class AcademyCourseController extends AdminController
     public function edit(AcademyCourse $course): View
     {
         $course->load(['modules.lessons', 'quizzes' => fn ($query) => $query->withCount('questions')]);
+        $reviews = $course->reviews()->with('user')->latest()->limit(100)->get();
 
-        return view('admin.academy.courses.form', ['course' => $course, 'badges' => $this->badges()]);
+        return view('admin.academy.courses.form', ['course' => $course, 'badges' => $this->badges(), 'reviews' => $reviews]);
     }
 
     public function update(Request $request, AcademyCourse $course): RedirectResponse
     {
         $data = $this->validated($request);
         $oldCover = null;
+        $oldPhoto = null;
+
+        if ($request->hasFile('instructor_photo')) {
+            $oldPhoto = $course->instructor_photo_path;
+            $data['instructor_photo_path'] = $request->file('instructor_photo')->store('academy/instructors', 'public');
+        } elseif ($request->boolean('remove_instructor_photo')) {
+            $oldPhoto = $course->instructor_photo_path;
+            $data['instructor_photo_path'] = null;
+        }
 
         if ($request->hasFile('cover')) {
             $oldCover = $course->cover_path;
@@ -75,6 +86,7 @@ class AcademyCourseController extends AdminController
 
         $course->update($data);
         $this->deleteCover($oldCover);
+        $this->deleteCover($oldPhoto);
         $this->audit($request, 'admin.academy.course.updated', $course, ['title' => $course->title, 'status' => $course->status]);
 
         return back()->with('status', 'Cours enregistré.');
@@ -88,8 +100,10 @@ class AcademyCourseController extends AdminController
 
         $this->audit($request, 'admin.academy.course.deleted', $course, ['title' => $course->title]);
         $cover = $course->cover_path;
+        $photo = $course->instructor_photo_path;
         $course->delete();
         $this->deleteCover($cover);
+        $this->deleteCover($photo);
 
         return redirect()->route('admin.academy.courses.index')->with('status', 'Cours supprimé.');
     }
@@ -157,8 +171,16 @@ class AcademyCourseController extends AdminController
             'title' => ['required', 'string', 'max:160'],
             'summary' => ['nullable', 'string', 'max:300'],
             'description' => ['nullable', 'string', 'max:10000'],
+            'objectives' => ['nullable', 'string', 'max:3000'],
+            'prerequisites' => ['nullable', 'string', 'max:2000'],
+            'audience' => ['nullable', 'string', 'max:2000'],
+            'language' => ['nullable', 'string', 'max:40'],
             'level' => ['required', Rule::in(array_keys(AcademyCourse::LEVELS))],
             'instructor_name' => ['nullable', 'string', 'max:120'],
+            'instructor_title' => ['nullable', 'string', 'max:160'],
+            'instructor_bio' => ['nullable', 'string', 'max:3000'],
+            'instructor_photo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'remove_instructor_photo' => ['nullable', 'boolean'],
             'price' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'included_in_plans' => ['nullable', 'boolean'],
             'badge_id' => ['nullable', 'integer', 'exists:badges,id'],
@@ -168,7 +190,8 @@ class AcademyCourseController extends AdminController
             'remove_cover' => ['nullable', 'boolean'],
         ]);
 
-        unset($data['cover'], $data['remove_cover']);
+        unset($data['cover'], $data['remove_cover'], $data['instructor_photo'], $data['remove_instructor_photo']);
+        $data['language'] = filled($data['language'] ?? null) ? $data['language'] : 'Français';
         $data['included_in_plans'] = $request->boolean('included_in_plans');
         $data['completion_points'] = (int) ($data['completion_points'] ?? 0);
 
@@ -252,7 +275,7 @@ class AcademyCourseController extends AdminController
 
     private function deleteCover(?string $path): void
     {
-        if ($path && str_starts_with($path, 'academy/covers/')) {
+        if ($path && (str_starts_with($path, 'academy/covers/') || str_starts_with($path, 'academy/instructors/'))) {
             Storage::disk('public')->delete($path);
         }
     }

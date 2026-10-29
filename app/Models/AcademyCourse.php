@@ -15,7 +15,7 @@ class AcademyCourse extends Model
 
     public const STATUSES = ['draft' => 'Brouillon', 'published' => 'Publié', 'archived' => 'Archivé'];
 
-    protected $fillable = ['title', 'slug', 'summary', 'description', 'cover_path', 'level', 'instructor_name', 'price', 'included_in_plans', 'badge_id', 'completion_points', 'status', 'sort_order'];
+    protected $fillable = ['title', 'slug', 'summary', 'description', 'objectives', 'prerequisites', 'audience', 'language', 'cover_path', 'level', 'instructor_name', 'instructor_title', 'instructor_bio', 'instructor_photo_path', 'price', 'included_in_plans', 'badge_id', 'completion_points', 'status', 'sort_order'];
 
     protected $casts = ['price' => 'decimal:2', 'included_in_plans' => 'boolean', 'completion_points' => 'integer'];
 
@@ -37,6 +37,11 @@ class AcademyCourse extends Model
     public function quizzes(): HasMany
     {
         return $this->hasMany(AcademyQuiz::class, 'course_id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(AcademyReview::class, 'course_id');
     }
 
     public function sessions(): HasMany
@@ -73,6 +78,23 @@ class AcademyCourse extends Model
     public function coverUrl(): ?string
     {
         return $this->cover_path ? Storage::disk('public')->url($this->cover_path) : null;
+    }
+
+    public function instructorPhotoUrl(): ?string
+    {
+        return $this->instructor_photo_path ? Storage::disk('public')->url($this->instructor_photo_path) : null;
+    }
+
+    /**
+     * Texte saisi une ligne par élément (objectifs, prérequis, public visé) : lignes non vides, puces éventuelles retirées.
+     *
+     * @return array<int, string>
+     */
+    public static function lines(?string $text): array
+    {
+        return collect(preg_split('/\R/u', (string) $text) ?: [])
+            ->map(fn (string $line): string => trim(preg_replace('/^\s*[-*•]\s*/u', '', $line) ?? ''))
+            ->filter()->values()->all();
     }
 
     public static function money(float $amount, string $currency = 'TND'): string

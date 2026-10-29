@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/cours/{course:slug}', [AcademyController::class, 'show'])->name('courses.show');
         Route::post('/cours/{course:slug}/commencer', [AcademyController::class, 'start'])->name('courses.start');
         Route::post('/cours/{course:slug}/acheter', [AcademyController::class, 'buyCourse'])->middleware('throttle:20,1')->name('courses.buy');
+        Route::post('/cours/{course:slug}/avis', [AcademyController::class, 'review'])->middleware('throttle:20,1')->name('courses.review');
         Route::get('/lecons/{lesson}', [AcademyController::class, 'lesson'])->whereNumber('lesson')->name('lessons.show');
         Route::post('/lecons/{lesson}/terminer', [AcademyController::class, 'complete'])->whereNumber('lesson')->name('lessons.complete');
         Route::post('/abonnements/{plan}/souscrire', [AcademyController::class, 'subscribe'])->whereNumber('plan')->middleware('throttle:20,1')->name('plans.subscribe');
@@ -213,6 +214,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('academy/quiz/{quiz}/questions', [Admin\AcademyQuizController::class, 'storeQuestion'])->whereNumber('quiz')->name('academy.courses.quiz.questions.store');
             Route::put('academy/quiz/questions/{question}', [Admin\AcademyQuizController::class, 'updateQuestion'])->whereNumber('question')->name('academy.courses.quiz.questions.update');
             Route::delete('academy/quiz/questions/{question}', [Admin\AcademyQuizController::class, 'destroyQuestion'])->whereNumber('question')->name('academy.courses.quiz.questions.destroy');
+            Route::patch('academy/avis/{review}', [Admin\AcademyReviewController::class, 'toggle'])->whereNumber('review')->name('academy.courses.reviews.toggle');
+            Route::delete('academy/avis/{review}', [Admin\AcademyReviewController::class, 'destroy'])->whereNumber('review')->name('academy.courses.reviews.destroy');
             Route::get('academy/commandes', [Admin\AcademyOrderController::class, 'index'])->name('academy.orders.index');
             Route::post('academy/commandes/{order}/payer', [Admin\AcademyOrderController::class, 'pay'])->whereNumber('order')->name('academy.orders.pay');
             Route::post('academy/commandes/{order}/annuler', [Admin\AcademyOrderController::class, 'cancel'])->whereNumber('order')->name('academy.orders.cancel');

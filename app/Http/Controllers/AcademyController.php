@@ -8,12 +8,14 @@ use App\Models\AcademyLesson;
 use App\Models\AcademyOrder;
 use App\Models\AcademyPlan;
 use App\Models\AcademyQuizAttempt;
+use App\Models\AcademyReview;
 use App\Models\AcademySession;
 use App\Models\AcademySubscription;
 use App\Models\FoundationEvent;
 use App\Support\Academy\AcademyAccess;
 use App\Support\Academy\AcademyLearning;
 use App\Support\Academy\AcademyOrders;
+use App\Support\Academy\AcademyReviews;
 use App\Support\Academy\AcademySettings;
 use App\Support\Academy\Payments\PaymentGateways;
 use Illuminate\Http\RedirectResponse;
@@ -70,6 +72,12 @@ class AcademyController extends Controller
             'canAccess' => AcademyAccess::canAccess($user, $course),
             'progress' => AcademyLearning::progress($user, $course),
             'sessions' => $course->sessions()->where('is_published', true)->where('starts_at', '>=', now())->orderBy('starts_at')->limit(5)->get(),
+            'reviews' => $course->reviews()->with('user')->where('is_hidden', false)->latest()->limit(30)->get(),
+            'reviewSummary' => AcademyReviews::summary($course),
+            'canReview' => AcademyReviews::canReview($user, $course),
+            'myReview' => AcademyReview::query()->where('course_id', $course->id)->where('user_id', $user->id)->first(),
+            'learnersCount' => $course->enrollments()->count(),
+            'totalMinutes' => (int) $course->lessons->sum('duration_minutes'),
             'salesEnabled' => (bool) AcademySettings::get('sales_enabled'),
             'plans' => $course->included_in_plans ? AcademyPlan::query()->where('is_active', true)->orderBy('sort_order')->get() : collect(),
             'name' => AcademySettings::NAME,
@@ -154,6 +162,33 @@ class AcademyController extends Controller
         return $next === null
             ? redirect()->route('academy.courses.show', $course->slug)->with('status', 'Leçon validée.')
             : redirect()->route('academy.lessons.show', $next)->with('status', 'Leçon validée, +'.$lesson->points.' point(s).');
+    }
+
+    /** Avis du membre inscrit : un seul par cours, modifiable. */
+    public function review(Request $request, AcademyCourse $course): RedirectResponse
+    {
+        $course = $this->published($course);
+        $user = $request->user();
+
+        if (! AcademyReviews::canReview($user, $course)) {
+            return redirect()->route('academy.courses.show', $course->slug)->with('status', 'Suivez le cours pour pouvoir laisser un avis.');
+        }
+
+        $data = $request->validate([
+            'course_rating' => ['required', 'integer', 'between:1,5'],
+            'course_comment' => ['nullable', 'string', 'max:1500'],
+            'instructor_rating' => ['nullable', 'integer', 'between:1,5'],
+            'instructor_comment' => ['nullable', 'string', 'max:1500'],
+        ]);
+
+        foreach (['course_comment', 'instructor_comment'] as $field) {
+            $data[$field] = filled($data[$field] ?? null) ? trim($data[$field]) : null;
+        }
+
+        $data['instructor_rating'] ??= null;
+        AcademyReview::query()->updateOrCreate(['course_id' => $course->id, 'user_id' => $user->id], $data);
+
+        return redirect()->to(route('academy.courses.show', $course->slug).'#avis')->with('status', 'Merci, votre avis est publié.');
     }
 
     public function buyCourse(Request $request, AcademyCourse $course): RedirectResponse

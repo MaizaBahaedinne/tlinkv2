@@ -110,6 +110,8 @@ class AuditLabels
         'admin.academy.quiz.deleted' => 'Quiz Academy supprimé',
         'admin.academy.question.saved' => 'Question de quiz enregistrée',
         'admin.academy.question.deleted' => 'Question de quiz supprimée',
+        'admin.academy.review.moderated' => 'Avis Academy modéré',
+        'admin.academy.review.deleted' => 'Avis Academy supprimé',
         'admin.academy.course.updated' => 'Cours Academy modifié',
         'admin.academy.course.deleted' => 'Cours Academy supprimé',
         'admin.academy.module.saved' => 'Module Academy enregistré',

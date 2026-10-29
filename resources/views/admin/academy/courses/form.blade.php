@@ -45,6 +45,26 @@
                 <textarea id="c-description" name="description" rows="5" maxlength="10000">{{ $val('description', $course->description) }}</textarea>
                 @if($err('description'))<p class="error">{{ $err('description') }}</p>@endif
             </div>
+            <div style="grid-column:1/-1">
+                <label class="text-sm" for="c-objectives">Objectifs de la formation (un par ligne)</label>
+                <textarea id="c-objectives" name="objectives" rows="4" maxlength="3000">{{ $val('objectives', $course->objectives) }}</textarea>
+                @if($err('objectives'))<p class="error">{{ $err('objectives') }}</p>@endif
+            </div>
+            <div>
+                <label class="text-sm" for="c-prereq">Prérequis (un par ligne)</label>
+                <textarea id="c-prereq" name="prerequisites" rows="3" maxlength="2000">{{ $val('prerequisites', $course->prerequisites) }}</textarea>
+                @if($err('prerequisites'))<p class="error">{{ $err('prerequisites') }}</p>@endif
+            </div>
+            <div>
+                <label class="text-sm" for="c-audience">Public visé (un par ligne)</label>
+                <textarea id="c-audience" name="audience" rows="3" maxlength="2000">{{ $val('audience', $course->audience) }}</textarea>
+                @if($err('audience'))<p class="error">{{ $err('audience') }}</p>@endif
+            </div>
+            <div>
+                <label class="text-sm" for="c-language">Langue</label>
+                <input id="c-language" type="text" name="language" value="{{ $val('language', $course->language ?? 'Français') }}" maxlength="40">
+                @if($err('language'))<p class="error">{{ $err('language') }}</p>@endif
+            </div>
             <div>
                 <label class="text-sm" for="c-level">Niveau</label>
                 <select id="c-level" name="level" required>
@@ -58,6 +78,25 @@
                 <label class="text-sm" for="c-instructor">Formateur</label>
                 <input id="c-instructor" type="text" name="instructor_name" value="{{ $val('instructor_name', $course->instructor_name) }}" maxlength="120">
                 @if($err('instructor_name'))<p class="error">{{ $err('instructor_name') }}</p>@endif
+            </div>
+            <div>
+                <label class="text-sm" for="c-instructor-title">Fonction du formateur</label>
+                <input id="c-instructor-title" type="text" name="instructor_title" value="{{ $val('instructor_title', $course->instructor_title) }}" maxlength="160">
+                @if($err('instructor_title'))<p class="error">{{ $err('instructor_title') }}</p>@endif
+            </div>
+            <div style="grid-column:1/-1">
+                <label class="text-sm" for="c-instructor-bio">Biographie du formateur</label>
+                <textarea id="c-instructor-bio" name="instructor_bio" rows="3" maxlength="3000">{{ $val('instructor_bio', $course->instructor_bio) }}</textarea>
+                @if($err('instructor_bio'))<p class="error">{{ $err('instructor_bio') }}</p>@endif
+            </div>
+            <div style="grid-column:1/-1">
+                <label class="text-sm" for="c-instructor-photo">Photo du formateur</label>
+                @if($editing && $course->instructorPhotoUrl())
+                    <img src="{{ $course->instructorPhotoUrl() }}" alt="" style="display:block;width:72px;height:72px;object-fit:cover;border-radius:50%;margin:6px 0">
+                    <label class="check"><input type="checkbox" name="remove_instructor_photo" value="1"> Retirer la photo</label>
+                @endif
+                <input id="c-instructor-photo" type="file" name="instructor_photo" accept="image/png,image/jpeg,image/webp">
+                @if($err('instructor_photo'))<p class="error">{{ $err('instructor_photo') }}</p>@endif
             </div>
             <div>
                 <label class="text-sm" for="c-price">Prix (TND) — vide = gratuit</label>
@@ -210,6 +249,35 @@
                     <button type="submit" class="btn btn-primary"><x-admin.icon name="plus" :size="15" /> Ajouter un quiz final</button>
                 </form>
             @endif
+        </article>
+
+        <article class="card card-flush" style="margin-top:16px">
+            <div class="card-head"><h2>Avis des membres ({{ $reviews->count() }})</h2></div>
+            @forelse($reviews as $review)
+                <div class="list-item" style="display:block;border-top:1px solid var(--line)">
+                    <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+                        <div class="grow" style="min-width:220px">
+                            <strong>{{ $review->user?->name ?? 'Membre supprimé' }}</strong>
+                            <span class="text-sm text-muted">— formation {{ $review->course_rating }}/5 @if($review->instructor_rating), formateur {{ $review->instructor_rating }}/5 @endif · {{ $review->created_at->translatedFormat('d M Y') }}</span>
+                            @if($review->is_hidden)<x-admin.badge status="archived" label="Masqué" />@endif
+                            @if($review->course_comment)<p class="text-sm" style="margin:4px 0 0">Formation : {{ $review->course_comment }}</p>@endif
+                            @if($review->instructor_comment)<p class="text-sm" style="margin:4px 0 0">Formateur : {{ $review->instructor_comment }}</p>@endif
+                        </div>
+                        <form method="post" action="{{ route('admin.academy.courses.reviews.toggle', $review) }}">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="btn btn-secondary btn-sm">{{ $review->is_hidden ? 'Afficher' : 'Masquer' }}</button>
+                        </form>
+                        <form method="post" action="{{ route('admin.academy.courses.reviews.destroy', $review) }}" onsubmit="return confirm('Supprimer cet avis ?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-danger btn-sm"><x-admin.icon name="trash" :size="15" /> Supprimer</button>
+                        </form>
+                    </div>
+                </div>
+            @empty
+                <p class="text-sm text-muted" style="padding:16px">Aucun avis pour le moment.</p>
+            @endforelse
         </article>
 
         <article class="card" style="margin-top:16px">
