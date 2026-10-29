@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Route;
 require base_path('routes/site.php');
 
 // Certificat Academy : page publique, vérifiable grâce à son code.
-Route::get('/certificats/{code}', [AcademyController::class, 'certificate'])->where('code', 'TA-[A-Z0-9]{10}')->middleware('throttle:60,1')->name('academy.certificate');
+Route::get('/certificats/{code}', [AcademyController::class, 'certificate'])->where('code', 'TA-[A-Z0-9]{10}')->middleware('throttle:certificate-check')->name('academy.certificate');
 
 // Lien d'inscription direct d'un poste de l'organigramme (public : jeton non devinable, candidature a valider).
 Route::get('/rejoindre/{token}', [PositionJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('position.join');
@@ -67,46 +67,46 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/calendrier', [AcademyController::class, 'calendar'])->name('calendar');
         Route::get('/cours/{course:slug}', [AcademyController::class, 'show'])->name('courses.show');
         Route::post('/cours/{course:slug}/commencer', [AcademyController::class, 'start'])->name('courses.start');
-        Route::post('/cours/{course:slug}/acheter', [AcademyController::class, 'buyCourse'])->middleware('throttle:20,1')->name('courses.buy');
-        Route::post('/cours/{course:slug}/avis', [AcademyController::class, 'review'])->middleware('throttle:20,1')->name('courses.review');
+        Route::post('/cours/{course:slug}/acheter', [AcademyController::class, 'buyCourse'])->middleware('throttle:academy-action')->name('courses.buy');
+        Route::post('/cours/{course:slug}/avis', [AcademyController::class, 'review'])->middleware('throttle:academy-action')->name('courses.review');
         Route::get('/lecons/{lesson}', [AcademyController::class, 'lesson'])->whereNumber('lesson')->name('lessons.show');
         Route::post('/lecons/{lesson}/terminer', [AcademyController::class, 'complete'])->whereNumber('lesson')->name('lessons.complete');
-        Route::post('/abonnements/{plan}/souscrire', [AcademyController::class, 'subscribe'])->whereNumber('plan')->middleware('throttle:20,1')->name('plans.subscribe');
+        Route::post('/abonnements/{plan}/souscrire', [AcademyController::class, 'subscribe'])->whereNumber('plan')->middleware('throttle:academy-action')->name('plans.subscribe');
         Route::get('/commandes/{order}', [AcademyController::class, 'order'])->whereNumber('order')->name('orders.show');
         Route::get('/quiz/{quiz}', [AcademyQuizController::class, 'show'])->whereNumber('quiz')->name('quizzes.show');
-        Route::post('/quiz/{quiz}/commencer', [AcademyQuizController::class, 'start'])->whereNumber('quiz')->middleware('throttle:30,1')->name('quizzes.start');
+        Route::post('/quiz/{quiz}/commencer', [AcademyQuizController::class, 'start'])->whereNumber('quiz')->middleware('throttle:academy-quiz')->name('quizzes.start');
         Route::get('/quiz/tentatives/{attempt}', [AcademyQuizController::class, 'attempt'])->whereNumber('attempt')->name('attempts.show');
-        Route::post('/quiz/tentatives/{attempt}', [AcademyQuizController::class, 'submit'])->whereNumber('attempt')->middleware('throttle:30,1')->name('attempts.submit');
+        Route::post('/quiz/tentatives/{attempt}', [AcademyQuizController::class, 'submit'])->whereNumber('attempt')->middleware('throttle:academy-quiz')->name('attempts.submit');
     });
     Route::get('/membres/{user}', [MemberProfileController::class, 'show'])->whereNumber('user')->name('member.show');
 
     // T.Link Messenger : messagerie instantanée (pages + JSON interrogé par le navigateur).
     Route::prefix('messagerie')->name('messenger.')->group(function (): void {
         Route::get('/', [MessengerController::class, 'index'])->name('index');
-        Route::get('/conversations', [MessengerController::class, 'conversations'])->middleware('throttle:90,1')->name('conversations');
-        Route::get('/non-lus', [MessengerController::class, 'unread'])->middleware('throttle:60,1')->name('unread');
-        Route::get('/membres', [MessengerController::class, 'members'])->middleware('throttle:60,1')->name('members');
-        Route::post('/directe/{user}', [MessengerController::class, 'direct'])->whereNumber('user')->middleware('throttle:30,1')->name('direct');
-        Route::post('/groupes', [MessengerController::class, 'storeGroup'])->middleware('throttle:10,1')->name('groups.store');
+        Route::get('/conversations', [MessengerController::class, 'conversations'])->middleware('throttle:messenger-poll')->name('conversations');
+        Route::get('/non-lus', [MessengerController::class, 'unread'])->middleware('throttle:messenger-poll')->name('unread');
+        Route::get('/membres', [MessengerController::class, 'members'])->middleware('throttle:messenger-action')->name('members');
+        Route::post('/directe/{user}', [MessengerController::class, 'direct'])->whereNumber('user')->middleware('throttle:messenger-start')->name('direct');
+        Route::post('/groupes', [MessengerController::class, 'storeGroup'])->middleware('throttle:messenger-start')->name('groups.store');
         Route::post('/bloquer/{user}', [MessengerController::class, 'block'])->whereNumber('user')->name('block');
         Route::delete('/bloquer/{user}', [MessengerController::class, 'unblock'])->whereNumber('user')->name('unblock');
         Route::delete('/messages/{message}', [MessengerController::class, 'destroyMessage'])->whereNumber('message')->name('messages.destroy');
         Route::get('/messages/{message}/image', [MessengerController::class, 'image'])->whereNumber('message')->name('image');
         Route::get('/{conversation}', [MessengerController::class, 'index'])->whereNumber('conversation')->name('show');
-        Route::get('/{conversation}/messages', [MessengerController::class, 'messages'])->whereNumber('conversation')->middleware('throttle:150,1')->name('messages');
-        Route::post('/{conversation}/messages', [MessengerController::class, 'send'])->whereNumber('conversation')->middleware('throttle:40,1')->name('send');
-        Route::post('/{conversation}/lu', [MessengerController::class, 'read'])->whereNumber('conversation')->middleware('throttle:90,1')->name('read');
-        Route::post('/{conversation}/ecriture', [MessengerController::class, 'typing'])->whereNumber('conversation')->middleware('throttle:60,1')->name('typing');
+        Route::get('/{conversation}/messages', [MessengerController::class, 'messages'])->whereNumber('conversation')->middleware('throttle:messenger-poll')->name('messages');
+        Route::post('/{conversation}/messages', [MessengerController::class, 'send'])->whereNumber('conversation')->middleware('throttle:messenger-action')->name('send');
+        Route::post('/{conversation}/lu', [MessengerController::class, 'read'])->whereNumber('conversation')->middleware('throttle:messenger-action')->name('read');
+        Route::post('/{conversation}/ecriture', [MessengerController::class, 'typing'])->whereNumber('conversation')->middleware('throttle:messenger-action')->name('typing');
         Route::post('/{conversation}/quitter', [MessengerController::class, 'leave'])->whereNumber('conversation')->name('leave');
     });
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
     Route::get('/recherche', [SearchController::class, 'index'])->name('search.index');
-    Route::get('/recherche/suggestions', [SearchController::class, 'suggest'])->middleware('throttle:60,1')->name('search.suggest');
+    Route::get('/recherche/suggestions', [SearchController::class, 'suggest'])->middleware('throttle:search-suggest')->name('search.suggest');
 
     // Mon bureau : supérieurs, équipe, et gestion des titulaires des postes situés sous les siens.
     Route::get('/mon-bureau', [MyOfficeController::class, 'index'])->name('office.index');
-    Route::post('/mon-bureau/postes/{node}/titulaires', [MyOfficeController::class, 'assign'])->middleware('throttle:30,1')->name('office.assign');
+    Route::post('/mon-bureau/postes/{node}/titulaires', [MyOfficeController::class, 'assign'])->middleware('throttle:office-assign')->name('office.assign');
     Route::delete('/mon-bureau/postes/{node}/titulaires/{person}', [MyOfficeController::class, 'unassign'])->name('office.unassign');
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
 

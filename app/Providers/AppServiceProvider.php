@@ -36,6 +36,22 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Limiteurs nommés : un « throttle:N,M » sans nom partage un seul compteur par utilisateur entre toutes les routes,
+        // ce qui provoquait des 429 sur les actions ponctuelles à cause de l'interrogation continue de la messagerie.
+        foreach ([
+            'messenger-poll' => 240,
+            'messenger-action' => 120,
+            'messenger-start' => 30,
+            'search-suggest' => 60,
+            'academy-action' => 20,
+            'academy-quiz' => 30,
+            'certificate-check' => 60,
+            'office-assign' => 30,
+        ] as $name => $perMinute) {
+            RateLimiter::for($name, fn (Request $request) => Limit::perMinute($perMinute)
+                ->by($request->user()?->id ? 'user:'.$request->user()->id : 'ip:'.$request->ip()));
+        }
+
         View::composer('admin.layouts.app', function ($view): void {
             $request = request();
 
