@@ -70,12 +70,11 @@ final class MembershipRequests
     }
 
     /**
-     * Postes de simple membre (sans droit d'administration, plusieurs titulaires) du périmètre choisi :
-     * le club (ses départements compris) ou l'entité. Les postes de responsabilité n'en font pas partie.
+     * Tous les postes du périmètre choisi : le club (ses départements compris) ou l'entité.
      *
      * @return \Illuminate\Support\Collection<int, OrgNode>
      */
-    private static function memberPositionNodes(string $scope, ?int $clubId)
+    private static function positionNodes(string $scope, ?int $clubId)
     {
         $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
         $scopes = OrgAccess::scopeMap();
@@ -94,22 +93,30 @@ final class MembershipRequests
 
         return OrgNode::query()
             ->where('kind', 'position')
-            ->where('access_level', AccessLevels::NONE)
-            ->where('capacity', 'multiple')
             ->orderBy('title')
-            ->get(['id', 'parent_id', 'title', 'subtitle'])
+            ->get(['id', 'parent_id', 'title', 'subtitle', 'access_level', 'capacity'])
             ->filter(fn (OrgNode $node) => $clubId !== null ? $inside((int) $node->id) : ($scopes[$node->id] ?? null) === $scope)
             ->values();
     }
 
     /**
-     * Noms des postes de membre disponibles dans le périmètre (un seul par intitulé pour une entité).
+     * Un poste de responsabilité (président, VP, assistant…) porte des droits ou n'a qu'un titulaire :
+     * il est attribué par les administrateurs. Seul un poste ouvert à plusieurs personnes, sans droit, est un poste de membre.
+     */
+    public static function isLeaderPosition(OrgNode $node): bool
+    {
+        return $node->access_level !== AccessLevels::NONE || $node->capacity !== 'multiple';
+    }
+
+    /**
+     * Postes disponibles dans le périmètre (un seul par intitulé pour une entité), responsabilités comprises :
+     * le contrôleur les marque pour qu'elles s'affichent sans pouvoir être choisies.
      *
      * @return \Illuminate\Support\Collection<int, OrgNode>
      */
     public static function memberPositions(string $scope, ?int $clubId)
     {
-        $nodes = self::memberPositionNodes($scope, $clubId);
+        $nodes = self::positionNodes($scope, $clubId);
 
         return ($clubId !== null ? $nodes : $nodes->unique('title'))->values();
     }
@@ -134,10 +141,14 @@ final class MembershipRequests
         $title = null;
 
         if ($positionId !== null) {
-            $position = self::memberPositionNodes($scope, $clubId)->firstWhere('id', $positionId);
+            $position = self::positionNodes($scope, $clubId)->firstWhere('id', $positionId);
 
             if ($position === null) {
-                throw ValidationException::withMessages(['position_id' => 'Ce poste n’est pas un poste de membre de cette partie.']);
+                throw ValidationException::withMessages(['position_id' => 'Ce poste n’existe pas dans cette partie.']);
+            }
+
+            if (self::isLeaderPosition($position)) {
+                throw ValidationException::withMessages(['position_id' => 'Les postes de responsabilité sont attribués par les administrateurs : choisissez un poste de membre.']);
             }
 
             $title = (string) $position->title;

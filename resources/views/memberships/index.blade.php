@@ -194,7 +194,7 @@
             <h2 class="font-display text-lg font-semibold text-slate-900">Ma participation · mandat <span id="past-mandate-label"></span></h2>
             <button type="button" data-close-past class="text-slate-400 hover:text-slate-600" aria-label="Fermer">✕</button>
         </div>
-        <p class="text-xs text-slate-500">Mandat précédent : votre participation est enregistrée directement, sans validation. Seuls les postes de simple membre sont proposés.</p>
+        <p class="text-xs text-slate-500">Mandat précédent : votre participation est enregistrée directement, sans validation. Tous les postes de la partie sont listés ; seuls les postes de membre peuvent être choisis, les postes de responsabilité étant attribués par les administrateurs.</p>
 
         <div>
             <label for="past-target" class="text-sm font-semibold text-slate-700">Partie rejointe</label>
@@ -261,11 +261,12 @@
             return fetch(form.dataset.positionsUrl + '?target=' + encodeURIComponent(target.value), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
                 .then(function (response) { if (!response.ok) { throw new Error('http'); } return response.json(); })
                 .then(function (data) {
-                    setOptions(data.positions.length ? 'Simple membre (sans poste précis)' : 'Aucun poste de membre dans cette partie', false);
+                    setOptions(data.positions.length ? 'Simple membre (sans poste précis)' : 'Aucun poste dans cette partie', false);
                     data.positions.forEach(function (item) {
                         var option = document.createElement('option');
                         option.value = item.id;
-                        option.textContent = item.title + (item.subtitle ? ' — ' + item.subtitle : '');
+                        option.textContent = item.title + (item.subtitle ? ' — ' + item.subtitle : '') + (item.leader ? ' (responsabilité : attribué par les administrateurs)' : '');
+                        option.disabled = !!item.leader;
                         if (String(item.id) === String(selected)) { option.selected = true; }
                         position.appendChild(option);
                     });

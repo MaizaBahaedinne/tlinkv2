@@ -107,7 +107,7 @@ class MembershipRequestController extends Controller
         [$scope, $clubId] = $this->parseTarget($data['target']);
 
         return response()->json(['positions' => MembershipRequests::memberPositions($scope, $clubId)
-            ->map(fn ($node) => ['id' => $node->id, 'title' => $node->title, 'subtitle' => $node->subtitle])
+            ->map(fn ($node) => ['id' => $node->id, 'title' => $node->title, 'subtitle' => $node->subtitle, 'leader' => MembershipRequests::isLeaderPosition($node)])
             ->values()]);
     }
 

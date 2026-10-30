@@ -222,15 +222,17 @@ class MembershipRequestPageTest extends TestCase
         return [$past, $current, $club, $position('Membres Communication', 'multiple', 'none'), $position('Président de club', 'single', 'club_president')];
     }
 
-    public function test_positions_are_loaded_for_the_chosen_part_and_only_member_posts_are_offered(): void
+    public function test_all_positions_of_the_chosen_part_are_listed_with_leaders_flagged(): void
     {
-        [, , $club, $memberPost] = $this->pastSetup();
+        [, , $club, $memberPost, $leaderPost] = $this->pastSetup();
         $member = $this->applicant();
 
-        $this->actingAs($member)->getJson('/adhesions/postes?target=club:'.$club->id)->assertOk()
-            ->assertJsonCount(1, 'positions')->assertJsonPath('positions.0.id', $memberPost->id)->assertJsonPath('positions.0.title', 'Membres Communication');
+        $response = $this->actingAs($member)->getJson('/adhesions/postes?target=club:'.$club->id)->assertOk()->assertJsonCount(2, 'positions');
+        $byId = collect($response->json('positions'))->keyBy('id');
+        $this->assertFalse($byId[$memberPost->id]['leader']);
+        $this->assertTrue($byId[$leaderPost->id]['leader']);
 
-        $this->actingAs($member)->getJson('/adhesions/postes?target=scope:university')->assertOk()->assertJsonCount(1, 'positions');
+        $this->actingAs($member)->getJson('/adhesions/postes?target=scope:university')->assertOk()->assertJsonCount(2, 'positions');
         $this->actingAs($member)->getJson('/adhesions/postes?target=scope:alumni')->assertOk()->assertJsonCount(0, 'positions');
         $this->actingAs($member)->getJson('/adhesions/postes')->assertStatus(422);
         $this->actingAs($member)->getJson('/adhesions/postes?target=club:99999')->assertStatus(422);
