@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Mandate;
+use App\Models\MandateParticipation;
 use App\Models\Membership;
 use App\Support\AdminContext;
 use App\Support\MemberJourney;
 use App\Support\MembershipRequests;
 use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -55,12 +57,16 @@ class MembershipRequestController extends Controller
         $byMandate = $groups->filter(fn (array $group) => $group['mandate'] !== null)->keyBy(fn (array $group) => $group['mandate']->id);
 
         $rows = Mandate::query()->orderByDesc('start_year')->orderByDesc('id')->get()
-            ->map(fn (Mandate $mandate) => ['mandate' => $mandate, 'positions' => $byMandate->get($mandate->id)['positions'] ?? collect()]);
+            ->map(fn (Mandate $mandate) => [
+                'mandate' => $mandate,
+                'positions' => $byMandate->get($mandate->id)['positions'] ?? collect(),
+                'participations' => $byMandate->get($mandate->id)['participations'] ?? collect(),
+            ]);
 
         $loose = $groups->first(fn (array $group) => $group['mandate'] === null);
 
         if ($loose !== null && $loose['positions']->isNotEmpty()) {
-            $rows->push(['mandate' => null, 'positions' => $loose['positions']]);
+            $rows->push(['mandate' => null, 'positions' => $loose['positions'], 'participations' => collect()]);
         }
 
         return $rows->values();
@@ -92,13 +98,67 @@ class MembershipRequestController extends Controller
     }
 
     /**
+     * Postes de membre disponibles dans la partie choisie (rechargés quand le membre change de partie).
+     */
+    public function positions(Request $request): JsonResponse
+    {
+        $data = $request->validate(['target' => ['required', 'string', 'max:80']]);
+
+        [$scope, $clubId] = $this->parseTarget($data['target']);
+
+        return response()->json(['positions' => MembershipRequests::memberPositions($scope, $clubId)
+            ->map(fn ($node) => ['id' => $node->id, 'title' => $node->title, 'subtitle' => $node->subtitle])
+            ->values()]);
+    }
+
+    /**
+     * Participation à un ancien mandat : acceptée directement (simple membre uniquement).
+     */
+    public function storePast(Request $request): RedirectResponse
+    {
+        $data = $request->validateWithBag('past', [
+            'mandate_id' => ['required', 'integer', 'exists:mandates,id'],
+            'past_target' => ['required', 'string', 'max:80'],
+            'position_id' => ['nullable', 'integer'],
+        ], [
+            'past_target.required' => 'Choisissez la partie que vous avez rejointe.',
+        ]);
+
+        try {
+            [$scope, $clubId] = $this->parseTarget($data['past_target'], 'past_target');
+
+            MembershipRequests::declarePast(
+                $request->user(),
+                Mandate::query()->findOrFail($data['mandate_id']),
+                $scope,
+                $clubId,
+                isset($data['position_id']) ? (int) $data['position_id'] : null,
+                $request->ip(),
+            );
+        } catch (ValidationException $exception) {
+            throw $exception->errorBag('past');
+        }
+
+        return redirect()->route('memberships.index')->with('status', 'Votre participation est enregistrée.');
+    }
+
+    public function destroyPast(Request $request, MandateParticipation $participation): RedirectResponse
+    {
+        abort_unless($participation->user_id === $request->user()->id, 404);
+
+        $participation->delete();
+
+        return redirect()->route('memberships.index')->with('status', 'Participation retirée.');
+    }
+
+    /**
      * « scope:university » vise un périmètre, « club:12 » un club (son périmètre est celui du club).
      *
      * @return array{0: string, 1: int|null}
      *
      * @throws ValidationException
      */
-    private function parseTarget(string $target): array
+    private function parseTarget(string $target, string $errorKey = 'target'): array
     {
         if (preg_match('/^scope:([a-z0-9\-]+)$/', $target, $match) === 1 && OrgScopes::valid($match[1])) {
             return [$match[1], null];
@@ -112,6 +172,6 @@ class MembershipRequestController extends Controller
             }
         }
 
-        throw ValidationException::withMessages(['target' => 'Cette adhésion n’est pas disponible.']);
+        throw ValidationException::withMessages([$errorKey => 'Cette adhésion n’est pas disponible.']);
     }
 }

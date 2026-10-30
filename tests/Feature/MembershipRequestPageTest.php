@@ -195,15 +195,105 @@ class MembershipRequestPageTest extends TestCase
 
         $this->actingAs($member)->get('/adhesions')->assertOk()
             ->assertSee('Mandat 2026-2027')->assertSee('Trésorier')->assertDontSee('Modifier le poste')
-            ->assertSee('Mandat 2024-2025')->assertSee('Clôturé')->assertSee('Aucun poste sur ce mandat.')->assertDontSee('Gérer les mandats');
+            ->assertSee('Mandat 2024-2025')->assertSee('Clôturé')->assertSee('Aucun poste sur ce mandat.')->assertDontSee('Gérer les mandats')
+            ->assertSee('Ajouter ma participation', false)->assertDontSee('organigramme/', false);
 
         $admin = User::factory()->create();
         $this->grantPlatformAdmin($admin);
         $this->actingAs($admin->fresh())->get('/adhesions')->assertOk()->assertDontSee('Trésorier');
 
         $this->grantPlatformAdmin($member);
-        $this->actingAs($member->fresh())->get('/adhesions')->assertSee('Modifier le poste')
-            ->assertSee('Gérer les mandats et leur statut')->assertSee('Ouvrir l’organigramme');
+        $this->actingAs($member->fresh())->get('/adhesions')->assertDontSee('Modifier le poste')
+            ->assertSee('Gérer les mandats et leur statut')->assertDontSee('Ouvrir l’organigramme');
+    }
+
+    /** @return array{0: \App\Models\Mandate, 1: \App\Models\Mandate, 2: OrgNode, 3: OrgNode, 4: OrgNode} */
+    private function pastSetup(): array
+    {
+        $past = \App\Models\Mandate::query()->create(['label' => '2023-2024', 'start_year' => 2023, 'end_year' => 2024, 'bureau_name' => 'Ancien', 'status' => 'closed']);
+        $current = \App\Models\Mandate::query()->create(['label' => '2026-2027', 'start_year' => 2026, 'end_year' => 2027, 'bureau_name' => 'Actuel', 'status' => 'current']);
+
+        $club = $this->club();
+        $position = fn (string $title, string $capacity, string $access) => OrgNode::query()->create([
+            'parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => $capacity,
+            'access_level' => $access, 'category' => 'university_club', 'title' => $title, 'sort_order' => 0,
+        ]);
+
+        return [$past, $current, $club, $position('Membres Communication', 'multiple', 'none'), $position('Président de club', 'single', 'club_president')];
+    }
+
+    public function test_positions_are_loaded_for_the_chosen_part_and_only_member_posts_are_offered(): void
+    {
+        [, , $club, $memberPost] = $this->pastSetup();
+        $member = $this->applicant();
+
+        $this->actingAs($member)->getJson('/adhesions/postes?target=club:'.$club->id)->assertOk()
+            ->assertJsonCount(1, 'positions')->assertJsonPath('positions.0.id', $memberPost->id)->assertJsonPath('positions.0.title', 'Membres Communication');
+
+        $this->actingAs($member)->getJson('/adhesions/postes?target=scope:university')->assertOk()->assertJsonCount(1, 'positions');
+        $this->actingAs($member)->getJson('/adhesions/postes?target=scope:alumni')->assertOk()->assertJsonCount(0, 'positions');
+        $this->actingAs($member)->getJson('/adhesions/postes')->assertStatus(422);
+        $this->actingAs($member)->getJson('/adhesions/postes?target=club:99999')->assertStatus(422);
+    }
+
+    public function test_past_mandate_participation_is_accepted_directly_as_a_member_only(): void
+    {
+        [$past, $current, $club, $memberPost, $leaderPost] = $this->pastSetup();
+        $member = $this->applicant();
+
+        $this->actingAs($member)->get('/adhesions')->assertOk()->assertSee('data-mandate-id="'.$past->id.'"', false)
+            ->assertDontSee('data-mandate-id="'.$current->id.'"', false);
+
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $memberPost->id])
+            ->assertRedirect(route('memberships.index'))->assertSessionHas('status');
+
+        $this->assertDatabaseHas('mandate_participations', [
+            'user_id' => $member->id, 'mandate_id' => $past->id, 'scope' => 'university', 'node_id' => $club->id, 'position_title' => 'Membres Communication',
+        ]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'membership.past.declared', 'actor_id' => $member->id]);
+        $this->assertSame(0, Membership::query()->count());
+        $this->assertSame(0, ApprovalRequest::query()->count());
+
+        $this->actingAs($member)->get('/adhesions')->assertOk()->assertSee('Membres Communication')->assertSee('Participation déclarée');
+
+        // Même participation : refusée. Poste de responsabilité, mandat en cours ou partie inconnue : refusés.
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $memberPost->id])
+            ->assertSessionHasErrorsIn('past', 'past_target');
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $leaderPost->id])
+            ->assertSessionHasErrorsIn('past', 'position_id');
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $current->id, 'past_target' => 'scope:alumni'])
+            ->assertSessionHasErrorsIn('past', 'past_target');
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'scope:inconnu'])
+            ->assertSessionHasErrorsIn('past', 'past_target');
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id])
+            ->assertSessionHasErrorsIn('past', 'past_target');
+        $this->assertSame(1, \App\Models\MandateParticipation::query()->count());
+
+        // Simple membre d'une entité, sans poste précis ; et une demande actuelle reste possible.
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'scope:alumni'])->assertSessionHasNoErrors();
+        $this->actingAs($member)->post('/adhesions', $this->form('scope:alumni'))->assertSessionHasNoErrors();
+        $this->assertSame(1, Membership::query()->where('status', 'pending')->count());
+    }
+
+    public function test_participation_can_only_be_removed_by_its_owner_and_shows_in_the_admin_journey(): void
+    {
+        [$past, , $club, $memberPost] = $this->pastSetup();
+        $member = $this->applicant();
+        $other = $this->applicant();
+
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $memberPost->id]);
+        $participation = \App\Models\MandateParticipation::query()->firstOrFail();
+
+        $admin = User::factory()->create();
+        $this->grantPlatformAdmin($admin);
+        $this->actingAs($admin->fresh())->get('/admin/utilisateurs/'.$member->id)->assertOk()
+            ->assertSee('Participations déclarées')->assertSee('Membres Communication');
+
+        $this->actingAs($other)->delete('/adhesions/mandats/'.$participation->id)->assertNotFound();
+        $this->assertDatabaseHas('mandate_participations', ['id' => $participation->id]);
+
+        $this->actingAs($member)->delete('/adhesions/mandats/'.$participation->id)->assertRedirect(route('memberships.index'));
+        $this->assertDatabaseMissing('mandate_participations', ['id' => $participation->id]);
     }
 
     public function test_page_only_lists_the_members_own_memberships(): void

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Mandate;
+use App\Models\MandateParticipation;
 use App\Models\Membership;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
@@ -63,21 +64,24 @@ class MemberJourney
             ->get();
 
         $memberships = $user->memberships()->with('node:id,title')->orderBy('starts_at')->orderBy('id')->get();
+        $participations = MandateParticipation::query()->where('user_id', $user->id)->with('node:id,title')->orderBy('id')->get();
 
         $groups = $this->mandates->map(fn (Mandate $mandate) => [
             'mandate' => $mandate,
+            'participations' => $participations->where('mandate_id', $mandate->id)->values(),
             'positions' => $assignments->filter(fn (OrgAssignment $a) => $this->assignmentMandateId($a) === $mandate->id)->values(),
             'memberships' => $memberships->filter(fn (Membership $m) => $this->overlaps($mandate, $m->starts_at ?? $m->created_at, $m->ends_at, $m->status === 'approved' || $m->status === 'active'))->values(),
         ]);
 
         $loose = [
             'mandate' => null,
+            'participations' => collect(),
             'positions' => $assignments->filter(fn (OrgAssignment $a) => $this->assignmentMandateId($a) === null)->values(),
             'memberships' => $memberships->filter(fn (Membership $m) => ! $this->mandates->contains(fn (Mandate $mandate) => $this->overlaps($mandate, $m->starts_at ?? $m->created_at, $m->ends_at, $m->status === 'approved' || $m->status === 'active')))->values(),
         ];
 
         return $groups
-            ->filter(fn (array $group) => $group['positions']->isNotEmpty() || $group['memberships']->isNotEmpty())
+            ->filter(fn (array $group) => $group['positions']->isNotEmpty() || $group['memberships']->isNotEmpty() || $group['participations']->isNotEmpty())
             ->when($loose['positions']->isNotEmpty() || $loose['memberships']->isNotEmpty(), fn (Collection $all) => $all->push($loose))
             ->values();
     }

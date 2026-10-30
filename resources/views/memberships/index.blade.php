@@ -57,11 +57,7 @@
                         @endif
                     </div>
                     <p class="mt-1 text-xs text-slate-500">
-                        @if($canEditPositions)
-                            Tous les mandats sont listés, y compris les précédents. « Modifier » ouvre l’organigramme du mandat concerné.
-                        @else
-                            Tous les mandats sont listés, y compris les précédents. Les postes sont attribués dans l’organigramme par les administrateurs de la Fondation : pour en corriger un, contactez-les.
-                        @endif
+                        Tous les mandats sont listés, y compris les précédents. Pour un ancien mandat, déclarez votre participation en simple membre : elle est acceptée directement. Les postes de responsabilité (président, vice-président, assistant…) sont attribués par les administrateurs de la Fondation.
                     </p>
 
                     <div class="mt-4 space-y-4">
@@ -69,7 +65,7 @@
                             @php
                                 $mandate = $group['mandate'];
                                 $mandateStatus = $mandate ? (\App\Models\Mandate::STATUSES[$mandate->status] ?? null) : null;
-                                $chartUrl = route('orgchart.index', array_filter(['mandate_id' => $mandate?->id]));
+                                $isPast = $mandate !== null && $mandate->status === 'closed';
                             @endphp
                             <div>
                                 <div class="flex flex-wrap items-center justify-between gap-2">
@@ -78,14 +74,28 @@
                                         @if($mandate && filled($mandate->bureau_name))<span class="text-xs font-normal text-slate-500">· {{ $mandate->bureau_name }}</span>@endif
                                         @if($mandateStatus)<span class="ml-1 rounded-full px-2 py-0.5 text-xs font-semibold {{ $mandate->status === 'current' ? 'bg-emerald-50 text-emerald-700' : ($mandate->status === 'upcoming' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600') }}">{{ $mandateStatus }}</span>@endif
                                     </p>
-                                    @if($canEditPositions && $group['positions']->isEmpty())
-                                        <a href="{{ $chartUrl }}" class="text-xs font-semibold text-tlink-blue underline">Ouvrir l’organigramme</a>
+                                    @if($isPast)
+                                        <button type="button" data-open-past data-mandate-id="{{ $mandate->id }}" data-mandate-label="{{ $mandate->label }}" class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-tlink-blue hover:bg-slate-50">Ajouter ma participation</button>
                                     @endif
                                 </div>
-                                @if($group['positions']->isEmpty())
+                                @if($group['positions']->isEmpty() && $group['participations']->isEmpty())
                                     <p class="mt-1 text-xs text-slate-400">Aucun poste sur ce mandat.</p>
                                 @endif
                                 <ul class="mt-2 space-y-2">
+                                    @foreach($group['participations'] as $participation)
+                                        <li class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 px-4 py-3">
+                                            <div>
+                                                <p class="text-sm font-semibold text-slate-800">{{ $participation->position_title ?? 'Membre' }}</p>
+                                                <p class="text-xs text-slate-500">{{ $participation->node?->title ?? \App\Support\OrgScopes::label($participation->scope) }} · {{ \App\Support\OrgScopes::label($participation->scope) }}</p>
+                                                <p class="text-xs text-slate-400">Participation déclarée · acceptée</p>
+                                            </div>
+                                            <form method="post" action="{{ route('memberships.past.destroy', $participation) }}" onsubmit="return confirm('Retirer cette participation ?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Retirer</button>
+                                            </form>
+                                        </li>
+                                    @endforeach
                                     @foreach($group['positions'] as $assignment)
                                         @php
                                             $ongoing = $assignment->ends_at === null || $assignment->ends_at->toDateString() >= now()->toDateString();
@@ -100,9 +110,6 @@
                                                     · {{ $ongoing ? 'En poste' : 'Terminé' }}
                                                 </p>
                                             </div>
-                                            @if($canEditPositions)
-                                                <a href="{{ $chartUrl }}" class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-tlink-blue hover:bg-slate-50">Modifier le poste</a>
-                                            @endif
                                         </li>
                                     @endforeach
                                 </ul>
@@ -165,4 +172,131 @@
         </div>
     </div>
 </div>
+
+@php
+    $pastBag = $errors->getBag('past');
+    $reopen = $pastBag->any() && old('mandate_id')
+        ? [
+            'id' => (string) old('mandate_id'),
+            'label' => optional($positionsByMandate->first(fn ($row) => (string) ($row['mandate']?->id) === (string) old('mandate_id')))['mandate']?->label,
+            'target' => (string) old('past_target'),
+            'position' => (string) old('position_id'),
+        ]
+        : null;
+@endphp
+
+<dialog id="past-modal" class="w-full max-w-lg rounded-3xl p-0 shadow-soft backdrop:bg-slate-900/50">
+    <form id="past-form" method="post" action="{{ route('memberships.past') }}" data-positions-url="{{ route('memberships.positions') }}" class="space-y-4 p-6">
+        @csrf
+        <input type="hidden" name="mandate_id" id="past-mandate-id" value="{{ old('mandate_id') }}">
+
+        <div class="flex items-start justify-between gap-3">
+            <h2 class="font-display text-lg font-semibold text-slate-900">Ma participation · mandat <span id="past-mandate-label"></span></h2>
+            <button type="button" data-close-past class="text-slate-400 hover:text-slate-600" aria-label="Fermer">✕</button>
+        </div>
+        <p class="text-xs text-slate-500">Mandat précédent : votre participation est enregistrée directement, sans validation. Seuls les postes de simple membre sont proposés.</p>
+
+        <div>
+            <label for="past-target" class="text-sm font-semibold text-slate-700">Partie rejointe</label>
+            <select id="past-target" name="past_target" required class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-tlink-blue">
+                <option value="">Choisir…</option>
+                <optgroup label="Entités de la Fondation">
+                    @foreach($scopes as $slug => $label)
+                        <option value="scope:{{ $slug }}">{{ $label }}</option>
+                    @endforeach
+                </optgroup>
+                @foreach($clubs as $slug => $list)
+                    <optgroup label="Clubs · {{ $scopes[$slug] ?? $slug }}">
+                        @foreach($list as $club)
+                            <option value="club:{{ $club->id }}">{{ $club->title }}{{ filled($club->subtitle) ? ' — '.$club->subtitle : '' }}</option>
+                        @endforeach
+                    </optgroup>
+                @endforeach
+            </select>
+            @if($pastBag->has('past_target'))<p class="mt-1 text-xs font-semibold text-rose-700">{{ $pastBag->first('past_target') }}</p>@endif
+        </div>
+
+        <div>
+            <label for="past-position" class="text-sm font-semibold text-slate-700">Poste de membre</label>
+            <select id="past-position" name="position_id" disabled class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-tlink-blue disabled:bg-slate-50 disabled:text-slate-400">
+                <option value="">Choisissez d’abord la partie…</option>
+            </select>
+            <p class="mt-1 text-xs text-slate-500">Les postes disponibles se chargent après le choix de la partie.</p>
+            @if($pastBag->has('position_id'))<p class="mt-1 text-xs font-semibold text-rose-700">{{ $pastBag->first('position_id') }}</p>@endif
+            @if($pastBag->has('mandate_id'))<p class="mt-1 text-xs font-semibold text-rose-700">{{ $pastBag->first('mandate_id') }}</p>@endif
+        </div>
+
+        <div class="flex justify-end gap-2">
+            <button type="button" data-close-past class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Annuler</button>
+            <button type="submit" class="rounded-xl bg-tlink-blue px-5 py-2 text-sm font-semibold text-white hover:opacity-90">Enregistrer</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+    (function () {
+        var modal = document.getElementById('past-modal');
+        if (!modal) { return; }
+
+        var form = document.getElementById('past-form');
+        var target = document.getElementById('past-target');
+        var position = document.getElementById('past-position');
+        var idInput = document.getElementById('past-mandate-id');
+        var label = document.getElementById('past-mandate-label');
+        var placeholder = 'Choisissez d’abord la partie…';
+
+        function setOptions(text, disabled) {
+            position.innerHTML = '';
+            var option = document.createElement('option');
+            option.value = '';
+            option.textContent = text;
+            position.appendChild(option);
+            position.disabled = disabled;
+        }
+
+        function loadPositions(selected) {
+            if (!target.value) { setOptions(placeholder, true); return Promise.resolve(); }
+            setOptions('Chargement…', true);
+
+            return fetch(form.dataset.positionsUrl + '?target=' + encodeURIComponent(target.value), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                .then(function (response) { if (!response.ok) { throw new Error('http'); } return response.json(); })
+                .then(function (data) {
+                    setOptions(data.positions.length ? 'Simple membre (sans poste précis)' : 'Aucun poste de membre dans cette partie', false);
+                    data.positions.forEach(function (item) {
+                        var option = document.createElement('option');
+                        option.value = item.id;
+                        option.textContent = item.title + (item.subtitle ? ' — ' + item.subtitle : '');
+                        if (String(item.id) === String(selected)) { option.selected = true; }
+                        position.appendChild(option);
+                    });
+                })
+                .catch(function () { setOptions('Impossible de charger les postes', true); });
+        }
+
+        target.addEventListener('change', function () { loadPositions(''); });
+
+        document.querySelectorAll('[data-open-past]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                idInput.value = button.dataset.mandateId;
+                label.textContent = button.dataset.mandateLabel;
+                target.value = '';
+                setOptions(placeholder, true);
+                modal.showModal();
+            });
+        });
+
+        modal.querySelectorAll('[data-close-past]').forEach(function (button) {
+            button.addEventListener('click', function () { modal.close(); });
+        });
+
+        var reopen = @json($reopen);
+        if (reopen) {
+            idInput.value = reopen.id;
+            label.textContent = reopen.label || '';
+            target.value = reopen.target;
+            loadPositions(reopen.position);
+            modal.showModal();
+        }
+    })();
+</script>
 @endsection

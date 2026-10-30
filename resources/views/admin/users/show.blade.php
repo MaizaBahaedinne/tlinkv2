@@ -174,6 +174,24 @@
                                     </div>
                                 @endif
 
+                                @if($group['participations']->isNotEmpty())
+                                    <div class="journey-kind">Participations déclarées</div>
+                                    <div class="journey-rows">
+                                        @foreach($group['participations'] as $participation)
+                                            <div class="journey-row">
+                                                <div class="what">
+                                                    <strong>{{ $participation->position_title ?? 'Membre' }}</strong>
+                                                    <span>{{ collect([$participation->node?->title, \App\Support\OrgScopes::label($participation->scope)])->filter()->unique()->implode(' · ') ?: '—' }}</span>
+                                                </div>
+                                                <div class="when">
+                                                    <span>Déclarée le {{ $participation->created_at->format('d/m/Y') }}</span>
+                                                    <span class="badge badge-success">Acceptée</span>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
                                 @if($group['memberships']->isNotEmpty())
                                     <div class="journey-kind">Adhésions</div>
                                     <div class="journey-rows">

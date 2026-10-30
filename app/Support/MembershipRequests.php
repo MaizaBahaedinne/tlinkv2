@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\AppNotification;
 use App\Models\ApprovalRequest;
+use App\Models\Mandate;
+use App\Models\MandateParticipation;
 use App\Models\Membership;
 use App\Models\OrgNode;
 use App\Models\User;
@@ -65,6 +67,112 @@ final class MembershipRequests
         }
 
         return $missing;
+    }
+
+    /**
+     * Postes de simple membre (sans droit d'administration, plusieurs titulaires) du périmètre choisi :
+     * le club (ses départements compris) ou l'entité. Les postes de responsabilité n'en font pas partie.
+     *
+     * @return \Illuminate\Support\Collection<int, OrgNode>
+     */
+    private static function memberPositionNodes(string $scope, ?int $clubId)
+    {
+        $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
+        $scopes = OrgAccess::scopeMap();
+
+        $inside = static function (int $id) use ($clubId, $parents): bool {
+            for ($guard = 0; $id !== null && $guard < 80; $guard++) {
+                if ($id === $clubId) {
+                    return true;
+                }
+
+                $id = isset($parents[$id]) ? (int) $parents[$id] : null;
+            }
+
+            return false;
+        };
+
+        return OrgNode::query()
+            ->where('kind', 'position')
+            ->where('access_level', AccessLevels::NONE)
+            ->where('capacity', 'multiple')
+            ->orderBy('title')
+            ->get(['id', 'parent_id', 'title', 'subtitle'])
+            ->filter(fn (OrgNode $node) => $clubId !== null ? $inside((int) $node->id) : ($scopes[$node->id] ?? null) === $scope)
+            ->values();
+    }
+
+    /**
+     * Noms des postes de membre disponibles dans le périmètre (un seul par intitulé pour une entité).
+     *
+     * @return \Illuminate\Support\Collection<int, OrgNode>
+     */
+    public static function memberPositions(string $scope, ?int $clubId)
+    {
+        $nodes = self::memberPositionNodes($scope, $clubId);
+
+        return ($clubId !== null ? $nodes : $nodes->unique('title'))->values();
+    }
+
+    /**
+     * Participation à un ancien mandat : acceptée directement, uniquement comme simple membre.
+     *
+     * @throws ValidationException
+     */
+    public static function declarePast(User $user, Mandate $mandate, string $scope, ?int $clubId, ?int $positionId, ?string $ip): MandateParticipation
+    {
+        if ($mandate->status !== Mandate::STATUS_CLOSED) {
+            throw ValidationException::withMessages(['past_target' => 'Seuls les mandats précédents peuvent être déclarés ainsi : pour le mandat en cours, envoyez une demande d’adhésion.']);
+        }
+
+        $club = $clubId !== null ? OrgNode::query()->where('kind', 'club')->find($clubId) : null;
+
+        if ($clubId !== null && ($club === null || ($club->scope !== null && $club->scope !== $scope))) {
+            throw ValidationException::withMessages(['past_target' => 'Ce club est introuvable dans ce périmètre.']);
+        }
+
+        $title = null;
+
+        if ($positionId !== null) {
+            $position = self::memberPositionNodes($scope, $clubId)->firstWhere('id', $positionId);
+
+            if ($position === null) {
+                throw ValidationException::withMessages(['position_id' => 'Ce poste n’est pas un poste de membre de cette partie.']);
+            }
+
+            $title = (string) $position->title;
+        }
+
+        $duplicate = MandateParticipation::query()
+            ->where('user_id', $user->id)
+            ->where('mandate_id', $mandate->id)
+            ->where('scope', $scope)
+            ->where('node_id', $clubId)
+            ->where('position_title', $title)
+            ->exists();
+
+        if ($duplicate) {
+            throw ValidationException::withMessages(['past_target' => 'Cette participation est déjà enregistrée pour ce mandat.']);
+        }
+
+        $participation = MandateParticipation::query()->create([
+            'user_id' => $user->id,
+            'mandate_id' => $mandate->id,
+            'scope' => $scope,
+            'node_id' => $clubId,
+            'position_title' => $title,
+        ]);
+
+        AuditLogger::record(
+            actorId: $user->id,
+            action: 'membership.past.declared',
+            targetType: MandateParticipation::class,
+            targetId: $participation->id,
+            metadata: ['mandate' => $mandate->label, 'scope' => $scope, 'node_id' => $clubId, 'position' => $title],
+            ip: $ip,
+        );
+
+        return $participation;
     }
 
     /**

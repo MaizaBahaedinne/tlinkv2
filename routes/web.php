@@ -67,6 +67,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/adhesions', [MembershipRequestController::class, 'index'])->name('memberships.index');
     Route::post('/adhesions', [MembershipRequestController::class, 'store'])->middleware('throttle:10,10')->name('memberships.store');
     Route::delete('/adhesions/{membership}', [MembershipRequestController::class, 'destroy'])->name('memberships.destroy');
+    Route::get('/adhesions/postes', [MembershipRequestController::class, 'positions'])->name('memberships.positions');
+    Route::post('/adhesions/mandats', [MembershipRequestController::class, 'storePast'])->middleware('throttle:20,10')->name('memberships.past');
+    Route::delete('/adhesions/mandats/{participation}', [MembershipRequestController::class, 'destroyPast'])->name('memberships.past.destroy');
 
     // Tunivisions Academy : catalogue, cours, leçons, commandes et calendrier.
     Route::prefix('academy')->name('academy.')->group(function (): void {
