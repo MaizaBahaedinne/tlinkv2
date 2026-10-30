@@ -26,9 +26,13 @@
                 <label for="notes" class="text-sm">Notes (optionnel)</label>
                 <textarea id="notes" name="notes" rows="2" maxlength="2000" placeholder="Exemple: bureau élu en AG annuelle.">{{ old('notes') }}</textarea>
             </div>
-            <label style="display:flex; align-items:center; gap:8px; grid-column: 1 / -1;">
-                <input type="checkbox" name="is_current" value="1" @checked(old('is_current'))>
-                <span class="text-sm">Mandat en cours</span>
+            <label style="grid-column: 1 / -1;">
+                <span class="text-sm">Statut</span>
+                <select name="status">
+                    @foreach(\App\Models\Mandate::STATUSES as $value => $statusLabel)
+                        <option value="{{ $value }}" @selected(old('status', 'upcoming') === $value)>{{ $statusLabel }}</option>
+                    @endforeach
+                </select>
             </label>
             <div style="grid-column: 1 / -1; display:flex; justify-content:flex-end;">
                 <button type="submit" class="btn btn-primary">Ajouter</button>
@@ -63,12 +67,21 @@
                                 <div class="cell-sub">{{ $mandate->start_year }} → {{ $mandate->end_year }}</div>
                             </td>
                             <td style="min-width:220px;">{{ $mandate->bureau_name }}</td>
-                            <td>
-                                @if($mandate->is_current)
-                                    <x-admin.badge status="active" />
-                                @else
-                                    <x-admin.badge status="draft" />
-                                @endif
+                            <td style="min-width:200px;">
+                                @php
+                                    $tone = ['current' => 'success', 'upcoming' => 'info', 'closed' => 'neutral'][$mandate->status] ?? 'neutral';
+                                @endphp
+                                <span class="badge badge-{{ $tone }}">{{ \App\Models\Mandate::STATUSES[$mandate->status] ?? $mandate->status }}</span>
+                                <form method="post" action="{{ route('admin.mandates.status', $mandate) }}" style="display:flex; gap:6px; margin-top:8px;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <select name="status" aria-label="Statut du mandat {{ $mandate->label }}">
+                                        @foreach(\App\Models\Mandate::STATUSES as $value => $statusLabel)
+                                            <option value="{{ $value }}" @selected($mandate->status === $value)>{{ $statusLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="btn btn-secondary btn-sm">OK</button>
+                                </form>
                             </td>
                             <td style="max-width:320px;">{{ $mandate->notes ?: '—' }}</td>
                             <td>
@@ -84,10 +97,11 @@
                                         <input type="number" name="end_year" min="2017" max="{{ now()->year + 2 }}" value="{{ $mandate->end_year }}" required>
                                         <input type="text" name="bureau_name" maxlength="190" value="{{ $mandate->bureau_name }}" required>
                                         <textarea name="notes" rows="2" maxlength="2000" placeholder="Notes">{{ $mandate->notes }}</textarea>
-                                        <label style="display:flex; align-items:center; gap:8px;">
-                                            <input type="checkbox" name="is_current" value="1" @checked($mandate->is_current)>
-                                            <span class="text-sm">Mandat en cours</span>
-                                        </label>
+                                        <select name="status" aria-label="Statut">
+                                            @foreach(\App\Models\Mandate::STATUSES as $value => $statusLabel)
+                                                <option value="{{ $value }}" @selected($mandate->status === $value)>{{ $statusLabel }}</option>
+                                            @endforeach
+                                        </select>
                                         <div style="display:flex; gap:8px; justify-content:flex-end;">
                                             <button type="submit" class="btn btn-secondary btn-sm">Enregistrer</button>
                                         </div>

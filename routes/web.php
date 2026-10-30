@@ -220,6 +220,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('lancement', [Admin\LaunchController::class, 'update'])->name('launch.update');
             Route::post('mandats', [Admin\MandateController::class, 'store'])->name('mandates.store');
             Route::put('mandats/{mandate}', [Admin\MandateController::class, 'update'])->name('mandates.update');
+            Route::patch('mandats/{mandate}/statut', [Admin\MandateController::class, 'updateStatus'])->name('mandates.status');
             Route::delete('mandats/{mandate}', [Admin\MandateController::class, 'destroy'])->name('mandates.destroy');
             Route::get('journal', [Admin\AuditLogController::class, 'index'])->name('audit.index');
             Route::get('utilisateurs/{user}/modifier', [Admin\UserController::class, 'edit'])->name('users.edit');

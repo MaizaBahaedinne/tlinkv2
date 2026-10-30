@@ -123,6 +123,40 @@ class MandateAdminTest extends TestCase
         $this->assertFalse(Mandate::query()->where('label', '2024-2025')->firstOrFail()->is_current);
     }
 
+    public function test_admin_manages_mandate_status_and_only_one_stays_current(): void
+    {
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'global_admin');
+
+        $old = Mandate::query()->create(['label' => '2025-2026', 'start_year' => 2025, 'end_year' => 2026, 'bureau_name' => 'A', 'is_current' => true]);
+        $next = Mandate::query()->create(['label' => '2026-2027', 'start_year' => 2026, 'end_year' => 2027, 'bureau_name' => 'B', 'status' => 'upcoming']);
+
+        $this->assertSame('current', $old->fresh()->status);
+        $this->assertFalse($next->fresh()->is_current);
+
+        $this->actingAs($admin)->get('/admin/mandats')->assertOk()->assertSee('À venir')->assertSee('Clôturé');
+
+        $this->actingAs($admin)->patch("/admin/mandats/{$next->id}/statut", ['status' => 'current'])
+            ->assertSessionHasNoErrors()->assertSessionHas('status');
+
+        $this->assertSame(['current', true], [$next->fresh()->status, $next->fresh()->is_current]);
+        $this->assertSame(['closed', false], [$old->fresh()->status, $old->fresh()->is_current]);
+
+        $this->actingAs($admin)->patch("/admin/mandats/{$next->id}/statut", ['status' => 'closed'])->assertSessionHasNoErrors();
+        $this->assertSame(['closed', false], [$next->fresh()->status, $next->fresh()->is_current]);
+        $this->assertSame(0, Mandate::query()->where('is_current', true)->count());
+
+        $this->actingAs($admin)->patch("/admin/mandats/{$next->id}/statut", ['status' => 'inconnu'])->assertSessionHasErrors('status');
+
+        $this->actingAs($admin)->post('/admin/mandats', [
+            'start_year' => 2027, 'end_year' => 2028, 'bureau_name' => 'Futur', 'status' => 'upcoming',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('upcoming', Mandate::query()->where('label', '2027-2028')->value('status'));
+
+        $member = User::factory()->create();
+        $this->actingAs($member)->patch("/admin/mandats/{$next->id}/statut", ['status' => 'current'])->assertForbidden();
+    }
+
     public function test_org_chart_payload_is_scoped_to_selected_mandate_root(): void
     {
         $admin = User::factory()->create();

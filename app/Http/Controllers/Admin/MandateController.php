@@ -6,6 +6,7 @@ use App\Models\Mandate;
 use App\Models\OrgNode;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class MandateController extends AdminController
@@ -25,7 +26,7 @@ class MandateController extends AdminController
         $data = $this->validated($request);
 
         if ($data['is_current']) {
-            Mandate::query()->update(['is_current' => false]);
+            $this->closeOtherCurrent();
         }
 
         $root = $this->createMandateRootNode($data['bureau_name'], $data['label']);
@@ -36,7 +37,7 @@ class MandateController extends AdminController
         $this->audit($request, 'admin.mandate.created', $mandate, [
             'label' => $mandate->label,
             'bureau_name' => $mandate->bureau_name,
-            'is_current' => $mandate->is_current,
+            'status' => $mandate->status,
         ]);
 
         return back()->with('status', 'Mandat ajouté.');
@@ -47,7 +48,7 @@ class MandateController extends AdminController
         $data = $this->validated($request, $mandate->id);
 
         if ($data['is_current']) {
-            Mandate::query()->whereKeyNot($mandate->id)->update(['is_current' => false]);
+            $this->closeOtherCurrent($mandate->id);
         }
 
         if ($mandate->root_node_id) {
@@ -65,10 +66,34 @@ class MandateController extends AdminController
         $this->audit($request, 'admin.mandate.updated', $mandate, [
             'label' => $mandate->label,
             'bureau_name' => $mandate->bureau_name,
-            'is_current' => $mandate->is_current,
+            'status' => $mandate->status,
         ]);
 
         return back()->with('status', 'Mandat mis à jour.');
+    }
+
+    /** Changement rapide du statut : à venir, en cours ou clôturé. */
+    public function updateStatus(Request $request, Mandate $mandate): RedirectResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', Rule::in(array_keys(Mandate::STATUSES))],
+        ]);
+
+        $previous = $mandate->status;
+
+        if ($data['status'] === Mandate::STATUS_CURRENT) {
+            $this->closeOtherCurrent($mandate->id);
+        }
+
+        $mandate->update(['status' => $data['status']]);
+
+        $this->audit($request, 'admin.mandate.status_changed', $mandate, [
+            'label' => $mandate->label,
+            'from' => $previous,
+            'to' => $mandate->status,
+        ]);
+
+        return back()->with('status', 'Mandat '.$mandate->label.' : '.mb_strtolower(Mandate::STATUSES[$mandate->status]).'.');
     }
 
     public function destroy(Request $request, Mandate $mandate): RedirectResponse
@@ -77,7 +102,7 @@ class MandateController extends AdminController
             'label' => $mandate->label,
             'bureau_name' => $mandate->bureau_name,
             'root_node_id' => $mandate->root_node_id,
-            'is_current' => $mandate->is_current,
+            'status' => $mandate->status,
         ];
 
         $mandate->delete();
@@ -101,6 +126,7 @@ class MandateController extends AdminController
             'bureau_name' => ['required', 'string', 'max:190'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'is_current' => ['nullable', 'boolean'],
+            'status' => ['nullable', Rule::in(array_keys(Mandate::STATUSES))],
         ]);
 
         if ((int) $data['end_year'] <= (int) $data['start_year']) {
@@ -122,14 +148,26 @@ class MandateController extends AdminController
             return back()->withErrors(['start_year' => 'Ce mandat existe déjà.'])->throwResponse();
         }
 
+        $status = $data['status'] ?? (($data['is_current'] ?? false) ? Mandate::STATUS_CURRENT : Mandate::STATUS_CLOSED);
+
         return [
             'label' => $label,
             'start_year' => (int) $data['start_year'],
             'end_year' => (int) $data['end_year'],
             'bureau_name' => trim((string) $data['bureau_name']),
             'notes' => trim((string) ($data['notes'] ?? '')),
-            'is_current' => (bool) ($data['is_current'] ?? false),
+            'status' => $status,
+            'is_current' => $status === Mandate::STATUS_CURRENT,
         ];
+    }
+
+    /** Un seul mandat peut être en cours : l'ancien passe à « clôturé ». */
+    private function closeOtherCurrent(?int $exceptId = null): void
+    {
+        Mandate::query()
+            ->where('is_current', true)
+            ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
+            ->update(['is_current' => false, 'status' => Mandate::STATUS_CLOSED]);
     }
 
     private function bootstrapDefaults(): void
