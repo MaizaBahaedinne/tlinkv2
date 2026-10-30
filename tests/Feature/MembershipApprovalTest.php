@@ -18,12 +18,18 @@ class MembershipApprovalTest extends TestCase
     {
         $reviewer = User::factory()->create();
         $requester = User::factory()->create();
+        \App\Models\Profile::query()->create(['user_id' => $requester->id, 'privacy_settings' => [
+            'educations' => [['school' => 'ISI']],
+            'professional_experiences' => [['company' => 'Acme', 'role' => 'Stagiaire']],
+            'skill_keywords' => ['PHP'],
+        ]]);
 
         $this->grantAccess($reviewer, 'entity_admin', 'university');
 
-        $response = $this->actingAs($requester)->postJson('/api/v1/memberships', [
+        $response = $this->actingAs($requester->fresh())->postJson('/api/v1/memberships', [
             'scope' => 'university',
             'membership_type' => 'member',
+            'motivation_letter' => 'Je souhaite rejoindre la Fondation pour contribuer activement à ses projets et à ses équipes.',
         ]);
 
         $response->assertCreated();

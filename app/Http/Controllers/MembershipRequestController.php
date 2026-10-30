@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Mandate;
 use App\Models\Membership;
 use App\Support\AdminContext;
 use App\Support\MemberJourney;
@@ -34,22 +35,60 @@ class MembershipRequestController extends Controller
             'scopes' => OrgScopes::all(),
             'clubs' => MembershipRequests::clubsByScope(),
             'statuses' => self::STATUSES,
-            'positionsByMandate' => (new MemberJourney())->byMandate($user)->filter(fn (array $group) => $group['positions']->isNotEmpty())->values(),
+            'positionsByMandate' => $this->mandateRows($user),
             'canEditPositions' => AdminContext::of($request)->isGlobal('entity.manage'),
+            'missingCv' => MembershipRequests::missingCv($user->loadMissing('profile')),
+            'motivationMin' => MembershipRequests::MOTIVATION_MIN,
+            'motivationMax' => MembershipRequests::MOTIVATION_MAX,
         ]);
+    }
+
+    /**
+     * Tous les mandats (le plus récent d'abord), même ceux où le membre n'a pas de poste,
+     * suivis des postes hors mandat s'il y en a.
+     *
+     * @return \Illuminate\Support\Collection<int, array{mandate: ?Mandate, positions: \Illuminate\Support\Collection}>
+     */
+    private function mandateRows(\App\Models\User $user)
+    {
+        $groups = (new MemberJourney())->byMandate($user);
+        $byMandate = $groups->filter(fn (array $group) => $group['mandate'] !== null)->keyBy(fn (array $group) => $group['mandate']->id);
+
+        $rows = Mandate::query()->orderByDesc('start_year')->orderByDesc('id')->get()
+            ->map(fn (Mandate $mandate) => ['mandate' => $mandate, 'positions' => $byMandate->get($mandate->id)['positions'] ?? collect()]);
+
+        $loose = $groups->first(fn (array $group) => $group['mandate'] === null);
+
+        if ($loose !== null && $loose['positions']->isNotEmpty()) {
+            $rows->push(['mandate' => null, 'positions' => $loose['positions']]);
+        }
+
+        return $rows->values();
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'target' => ['required', 'string', 'max:80'],
-        ], ['target.required' => 'Choisissez où vous souhaitez adhérer.']);
+            'motivation_letter' => ['required', 'string', 'max:'.MembershipRequests::MOTIVATION_MAX],
+        ], [
+            'target.required' => 'Choisissez où vous souhaitez adhérer.',
+            'motivation_letter.required' => 'La lettre de motivation est obligatoire.',
+            'motivation_letter.max' => 'La lettre de motivation est trop longue.',
+        ]);
 
         [$scope, $nodeId] = $this->parseTarget($data['target']);
 
-        MembershipRequests::submit($request->user(), $scope, $nodeId, 'member', null, $request->ip());
+        MembershipRequests::submit($request->user()->loadMissing('profile'), $scope, $nodeId, 'member', null, $request->ip(), $data['motivation_letter']);
 
         return redirect()->route('memberships.index')->with('status', 'Votre demande d’adhésion est envoyée : elle sera examinée par l’équipe.');
+    }
+
+    public function destroy(Request $request, Membership $membership): RedirectResponse
+    {
+        MembershipRequests::withdraw($request->user(), $membership, $request->ip());
+
+        return redirect()->route('memberships.index')->with('status', 'Votre demande a été retirée.');
     }
 
     /**

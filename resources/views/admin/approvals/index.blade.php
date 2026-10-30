@@ -17,7 +17,9 @@
         @if($approvals->count())
             <div class="list">
                 @foreach($approvals as $approval)
-                    @php($membership = $approval->approvable_type === \App\Models\Membership::class ? $memberships->get($approval->approvable_id) : null)
+                    @php
+                        $membership = $approval->approvable_type === \App\Models\Membership::class ? $memberships->get($approval->approvable_id) : null;
+                    @endphp
                     <div class="list-item" style="align-items:flex-start;flex-wrap:wrap">
                         <x-admin.avatar :name="$approval->requester?->name" :size="40" />
                         <div class="grow" style="min-width:260px">
@@ -35,6 +37,32 @@
                             </div>
                             @if($approval->decided_at)
                                 <div class="text-sm text-muted">Décidée le {{ $approval->decided_at->format('d/m/Y H:i') }}</div>
+                            @endif
+                            @if($membership && (filled($membership->motivation_letter) || $membership->user?->profile))
+                                @php
+                                    $cv = is_array($membership->user?->profile?->privacy_settings) ? $membership->user->profile->privacy_settings : [];
+                                    $line = fn (array $row, array $keys) => collect($keys)->map(fn ($key) => trim((string) ($row[$key] ?? '')))->filter()->implode(' · ');
+                                @endphp
+                                <details style="margin-top:8px">
+                                    <summary class="text-sm" style="cursor:pointer">Lettre de motivation et CV</summary>
+                                    <div class="text-sm" style="margin-top:8px;display:grid;gap:8px">
+                                        @if(filled($membership->motivation_letter))
+                                            <div><strong>Lettre de motivation</strong><div style="white-space:pre-line">{{ $membership->motivation_letter }}</div></div>
+                                        @endif
+                                        @if(! empty($cv['educations']))
+                                            <div><strong>Formations</strong>@foreach($cv['educations'] as $row)<div>{{ $line($row, ['degree_type', 'diploma_name', 'school']) }}</div>@endforeach</div>
+                                        @endif
+                                        @if(! empty($cv['professional_experiences']))
+                                            <div><strong>Expériences professionnelles</strong>@foreach($cv['professional_experiences'] as $row)<div>{{ $line($row, ['role', 'company']) }}</div>@endforeach</div>
+                                        @endif
+                                        @if(! empty($cv['associative_experiences']))
+                                            <div><strong>Expériences associatives</strong>@foreach($cv['associative_experiences'] as $row)<div>{{ $line($row, ['role', 'club_name', 'department']) }}</div>@endforeach</div>
+                                        @endif
+                                        @if(! empty($cv['skill_keywords']))
+                                            <div><strong>Compétences</strong><div>{{ implode(', ', $cv['skill_keywords']) }}</div></div>
+                                        @endif
+                                    </div>
+                                </details>
                             @endif
                         </div>
 

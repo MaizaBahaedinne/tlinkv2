@@ -36,6 +36,13 @@
                             @if($membership->status === 'rejected' && filled($membership->rejection_reason))
                                 <p class="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-800">Motif : {{ $membership->rejection_reason }}</p>
                             @endif
+                            @if($membership->status === 'pending')
+                                <form method="post" action="{{ route('memberships.destroy', $membership) }}" class="mt-2" onsubmit="return confirm('Retirer cette demande d\u2019adhésion ?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Retirer ma demande</button>
+                                </form>
+                            @endif
                         </li>
                     @empty
                         <li class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">Vous n’avez encore aucune adhésion. Faites votre première demande ci-contre.</li>
@@ -43,12 +50,17 @@
                 </ul>
 
                 <div class="mt-8 border-t border-slate-100 pt-6">
-                    <h2 class="font-display text-lg font-semibold text-slate-900">Mes postes par mandat</h2>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h2 class="font-display text-lg font-semibold text-slate-900">Mes postes par mandat</h2>
+                        @if($canEditPositions)
+                            <a href="{{ route('admin.mandates.index') }}" class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-tlink-blue hover:bg-slate-50">Gérer les mandats et leur statut</a>
+                        @endif
+                    </div>
                     <p class="mt-1 text-xs text-slate-500">
                         @if($canEditPositions)
-                            Cliquez sur « Modifier le poste » pour ouvrir l’organigramme du mandat concerné.
+                            Tous les mandats sont listés, y compris les précédents. « Modifier » ouvre l’organigramme du mandat concerné.
                         @else
-                            Les postes sont attribués dans l’organigramme par les administrateurs de la Fondation. Pour en corriger un, contactez-les.
+                            Tous les mandats sont listés, y compris les précédents. Les postes sont attribués dans l’organigramme par les administrateurs de la Fondation : pour en corriger un, contactez-les.
                         @endif
                     </p>
 
@@ -56,12 +68,23 @@
                         @forelse($positionsByMandate as $group)
                             @php
                                 $mandate = $group['mandate'];
+                                $mandateStatus = $mandate ? (\App\Models\Mandate::STATUSES[$mandate->status] ?? null) : null;
+                                $chartUrl = route('orgchart.index', array_filter(['mandate_id' => $mandate?->id]));
                             @endphp
                             <div>
-                                <p class="text-sm font-semibold text-tlink-blue">
-                                    {{ $mandate ? 'Mandat '.$mandate->label : 'Hors mandat' }}
-                                    @if($mandate?->is_current)<span class="ml-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">En cours</span>@endif
-                                </p>
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <p class="text-sm font-semibold text-tlink-blue">
+                                        {{ $mandate ? 'Mandat '.$mandate->label : 'Hors mandat' }}
+                                        @if($mandate && filled($mandate->bureau_name))<span class="text-xs font-normal text-slate-500">· {{ $mandate->bureau_name }}</span>@endif
+                                        @if($mandateStatus)<span class="ml-1 rounded-full px-2 py-0.5 text-xs font-semibold {{ $mandate->status === 'current' ? 'bg-emerald-50 text-emerald-700' : ($mandate->status === 'upcoming' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600') }}">{{ $mandateStatus }}</span>@endif
+                                    </p>
+                                    @if($canEditPositions && $group['positions']->isEmpty())
+                                        <a href="{{ $chartUrl }}" class="text-xs font-semibold text-tlink-blue underline">Ouvrir l’organigramme</a>
+                                    @endif
+                                </div>
+                                @if($group['positions']->isEmpty())
+                                    <p class="mt-1 text-xs text-slate-400">Aucun poste sur ce mandat.</p>
+                                @endif
                                 <ul class="mt-2 space-y-2">
                                     @foreach($group['positions'] as $assignment)
                                         @php
@@ -78,14 +101,14 @@
                                                 </p>
                                             </div>
                                             @if($canEditPositions)
-                                                <a href="{{ route('orgchart.index', array_filter(['mandate_id' => $mandate?->id])) }}" class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-tlink-blue hover:bg-slate-50">Modifier le poste</a>
+                                                <a href="{{ $chartUrl }}" class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-tlink-blue hover:bg-slate-50">Modifier le poste</a>
                                             @endif
                                         </li>
                                     @endforeach
                                 </ul>
                             </div>
                         @empty
-                            <p class="rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm text-slate-500">Vous n’occupez aucun poste dans l’organigramme.</p>
+                            <p class="rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm text-slate-500">Aucun mandat n’est encore enregistré.</p>
                         @endforelse
                     </div>
                 </div>
@@ -116,7 +139,26 @@
                         @error('target')<p class="mt-1 text-xs font-semibold text-rose-700">{{ $message }}</p>@enderror
                     </div>
 
-                    <button type="submit" class="w-full rounded-xl bg-tlink-blue px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Envoyer ma demande</button>
+                    <div>
+                        <label for="motivation_letter" class="text-sm font-semibold text-slate-700">Lettre de motivation</label>
+                        <textarea id="motivation_letter" name="motivation_letter" rows="7" required minlength="{{ $motivationMin }}" maxlength="{{ $motivationMax }}" placeholder="Présentez-vous et expliquez pourquoi vous souhaitez nous rejoindre." class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-tlink-blue">{{ old('motivation_letter') }}</textarea>
+                        <p class="mt-1 text-xs text-slate-500">{{ $motivationMin }} caractères minimum.</p>
+                        @error('motivation_letter')<p class="mt-1 text-xs font-semibold text-rose-700">{{ $message }}</p>@enderror
+                    </div>
+
+                    @if($missingCv !== [])
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900">
+                            <p class="font-semibold">Votre CV est incomplet.</p>
+                            <p class="mt-1">Ajoutez dans votre profil : {{ implode(', ', $missingCv) }}.</p>
+                            <a href="{{ route('profile.show') }}" class="mt-2 inline-block font-semibold text-tlink-blue underline">Compléter mon CV</a>
+                        </div>
+                    @else
+                        <p class="rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-800">Votre CV est complet : il sera transmis avec votre demande. <a href="{{ route('profile.show') }}" class="font-semibold underline">Le consulter</a></p>
+                    @endif
+                    @error('cv')<p class="text-xs font-semibold text-rose-700">{{ $message }}</p>@enderror
+                    @error('membership')<p class="text-xs font-semibold text-rose-700">{{ $message }}</p>@enderror
+
+                    <button type="submit" @disabled($missingCv !== []) class="w-full rounded-xl bg-tlink-blue px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">Envoyer ma demande</button>
                     <p class="text-xs text-slate-500">Vous serez prévenu(e) dans vos notifications dès que votre demande sera traitée.</p>
                 </form>
             </aside>

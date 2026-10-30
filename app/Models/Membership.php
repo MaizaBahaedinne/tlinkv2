@@ -16,6 +16,7 @@ class Membership extends Model
         'node_id',
         'status',
         'membership_type',
+        'motivation_letter',
         'starts_at',
         'ends_at',
         'approved_by',

@@ -66,6 +66,7 @@ Route::middleware('auth')->group(function (): void {
     // Mes adhésions : suivi et demande d'adhésion à une entité ou à un club.
     Route::get('/adhesions', [MembershipRequestController::class, 'index'])->name('memberships.index');
     Route::post('/adhesions', [MembershipRequestController::class, 'store'])->middleware('throttle:10,10')->name('memberships.store');
+    Route::delete('/adhesions/{membership}', [MembershipRequestController::class, 'destroy'])->name('memberships.destroy');
 
     // Tunivisions Academy : catalogue, cours, leçons, commandes et calendrier.
     Route::prefix('academy')->name('academy.')->group(function (): void {

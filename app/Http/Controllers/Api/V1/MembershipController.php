@@ -31,6 +31,7 @@ class MembershipController extends Controller
             'node_id' => ['nullable', 'integer', Rule::exists('org_nodes', 'id')->where('kind', 'club')],
             'membership_type' => ['required', 'string', 'max:60'],
             'starts_at' => ['nullable', 'date'],
+            'motivation_letter' => ['required', 'string', 'max:'.MembershipRequests::MOTIVATION_MAX],
         ]);
 
         $membership = MembershipRequests::submit(
@@ -40,6 +41,7 @@ class MembershipController extends Controller
             $data['membership_type'],
             $data['starts_at'] ?? null,
             $request->ip(),
+            $data['motivation_letter'],
         );
 
         $approval = ApprovalRequest::query()

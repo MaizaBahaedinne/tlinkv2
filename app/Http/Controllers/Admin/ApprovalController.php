@@ -40,7 +40,7 @@ class ApprovalController extends AdminController
             ->withQueryString();
 
         $memberships = Membership::query()
-            ->with(['user:id,name,email', 'node:id,title'])
+            ->with(['user:id,name,email', 'user.profile:id,user_id,headline,privacy_settings', 'node:id,title'])
             ->whereIn('id', $approvals->getCollection()->where('approvable_type', Membership::class)->pluck('approvable_id'))
             ->get()
             ->keyBy('id');

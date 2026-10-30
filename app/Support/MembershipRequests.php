@@ -18,6 +18,10 @@ final class MembershipRequests
     /** Statuts qui bloquent une nouvelle demande pour la même cible. */
     private const BLOCKING = ['pending', 'approved', 'suspended'];
 
+    public const MOTIVATION_MIN = 50;
+
+    public const MOTIVATION_MAX = 3000;
+
     /**
      * Clubs actifs ouverts aux demandes, groupés par périmètre.
      *
@@ -36,10 +40,85 @@ final class MembershipRequests
     }
 
     /**
+     * Éléments du CV (Profil) encore à remplir avant de pouvoir demander une adhésion.
+     *
+     * @return list<string>
+     */
+    public static function missingCv(User $user): array
+    {
+        $settings = $user->profile?->privacy_settings;
+        $settings = is_array($settings) ? $settings : [];
+        $filled = fn (string $key): bool => ! empty($settings[$key]) && is_array($settings[$key]);
+
+        $missing = [];
+
+        if (! $filled('educations')) {
+            $missing[] = 'au moins une formation';
+        }
+
+        if (! $filled('professional_experiences') && ! $filled('associative_experiences')) {
+            $missing[] = 'au moins une expérience (professionnelle ou associative)';
+        }
+
+        if (! $filled('skill_keywords')) {
+            $missing[] = 'vos compétences';
+        }
+
+        return $missing;
+    }
+
+    /**
+     * Retire une demande encore en attente : la demande et son approbation sont supprimées (trace dans le journal).
+     */
+    public static function withdraw(User $user, Membership $membership, ?string $ip): void
+    {
+        abort_unless($membership->user_id === $user->id, 404);
+
+        if ($membership->status !== 'pending') {
+            throw ValidationException::withMessages(['membership' => 'Seule une demande en attente peut être retirée.']);
+        }
+
+        $approvals = ApprovalRequest::query()
+            ->where('approvable_type', Membership::class)
+            ->where('approvable_id', $membership->id);
+
+        $approvalIds = (clone $approvals)->pluck('id');
+
+        AppNotification::query()
+            ->where('type', 'membership.submitted')
+            ->whereIn('user_id', (clone $approvals)->whereNotNull('assigned_reviewer_id')->pluck('assigned_reviewer_id'))
+            ->get()
+            ->filter(fn (AppNotification $notification) => (int) ($notification->data['membership_id'] ?? 0) === $membership->id)
+            ->each->delete();
+
+        $approvals->delete();
+        $membership->delete();
+
+        AuditLogger::record(
+            actorId: $user->id,
+            action: 'membership.request.withdrawn',
+            targetType: Membership::class,
+            targetId: $membership->id,
+            metadata: ['scope' => $membership->scope, 'node_id' => $membership->node_id, 'approval_request_ids' => $approvalIds->all()],
+            ip: $ip,
+        );
+    }
+
+    /**
      * @throws ValidationException
      */
-    public static function submit(User $user, string $scope, ?int $nodeId, string $type, ?string $startsAt, ?string $ip): Membership
+    public static function submit(User $user, string $scope, ?int $nodeId, string $type, ?string $startsAt, ?string $ip, ?string $motivation = null): Membership
     {
+        $motivation = trim((string) $motivation);
+
+        if (mb_strlen($motivation) < self::MOTIVATION_MIN) {
+            throw ValidationException::withMessages(['motivation_letter' => 'Rédigez une lettre de motivation d’au moins '.self::MOTIVATION_MIN.' caractères.']);
+        }
+
+        if (($missing = self::missingCv($user)) !== []) {
+            throw ValidationException::withMessages(['cv' => 'Complétez votre CV (Profil) avant de demander une adhésion : '.implode(', ', $missing).'.']);
+        }
+
         $club = $nodeId !== null ? OrgNode::query()->where('kind', 'club')->find($nodeId) : null;
 
         if ($nodeId !== null && $club === null) {
@@ -70,6 +149,7 @@ final class MembershipRequests
             'node_id' => $nodeId,
             'status' => 'pending',
             'membership_type' => $type,
+            'motivation_letter' => $motivation,
             'starts_at' => $startsAt,
         ]);
 
