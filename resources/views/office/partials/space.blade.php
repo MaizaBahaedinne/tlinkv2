@@ -8,6 +8,7 @@
 <section id="en-cours" role="tabpanel" aria-labelledby="tab-en-cours" data-tab-panel class="grid gap-4 md:grid-cols-2">
     <div class="card p-5">
         <h2 class="font-display text-lg font-semibold text-slate-900"><i class="fa-solid fa-id-card mr-2 text-slate-400"></i>Mes adhésions en cours</h2>
+        <a href="{{ route('memberships.index') }}" class="mt-1 inline-block text-xs font-semibold text-tlink-blue hover:underline">Demander une adhésion</a>
         <ul class="mt-3 space-y-2">
             @forelse($space['memberships'] as $row)
                 <li class="rounded-xl border border-slate-200 bg-white px-4 py-3">

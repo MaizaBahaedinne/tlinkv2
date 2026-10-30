@@ -10,6 +10,7 @@ use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
 use App\Http\Controllers\MemberProfileController;
+use App\Http\Controllers\MembershipRequestController;
 use App\Http\Controllers\MentoringController;
 use App\Http\Controllers\MessengerController;
 use App\Http\Controllers\MyOfficeController;
@@ -61,6 +62,10 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/badges', [BadgeController::class, 'index'])->name('badges.index');
+
+    // Mes adhésions : suivi et demande d'adhésion à une entité ou à un club.
+    Route::get('/adhesions', [MembershipRequestController::class, 'index'])->name('memberships.index');
+    Route::post('/adhesions', [MembershipRequestController::class, 'store'])->middleware('throttle:10,10')->name('memberships.store');
 
     // Tunivisions Academy : catalogue, cours, leçons, commandes et calendrier.
     Route::prefix('academy')->name('academy.')->group(function (): void {
