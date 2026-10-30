@@ -101,7 +101,7 @@ final class MembershipRequests
 
     /**
      * Un poste de responsabilité (président, VP, assistant…) porte des droits ou n'a qu'un titulaire :
-     * il est attribué par les administrateurs. Seul un poste ouvert à plusieurs personnes, sans droit, est un poste de membre.
+     * le déclarer pour un ancien mandat exige la validation d'un administrateur.
      */
     public static function isLeaderPosition(OrgNode $node): bool
     {
@@ -110,7 +110,7 @@ final class MembershipRequests
 
     /**
      * Postes disponibles dans le périmètre (un seul par intitulé pour une entité), responsabilités comprises :
-     * le contrôleur les marque pour qu'elles s'affichent sans pouvoir être choisies.
+     * le contrôleur les marque pour que la liste indique qu'ils sont soumis à validation.
      *
      * @return \Illuminate\Support\Collection<int, OrgNode>
      */
@@ -122,7 +122,8 @@ final class MembershipRequests
     }
 
     /**
-     * Participation à un ancien mandat : acceptée directement, uniquement comme simple membre.
+     * Participation à un ancien mandat. Simple membre : acceptée directement. Poste de responsabilité :
+     * en attente, avec une demande d'approbation confiée au validateur du périmètre.
      *
      * @throws ValidationException
      */
@@ -139,6 +140,7 @@ final class MembershipRequests
         }
 
         $title = null;
+        $leadership = false;
 
         if ($positionId !== null) {
             $position = self::positionNodes($scope, $clubId)->firstWhere('id', $positionId);
@@ -147,11 +149,8 @@ final class MembershipRequests
                 throw ValidationException::withMessages(['position_id' => 'Ce poste n’existe pas dans cette partie.']);
             }
 
-            if (self::isLeaderPosition($position)) {
-                throw ValidationException::withMessages(['position_id' => 'Les postes de responsabilité sont attribués par les administrateurs : choisissez un poste de membre.']);
-            }
-
             $title = (string) $position->title;
+            $leadership = self::isLeaderPosition($position);
         }
 
         $duplicate = MandateParticipation::query()
@@ -160,10 +159,11 @@ final class MembershipRequests
             ->where('scope', $scope)
             ->where('node_id', $clubId)
             ->where('position_title', $title)
+            ->whereIn('status', ['pending', 'approved'])
             ->exists();
 
         if ($duplicate) {
-            throw ValidationException::withMessages(['past_target' => 'Cette participation est déjà enregistrée pour ce mandat.']);
+            throw ValidationException::withMessages(['past_target' => 'Cette participation est déjà enregistrée (ou en attente) pour ce mandat.']);
         }
 
         $participation = MandateParticipation::query()->create([
@@ -172,18 +172,85 @@ final class MembershipRequests
             'scope' => $scope,
             'node_id' => $clubId,
             'position_title' => $title,
+            'status' => $leadership ? 'pending' : 'approved',
+            'approved_at' => $leadership ? null : now(),
         ]);
+
+        $approvalId = null;
+
+        if ($leadership) {
+            $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id);
+
+            $approval = ApprovalRequest::query()->create([
+                'request_type' => 'mandate_leadership',
+                'requester_id' => $user->id,
+                'approvable_type' => MandateParticipation::class,
+                'approvable_id' => $participation->id,
+                'assigned_reviewer_id' => $reviewerId,
+                'status' => 'pending',
+                'submitted_at' => now(),
+            ]);
+            $approvalId = $approval->id;
+
+            if ($reviewerId !== null) {
+                AppNotification::query()->create([
+                    'user_id' => $reviewerId,
+                    'type' => 'membership.leadership_submitted',
+                    'title' => 'Poste de responsabilité à valider',
+                    'body' => $user->name.' déclare le poste « '.$title.' » sur le mandat '.$mandate->label.'.',
+                    'data' => ['participation_id' => $participation->id, 'approval_request_id' => $approval->id],
+                ]);
+            }
+        }
 
         AuditLogger::record(
             actorId: $user->id,
             action: 'membership.past.declared',
             targetType: MandateParticipation::class,
             targetId: $participation->id,
-            metadata: ['mandate' => $mandate->label, 'scope' => $scope, 'node_id' => $clubId, 'position' => $title],
+            metadata: ['mandate' => $mandate->label, 'scope' => $scope, 'node_id' => $clubId, 'position' => $title, 'leadership' => $leadership, 'approval_request_id' => $approvalId],
             ip: $ip,
         );
 
         return $participation;
+    }
+
+    /**
+     * Retire une participation : une demande en attente (ou refusée) et une participation de membre se retirent ;
+     * un poste de responsabilité déjà validé par un administrateur ne se retire plus ici.
+     */
+    public static function withdrawPast(User $user, MandateParticipation $participation, ?string $ip): void
+    {
+        abort_unless($participation->user_id === $user->id, 404);
+
+        $approvals = ApprovalRequest::query()
+            ->where('approvable_type', MandateParticipation::class)
+            ->where('approvable_id', $participation->id);
+
+        if ($participation->status === 'approved' && (clone $approvals)->exists()) {
+            throw ValidationException::withMessages(['participation' => 'Ce poste de responsabilité a été validé par un administrateur : contactez-les pour le modifier.']);
+        }
+
+        $reviewerIds = (clone $approvals)->whereNotNull('assigned_reviewer_id')->pluck('assigned_reviewer_id');
+
+        AppNotification::query()
+            ->where('type', 'membership.leadership_submitted')
+            ->whereIn('user_id', $reviewerIds)
+            ->get()
+            ->filter(fn (AppNotification $notification) => (int) ($notification->data['participation_id'] ?? 0) === $participation->id)
+            ->each->delete();
+
+        $approvals->delete();
+        $participation->delete();
+
+        AuditLogger::record(
+            actorId: $user->id,
+            action: 'membership.past.withdrawn',
+            targetType: MandateParticipation::class,
+            targetId: $participation->id,
+            metadata: ['mandate_id' => $participation->mandate_id, 'scope' => $participation->scope, 'position' => $participation->position_title],
+            ip: $ip,
+        );
     }
 
     /**

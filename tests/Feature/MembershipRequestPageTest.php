@@ -238,9 +238,9 @@ class MembershipRequestPageTest extends TestCase
         $this->actingAs($member)->getJson('/adhesions/postes?target=club:99999')->assertStatus(422);
     }
 
-    public function test_past_mandate_participation_is_accepted_directly_as_a_member_only(): void
+    public function test_past_mandate_participation_is_accepted_directly_for_a_member_post(): void
     {
-        [$past, $current, $club, $memberPost, $leaderPost] = $this->pastSetup();
+        [$past, $current, $club, $memberPost] = $this->pastSetup();
         $member = $this->applicant();
 
         $this->actingAs($member)->get('/adhesions')->assertOk()->assertSee('data-mandate-id="'.$past->id.'"', false)
@@ -256,25 +256,90 @@ class MembershipRequestPageTest extends TestCase
         $this->assertSame(0, Membership::query()->count());
         $this->assertSame(0, ApprovalRequest::query()->count());
 
-        $this->actingAs($member)->get('/adhesions')->assertOk()->assertSee('Membres Communication')->assertSee('Participation déclarée');
+        $this->actingAs($member)->get('/adhesions')->assertOk()->assertSee('Membres Communication')->assertSee('Acceptée');
 
-        // Même participation : refusée. Poste de responsabilité, mandat en cours ou partie inconnue : refusés.
+        // Même participation, mandat en cours ou partie inconnue : refusés.
         $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $memberPost->id])
             ->assertSessionHasErrorsIn('past', 'past_target');
-        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $leaderPost->id])
-            ->assertSessionHasErrorsIn('past', 'position_id');
         $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $current->id, 'past_target' => 'scope:alumni'])
             ->assertSessionHasErrorsIn('past', 'past_target');
         $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'scope:inconnu'])
             ->assertSessionHasErrorsIn('past', 'past_target');
         $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id])
             ->assertSessionHasErrorsIn('past', 'past_target');
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => 999999])
+            ->assertSessionHasErrorsIn('past', 'position_id');
         $this->assertSame(1, \App\Models\MandateParticipation::query()->count());
 
         // Simple membre d'une entité, sans poste précis ; et une demande actuelle reste possible.
         $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'scope:alumni'])->assertSessionHasNoErrors();
         $this->actingAs($member)->post('/adhesions', $this->form('scope:alumni'))->assertSessionHasNoErrors();
         $this->assertSame(1, Membership::query()->where('status', 'pending')->count());
+        $this->assertSame(0, ApprovalRequest::query()->where('request_type', 'mandate_leadership')->count());
+    }
+
+    public function test_leadership_position_for_a_past_mandate_waits_for_admin_approval(): void
+    {
+        [$past, , $club, , $leaderPost] = $this->pastSetup();
+
+        $reviewer = User::factory()->create();
+        $this->grantAccess($reviewer, 'entity_admin', 'university');
+        $member = $this->applicant();
+
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $leaderPost->id])
+            ->assertRedirect(route('memberships.index'))->assertSessionHas('status');
+
+        $participation = \App\Models\MandateParticipation::query()->firstOrFail();
+        $this->assertSame(['pending', 'Président de club'], [$participation->status, $participation->position_title]);
+
+        $approval = ApprovalRequest::query()->where('approvable_id', $participation->id)->firstOrFail();
+        $this->assertSame(['mandate_leadership', $reviewer->id, 'pending'], [$approval->request_type, $approval->assigned_reviewer_id, $approval->status]);
+        $this->assertSame(1, \App\Models\AppNotification::query()->where('user_id', $reviewer->id)->where('type', 'membership.leadership_submitted')->count());
+
+        $this->actingAs($member)->get('/adhesions')->assertOk()->assertSee('En attente de validation')->assertSee('Retirer ma demande');
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $leaderPost->id])
+            ->assertSessionHasErrorsIn('past', 'past_target');
+
+        // Le membre ne peut pas se valider lui-même ; le validateur voit la demande et la rejette puis une autre est approuvée.
+        $this->actingAs($reviewer)->get('/admin/approbations')->assertOk()->assertSee('Poste de responsabilité sur le mandat')->assertSee('Président de club');
+        $this->actingAs($reviewer)->post('/admin/approbations/'.$approval->id, ['decision' => 'rejected', 'explanation' => 'Non confirmé'])->assertSessionHas('status');
+
+        $this->assertSame(['rejected', 'Non confirmé'], [$participation->fresh()->status, $participation->fresh()->rejection_reason]);
+        $this->actingAs($member)->get('/adhesions')->assertSee('Refusée')->assertSee('Non confirmé');
+
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $leaderPost->id])
+            ->assertSessionHasNoErrors();
+        $second = ApprovalRequest::query()->where('status', 'pending')->firstOrFail();
+
+        $this->actingAs($reviewer)->post('/admin/approbations/'.$second->id, ['decision' => 'approved'])->assertSessionHas('status');
+        $approved = \App\Models\MandateParticipation::query()->where('status', 'approved')->firstOrFail();
+        $this->assertSame($reviewer->id, $approved->approved_by);
+
+        // Un poste de responsabilité validé ne se retire plus depuis la page du membre.
+        $this->actingAs($member)->delete('/adhesions/mandats/'.$approved->id)->assertSessionHasErrors('participation');
+        $this->assertDatabaseHas('mandate_participations', ['id' => $approved->id]);
+    }
+
+    public function test_a_scoped_reviewer_only_sees_leadership_requests_of_their_scope_and_withdrawing_cleans_up(): void
+    {
+        [$past, , $club, , $leaderPost] = $this->pastSetup();
+
+        $other = User::factory()->create();
+        $this->grantAccess($other, 'entity_admin', 'alumni');
+        $reviewer = User::factory()->create();
+        $this->grantAccess($reviewer, 'entity_admin', 'university');
+        $member = $this->applicant();
+
+        $this->actingAs($member)->post('/adhesions/mandats', ['mandate_id' => $past->id, 'past_target' => 'club:'.$club->id, 'position_id' => $leaderPost->id]);
+        $participation = \App\Models\MandateParticipation::query()->firstOrFail();
+
+        $this->actingAs($other)->get('/admin/approbations')->assertOk()->assertDontSee('Président de club');
+        $this->actingAs($reviewer)->get('/admin/approbations')->assertOk()->assertSee('Président de club');
+
+        $this->actingAs($member)->delete('/adhesions/mandats/'.$participation->id)->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('mandate_participations', ['id' => $participation->id]);
+        $this->assertSame(0, ApprovalRequest::query()->where('approvable_id', $participation->id)->count());
+        $this->assertSame(0, \App\Models\AppNotification::query()->where('type', 'membership.leadership_submitted')->count());
     }
 
     public function test_participation_can_only_be_removed_by_its_owner_and_shows_in_the_admin_journey(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\ApprovalRequest;
+use App\Models\MandateParticipation;
 use App\Models\Membership;
 use App\Support\ApprovalDecisionException;
 use App\Support\ApprovalDecisionService;
@@ -45,6 +46,12 @@ class ApprovalController extends AdminController
             ->get()
             ->keyBy('id');
 
+        $participations = MandateParticipation::query()
+            ->with(['mandate:id,label', 'node:id,title'])
+            ->whereIn('id', $approvals->getCollection()->where('approvable_type', MandateParticipation::class)->pluck('approvable_id'))
+            ->get()
+            ->keyBy('id');
+
         $decidable = [];
 
         foreach ($approvals->getCollection() as $approval) {
@@ -62,6 +69,7 @@ class ApprovalController extends AdminController
         return view('admin.approvals.index', [
             'approvals' => $approvals,
             'memberships' => $memberships,
+            'participations' => $participations,
             'decidable' => $decidable,
             'status' => $status,
             'statuses' => self::STATUSES,
@@ -99,9 +107,12 @@ class ApprovalController extends AdminController
             return $query;
         }
 
-        // Un validateur limite a certains perimetres ne voit que les adhesions de son perimetre.
-        return $query
-            ->where('approvable_type', Membership::class)
-            ->whereIn('approvable_id', Membership::query()->whereIn('scope', $scope)->select('id'));
+        // Un validateur limite a certains perimetres ne voit que les demandes de son perimetre.
+        return $query->where(function ($inner) use ($scope): void {
+            $inner->where(fn ($q) => $q->where('approvable_type', Membership::class)
+                ->whereIn('approvable_id', Membership::query()->whereIn('scope', $scope)->select('id')))
+                ->orWhere(fn ($q) => $q->where('approvable_type', MandateParticipation::class)
+                    ->whereIn('approvable_id', MandateParticipation::query()->whereIn('scope', $scope)->select('id')));
+        });
     }
 }

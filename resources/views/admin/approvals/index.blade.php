@@ -19,6 +19,7 @@
                 @foreach($approvals as $approval)
                     @php
                         $membership = $approval->approvable_type === \App\Models\Membership::class ? $memberships->get($approval->approvable_id) : null;
+                        $participation = $approval->approvable_type === \App\Models\MandateParticipation::class ? $participations->get($approval->approvable_id) : null;
                     @endphp
                     <div class="list-item" style="align-items:flex-start;flex-wrap:wrap">
                         <x-admin.avatar :name="$approval->requester?->name" :size="40" />
@@ -31,6 +32,9 @@
                             <div class="text-sm">
                                 @if($membership)
                                     Demande d’adhésion à <strong>{{ \App\Support\OrgScopes::label($membership->scope) ?? '—' }}</strong>@if($membership->node) · {{ $membership->node->title }}@endif
+                                @elseif($participation)
+                                    Poste de responsabilité sur le mandat <strong>{{ $participation->mandate?->label ?? '—' }}</strong> : {{ $participation->position_title ?? '—' }}
+                                    · {{ $participation->node?->title ?? \App\Support\OrgScopes::label($participation->scope) }}
                                 @else
                                     {{ $approval->request_type }}
                                 @endif

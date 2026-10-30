@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\AppNotification;
 use App\Models\ApprovalDecision;
 use App\Models\ApprovalRequest;
+use App\Models\MandateParticipation;
 use App\Models\Membership;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,14 @@ class ApprovalDecisionService
             }
         }
 
+        if ($approvalRequest->approvable_type === MandateParticipation::class) {
+            $participation = MandateParticipation::query()->findOrFail($approvalRequest->approvable_id);
+
+            if (! AccessScope::can($actor, 'approval.review', $participation->scope)) {
+                return new ApprovalDecisionException('Permission insuffisante.', 403);
+            }
+        }
+
         return null;
     }
 
@@ -52,7 +61,11 @@ class ApprovalDecisionService
             ? Membership::query()->findOrFail($approvalRequest->approvable_id)
             : null;
 
-        DB::transaction(function () use ($approvalRequest, $actor, $decision, $explanation, $ip, $membership): void {
+        $participation = $approvalRequest->approvable_type === MandateParticipation::class
+            ? MandateParticipation::query()->findOrFail($approvalRequest->approvable_id)
+            : null;
+
+        DB::transaction(function () use ($approvalRequest, $actor, $decision, $explanation, $ip, $membership, $participation): void {
             ApprovalDecision::query()->create([
                 'approval_request_id' => $approvalRequest->id,
                 'decided_by' => $actor->id,
@@ -70,6 +83,14 @@ class ApprovalDecisionService
                 $membership->approved_at = now();
                 $membership->rejection_reason = $decision === 'rejected' ? $explanation : null;
                 $membership->save();
+            }
+
+            if ($participation !== null) {
+                $participation->status = $decision === 'approved' ? 'approved' : 'rejected';
+                $participation->approved_by = $actor->id;
+                $participation->approved_at = now();
+                $participation->rejection_reason = $decision === 'rejected' ? $explanation : null;
+                $participation->save();
             }
 
             AuditLogger::record(

@@ -112,7 +112,7 @@ class MembershipRequestController extends Controller
     }
 
     /**
-     * Participation à un ancien mandat : acceptée directement (simple membre uniquement).
+     * Participation à un ancien mandat : simple membre accepté directement, poste de responsabilité soumis à validation.
      */
     public function storePast(Request $request): RedirectResponse
     {
@@ -127,7 +127,7 @@ class MembershipRequestController extends Controller
         try {
             [$scope, $clubId] = $this->parseTarget($data['past_target'], 'past_target');
 
-            MembershipRequests::declarePast(
+            $participation = MembershipRequests::declarePast(
                 $request->user(),
                 Mandate::query()->findOrFail($data['mandate_id']),
                 $scope,
@@ -139,14 +139,14 @@ class MembershipRequestController extends Controller
             throw $exception->errorBag('past');
         }
 
-        return redirect()->route('memberships.index')->with('status', 'Votre participation est enregistrée.');
+        return redirect()->route('memberships.index')->with('status', $participation->status === 'pending'
+            ? 'Votre demande est envoyée : ce poste de responsabilité doit être validé par un administrateur.'
+            : 'Votre participation est enregistrée.');
     }
 
     public function destroyPast(Request $request, MandateParticipation $participation): RedirectResponse
     {
-        abort_unless($participation->user_id === $request->user()->id, 404);
-
-        $participation->delete();
+        MembershipRequests::withdrawPast($request->user(), $participation, $request->ip());
 
         return redirect()->route('memberships.index')->with('status', 'Participation retirée.');
     }

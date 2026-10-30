@@ -185,7 +185,7 @@
                                                 </div>
                                                 <div class="when">
                                                     <span>Déclarée le {{ $participation->created_at->format('d/m/Y') }}</span>
-                                                    <span class="badge badge-success">Acceptée</span>
+                                                    <x-admin.badge :status="$participation->status" />
                                                 </div>
                                             </div>
                                         @endforeach

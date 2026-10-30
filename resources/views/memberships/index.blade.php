@@ -57,7 +57,8 @@
                         @endif
                     </div>
                     <p class="mt-1 text-xs text-slate-500">
-                        Tous les mandats sont listés, y compris les précédents. Pour un ancien mandat, déclarez votre participation en simple membre : elle est acceptée directement. Les postes de responsabilité (président, vice-président, assistant…) sont attribués par les administrateurs de la Fondation.
+                        Tous les mandats sont listés, y compris les précédents. Pour un ancien mandat, déclarez votre participation : un poste de membre est accepté directement, un poste de responsabilité (président, vice-président, assistant…) doit être approuvé par un administrateur.
+                        @error('participation')<span class="mt-1 block font-semibold text-rose-700">{{ $message }}</span>@enderror
                     </p>
 
                     <div class="mt-4 space-y-4">
@@ -83,16 +84,21 @@
                                 @endif
                                 <ul class="mt-2 space-y-2">
                                     @foreach($group['participations'] as $participation)
+                                        @php
+                                            [$pLabel, $pClass] = \App\Models\MandateParticipation::STATUSES[$participation->status] ?? [$participation->status, 'bg-slate-100 text-slate-600'];
+                                        @endphp
                                         <li class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 px-4 py-3">
                                             <div>
-                                                <p class="text-sm font-semibold text-slate-800">{{ $participation->position_title ?? 'Membre' }}</p>
+                                                <p class="text-sm font-semibold text-slate-800">{{ $participation->position_title ?? 'Membre' }} <span class="ml-1 rounded-full px-2 py-0.5 text-xs font-semibold {{ $pClass }}">{{ $pLabel }}</span></p>
                                                 <p class="text-xs text-slate-500">{{ $participation->node?->title ?? \App\Support\OrgScopes::label($participation->scope) }} · {{ \App\Support\OrgScopes::label($participation->scope) }}</p>
-                                                <p class="text-xs text-slate-400">Participation déclarée · acceptée</p>
+                                                @if($participation->status === 'rejected' && filled($participation->rejection_reason))
+                                                    <p class="mt-1 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-800">Motif : {{ $participation->rejection_reason }}</p>
+                                                @endif
                                             </div>
                                             <form method="post" action="{{ route('memberships.past.destroy', $participation) }}" onsubmit="return confirm('Retirer cette participation ?');">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Retirer</button>
+                                                <button type="submit" class="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">{{ $participation->status === 'pending' ? 'Retirer ma demande' : 'Retirer' }}</button>
                                             </form>
                                         </li>
                                     @endforeach
@@ -194,7 +200,7 @@
             <h2 class="font-display text-lg font-semibold text-slate-900">Ma participation · mandat <span id="past-mandate-label"></span></h2>
             <button type="button" data-close-past class="text-slate-400 hover:text-slate-600" aria-label="Fermer">✕</button>
         </div>
-        <p class="text-xs text-slate-500">Mandat précédent : votre participation est enregistrée directement, sans validation. Tous les postes de la partie sont listés ; seuls les postes de membre peuvent être choisis, les postes de responsabilité étant attribués par les administrateurs.</p>
+        <p class="text-xs text-slate-500">Mandat précédent : un poste de membre est enregistré directement, sans validation. Un poste de responsabilité (président, vice-président, assistant…) est envoyé à un administrateur, qui doit l’approuver.</p>
 
         <div>
             <label for="past-target" class="text-sm font-semibold text-slate-700">Partie rejointe</label>
@@ -265,8 +271,7 @@
                     data.positions.forEach(function (item) {
                         var option = document.createElement('option');
                         option.value = item.id;
-                        option.textContent = item.title + (item.subtitle ? ' — ' + item.subtitle : '') + (item.leader ? ' (responsabilité : attribué par les administrateurs)' : '');
-                        option.disabled = !!item.leader;
+                        option.textContent = item.title + (item.subtitle ? ' — ' + item.subtitle : '') + (item.leader ? ' (responsabilité : soumis à validation)' : '');
                         if (String(item.id) === String(selected)) { option.selected = true; }
                         position.appendChild(option);
                     });
