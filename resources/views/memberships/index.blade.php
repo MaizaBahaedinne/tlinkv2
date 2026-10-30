@@ -41,6 +41,54 @@
                         <li class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">Vous n’avez encore aucune adhésion. Faites votre première demande ci-contre.</li>
                     @endforelse
                 </ul>
+
+                <div class="mt-8 border-t border-slate-100 pt-6">
+                    <h2 class="font-display text-lg font-semibold text-slate-900">Mes postes par mandat</h2>
+                    <p class="mt-1 text-xs text-slate-500">
+                        @if($canEditPositions)
+                            Cliquez sur « Modifier le poste » pour ouvrir l’organigramme du mandat concerné.
+                        @else
+                            Les postes sont attribués dans l’organigramme par les administrateurs de la Fondation. Pour en corriger un, contactez-les.
+                        @endif
+                    </p>
+
+                    <div class="mt-4 space-y-4">
+                        @forelse($positionsByMandate as $group)
+                            @php
+                                $mandate = $group['mandate'];
+                            @endphp
+                            <div>
+                                <p class="text-sm font-semibold text-tlink-blue">
+                                    {{ $mandate ? 'Mandat '.$mandate->label : 'Hors mandat' }}
+                                    @if($mandate?->is_current)<span class="ml-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">En cours</span>@endif
+                                </p>
+                                <ul class="mt-2 space-y-2">
+                                    @foreach($group['positions'] as $assignment)
+                                        @php
+                                            $ongoing = $assignment->ends_at === null || $assignment->ends_at->toDateString() >= now()->toDateString();
+                                            $detail = collect([$assignment->node?->subtitle, $assignment->person?->job_title])->filter()->unique()->implode(' · ');
+                                        @endphp
+                                        <li class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 px-4 py-3">
+                                            <div>
+                                                <p class="text-sm font-semibold text-slate-800">{{ $assignment->node?->title ?? 'Poste supprimé' }}</p>
+                                                @if($detail !== '')<p class="text-xs text-slate-500">{{ $detail }}</p>@endif
+                                                <p class="text-xs text-slate-400">
+                                                    {{ $assignment->starts_at?->format('d/m/Y') ?? '—' }} → {{ $assignment->ends_at?->format('d/m/Y') ?? 'aujourd’hui' }}
+                                                    · {{ $ongoing ? 'En poste' : 'Terminé' }}
+                                                </p>
+                                            </div>
+                                            @if($canEditPositions)
+                                                <a href="{{ route('orgchart.index', array_filter(['mandate_id' => $mandate?->id])) }}" class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-tlink-blue hover:bg-slate-50">Modifier le poste</a>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @empty
+                            <p class="rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm text-slate-500">Vous n’occupez aucun poste dans l’organigramme.</p>
+                        @endforelse
+                    </div>
+                </div>
             </section>
 
             <aside>

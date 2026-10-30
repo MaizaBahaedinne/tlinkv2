@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Membership;
+use App\Support\AdminContext;
+use App\Support\MemberJourney;
 use App\Support\MembershipRequests;
 use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +34,8 @@ class MembershipRequestController extends Controller
             'scopes' => OrgScopes::all(),
             'clubs' => MembershipRequests::clubsByScope(),
             'statuses' => self::STATUSES,
+            'positionsByMandate' => (new MemberJourney())->byMandate($user)->filter(fn (array $group) => $group['positions']->isNotEmpty())->values(),
+            'canEditPositions' => AdminContext::of($request)->isGlobal('entity.manage'),
         ]);
     }
 

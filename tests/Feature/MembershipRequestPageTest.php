@@ -95,6 +95,27 @@ class MembershipRequestPageTest extends TestCase
         $this->assertNotNull($club->id);
     }
 
+    public function test_page_shows_positions_by_mandate_with_edit_link_for_admins_only(): void
+    {
+        $root = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'access_level' => 'none', 'category' => 'direction', 'title' => 'Bureau 2026', 'sort_order' => 0]);
+        $post = OrgNode::query()->create(['parent_id' => $root->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'access_level' => 'none', 'category' => 'direction', 'title' => 'Trésorier', 'sort_order' => 0]);
+        \App\Models\Mandate::query()->create(['label' => '2026-2027', 'start_year' => 2026, 'end_year' => 2027, 'bureau_name' => 'Bureau', 'is_current' => true, 'root_node_id' => $root->id]);
+
+        $member = User::factory()->create();
+        $person = \App\Models\OrgPerson::query()->create(['user_id' => $member->id, 'full_name' => $member->name, 'contact_visible' => true]);
+        \App\Models\OrgAssignment::query()->create(['node_id' => $post->id, 'person_id' => $person->id]);
+
+        $this->actingAs($member)->get('/adhesions')->assertOk()
+            ->assertSee('Mandat 2026-2027')->assertSee('Trésorier')->assertDontSee('Modifier le poste');
+
+        $admin = User::factory()->create();
+        $this->grantPlatformAdmin($admin);
+        $this->actingAs($admin->fresh())->get('/adhesions')->assertOk()->assertDontSee('Trésorier');
+
+        $this->grantPlatformAdmin($member);
+        $this->actingAs($member->fresh())->get('/adhesions')->assertSee('Modifier le poste');
+    }
+
     public function test_page_only_lists_the_members_own_memberships(): void
     {
         $member = User::factory()->create();
