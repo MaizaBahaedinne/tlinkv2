@@ -106,6 +106,114 @@ class OrgAccess
     }
 
     /**
+     * Responsabilite d'un utilisateur pour une permission : tout (droits globaux), des perimetres entiers
+     * (postes hors club) et des clubs precis (postes a l'interieur d'un club : leur responsabilite s'arrete au club).
+     *
+     * @return array{all: bool, scopes: array<int, string>, clubs: array<int, int>}
+     */
+    public static function responsibility(User $user, string $permission): array
+    {
+        $assignments = self::currentAssignments()
+            ->whereHas('person', fn ($query) => $query->where('user_id', $user->id))
+            ->get();
+
+        $result = ['all' => false, 'scopes' => [], 'clubs' => []];
+
+        if ($assignments->isEmpty()) {
+            return $result;
+        }
+
+        $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
+        $kinds = OrgNode::query()->pluck('kind', 'id')->all();
+        $scopes = OrgNode::query()->whereNotNull('scope')->pluck('scope', 'id')->all();
+
+        foreach ($assignments as $assignment) {
+            $primary = self::resolveScope((int) $assignment->node_id, $parents, $scopes);
+            $club = self::clubOf((int) $assignment->node_id, $parents, $kinds);
+
+            foreach (self::describeAll(collect([$assignment])) as $entry) {
+                if (! in_array($permission, $entry['permissions'], true)) {
+                    continue;
+                }
+
+                if ($entry['scope'] === null) {
+                    $result['all'] = true;
+                } elseif ($club !== null && $entry['scope'] === $primary) {
+                    $result['clubs'][] = $club;
+                } else {
+                    $result['scopes'][] = $entry['scope'];
+                }
+            }
+        }
+
+        $result['scopes'] = OrgScopes::expandManaged(array_values(array_unique($result['scopes'])));
+        $result['clubs'] = array_values(array_unique($result['clubs']));
+
+        return $result;
+    }
+
+    /**
+     * Titulaires d'un poste situe dans le club qui detiennent la permission, le president de club d'abord.
+     *
+     * @return array<int, int>
+     */
+    public static function userIdsInClub(string $permission, int $clubId, int $exceptUserId): array
+    {
+        $assignments = self::currentAssignments()
+            ->whereHas('person', fn ($query) => $query->whereNotNull('user_id')->where('user_id', '!=', $exceptUserId))
+            ->with('person:id,user_id')
+            ->orderBy('id')
+            ->get();
+
+        if ($assignments->isEmpty()) {
+            return [];
+        }
+
+        $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
+        $kinds = OrgNode::query()->pluck('kind', 'id')->all();
+        $rows = [];
+
+        foreach ($assignments as $assignment) {
+            if (self::clubOf((int) $assignment->node_id, $parents, $kinds) !== $clubId) {
+                continue;
+            }
+
+            foreach (self::describeAll(collect([$assignment])) as $entry) {
+                if (in_array($permission, $entry['permissions'], true)) {
+                    $priority = ['club_president' => 0, 'manager' => 1][(string) $assignment->node?->access_level] ?? 2;
+                    $rows[] = [$priority, (int) $assignment->id, (int) $assignment->person->user_id];
+                    break;
+                }
+            }
+        }
+
+        usort($rows, fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+
+        return array_values(array_unique(array_column($rows, 2)));
+    }
+
+    /**
+     * Club qui contient un bloc : son plus proche ancetre de type club (null hors d'un club).
+     *
+     * @param array<int, int|null> $parents
+     * @param array<int, string> $kinds
+     */
+    private static function clubOf(int $nodeId, array $parents, array $kinds): ?int
+    {
+        $id = $parents[$nodeId] ?? null;
+
+        for ($guard = 0; $id !== null && $guard < 80; $guard++) {
+            if (($kinds[$id] ?? null) === 'club') {
+                return (int) $id;
+            }
+
+            $id = $parents[$id] ?? null;
+        }
+
+        return null;
+    }
+
+    /**
      * Perimetre effectif d'un bloc : le sien, sinon celui du plus proche parent.
      */
     public static function scopeOf(OrgNode $node): ?string

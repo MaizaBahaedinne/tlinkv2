@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Mandate;
+use App\Models\MandateParticipation;
 use App\Models\Membership;
+use App\Support\MembershipResponsibility;
 use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,13 +33,24 @@ class MembershipController extends AdminController
 
     public function index(Request $request): View
     {
+        $mandates = Mandate::query()->orderByDesc('start_year')->get();
+
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in(array_keys(self::STATUSES))],
             'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
+            'mandate' => ['nullable', Rule::in(array_merge(['all'], $mandates->pluck('id')->map(fn ($id) => (string) $id)->all()))],
         ]);
 
-        $base = $this->scoped(Membership::query(), $request, 'membership.manage');
+        // Par défaut : le mandat en cours (« all » pour tout l'historique).
+        $mandateFilter = $filters['mandate'] ?? (string) ($mandates->firstWhere('is_current', true)?->id ?? 'all');
+        $mandate = $mandateFilter === 'all' ? null : $mandates->firstWhere('id', (int) $mandateFilter);
+        $filters['mandate'] = $mandate?->id ? (string) $mandate->id : 'all';
+
+        // Uniquement ce qui est sous la responsabilité de l'utilisateur connecté (tout, un périmètre ou un club).
+        $responsibility = MembershipResponsibility::of($request->user(), 'membership.manage');
+        $base = $responsibility->apply($this->scoped(Membership::query(), $request, 'membership.manage'))
+            ->when($mandate, fn ($query, Mandate $selected) => $query->duringMandate($selected));
 
         $counts = (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all();
 
@@ -51,6 +65,21 @@ class MembershipController extends AdminController
             ->paginate(15)
             ->withQueryString();
 
+        // Mandat d'entrée de chaque adhésion (celui qui contient sa date de début).
+        $mandateLabels = [];
+        foreach ($memberships as $row) {
+            $date = $row->starts_at ?? $row->created_at;
+            $mandateLabels[$row->id] = $date ? Mandate::containing($mandates, $date)?->label : null;
+        }
+
+        $participations = $responsibility->apply($this->scoped(MandateParticipation::query(), $request, 'membership.manage'))
+            ->when($mandate, fn ($query, Mandate $selected) => $query->where('mandate_id', $selected->id))
+            ->when($filters['scope'] ?? null, fn ($query, $scope) => $query->where('scope', $scope))
+            ->with(['user:id,name,email', 'mandate:id,label', 'node:id,title'])
+            ->latest('id')
+            ->limit(100)
+            ->get();
+
         return view('admin.memberships.index', [
             'memberships' => $memberships,
             'filters' => $filters,
@@ -59,12 +88,23 @@ class MembershipController extends AdminController
             'counts' => $counts,
             'canReview' => $this->context($request)->can('approval.review'),
             'scopes' => $this->scopeOptions($request, 'membership.manage'),
+            'mandates' => $mandates,
+            'mandate' => $mandate,
+            'mandateLabels' => $mandateLabels,
+            'participations' => $participations,
+            'globalView' => $responsibility->all(),
         ]);
     }
 
     public function update(Request $request, Membership $membership): RedirectResponse
     {
         $this->authorizeScope($request, 'membership.manage', $membership->scope);
+
+        abort_unless(
+            MembershipResponsibility::of($request->user(), 'membership.manage')->covers($membership->scope, $membership->node_id),
+            403,
+            'Cette adhésion n’est pas sous votre responsabilité.',
+        );
 
         $data = $request->validate([
             'status' => ['required', Rule::in(['approved', 'suspended', 'archived'])],

@@ -226,10 +226,11 @@ class AdminMenu
     private static function badge(string $type, AdminContext $context): ?int
     {
         $count = match ($type) {
-            'memberships' => Membership::query()
-                ->where('status', 'pending')
-                ->when($context->scope('membership.manage') ?? [], fn ($query, array $scopes) => $query->whereIn('scope', $scopes))
-                ->count(),
+            'memberships' => ($context->scope('membership.manage') ?? []) === []
+                ? Membership::query()->where('status', 'pending')->count()
+                : MembershipResponsibility::of($context->user, 'membership.manage')
+                    ->apply(Membership::query()->where('status', 'pending'))
+                    ->count(),
             'approvals' => ApprovalRequest::query()
                 ->where('status', 'pending')
                 ->where(function ($query) use ($context): void {

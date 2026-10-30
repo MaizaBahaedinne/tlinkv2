@@ -7,6 +7,7 @@ use App\Models\MandateParticipation;
 use App\Models\Membership;
 use App\Support\ApprovalDecisionException;
 use App\Support\ApprovalDecisionService;
+use App\Support\MembershipResponsibility;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -107,12 +108,14 @@ class ApprovalController extends AdminController
             return $query;
         }
 
-        // Un validateur limite a certains perimetres ne voit que les demandes de son perimetre.
-        return $query->where(function ($inner) use ($scope): void {
+        // Un validateur ne voit que les demandes de son perimetre ou de son club.
+        $responsibility = MembershipResponsibility::of($request->user(), 'approval.review');
+
+        return $query->where(function ($inner) use ($responsibility): void {
             $inner->where(fn ($q) => $q->where('approvable_type', Membership::class)
-                ->whereIn('approvable_id', Membership::query()->whereIn('scope', $scope)->select('id')))
+                ->whereIn('approvable_id', $responsibility->apply(Membership::query())->select('id')))
                 ->orWhere(fn ($q) => $q->where('approvable_type', MandateParticipation::class)
-                    ->whereIn('approvable_id', MandateParticipation::query()->whereIn('scope', $scope)->select('id')));
+                    ->whereIn('approvable_id', $responsibility->apply(MandateParticipation::query())->select('id')));
         });
     }
 }

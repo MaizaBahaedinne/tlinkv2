@@ -29,18 +29,22 @@ class ApprovalDecisionService
             return new ApprovalDecisionException('Tu n\'es pas le validateur assigne.', 403);
         }
 
+        $responsibility = null;
+
         if ($approvalRequest->approvable_type === Membership::class) {
             $membership = Membership::query()->findOrFail($approvalRequest->approvable_id);
+            $responsibility = MembershipResponsibility::of($actor, 'approval.review');
 
-            if (! AccessScope::can($actor, 'approval.review', $membership->scope)) {
+            if (! AccessScope::can($actor, 'approval.review', $membership->scope) || ! $responsibility->covers($membership->scope, $membership->node_id)) {
                 return new ApprovalDecisionException('Permission insuffisante.', 403);
             }
         }
 
         if ($approvalRequest->approvable_type === MandateParticipation::class) {
             $participation = MandateParticipation::query()->findOrFail($approvalRequest->approvable_id);
+            $responsibility ??= MembershipResponsibility::of($actor, 'approval.review');
 
-            if (! AccessScope::can($actor, 'approval.review', $participation->scope)) {
+            if (! AccessScope::can($actor, 'approval.review', $participation->scope) || ! $responsibility->covers($participation->scope, $participation->node_id)) {
                 return new ApprovalDecisionException('Permission insuffisante.', 403);
             }
         }

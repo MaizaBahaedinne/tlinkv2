@@ -179,7 +179,7 @@ final class MembershipRequests
         $approvalId = null;
 
         if ($leadership) {
-            $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id);
+            $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id, $clubId);
 
             $approval = ApprovalRequest::query()->create([
                 'request_type' => 'mandate_leadership',
@@ -339,7 +339,7 @@ final class MembershipRequests
             'starts_at' => $startsAt,
         ]);
 
-        $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id);
+        $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id, $nodeId);
 
         $approval = ApprovalRequest::query()->create([
             'request_type' => 'membership',
