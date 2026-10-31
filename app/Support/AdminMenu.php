@@ -48,6 +48,7 @@ class AdminMenu
         'admin.events.*' => 'events.events',
         'admin.badges.*' => 'gamification.badges',
         'admin.companies.*' => 'members.companies',
+        'admin.verifications.*' => 'members.verification',
         'admin.academy.courses.*' => 'academy.courses',
         'admin.academy.sessions.*' => 'academy.sessions',
         'admin.academy.orders.*' => 'academy.orders',
@@ -126,6 +127,7 @@ class AdminMenu
                     ['label' => 'Membres de mon entité', 'route' => 'admin.members.index', 'icon' => 'user', 'match' => 'admin.members.*', 'perms' => ['membership.manage']],
                     ['label' => 'Badges et missions', 'route' => 'admin.badges.index', 'icon' => 'award', 'match' => 'admin.badges.*', 'perms' => ['entity.manage']],
                     ['label' => 'Entreprises', 'route' => 'admin.companies.index', 'icon' => 'building', 'match' => 'admin.companies.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Vérifications d’identité', 'route' => 'admin.verifications.index', 'icon' => 'shield', 'match' => 'admin.verifications.*', 'perms' => ['entity.manage'], 'badge' => 'verifications'],
                 ],
             ],
             [
@@ -262,6 +264,7 @@ class AdminMenu
             'reports' => ModerationReport::query()->where('status', 'pending')->count(),
             'messages' => ContactMessage::query()->where('status', 'new')->count(),
             'applications' => PositionApplication::query()->where('status', 'pending')->count(),
+            'verifications' => \App\Models\IdentityVerification::query()->where('status', 'pending')->count(),
             'mentoring' => Mentoring::enabled() ? MentoringTicket::query()->where('status', 'new')->count() : 0,
             'store_orders' => \App\Support\Store\StoreSettings::tablesReady() ? \App\Models\StoreOrder::query()->where('status', 'pending')->count() : 0,
             'store_returns' => \App\Support\Store\StoreSettings::tablesReady() ? \App\Models\StoreReturn::query()->where('status', 'requested')->count() : 0,

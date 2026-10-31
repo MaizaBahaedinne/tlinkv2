@@ -33,7 +33,20 @@
             </div>
 
             <div class="min-w-0 flex-1 sm:pb-1">
-                <h1 class="truncate font-display text-2xl font-semibold text-slate-900 sm:text-3xl">{{ $person->name }}</h1>
+                @php
+                    $isVerified = $profile?->identity_verified_at !== null;
+                    $verification = $editable && ! $isVerified ? \App\Support\IdentityVerifications::latestFor($person) : null;
+                @endphp
+                <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                    <h1 class="min-w-0 truncate font-display text-2xl font-semibold text-slate-900 sm:text-3xl">{{ $person->name }}</h1>
+                    @if($isVerified)
+                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-700" title="Identité vérifiée par la Fondation Tunivisions"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Profil vérifié</span>
+                    @elseif($editable && $verification?->isPending())
+                        <a href="{{ route('profile.verification') }}" class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800 hover:bg-amber-200"><i class="fa-regular fa-clock" aria-hidden="true"></i> Vérification en cours</a>
+                    @elseif($editable)
+                        <a href="{{ route('profile.verification') }}" class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"><i class="fa-regular fa-circle-check" aria-hidden="true"></i> Vérifier mon profil</a>
+                    @endif
+                </div>
                 <p class="mt-1 text-sm text-slate-600">{{ $profile->headline ?: ($editable ? 'Ajoutez un titre professionnel impactant.' : 'Membre Tunivisions') }}</p>
                 @if($editable)
                     <p class="mt-1 truncate text-xs text-slate-500"><i class="fa-regular fa-envelope mr-1"></i>{{ $person->email }}</p>

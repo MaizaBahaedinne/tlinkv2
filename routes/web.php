@@ -18,6 +18,7 @@ use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
 use App\Http\Controllers\PositionJoinController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\IdentityVerificationController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StoreCartController;
@@ -165,6 +166,8 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/mon-bureau/postes/{node}/titulaires', [MyOfficeController::class, 'assign'])->middleware('throttle:office-assign')->name('office.assign');
     Route::delete('/mon-bureau/postes/{node}/titulaires/{person}', [MyOfficeController::class, 'unassign'])->name('office.unassign');
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/profil/verification', [IdentityVerificationController::class, 'show'])->name('profile.verification');
+    Route::post('/profil/verification', [IdentityVerificationController::class, 'store'])->middleware('throttle:5,60')->name('profile.verification.store');
 
     // Info session (video) puis quiz : reussir le quiz valide le compte.
     Route::get('/info-session', [InfoSessionController::class, 'show'])->name('info-session.show');
@@ -355,6 +358,11 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::delete('academy/reglages/abonnements/{plan}', [Admin\AcademySettingsController::class, 'destroyPlan'])->whereNumber('plan')->name('academy.settings.plans.destroy');
             Route::put('etablissements/{institution}', [Admin\InstitutionController::class, 'update'])->name('institutions.update');
             Route::delete('etablissements/{institution}', [Admin\InstitutionController::class, 'destroy'])->name('institutions.destroy');
+            Route::get('verifications', [Admin\IdentityVerificationController::class, 'index'])->name('verifications.index');
+            Route::get('verifications/{verification}', [Admin\IdentityVerificationController::class, 'show'])->whereNumber('verification')->name('verifications.show');
+            Route::get('verifications/{verification}/{document}', [Admin\IdentityVerificationController::class, 'document'])->whereNumber('verification')->whereIn('document', ['front', 'back', 'selfie'])->name('verifications.document');
+            Route::post('verifications/{verification}/valider', [Admin\IdentityVerificationController::class, 'approve'])->whereNumber('verification')->name('verifications.approve');
+            Route::post('verifications/{verification}/refuser', [Admin\IdentityVerificationController::class, 'reject'])->whereNumber('verification')->name('verifications.reject');
             Route::get('entreprises', [Admin\CompanyController::class, 'index'])->name('companies.index');
             Route::post('entreprises', [Admin\CompanyController::class, 'store'])->name('companies.store');
             Route::put('entreprises/{company}', [Admin\CompanyController::class, 'update'])->name('companies.update');
