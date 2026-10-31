@@ -98,6 +98,8 @@ class ChallengesTest extends TestCase
         $this->grantAccess($admin, 'global_admin');
         $juror = User::factory()->create(['email' => 'jury@example.test']);
 
+        $this->actingAs($admin)->get('/admin/defis/creer')->assertOk()->assertSee('Nouveau défi');
+
         $this->actingAs($admin)->post('/admin/defis', $this->payload(['status' => 'published', 'committee_emails' => 'jury@example.test', 'invited_scopes' => ['university', 'high-school']]))
             ->assertRedirect();
 
@@ -110,6 +112,7 @@ class ChallengesTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/defis')->assertOk()->assertSee('Défi Climat');
         $this->actingAs($admin)->get('/admin/defis/'.$challenge->id)->assertOk()->assertSee('Eau et climat')->assertSee('Originalité');
+        $this->actingAs($admin)->get('/admin/defis/'.$challenge->id.'/modifier')->assertOk()->assertSee('Originalité');
     }
 
     public function test_challenge_calendar_and_publication_rules_are_enforced(): void

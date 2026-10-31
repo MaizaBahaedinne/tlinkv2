@@ -1,7 +1,9 @@
 @extends('admin.layouts.app')
 
-@php($editing = $challenge->exists)
-@php($dt = fn ($value) => $value?->format('Y-m-d\TH:i'))
+@php
+    $editing = $challenge->exists;
+    $dt = fn ($value) => $value?->format('Y-m-d\TH:i');
+@endphp
 
 @section('title', $editing ? 'Modifier le défi' : 'Nouveau défi')
 @section('section', 'Défis')
@@ -27,7 +29,9 @@
                 <x-admin.select name="status" label="Statut" :options="\App\Models\Challenge::STATUSES" :value="$challenge->status" required :placeholder="null" hint="Publié : le défi devient visible des membres et les clubs peuvent y proposer des activités." />
                 <div class="field span-2">
                     <span class="text-sm" style="font-weight:600">Clubs invités (périmètres)</span>
-                    @php($invited = old('invited_scopes', $challenge->invited_scopes ?? []))
+                    @php
+                        $invited = old('invited_scopes', $challenge->invited_scopes ?? []);
+                    @endphp
                     <div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:6px">
                         @foreach($allScopes as $slug => $name)
                             <label class="check"><input type="checkbox" name="invited_scopes[]" value="{{ $slug }}" @checked(in_array($slug, (array) $invited, true))> {{ $name }}</label>
