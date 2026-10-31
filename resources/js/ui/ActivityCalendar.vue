@@ -18,7 +18,7 @@ type CalendarEntry = {
   scan_url: string | null;
 };
 
-const props = defineProps<{ entries: CalendarEntry[]; csrf: string }>();
+const props = defineProps<{ entries: CalendarEntry[]; csrf: string; challengesUrl?: string }>();
 
 const pad = (value: number) => String(value).padStart(2, '0');
 const dayKey = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -123,7 +123,13 @@ function dayLabel(entry: CalendarEntry) {
     </div>
 
     <p class="mb-2 mt-4 text-xs font-semibold capitalize text-slate-500">{{ heading }}</p>
-    <p v-if="listed.length === 0" class="rounded-xl bg-slate-50 px-3 py-3 text-xs text-slate-500">Aucune activité {{ selected ? 'ce jour-là' : 'à venir ce mois-ci' }}.</p>
+    <div v-if="listed.length === 0" class="rounded-xl bg-slate-50 px-3 py-3 text-xs text-slate-500">
+      <p v-if="props.entries.length === 0">
+        Aucune activité à venir pour votre profil. Elles apparaissent ici dès qu’un club en publie dans vos périmètres.
+      </p>
+      <p v-else>Aucune activité {{ selected ? 'ce jour-là' : 'à venir ce mois-ci' }}.</p>
+      <a v-if="props.challengesUrl" :href="props.challengesUrl" class="mt-2 inline-block font-semibold text-tlink-blue hover:underline">Voir les défis</a>
+    </div>
 
     <ul v-else class="space-y-2">
       <li v-for="entry in listed" :key="entry.id" class="rounded-xl border border-slate-200 p-3">

@@ -630,6 +630,11 @@ class ChallengesTest extends TestCase
 
     public function test_feed_calendar_is_empty_without_activities_or_when_the_module_is_unavailable(): void
     {
-        $this->assertSame([], $this->actingAs(User::factory()->create())->get('/feed')->viewData('calendar'));
+        $response = $this->actingAs(User::factory()->create())->get('/feed')->assertOk();
+
+        // La carte reste affichée (avec un message) même sans activité à venir.
+        $this->assertSame([], $response->viewData('calendar'));
+        $this->assertTrue($response->viewData('calendarEnabled'));
+        $response->assertSee('calendarEnabled: true', false);
     }
 }

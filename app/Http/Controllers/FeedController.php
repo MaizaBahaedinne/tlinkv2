@@ -147,6 +147,7 @@ class FeedController extends Controller
                 'mission' => route('site.about', ['locale' => $this->siteLocale()]).'#mission',
                 'badges' => route('badges.index'),
                 'academy' => route('academy.index'),
+                'challenges' => route('challenges.index'),
             ],
             'myBadges' => $request->user() === null ? [] : \App\Models\UserBadge::earnedBy($request->user()->id)
                 ->map(fn (\App\Models\UserBadge $earned): array => [
@@ -157,6 +158,7 @@ class FeedController extends Controller
                     'gradient' => $earned->badge->gradient(),
                 ])->values(),
             'calendar' => \App\Support\Challenges\ActivityCalendar::for($request->user()),
+            'calendarEnabled' => $request->user() !== null && \App\Support\Challenges\Challenges::enabled(),
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
     }

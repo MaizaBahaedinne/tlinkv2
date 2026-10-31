@@ -48,7 +48,7 @@ type RootData = {
     allowed_visibilities: string[];
   };
   partners?: Array<{ id: number; name: string; logo_url: string; url: string | null }>;
-  links?: { mission?: string; badges?: string; academy?: string };
+  links?: { mission?: string; badges?: string; academy?: string; challenges?: string };
   myBadges?: Array<{ id: number; name: string; tier: string; icon: string; gradient: string }>;
   calendar?: Array<{
     id: number;
@@ -67,6 +67,7 @@ type RootData = {
     scan_url: string | null;
   }>;
   governorates: Array<{ id: number; name: string; slug: string }>;
+  calendarEnabled?: boolean;
   csrf: string;
 };
 
@@ -309,8 +310,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
         </aside>
 
         <section class="space-y-4 lg:col-span-6">
-        <div v-if="data.auth.isAuthenticated && data.calendar?.length" class="lg:hidden">
-          <ActivityCalendar :entries="data.calendar" :csrf="data.csrf" />
+        <div v-if="data.auth.isAuthenticated && data.calendarEnabled" class="lg:hidden">
+          <ActivityCalendar :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
         </div>
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4">
           <input type="hidden" name="_token" :value="data.csrf" />
@@ -644,7 +645,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
 
         <aside class="hidden lg:col-span-3 lg:block">
           <div class="sticky top-24 space-y-4">
-            <ActivityCalendar v-if="data.auth.isAuthenticated && data.calendar?.length" :entries="data.calendar" :csrf="data.csrf" />
+            <ActivityCalendar v-if="data.auth.isAuthenticated && data.calendarEnabled" :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
 
             <section class="card overflow-hidden p-0">
               <div class="bg-gradient-to-r from-tlink-blue to-tlink-blue-700 px-4 py-3 text-white">

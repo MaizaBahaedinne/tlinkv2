@@ -37,6 +37,7 @@
             links: @json($links),
             myBadges: @json($myBadges ?? []),
             calendar: @json($calendar ?? []),
+            calendarEnabled: @json((bool) ($calendarEnabled ?? false)),
             governorates: @json($governorates),
             csrf: @json(csrf_token()),
         };
