@@ -6,11 +6,13 @@ use App\Models\Post;
 use App\Models\PostAttachment;
 use App\Models\SiteNews;
 use App\Support\OrgScopes;
+use App\Support\VideoEmbed;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -112,6 +114,9 @@ class NewsController extends AdminController
             'body.en' => ['nullable', 'string', 'max:20000'],
             'body.ar' => ['nullable', 'string', 'max:20000'],
             'cover' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'videos' => ['nullable', 'array', 'max:'.VideoEmbed::MAX_VIDEOS],
+            'videos.*.url' => ['nullable', 'string', 'max:500'],
+            'videos.*.title' => ['nullable', 'string', 'max:150'],
             'scope' => ['nullable', 'string', Rule::in(OrgScopes::slugs())],
             'status' => ['required', Rule::in(array_keys(SiteNews::STATUSES))],
             'published_at' => ['nullable', 'date'],
@@ -120,12 +125,21 @@ class NewsController extends AdminController
         ]);
 
         $published = $data['status'] === 'published';
+        $videos = VideoEmbed::normalize($data['videos'] ?? []);
+
+        if ($videos['invalid'] !== []) {
+            throw ValidationException::withMessages([
+                'videos' => 'Lien vidéo non reconnu : '.implode(', ', array_map(fn (string $url) => Str::limit($url, 60), $videos['invalid']))
+                    .'. Liens https acceptés : YouTube, Vimeo, Dailymotion, Facebook, Instagram, TikTok.',
+            ]);
+        }
         $publishedAt = ! empty($data['published_at']) ? \Illuminate\Support\Carbon::parse($data['published_at']) : null;
 
         return [
             'title' => $this->translations($data['title'] ?? []),
             'excerpt' => $this->translations($data['excerpt'] ?? []) ?: null,
             'body' => $this->translations($data['body'] ?? []) ?: null,
+            'videos' => $videos['videos'] ?: null,
             'scope' => ($data['scope'] ?? null) ?: null,
             'status' => $data['status'],
             // Publiée sans date : parution immédiate. Une date future programme la parution.

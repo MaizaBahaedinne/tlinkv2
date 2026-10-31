@@ -43,6 +43,34 @@
                 </div>
             @endforeach
 
+            <h3>Vidéos</h3>
+            @php
+                $videoRows = collect(old('videos', $item->videos ?? []))->values()->all();
+                $videoRows = array_pad($videoRows, max(2, count($videoRows) + 1), ['url' => '', 'title' => '']);
+            @endphp
+            <div class="field {{ $errors->has('videos') || $errors->has('videos.*') ? 'has-error' : '' }}">
+                <p class="text-sm text-muted">Collez le lien de la vidéo : YouTube, Vimeo, Dailymotion, Facebook, Instagram ou TikTok (https). Elles s’affichent sous le texte de l’article. Une ligne vide est ignorée.</p>
+                <div id="video-rows">
+                    @foreach($videoRows as $i => $video)
+                        <div class="form-grid" style="margin-top:8px" data-video-row>
+                            <div class="field">
+                                <input type="url" name="videos[{{ $i }}][url]" maxlength="500" placeholder="https://www.youtube.com/watch?v=…" aria-label="Lien de la vidéo" value="{{ $video['url'] ?? '' }}">
+                                @php($platform = \App\Support\VideoEmbed::parse($video['url'] ?? null))
+                                @if($platform)
+                                    <p class="text-sm text-muted">{{ $platform['label'] }}{{ $platform['embed'] ? '' : ' (lien court : s’ouvre sur la plateforme)' }}</p>
+                                @endif
+                            </div>
+                            <div class="field">
+                                <input type="text" name="videos[{{ $i }}][title]" maxlength="150" placeholder="Légende (facultatif)" aria-label="Légende de la vidéo" value="{{ $video['title'] ?? '' }}">
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="add-video" style="margin-top:8px">+ Ajouter une vidéo</button>
+                @error('videos')<p class="error">{{ $message }}</p>@enderror
+                @error('videos.*')<p class="error">{{ $message }}</p>@enderror
+            </div>
+
             <h3>Publication</h3>
             <div class="form-grid">
                 <div class="field {{ $errors->has('status') ? 'has-error' : '' }}">
@@ -104,3 +132,24 @@
         </form>
     @endif
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        var box = document.getElementById('video-rows');
+        var button = document.getElementById('add-video');
+        if (!box || !button) return;
+        button.addEventListener('click', function () {
+            var rows = box.querySelectorAll('[data-video-row]');
+            if (rows.length >= {{ \App\Support\VideoEmbed::MAX_VIDEOS }}) return;
+            var clone = rows[rows.length - 1].cloneNode(true);
+            clone.querySelectorAll('input').forEach(function (input) {
+                input.value = '';
+                input.name = input.name.replace(/videos\[\d+\]/, 'videos[' + rows.length + ']');
+            });
+            clone.querySelectorAll('p').forEach(function (p) { p.remove(); });
+            box.appendChild(clone);
+        });
+    })();
+</script>
+@endpush

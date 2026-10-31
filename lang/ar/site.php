@@ -115,6 +115,8 @@ return [
         'comments_title' => 'التعليقات (:count)',
         'no_comments' => 'لا توجد تعليقات بعد.',
         'more_comments' => 'عرض كل التعليقات في T.Link',
+        'videos_title' => 'فيديو|فيديوهات',
+        'watch_on' => 'شاهد على :platform',
         'join_cta' => 'تفاعل وعلّق في T.Link',
         'member' => 'عضو',
         'reaction' => ['like' => 'إعجاب', 'support' => 'دعم', 'insightful' => 'مفيد', 'celebrate' => 'أحسنت'],

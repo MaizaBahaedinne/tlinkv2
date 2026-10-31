@@ -64,6 +64,29 @@
             </div>
         @endif
 
+        {{-- Vidéos (YouTube, Facebook, Instagram, TikTok…) : intégrations construites par App\Support\VideoEmbed --}}
+        @php($videos = $item->videoEmbeds())
+        @if($videos !== [])
+            <section class="mt-10" aria-labelledby="videos-title">
+                <h2 id="videos-title" class="font-display text-xl font-bold text-brand-900">{{ trans_choice('site.news.videos_title', count($videos)) }}</h2>
+                <div class="mt-4 space-y-8">
+                    @foreach($videos as $video)
+                        <figure>
+                            @if($video['embed'])
+                                <div class="mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-sm" style="{{ $video['layout'] === 'wide' ? 'aspect-ratio:16/9;' : 'max-width:360px;height:'.($video['platform'] === 'instagram' ? '640' : '740').'px;' }}">
+                                    <iframe src="{{ $video['embed'] }}" title="{{ $video['title'] !== '' ? $video['title'] : $video['label'].' — '.$title }}" class="h-full w-full border-0" loading="lazy" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+                                </div>
+                            @endif
+                            <figcaption class="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-slate-600">
+                                @if($video['title'] !== '')<span class="font-semibold text-slate-800">{{ $video['title'] }}</span>@endif
+                                <a href="{{ $video['url'] }}" target="_blank" rel="noopener noreferrer" class="{{ $video['embed'] ? 'font-semibold text-brand-700 hover:underline' : 'inline-flex rounded-full bg-brand-600 px-5 py-2.5 font-bold text-white hover:bg-brand-800' }}">{{ __('site.news.watch_on', ['platform' => $video['label']]) }}</a>
+                            </figcaption>
+                        </figure>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         {{-- Réactions et commentaires des membres, lus depuis la publication du fil T.Link --}}
         @if($feed)
             <section class="mt-10 border-t border-slate-200 pt-6" aria-labelledby="community-title">

@@ -115,6 +115,8 @@ return [
         'comments_title' => 'Comments (:count)',
         'no_comments' => 'No comments yet.',
         'more_comments' => 'See all comments in T.Link',
+        'videos_title' => 'Video|Videos',
+        'watch_on' => 'Watch on :platform',
         'join_cta' => 'React and comment in T.Link',
         'member' => 'Member',
         'reaction' => ['like' => 'Like', 'support' => 'Support', 'insightful' => 'Insightful', 'celebrate' => 'Bravo'],

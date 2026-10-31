@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\OrgScopes;
+use App\Support\VideoEmbed;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,12 +19,13 @@ class SiteNews extends Model
 
     protected $table = 'site_news';
 
-    protected $fillable = ['title', 'excerpt', 'body', 'cover_path', 'scope', 'author_id', 'feed_post_id', 'status', 'published_at'];
+    protected $fillable = ['title', 'excerpt', 'body', 'videos', 'cover_path', 'scope', 'author_id', 'feed_post_id', 'status', 'published_at'];
 
     protected $casts = [
         'title' => 'array',
         'excerpt' => 'array',
         'body' => 'array',
+        'videos' => 'array',
         'published_at' => 'datetime',
     ];
 
@@ -100,6 +102,26 @@ class SiteNews extends Model
         $excerpt = $this->text('excerpt', $locale);
 
         return $excerpt !== '' ? $excerpt : \Illuminate\Support\Str::limit(strip_tags($this->text('body', $locale)), 160);
+    }
+
+    /**
+     * Vidéos de l'article prêtes à afficher (liens non reconnus ignorés).
+     *
+     * @return array<int, array{platform: string, label: string, url: string, embed: ?string, layout: string, title: string}>
+     */
+    public function videoEmbeds(): array
+    {
+        $embeds = [];
+
+        foreach ((array) ($this->videos ?? []) as $video) {
+            $parsed = VideoEmbed::parse(is_array($video) ? ($video['url'] ?? null) : null);
+
+            if ($parsed !== null) {
+                $embeds[] = $parsed + ['title' => trim((string) ($video['title'] ?? ''))];
+            }
+        }
+
+        return $embeds;
     }
 
     public function coverUrl(): ?string
