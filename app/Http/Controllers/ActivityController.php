@@ -66,7 +66,7 @@ class ActivityController extends Controller
 
         $status = $activity->registrations()->where('user_id', $user->id)->value('status');
 
-        return back()->with('status', $status === 'waitlisted' ? 'Activité complète : vous êtes sur liste d’attente.' : 'Inscription enregistrée. Le jour J, scannez le QR code de l’activité pour valider votre présence.');
+        return back()->with('status', $status === 'waitlisted' ? 'Activité complète : vous êtes sur liste d’attente.' : 'Inscription enregistrée. Le jour J, scannez le QR code de l’activité depuis le menu de votre compte (Scanner un QR code) et donnez votre avis pour valider votre présence.');
     }
 
     public function cancel(Request $request, ClubActivity $activity): RedirectResponse
@@ -87,8 +87,55 @@ class ActivityController extends Controller
         return back()->with('status', 'Inscription annulée.');
     }
 
-    /** Adresse du QR code affiché par les organisateurs : valide la présence du membre inscrit, pendant la fenêtre de l'activité. */
-    public function checkin(Request $request, ClubActivity $activity, string $token): RedirectResponse
+    /** Scanner de QR code intégré à l'application (caméra du téléphone). */
+    public function scan(): View
+    {
+        return view('challenges.scan');
+    }
+
+    /** Adresse du QR code affiché par les organisateurs : ouvre le formulaire d'avis qui valide la présence. */
+    public function checkin(Request $request, ClubActivity $activity, string $token): View|RedirectResponse
+    {
+        $registration = $this->registrationForCheckin($request, $activity, $token);
+
+        if ($registration instanceof RedirectResponse) {
+            return $registration;
+        }
+
+        if ($registration->feedback_at !== null) {
+            return redirect()->route('activities.show', $activity)->with('status', 'Votre présence et votre avis sont déjà enregistrés. Merci !');
+        }
+
+        return view('challenges.feedback', ['activity' => $activity->load('club:id,title'), 'token' => $token]);
+    }
+
+    /** Avis du participant : l'envoi du formulaire valide sa présence. */
+    public function feedback(Request $request, ClubActivity $activity, string $token): RedirectResponse
+    {
+        $registration = $this->registrationForCheckin($request, $activity, $token);
+
+        if ($registration instanceof RedirectResponse) {
+            return $registration;
+        }
+
+        if ($registration->feedback_at !== null) {
+            return redirect()->route('activities.show', $activity)->with('status', 'Votre présence et votre avis sont déjà enregistrés. Merci !');
+        }
+
+        $data = $request->validate([
+            'feedback_overall' => ['required', 'integer', 'between:1,5'],
+            'feedback_organization' => ['required', 'integer', 'between:1,5'],
+            'feedback_content' => ['required', 'integer', 'between:1,5'],
+            'feedback_comment' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $registration->update($data + ['feedback_at' => now(), 'checked_in_at' => $registration->checked_in_at ?? now()]);
+
+        return redirect()->route('activities.show', $activity)->with('status', 'Présence validée, merci pour votre avis !');
+    }
+
+    /** Contrôle commun au formulaire d'avis : jeton, inscription et fenêtre de validation de présence. */
+    private function registrationForCheckin(Request $request, ClubActivity $activity, string $token): \App\Models\ActivityRegistration|RedirectResponse
     {
         abort_unless(hash_equals($activity->checkin_token, $token) && $activity->status === 'published', 404);
 
@@ -98,13 +145,11 @@ class ActivityController extends Controller
             return redirect()->route('activities.show', $activity)->with('error', 'Vous n’êtes pas inscrit à cette activité : inscrivez-vous d’abord, puis scannez à nouveau le QR code.');
         }
 
-        if (! $activity->checkinOpen()) {
+        if (! $activity->checkinOpen() && $registration->feedback_at === null) {
             return redirect()->route('activities.show', $activity)->with('error', 'La validation de présence n’est ouverte que de 1 h avant le début à 3 h après la fin de l’activité.');
         }
 
-        $registration->update(['checked_in_at' => $registration->checked_in_at ?? now()]);
-
-        return redirect()->route('activities.show', $activity)->with('status', 'Présence validée. Merci et bonne activité !');
+        return $registration;
     }
 
     /** Une activité publiée est visible de tous les membres ; sinon seulement des gestionnaires des clubs organisateurs. */

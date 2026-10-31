@@ -61,6 +61,7 @@ class ChallengeController extends Controller
 
         $challenge->load('criteria');
         $activities = $challenge->activities()->where('status', 'published')->with(['club:id,title', 'organizers.club:id,title', 'report.members.user:id,name', 'report.items', 'report.partners', 'scores' => fn ($query) => $query->where('evaluator_id', $user->id)])->orderBy('starts_at')->get();
+        $activities->each(fn (ClubActivity $activity) => $activity->report?->setRelation('activity', $activity->setRelation('challenge', $challenge)));
         $myNodes = ActivityAccess::nodeIds($user);
 
         return view('challenges.evaluation', [

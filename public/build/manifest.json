@@ -76,7 +76,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BU-om28S.css",
+    "file": "assets/app-unabPs5P.css",
     "name": "app",
     "names": [
       "app.css"
@@ -85,7 +85,7 @@
     "isEntry": true
   },
   "resources/css/site.css": {
-    "file": "assets/site-lzxkoN31.css",
+    "file": "assets/site-BH9Z2p2B.css",
     "name": "site",
     "names": [
       "site.css"
@@ -94,13 +94,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-iMGIElRA.js",
+    "file": "assets/main-DKgJ-l7p.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-BU-om28S.css"
+      "assets/app-unabPs5P.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",
@@ -125,6 +125,15 @@
     "file": "assets/qr-CxXcOrPi.js",
     "name": "qr",
     "src": "resources/js/qr.js",
+    "isEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js"
+    ]
+  },
+  "resources/js/scan.js": {
+    "file": "assets/scan-QQo8wr0R.js",
+    "name": "scan",
+    "src": "resources/js/scan.js",
     "isEntry": true,
     "imports": [
       "_rolldown-runtime-WkwZ5CU-.js"

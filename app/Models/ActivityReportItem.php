@@ -19,4 +19,10 @@ class ActivityReportItem extends Model
     {
         return ActivityReport::fileUrl($this->path);
     }
+
+    /** Lien de l'élément : l'adresse de la publication, ou (anciens comptes rendus) le fichier envoyé. */
+    public function href(): ?string
+    {
+        return $this->url ?: $this->fileUrl();
+    }
 }

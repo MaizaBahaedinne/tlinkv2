@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\ActivityReport;
-use App\Models\ActivityReportItem;
 use App\Models\AppNotification;
 use App\Models\ClubActivity;
 use App\Support\Challenges\ActivityAccess;
 use App\Support\OrgAccess;
+use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,13 +17,12 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
- * Compte rendu de clôture d'une activité : le club le rédige (RH, marketing, événements et sponsoring),
- * le président le valide, puis le comité d'évaluation du défi le reçoit.
+ * Compte rendu de clôture d'une activité : le club le rédige (bilan, auto-évaluation, RH, marketing, sponsoring et budget),
+ * le président le valide, puis le comité d'évaluation du défi le reçoit. Aucune photo n'est hébergée : la preuve est une
+ * publication de la page Facebook du club.
  */
 class ActivityReportController extends AdminController
 {
-    private const IMAGE_RULES = ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'];
-
     public function show(Request $request, ClubActivity $activity): View|RedirectResponse
     {
         $this->authorizeActivity($request, $activity);
@@ -36,6 +35,7 @@ class ActivityReportController extends AdminController
         $activity->loadMissing(['club:id,title', 'challenge:id,title']);
         $report?->load(['members.user:id,name', 'items', 'partners', 'submitter:id,name', 'validator:id,name']);
         $report ??= new ActivityReport(['status' => 'draft']);
+        $report->setRelation('activity', $activity);
         $editable = $report->isEditable();
 
         return view('admin.activities.report', [
@@ -47,6 +47,8 @@ class ActivityReportController extends AdminController
             'memberRows' => $this->memberRows($report),
             'partnerRows' => $this->partnerRows($report),
             'mediaRows' => $this->mediaRows($report),
+            'self' => $report->selfEvaluation(),
+            'feedback' => $report->participantFeedback(),
         ]);
     }
 
@@ -64,28 +66,25 @@ class ActivityReportController extends AdminController
 
         $data = $request->validate($this->rules());
         $submit = $data['action'] === 'submit';
+        $grid = $activity->challenge->criteriaOf($activity->in_theme ? 'theme' : 'off_theme')->keyBy('id');
         $members = $this->members((array) ($data['members'] ?? []), $activity);
         $partners = $this->partners((array) ($data['partners'] ?? []));
         $media = $this->media((array) ($data['media'] ?? []));
-
-        $report ??= new ActivityReport(['activity_id' => $activity->id, 'status' => 'draft']);
-        $existing = $report->exists ? $report->items()->get() : collect();
-        $removed = collect((array) ($data['remove_files'] ?? []))->map(fn ($id): int => (int) $id);
-        $keptProofs = $existing->where('kind', 'proof')->reject(fn (ActivityReportItem $item): bool => $removed->contains($item->id))->count();
-        $newProofs = count($request->file('proofs', []));
-
-        if ($keptProofs + $newProofs > ActivityReport::MAX_PROOFS) {
-            throw ValidationException::withMessages(['proofs' => 'Une activité accepte au plus '.ActivityReport::MAX_PROOFS.' preuves en photo.']);
-        }
+        $selfScores = $this->selfScores((array) ($data['self'] ?? []), $grid);
 
         if ($submit) {
-            $this->assertReadyToSubmit($data, $members, $keptProofs + $newProofs);
+            $this->assertReadyToSubmit($data, $members, $grid, $selfScores);
         }
 
-        DB::transaction(function () use ($request, $activity, $report, $data, $submit, $members, $partners, $media, $existing, $removed): void {
+        $report ??= new ActivityReport(['activity_id' => $activity->id, 'status' => 'draft']);
+
+        DB::transaction(function () use ($request, $activity, $report, $data, $submit, $members, $partners, $media, $selfScores): void {
             $report->fill([
                 'summary' => $data['summary'] ?? null,
                 'hr_summary' => $data['hr_summary'] ?? null,
+                'self_scores' => $selfScores === [] ? null : $selfScores,
+                'self_strengths' => $data['self_strengths'] ?? null,
+                'self_improvements' => $data['self_improvements'] ?? null,
                 'budget_planned' => $data['budget_planned'] ?? null,
                 'budget_spent' => $data['budget_spent'] ?? null,
                 'budget_income' => $data['budget_income'] ?? null,
@@ -103,28 +102,23 @@ class ActivityReportController extends AdminController
             $report->members()->createMany($members);
             $report->partners()->delete();
             $report->partners()->createMany($partners);
-            $report->items()->whereIn('kind', array_keys(ActivityReport::MEDIA_KINDS))->delete();
+
+            // Preuve, affiche et retombées sont des liens : les éventuelles pièces envoyées avant sur le serveur sont retirées.
+            foreach ($report->items()->whereNotNull('path')->pluck('path') as $path) {
+                Storage::disk('public')->delete($path);
+            }
+
+            $report->items()->whereIn('kind', ['proof', 'poster', ...array_keys(ActivityReport::MEDIA_KINDS)])->delete();
+
+            if (filled($data['proof_url'] ?? null)) {
+                $report->items()->create(['kind' => 'proof', 'url' => trim($data['proof_url'])]);
+            }
+
+            if (filled($data['poster_url'] ?? null)) {
+                $report->items()->create(['kind' => 'poster', 'url' => trim($data['poster_url'])]);
+            }
+
             $report->items()->createMany($media);
-
-            foreach ($existing->whereIn('id', $removed->all())->whereIn('kind', ['poster', 'proof']) as $item) {
-                $this->deleteFile($item);
-                $item->delete();
-            }
-
-            $directory = 'activity-reports/'.$report->id;
-
-            if ($request->hasFile('poster')) {
-                foreach ($report->items()->where('kind', 'poster')->get() as $old) {
-                    $this->deleteFile($old);
-                    $old->delete();
-                }
-
-                $report->items()->create(['kind' => 'poster', 'path' => $request->file('poster')->store($directory, 'public')]);
-            }
-
-            foreach ((array) $request->file('proofs', []) as $proof) {
-                $report->items()->create(['kind' => 'proof', 'path' => $proof->store($directory, 'public')]);
-            }
 
             if ($submit) {
                 $this->notify(
@@ -203,6 +197,11 @@ class ActivityReportController extends AdminController
         return [
             'action' => ['required', Rule::in(['draft', 'submit'])],
             'summary' => ['nullable', 'string', 'max:5000'],
+            'self' => ['nullable', 'array'],
+            'self.*.points' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'self.*.comment' => ['nullable', 'string', 'max:500'],
+            'self_strengths' => ['nullable', 'string', 'max:3000'],
+            'self_improvements' => ['nullable', 'string', 'max:3000'],
             'hr_summary' => ['nullable', 'string', 'max:3000'],
             'budget_planned' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'budget_spent' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
@@ -222,12 +221,56 @@ class ActivityReportController extends AdminController
             'media.*.kind' => ['nullable', Rule::in(array_keys(ActivityReport::MEDIA_KINDS))],
             'media.*.label' => ['nullable', 'string', 'max:160'],
             'media.*.url' => ['nullable', 'url:http,https', 'max:500'],
-            'poster' => ['nullable', ...self::IMAGE_RULES],
-            'proofs' => ['nullable', 'array', 'max:'.ActivityReport::MAX_PROOFS],
-            'proofs.*' => [...self::IMAGE_RULES],
-            'remove_files' => ['nullable', 'array'],
-            'remove_files.*' => ['integer'],
+            'proof_url' => ['nullable', 'url:https', 'max:500', $this->facebookLink()],
+            'poster_url' => ['nullable', 'url:http,https', 'max:500'],
         ];
+    }
+
+    /** La preuve de l'activité est une publication de la page Facebook du club. */
+    private function facebookLink(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $host = strtolower((string) parse_url((string) $value, PHP_URL_HOST));
+            $facebook = in_array($host, ['facebook.com', 'fb.com', 'fb.watch'], true) || str_ends_with($host, '.facebook.com') || str_ends_with($host, '.fb.com');
+
+            if (! $facebook) {
+                $fail('Le lien doit être celui d’une publication de la page Facebook du club (facebook.com ou fb.watch).');
+            }
+        };
+    }
+
+    /**
+     * Auto-évaluation : points (de 0 au maximum du critère) et justification pour chaque critère du barème de l'activité.
+     *
+     * @param  array<int|string, mixed>  $rows
+     * @param  \Illuminate\Support\Collection<int, \App\Models\ChallengeCriterion>  $grid
+     * @return array<int, array{points: float|null, comment: string|null}>
+     */
+    private function selfScores(array $rows, $grid): array
+    {
+        $scores = [];
+
+        foreach ($grid as $id => $criterion) {
+            $row = (array) ($rows[$id] ?? []);
+            $points = $row['points'] ?? null;
+            $comment = filled($row['comment'] ?? null) ? trim((string) $row['comment']) : null;
+
+            if ($points === null || $points === '') {
+                if ($comment !== null) {
+                    $scores[$id] = ['points' => null, 'comment' => $comment];
+                }
+
+                continue;
+            }
+
+            if ((float) $points > $criterion->max_points) {
+                throw ValidationException::withMessages(["self.$id.points" => "La note doit être comprise entre 0 et {$criterion->max_points}."]);
+            }
+
+            $scores[$id] = ['points' => round((float) $points, 2), 'comment' => $comment];
+        }
+
+        return $scores;
     }
 
     /**
@@ -323,8 +366,10 @@ class ActivityReportController extends AdminController
     /**
      * @param  array<string, mixed>  $data
      * @param  array<int, array<string, mixed>>  $members
+     * @param  \Illuminate\Support\Collection<int, \App\Models\ChallengeCriterion>  $grid
+     * @param  array<int, array{points: float|null, comment: string|null}>  $selfScores
      */
-    private function assertReadyToSubmit(array $data, array $members, int $proofs): void
+    private function assertReadyToSubmit(array $data, array $members, $grid, array $selfScores): void
     {
         $errors = [];
 
@@ -332,12 +377,19 @@ class ActivityReportController extends AdminController
             $errors['summary'] = 'Rédigez le bilan de l’activité avant de la soumettre.';
         }
 
+        foreach ($grid as $id => $criterion) {
+            if (($selfScores[$id]['points'] ?? null) === null) {
+                $errors['self'] = 'Auto-évaluation : notez chaque critère du barème.';
+                $errors["self.$id.points"] = "Notez « {$criterion->label} ».";
+            }
+        }
+
         if ($members === []) {
             $errors['members'] = 'Partie RH : notez l’implication d’au moins un membre participant.';
         }
 
-        if ($proofs === 0) {
-            $errors['proofs'] = 'Partie marketing : ajoutez au moins une preuve de l’activité (photo).';
+        if (blank($data['proof_url'] ?? null)) {
+            $errors['proof_url'] = 'Partie marketing : indiquez le lien de la publication Facebook qui prouve l’activité.';
         }
 
         if (! isset($data['budget_spent']) || $data['budget_spent'] === '') {
@@ -346,13 +398,6 @@ class ActivityReportController extends AdminController
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
-        }
-    }
-
-    private function deleteFile(ActivityReportItem $item): void
-    {
-        if ($item->path !== null) {
-            Storage::disk('public')->delete($item->path);
         }
     }
 

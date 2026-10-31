@@ -46,7 +46,8 @@
                     @if($registration->status === 'waitlisted')
                         <strong class="text-amber-700">Vous êtes sur liste d’attente.</strong> Vous serez inscrit si une place se libère.
                     @else
-                        <strong class="text-emerald-700">Vous êtes inscrit.</strong> Le jour de l’activité, scannez le QR code affiché par les organisateurs avec l’appareil photo de votre smartphone pour valider votre présence {{ $activity->checkinOpen() ? '(ouvert maintenant)' : '(ouvert dès 1 h avant le début)' }}.
+                        <strong class="text-emerald-700">Vous êtes inscrit.</strong> Le jour de l’activité, ouvrez le menu de votre compte, choisissez « Scanner un QR code », visez le QR code affiché par les organisateurs puis remplissez le formulaire d’avis : l’envoi valide votre présence {{ $activity->checkinOpen() ? '(ouvert maintenant)' : '(ouvert dès 1 h avant le début)' }}.
+                        @if($activity->checkinOpen())<a href="{{ route('activities.scan') }}" class="ml-1 font-semibold text-tlink-blue hover:underline"><i class="fa-solid fa-qrcode" aria-hidden="true"></i> Scanner maintenant</a>@endif
                     @endif
                 </p>
                 <form method="post" action="{{ route('activities.cancel', $activity) }}" class="mt-3">@csrf @method('DELETE')<button type="submit" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Annuler mon inscription</button></form>

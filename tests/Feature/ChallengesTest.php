@@ -341,9 +341,27 @@ class ChallengesTest extends TestCase
         $this->assertSame(0, $activity->registrations()->whereNotNull('checked_in_at')->count());
 
         $this->actingAs($member)->get("/activites/{$activity->id}/presence/mauvais-jeton")->assertNotFound();
-        $this->actingAs($member)->get($url)->assertRedirect("/activites/{$activity->id}")->assertSessionHas('status');
-        $this->assertNotNull($activity->registrations()->first()->checked_in_at);
+        $this->actingAs($member)->get($url)->assertOk()->assertSee('Votre avis')->assertSee('valide votre présence');
+        $this->assertNull($activity->registrations()->first()->checked_in_at);
+
+        // Le formulaire exige les trois notes de 1 à 5.
+        $this->actingAs($member)->post($url, ['feedback_overall' => 5])->assertSessionHasErrors(['feedback_organization', 'feedback_content']);
+        $this->actingAs($member)->post($url, ['feedback_overall' => 6, 'feedback_organization' => 4, 'feedback_content' => 4])->assertSessionHasErrors('feedback_overall');
+        $this->assertNull($activity->registrations()->first()->checked_in_at);
+
+        $this->actingAs($stranger)->post($url, ['feedback_overall' => 5, 'feedback_organization' => 5, 'feedback_content' => 5])->assertSessionHas('error');
+        $this->assertSame(0, $activity->registrations()->whereNotNull('checked_in_at')->count());
+
+        $this->actingAs($member)->post($url, ['feedback_overall' => 5, 'feedback_organization' => 4, 'feedback_content' => 3, 'feedback_comment' => 'Très bien organisé'])->assertRedirect("/activites/{$activity->id}")->assertSessionHas('status');
+        $registration = $activity->registrations()->first();
+        $this->assertNotNull($registration->checked_in_at);
+        $this->assertSame([5, 4, 3, 'Très bien organisé'], [$registration->feedback_overall, $registration->feedback_organization, $registration->feedback_content, $registration->feedback_comment]);
         $this->actingAs($member)->get("/activites/{$activity->id}")->assertSee('Présence validée');
+
+        // Un second scan n'écrase pas l'avis déjà donné.
+        $this->actingAs($member)->get($url)->assertRedirect("/activites/{$activity->id}");
+        $this->actingAs($member)->post($url, ['feedback_overall' => 1, 'feedback_organization' => 1, 'feedback_content' => 1])->assertRedirect("/activites/{$activity->id}");
+        $this->assertSame(5, $registration->fresh()->feedback_overall);
 
         // Trop tard : 3 h après la fin.
         $late = User::factory()->create();
@@ -351,7 +369,18 @@ class ChallengesTest extends TestCase
         $this->actingAs($late)->post("/activites/{$activity->id}/inscription");
         Carbon::setTestNow($activity->endsAt()->copy()->addHours(4));
         $this->actingAs($late)->get($url)->assertSessionHas('error');
+        $this->actingAs($late)->post($url, ['feedback_overall' => 5, 'feedback_organization' => 5, 'feedback_content' => 5])->assertSessionHas('error');
         $this->assertNull($activity->registrations()->where('user_id', $late->id)->value('checked_in_at'));
+    }
+
+    public function test_in_app_scanner_page_and_menu_entry(): void
+    {
+        $member = User::factory()->create();
+
+        $this->actingAs($member)->get('/scanner')->assertOk()->assertSee('Scanner un QR code')->assertSee('data-scanner', false);
+        $this->actingAs($member)->get('/defis')->assertOk()->assertSee(route('activities.scan'), false);
+        auth()->logout();
+        $this->get('/scanner')->assertRedirect();
     }
 
     public function test_qr_page_is_reserved_to_the_organizing_clubs(): void

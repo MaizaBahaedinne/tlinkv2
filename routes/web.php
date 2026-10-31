@@ -168,7 +168,9 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/activites/{activity}', [ActivityController::class, 'show'])->whereNumber('activity')->name('activities.show');
         Route::post('/activites/{activity}/inscription', [ActivityController::class, 'register'])->whereNumber('activity')->middleware('throttle:20,1')->name('activities.register');
         Route::delete('/activites/{activity}/inscription', [ActivityController::class, 'cancel'])->whereNumber('activity')->name('activities.cancel');
+        Route::get('/scanner', [ActivityController::class, 'scan'])->name('activities.scan');
         Route::get('/activites/{activity}/presence/{token}', [ActivityController::class, 'checkin'])->whereNumber('activity')->middleware('throttle:30,1')->name('activities.checkin');
+        Route::post('/activites/{activity}/presence/{token}', [ActivityController::class, 'feedback'])->whereNumber('activity')->middleware('throttle:30,1')->name('activities.feedback');
     });
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).

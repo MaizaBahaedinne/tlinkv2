@@ -29,7 +29,7 @@ class ActivityReport extends Model
         'other' => 'Autre',
     ];
 
-    /** Retombées médias : le lien est facultatif pour la télévision, la radio et la presse. */
+    /** Retombées médias : un lien est exigé pour Facebook et Instagram, facultatif pour la télévision, la radio et la presse. */
     public const MEDIA_KINDS = [
         'facebook' => 'Publication Facebook',
         'instagram' => 'Publication Instagram',
@@ -38,14 +38,16 @@ class ActivityReport extends Model
         'magazine' => 'Article de magazine',
     ];
 
-    public const MAX_PROOFS = 10;
+    /** Notes de 1 à 5 de l'avis d'un participant. */
+    public const RATINGS = [1 => 'Mauvais', 2 => 'Passable', 3 => 'Bien', 4 => 'Très bien', 5 => 'Excellent'];
 
     protected $fillable = [
-        'activity_id', 'status', 'summary', 'hr_summary', 'budget_planned', 'budget_spent', 'budget_income', 'budget_notes',
+        'activity_id', 'status', 'summary', 'hr_summary', 'self_scores', 'self_strengths', 'self_improvements', 'budget_planned', 'budget_spent', 'budget_income', 'budget_notes',
         'president_comment', 'submitted_at', 'submitted_by', 'validated_at', 'validated_by',
     ];
 
     protected $casts = [
+        'self_scores' => 'array',
         'budget_planned' => 'float',
         'budget_spent' => 'float',
         'budget_income' => 'float',
@@ -104,6 +106,7 @@ class ActivityReport extends Model
         return $this->items->where('kind', 'poster')->values();
     }
 
+    /** Preuve de l'activité : la publication Facebook de la page du club (aucune photo n'est hébergée). */
     public function proofs()
     {
         return $this->items->where('kind', 'proof')->values();
@@ -112,6 +115,52 @@ class ActivityReport extends Model
     public function mediaLinks()
     {
         return $this->items->whereIn('kind', array_keys(self::MEDIA_KINDS))->values();
+    }
+
+    /**
+     * Auto-évaluation du club selon le barème qui correspond à l'activité : ne compte pas dans la note du comité.
+     *
+     * @return array{rows: \Illuminate\Support\Collection<int, array{criterion: ChallengeCriterion, points: ?float, comment: ?string}>, total: ?float, max: int}
+     */
+    public function selfEvaluation(): array
+    {
+        $activity = $this->activity;
+        $grid = $activity->challenge->criteriaOf($activity->in_theme ? 'theme' : 'off_theme');
+        $saved = (array) $this->self_scores;
+
+        $rows = $grid->map(fn (ChallengeCriterion $criterion): array => [
+            'criterion' => $criterion,
+            'points' => isset($saved[$criterion->id]['points']) && $saved[$criterion->id]['points'] !== '' ? (float) $saved[$criterion->id]['points'] : null,
+            'comment' => filled($saved[$criterion->id]['comment'] ?? null) ? (string) $saved[$criterion->id]['comment'] : null,
+        ])->values();
+
+        return [
+            'rows' => $rows,
+            'total' => $rows->isNotEmpty() && $rows->every(fn (array $row): bool => $row['points'] !== null) ? round($rows->sum('points'), 2) : null,
+            'max' => (int) $grid->sum('max_points'),
+        ];
+    }
+
+    /**
+     * Avis des participants recueillis au scan du QR code (anonymes dans le compte rendu).
+     *
+     * @return array{count: int, registered: int, present: int, overall: ?float, organization: ?float, content: ?float, comments: array<int, string>}
+     */
+    public function participantFeedback(): array
+    {
+        $activity = $this->activity;
+        $answers = $activity->registrations()->whereNotNull('feedback_at')->orderBy('feedback_at')->get();
+        $average = fn (string $column): ?float => $answers->isEmpty() ? null : round((float) $answers->avg($column), 2);
+
+        return [
+            'count' => $answers->count(),
+            'registered' => $activity->registeredCount(),
+            'present' => $activity->registrations()->whereNotNull('checked_in_at')->count(),
+            'overall' => $average('feedback_overall'),
+            'organization' => $average('feedback_organization'),
+            'content' => $average('feedback_content'),
+            'comments' => $answers->pluck('feedback_comment')->filter(fn ($comment): bool => filled($comment))->values()->all(),
+        ];
     }
 
     /** Montant total des soutiens financiers déclarés. */
