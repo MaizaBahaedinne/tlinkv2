@@ -38,6 +38,13 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'challenges', 'name' => 'Défis et activités', 'description' => 'Défis thématiques des chapitres et projets, activités des clubs, évaluation par un comité.',
+                'children' => [
+                    ['key' => 'challenges.challenges', 'name' => 'Défis', 'description' => 'Lancer un défi thématique : sujet, calendrier, barèmes de notation et comité d’évaluation. Désactiver ce module ferme les défis pour tous.', 'actions' => self::CRUD],
+                    ['key' => 'challenges.activities', 'name' => 'Activités des clubs', 'description' => 'Activités proposées par les clubs dans un défi : inscriptions, co-organisation et présence par QR code.', 'actions' => self::CRUD],
+                ],
+            ],
+            [
                 'key' => 'members', 'name' => 'Communauté', 'description' => 'Membres, profils et adhésions.',
                 'children' => [
                     ['key' => 'members.users', 'name' => 'Comptes utilisateurs', 'description' => 'Liste, fiches et administration des comptes.', 'actions' => self::CRUD],

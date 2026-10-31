@@ -87,6 +87,9 @@ class AppServiceProvider extends ServiceProvider
             // Mentorat : entrée de la navigation (uniquement si le module est ouvert).
             $view->with('mentoringEnabled', $user !== null && \App\Support\Mentoring\Mentoring::enabled());
 
+            // Défis et activités des clubs : entrée de la navigation (module actif).
+            $view->with('challengesEnabled', $user !== null && \App\Support\Challenges\Challenges::enabled());
+
             // Tunivisions Stores : entrée de la navigation (uniquement si la boutique est ouverte) et pastille du panier.
             $storeOpen = $user !== null && \App\Support\Store\StoreSettings::enabled();
             $view->with('storeEnabled', $storeOpen);

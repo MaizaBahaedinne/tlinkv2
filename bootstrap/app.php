@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.can' => EnsureAdminAccess::class,
             'admin.module' => \App\Http\Middleware\EnsureModuleAccess::class,
             'store.open' => \App\Http\Middleware\EnsureStoreOpen::class,
+            'challenges.open' => \App\Http\Middleware\EnsureChallengesOpen::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

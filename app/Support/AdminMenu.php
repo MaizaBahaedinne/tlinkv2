@@ -46,6 +46,8 @@ class AdminMenu
         'admin.newsletter.*' => 'website.newsletter',
         'admin.approvals.*' => 'governance.approvals',
         'admin.events.*' => 'events.events',
+        'admin.challenges.*' => 'challenges.challenges',
+        'admin.activities.*' => 'challenges.activities',
         'admin.badges.*' => 'gamification.badges',
         'admin.companies.*' => 'members.companies',
         'admin.verifications.*' => 'members.verification',
@@ -178,6 +180,8 @@ class AdminMenu
                 'items' => [
                     ['label' => 'Approbations', 'route' => 'admin.approvals.index', 'icon' => 'shield', 'match' => 'admin.approvals.*', 'perms' => ['approval.review'], 'badge' => 'approvals'],
                     ['label' => 'Événements', 'route' => 'admin.events.index', 'icon' => 'calendar', 'match' => 'admin.events.*', 'perms' => ['event.manage']],
+                    ['label' => 'Défis', 'route' => 'admin.challenges.index', 'icon' => 'award', 'match' => 'admin.challenges.*', 'perms' => ['event.manage']],
+                    ['label' => 'Activités des clubs', 'route' => 'admin.activities.index', 'icon' => 'calendar', 'match' => 'admin.activities.*', 'perms' => ['event.manage']],
                 ],
             ],
         ];

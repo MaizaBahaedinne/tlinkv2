@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\AcademyController;
 use App\Http\Controllers\AcademyQuizController;
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\BadgeController;
+use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
 use App\Http\Controllers\MemberProfileController;
@@ -155,6 +157,18 @@ Route::middleware('auth')->group(function (): void {
             Route::post('/{ticket}/cloture', [MentoringController::class, 'close'])->whereNumber('ticket')->name('close');
             Route::post('/{ticket}/reouverture', [MentoringController::class, 'reopen'])->whereNumber('ticket')->name('reopen');
         });
+    });
+
+    // Défis thématiques et activités des clubs : consultation, inscription, présence par QR code, notation du comité.
+    Route::middleware('challenges.open')->group(function (): void {
+        Route::get('/defis', [ChallengeController::class, 'index'])->name('challenges.index');
+        Route::get('/defis/{challenge}', [ChallengeController::class, 'show'])->whereNumber('challenge')->name('challenges.show');
+        Route::get('/defis/{challenge}/evaluation', [ChallengeController::class, 'evaluation'])->whereNumber('challenge')->name('challenges.evaluation');
+        Route::post('/defis/{challenge}/evaluation/{activity}', [ChallengeController::class, 'score'])->whereNumber(['challenge', 'activity'])->middleware('throttle:60,1')->name('challenges.score');
+        Route::get('/activites/{activity}', [ActivityController::class, 'show'])->whereNumber('activity')->name('activities.show');
+        Route::post('/activites/{activity}/inscription', [ActivityController::class, 'register'])->whereNumber('activity')->middleware('throttle:20,1')->name('activities.register');
+        Route::delete('/activites/{activity}/inscription', [ActivityController::class, 'cancel'])->whereNumber('activity')->name('activities.cancel');
+        Route::get('/activites/{activity}/presence/{token}', [ActivityController::class, 'checkin'])->whereNumber('activity')->middleware('throttle:30,1')->name('activities.checkin');
     });
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
@@ -466,6 +480,28 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('evenements/{event}', [Admin\EventController::class, 'update'])->name('events.update');
             Route::delete('evenements/{event}', [Admin\EventController::class, 'destroy'])->name('events.destroy');
             Route::patch('evenements/{event}/inscriptions/{registration}', [Admin\EventController::class, 'updateRegistration'])->name('events.registrations.update');
+
+            // Défis thématiques (bureaux de chapitres et de projets) et activités des clubs.
+            Route::get('defis', [Admin\ChallengeController::class, 'index'])->name('challenges.index');
+            Route::get('defis/creer', [Admin\ChallengeController::class, 'create'])->name('challenges.create');
+            Route::post('defis', [Admin\ChallengeController::class, 'store'])->name('challenges.store');
+            Route::get('defis/{challenge}', [Admin\ChallengeController::class, 'show'])->whereNumber('challenge')->name('challenges.show');
+            Route::get('defis/{challenge}/modifier', [Admin\ChallengeController::class, 'edit'])->whereNumber('challenge')->name('challenges.edit');
+            Route::put('defis/{challenge}', [Admin\ChallengeController::class, 'update'])->whereNumber('challenge')->name('challenges.update');
+            Route::delete('defis/{challenge}', [Admin\ChallengeController::class, 'destroy'])->whereNumber('challenge')->name('challenges.destroy');
+
+            Route::get('activites', [Admin\ActivityController::class, 'index'])->name('activities.index');
+            Route::get('activites/creer', [Admin\ActivityController::class, 'create'])->name('activities.create');
+            Route::post('activites', [Admin\ActivityController::class, 'store'])->name('activities.store');
+            Route::get('activites/{activity}', [Admin\ActivityController::class, 'show'])->whereNumber('activity')->name('activities.show');
+            Route::get('activites/{activity}/modifier', [Admin\ActivityController::class, 'edit'])->whereNumber('activity')->name('activities.edit');
+            Route::put('activites/{activity}', [Admin\ActivityController::class, 'update'])->whereNumber('activity')->name('activities.update');
+            Route::delete('activites/{activity}', [Admin\ActivityController::class, 'destroy'])->whereNumber('activity')->name('activities.destroy');
+            Route::get('activites/{activity}/qr', [Admin\ActivityController::class, 'qr'])->whereNumber('activity')->name('activities.qr');
+            Route::post('activites/{activity}/co-organisateurs', [Admin\ActivityController::class, 'addOrganizer'])->whereNumber('activity')->name('activities.organizers.store');
+            Route::patch('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'respondOrganizer'])->whereNumber('organizer')->name('activities.organizers.respond');
+            Route::delete('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'removeOrganizer'])->whereNumber('organizer')->name('activities.organizers.destroy');
+            Route::patch('activites/{activity}/inscriptions/{registration}', [Admin\ActivityController::class, 'updateRegistration'])->whereNumber(['activity', 'registration'])->name('activities.registrations.update');
 
             // Tunivisions Academy : calendrier des sessions en direct
             Route::get('academy/sessions', [Admin\AcademySessionController::class, 'index'])->name('academy.sessions.index');
