@@ -42,8 +42,18 @@ class IdentityVerificationController extends Controller
             'id_front' => [...$image, 'dimensions:min_width=600,min_height=400'],
             'id_back' => [...$image, 'dimensions:min_width=600,min_height=400'],
             'selfie' => [...$image, 'dimensions:min_width=400,min_height=400'],
+            'cin_number' => ['required', 'regex:/^\d{8}$/'],
+            'card_issued_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:today', 'after_or_equal:1990-01-01'],
+            'card_issued_place' => ['required', 'string', 'min:2', 'max:100'],
             'consent' => ['accepted'],
         ], [
+            'cin_number.required' => 'Le numéro de la carte d’identité est obligatoire.',
+            'cin_number.regex' => 'Le numéro de la carte d’identité tunisienne comporte exactement 8 chiffres.',
+            'card_issued_on.required' => 'La date de délivrance de la carte est obligatoire.',
+            'card_issued_on.date_format' => 'La date de délivrance n’est pas valide.',
+            'card_issued_on.before_or_equal' => 'La date de délivrance ne peut pas être dans le futur.',
+            'card_issued_on.after_or_equal' => 'La date de délivrance n’est pas valide.',
+            'card_issued_place.required' => 'La ville de délivrance de la carte est obligatoire.',
             'id_front.required' => 'La photo du recto de la carte d’identité est obligatoire.',
             'id_back.required' => 'La photo du verso de la carte d’identité est obligatoire.',
             'selfie.required' => 'Le selfie est obligatoire.',
@@ -60,6 +70,10 @@ class IdentityVerificationController extends Controller
             'front' => $data['id_front'],
             'back' => $data['id_back'],
             'selfie' => $data['selfie'],
+        ], [
+            'cin_number' => $data['cin_number'],
+            'card_issued_on' => $data['card_issued_on'],
+            'card_issued_place' => trim($data['card_issued_place']),
         ]);
 
         return redirect()->route('profile.verification')->with('status', 'Documents envoyés. Un administrateur va les examiner : vous serez notifié de la décision.');

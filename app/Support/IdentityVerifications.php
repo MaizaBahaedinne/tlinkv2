@@ -20,8 +20,11 @@ class IdentityVerifications
 {
     private const DISK = 'local';
 
-    /** @param array{front: UploadedFile, back: UploadedFile, selfie: UploadedFile} $files */
-    public static function submit(User $user, array $files): IdentityVerification
+    /**
+     * @param  array{front: UploadedFile, back: UploadedFile, selfie: UploadedFile}  $files
+     * @param  array{cin_number: string, card_issued_on: string, card_issued_place: string}  $details
+     */
+    public static function submit(User $user, array $files, array $details): IdentityVerification
     {
         $paths = [];
 
@@ -29,7 +32,7 @@ class IdentityVerifications
             $paths[$column] = self::store($user, $files[$key]);
         }
 
-        return IdentityVerification::query()->create(['user_id' => $user->id, 'status' => 'pending'] + $paths);
+        return IdentityVerification::query()->create(['user_id' => $user->id, 'status' => 'pending'] + $paths + $details);
     }
 
     public static function latestFor(User $user): ?IdentityVerification
@@ -104,7 +107,7 @@ class IdentityVerifications
         ]);
     }
 
-    /** Supprime les pièces du disque et les références en base. */
+    /** Supprime les pièces du disque, les références en base et les informations saisies sur la carte. */
     public static function purge(IdentityVerification $verification): void
     {
         foreach (IdentityVerification::DOCUMENTS as $column) {
@@ -113,7 +116,10 @@ class IdentityVerifications
             }
         }
 
-        $verification->update(['id_front_path' => null, 'id_back_path' => null, 'selfie_path' => null]);
+        $verification->update([
+            'id_front_path' => null, 'id_back_path' => null, 'selfie_path' => null,
+            'cin_number' => null, 'card_issued_on' => null, 'card_issued_place' => null,
+        ]);
     }
 
     private static function store(User $user, UploadedFile $file): string

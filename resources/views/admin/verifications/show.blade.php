@@ -15,7 +15,16 @@
             @if(! $verification->isPending())
                 <p><x-admin.badge :status="$verification->status" /> Décision du {{ $verification->reviewed_at?->format('d/m/Y H:i') }}@if($verification->reviewer) par {{ $verification->reviewer->name }}@endif. Les documents ont été supprimés.</p>
             @else
-                <p class="text-sm text-muted">Vérifiez : carte <strong>tunisienne</strong> lisible et entière (recto et verso), selfie de face bien cadré, et que le visage correspond à la photo de la carte ainsi qu’au nom du compte. Ces images ne sont jamais mises en cache.</p>
+                <p class="text-sm text-muted">Vérifiez : carte <strong>tunisienne</strong> lisible et entière (recto et verso), selfie de face bien cadré, que le visage correspond à la photo de la carte et au nom du compte, et que les informations saisies ci-dessous sont identiques à celles de la carte. Ces images ne sont jamais mises en cache.</p>
+
+                <dl style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:14px 0 0">
+                    @foreach(['Numéro de la carte' => $verification->cin_number, 'Date de délivrance' => $verification->card_issued_on ? \Illuminate\Support\Carbon::parse($verification->card_issued_on)->format('d/m/Y') : null, 'Ville de délivrance' => $verification->card_issued_place] as $label => $value)
+                        <div style="border:1px solid var(--line);border-radius:12px;padding:10px 14px">
+                            <dt class="text-sm text-muted">{{ $label }} (saisi par le membre)</dt>
+                            <dd style="margin:2px 0 0;font-size:18px;font-weight:700">{{ $value ?: '—' }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
 
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:14px">
                     @foreach(['front' => 'CIN — recto', 'back' => 'CIN — verso', 'selfie' => 'Selfie'] as $key => $label)

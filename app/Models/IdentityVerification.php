@@ -15,11 +15,20 @@ class IdentityVerification extends Model
     /** Clé de document => colonne. */
     public const DOCUMENTS = ['front' => 'id_front_path', 'back' => 'id_back_path', 'selfie' => 'selfie_path'];
 
-    protected $fillable = ['user_id', 'status', 'id_front_path', 'id_back_path', 'selfie_path', 'rejection_reason', 'reviewed_by', 'reviewed_at'];
+    protected $fillable = [
+        'user_id', 'status', 'id_front_path', 'id_back_path', 'selfie_path',
+        'cin_number', 'card_issued_on', 'card_issued_place',
+        'rejection_reason', 'reviewed_by', 'reviewed_at',
+    ];
 
-    protected $hidden = ['id_front_path', 'id_back_path', 'selfie_path'];
+    protected $hidden = ['id_front_path', 'id_back_path', 'selfie_path', 'cin_number', 'card_issued_on', 'card_issued_place'];
 
-    protected $casts = ['reviewed_at' => 'datetime'];
+    protected $casts = [
+        'reviewed_at' => 'datetime',
+        'cin_number' => 'encrypted',
+        'card_issued_on' => 'encrypted',
+        'card_issued_place' => 'encrypted',
+    ];
 
     public function user(): BelongsTo
     {

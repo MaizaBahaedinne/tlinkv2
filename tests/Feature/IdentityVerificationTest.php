@@ -24,6 +24,9 @@ class IdentityVerificationTest extends TestCase
             'id_front' => UploadedFile::fake()->image('recto.jpg', 1000, 650),
             'id_back' => UploadedFile::fake()->image('verso.jpg', 1000, 650),
             'selfie' => UploadedFile::fake()->image('selfie.jpg', 800, 800),
+            'cin_number' => '07654321',
+            'card_issued_on' => '2019-05-14',
+            'card_issued_place' => 'Sfax',
             'consent' => '1',
         ];
     }
@@ -80,7 +83,7 @@ class IdentityVerificationTest extends TestCase
         $member = User::factory()->create();
 
         $this->actingAs($member)->post('/profil/verification', ['consent' => '1'])
-            ->assertSessionHasErrors(['id_front', 'id_back', 'selfie']);
+            ->assertSessionHasErrors(['id_front', 'id_back', 'selfie', 'cin_number', 'card_issued_on', 'card_issued_place']);
 
         $this->post('/profil/verification', ['id_front' => UploadedFile::fake()->create('cin.pdf', 100, 'application/pdf')] + $this->documents())
             ->assertSessionHasErrors('id_front');
@@ -91,6 +94,51 @@ class IdentityVerificationTest extends TestCase
         $this->post('/profil/verification', ['consent' => null] + $this->documents())->assertSessionHasErrors('consent');
 
         $this->assertSame(0, IdentityVerification::query()->count());
+    }
+
+    public function test_page_offers_camera_capture_with_framing_guide_and_allows_camera_permission(): void
+    {
+        $member = User::factory()->create();
+
+        $response = $this->actingAs($member)->get('/profil/verification');
+
+        $response->assertOk()
+            ->assertSee('id="camera-dialog"', false)
+            ->assertSee('id="camera-guide"', false)
+            ->assertSee('data-kind="card"', false)
+            ->assertSee('data-kind="selfie"', false)
+            ->assertSee('Prendre la photo')
+            ->assertSee('getUserMedia', false);
+        $this->assertStringContainsString('camera=(self)', (string) $response->headers->get('Permissions-Policy'));
+        $this->assertStringNotContainsString('camera=()', (string) $response->headers->get('Permissions-Policy'));
+    }
+
+    public function test_card_details_are_validated_stored_encrypted_shown_to_admin_then_erased(): void
+    {
+        Storage::fake('local');
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $member = User::factory()->create();
+
+        foreach ([['cin_number' => '1234567'], ['cin_number' => 'ABCDEFGH'], ['cin_number' => '123456789'], ['card_issued_on' => now()->addDay()->toDateString()], ['card_issued_on' => 'pas une date'], ['card_issued_place' => '']] as $bad) {
+            $this->actingAs($member)->post('/profil/verification', $bad + $this->documents())->assertSessionHasErrors(array_key_first($bad));
+        }
+        $this->assertSame(0, IdentityVerification::query()->count());
+
+        $verification = $this->submitted($member);
+        $raw = \Illuminate\Support\Facades\DB::table('identity_verifications')->where('id', $verification->id)->first();
+        $this->assertStringNotContainsString('07654321', (string) $raw->cin_number, 'numéro chiffré en base');
+        $this->assertStringNotContainsString('Sfax', (string) $raw->card_issued_place);
+        $this->assertSame('07654321', $verification->cin_number);
+
+        $this->actingAs($this->admin())->get('/admin/verifications/'.$verification->id)
+            ->assertOk()->assertSee('07654321')->assertSee('14/05/2019')->assertSee('Sfax');
+
+        $this->post('/admin/verifications/'.$verification->id.'/valider');
+
+        $raw = \Illuminate\Support\Facades\DB::table('identity_verifications')->where('id', $verification->id)->first();
+        $this->assertNull($raw->cin_number);
+        $this->assertNull($raw->card_issued_on);
+        $this->assertNull($raw->card_issued_place);
     }
 
     public function test_guest_cannot_access_verification(): void
