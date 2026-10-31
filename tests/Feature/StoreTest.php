@@ -125,7 +125,7 @@ class StoreTest extends TestCase
 
         $this->actingAs($user)->get('/boutique')->assertOk()->assertSee('T-shirt');
         $this->actingAs($user)->get('/boutique?q=zzz')->assertOk()->assertDontSee('T-shirt');
-        $this->actingAs($user)->get(route('store.products.show', $product->slug))->assertOk()->assertSee('Rouge / M');
+        $this->actingAs($user)->get(route('store.products.show', $product->slug))->assertOk()->assertSee('Rouge')->assertSee('data-size', false);
         $this->actingAs($user)->get(route('store.cart.index'))->assertOk();
     }
 

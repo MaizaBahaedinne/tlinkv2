@@ -28,6 +28,7 @@
         @if($editing) @method('PUT') @endif
 
         <div class="grid-3-1">
+            <div class="store-aside">
             <article class="card">
                 <div class="card-head"><h2>Informations</h2></div>
                 <div class="card-body form-grid">
@@ -40,9 +41,23 @@
                 </div>
             </article>
 
+            <article class="card">
+                <div class="card-head"><h2>Fiche détaillée</h2></div>
+                <div class="card-body form-grid">
+                    <x-admin.input name="material" label="Type de textile" :value="$product->material" maxlength="120" placeholder="Ex. Molleton gratté 280 g/m²" />
+                    <x-admin.input name="composition" label="Composition" :value="$product->composition" maxlength="200" placeholder="Ex. 80 % coton, 20 % polyester" />
+                    <x-admin.input name="weight" label="Grammage" :value="$product->weight" maxlength="60" placeholder="Ex. 280 g/m²" />
+                    <x-admin.input name="fit" label="Coupe" :value="$product->fit" maxlength="80" placeholder="Ex. Coupe droite, unisexe" />
+                    <x-admin.textarea name="details" label="Description détaillée" :value="$product->details" rows="6" maxlength="10000" hint="Points forts, finitions, impression, histoire de l’article… Un paragraphe par ligne vide." />
+                    <x-admin.textarea name="care" label="Entretien" :value="$product->care" rows="4" maxlength="2000" hint="Une consigne par ligne (ex. Lavage à 30 °C)." />
+                    <x-admin.textarea name="size_guide" label="Guide des tailles" :value="$product->size_guide" rows="6" maxlength="4000" hint="Une ligne par taille, colonnes séparées par « | ». La première ligne contient les titres, en cm." placeholder="Taille | Poitrine | Longueur&#10;S | 52 | 68&#10;M | 55 | 70&#10;L | 58 | 72" />
+                </div>
+            </article>
+            </div>
+
             <div class="store-aside">
                 <article class="card">
-                    <div class="card-head"><h2>Photo</h2></div>
+                    <div class="card-head"><h2>Photo principale</h2></div>
                     <div class="card-body store-photo">
                         <span class="store-thumb is-lg">
                             @if($product->imageUrl())<img src="{{ $product->imageUrl() }}" alt="">@else<x-admin.icon name="package" :size="30" />@endif
@@ -79,6 +94,63 @@
     </form>
 
     @if($editing)
+        <article class="card card-flush">
+            <div class="card-head">
+                <div>
+                    <h2>Galerie photos</h2>
+                    <p class="sub">{{ $product->images->count() }} photo(s) en plus de la photo principale. Associez une photo à une couleur pour qu’elle s’affiche quand le membre choisit cette couleur.</p>
+                </div>
+            </div>
+
+            @if($product->images->count())
+                <div class="card-body store-gallery">
+                    @foreach($product->images as $photo)
+                        <div class="store-gallery-item">
+                            <img src="{{ $photo->url() }}" alt="">
+                            <form method="post" action="{{ route('admin.store.products.images.update', $photo) }}">
+                                @csrf
+                                @method('PUT')
+                                <select name="color_id" aria-label="Couleur de la photo">
+                                    <option value="">Toutes couleurs</option>
+                                    @foreach($colors as $color)
+                                        <option value="{{ $color->id }}" @selected($photo->color_id === $color->id)>{{ $color->name }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="number" name="sort_order" value="{{ $photo->sort_order }}" min="0" aria-label="Ordre" title="Ordre d’affichage">
+                                <button type="submit" class="btn btn-secondary btn-sm">OK</button>
+                            </form>
+                            <form method="post" action="{{ route('admin.store.products.images.destroy', $photo) }}" onsubmit="return confirm('Supprimer cette photo ?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-ghost btn-sm"><x-admin.icon name="trash" :size="15" /> Supprimer</button>
+                            </form>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            <form method="post" enctype="multipart/form-data" action="{{ route('admin.store.products.images.store', $product) }}" class="card-body form-grid">
+                @csrf
+                <div class="field {{ $errors->has('photos') || $errors->has('photos.*') ? 'has-error' : '' }}">
+                    <label for="f-photos">Ajouter des photos</label>
+                    <input id="f-photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple required>
+                    <p class="hint">Jusqu’à 10 photos à la fois, 4 Mo maximum chacune.</p>
+                    @error('photos')<p class="error">{{ $message }}</p>@enderror
+                    @error('photos.*')<p class="error">{{ $message }}</p>@enderror
+                </div>
+                <div class="field">
+                    <label for="f-photo-color">Couleur concernée</label>
+                    <select id="f-photo-color" name="color_id">
+                        <option value="">Toutes couleurs</option>
+                        @foreach($colors as $color)
+                            <option value="{{ $color->id }}">{{ $color->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="span-2"><button type="submit" class="btn btn-primary"><x-admin.icon name="plus" :size="16" /> Envoyer les photos</button></div>
+            </form>
+        </article>
+
         <article class="card card-flush">
             <div class="card-head">
                 <div>

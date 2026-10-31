@@ -54,6 +54,7 @@ class AdminMenu
         'admin.academy.settings.*' => 'academy.plans',
         'admin.store.index' => 'store.orders',
         'admin.store.products.*' => 'store.catalog',
+        'admin.store.reviews.*' => 'store.catalog',
         'admin.store.packs.*' => 'store.catalog',
         'admin.store.refs.*' => 'store.catalog',
         'admin.store.stock.*' => 'store.stock',

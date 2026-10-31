@@ -6,6 +6,7 @@ use App\Models\StoreCategory;
 use App\Models\StoreColor;
 use App\Models\StoreOrderItem;
 use App\Models\StoreProduct;
+use App\Models\StoreProductImage;
 use App\Models\StoreSize;
 use App\Models\StoreType;
 use App\Models\StoreVariant;
@@ -101,11 +102,60 @@ class StoreProductController extends AdminController
 
         $image = $product->image_path;
         $name = $product->name;
+        $gallery = $product->images()->pluck('path')->all();
         $product->delete();
         $this->deleteImage($image);
+        array_map($this->deleteImage(...), $gallery);
         $this->audit($request, 'admin.store.product.deleted', $product, ['name' => $name]);
 
         return redirect()->route('admin.store.products.index')->with('status', 'Article supprimé.');
+    }
+
+    /** Ajoute une ou plusieurs photos à la galerie (option : les associer à une couleur). */
+    public function storeImages(Request $request, StoreProduct $product): RedirectResponse
+    {
+        $data = $request->validate([
+            'photos' => ['required', 'array', 'max:10'],
+            'photos.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'color_id' => ['nullable', Rule::exists('store_colors', 'id')],
+        ]);
+
+        $next = (int) $product->images()->max('sort_order');
+
+        foreach ($request->file('photos') as $photo) {
+            $product->images()->create([
+                'path' => $photo->store(self::IMAGE_DIR, 'public'),
+                'color_id' => $data['color_id'] ?? null,
+                'sort_order' => ++$next,
+            ]);
+        }
+
+        $this->audit($request, 'admin.store.product.photos.added', $product, ['count' => count($request->file('photos'))]);
+
+        return back()->with('status', 'Photo(s) ajoutée(s) à la galerie.');
+    }
+
+    public function updateImage(Request $request, StoreProductImage $image): RedirectResponse
+    {
+        $data = $request->validate([
+            'color_id' => ['nullable', Rule::exists('store_colors', 'id')],
+            'sort_order' => ['required', 'integer', 'min:0', 'max:1000'],
+        ]);
+
+        $image->update(['color_id' => $data['color_id'] ?? null, 'sort_order' => $data['sort_order']]);
+
+        return back()->with('status', 'Photo enregistrée.');
+    }
+
+    public function destroyImage(Request $request, StoreProductImage $image): RedirectResponse
+    {
+        $path = $image->path;
+        $productId = $image->product_id;
+        $image->delete();
+        $this->deleteImage($path);
+        $this->audit($request, 'admin.store.product.photo.deleted', $image, ['product_id' => $productId]);
+
+        return back()->with('status', 'Photo supprimée.');
     }
 
     /** Génère toutes les combinaisons couleur × taille choisies (sans doublon) avec un stock initial. */
@@ -201,6 +251,13 @@ class StoreProductController extends AdminController
             'type_id' => ['nullable', Rule::exists('store_types', 'id')],
             'summary' => ['nullable', 'string', 'max:300'],
             'description' => ['nullable', 'string', 'max:10000'],
+            'material' => ['nullable', 'string', 'max:120'],
+            'composition' => ['nullable', 'string', 'max:200'],
+            'weight' => ['nullable', 'string', 'max:60'],
+            'fit' => ['nullable', 'string', 'max:80'],
+            'care' => ['nullable', 'string', 'max:2000'],
+            'details' => ['nullable', 'string', 'max:10000'],
+            'size_guide' => ['nullable', 'string', 'max:4000'],
             'price' => ['required', 'numeric', 'min:0', 'max:99999'],
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
@@ -218,7 +275,7 @@ class StoreProductController extends AdminController
     /** @return array<string, mixed> */
     private function formData(StoreProduct $product): array
     {
-        $product->loadMissing(['variants.color', 'variants.size']);
+        $product->loadMissing(['variants.color', 'variants.size', 'images.color']);
 
         return [
             'product' => $product,

@@ -21,6 +21,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StoreCartController;
+use App\Http\Controllers\StoreReviewController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StoreOrderController;
 use Illuminate\Support\Facades\Route;
@@ -78,6 +79,7 @@ Route::middleware('auth')->group(function (): void {
     Route::prefix('boutique')->name('store.')->middleware('store.open')->group(function (): void {
         Route::get('/', [StoreController::class, 'index'])->name('index');
         Route::get('/articles/{product:slug}', [StoreController::class, 'showProduct'])->name('products.show');
+        Route::post('/articles/{product:slug}/avis', [StoreReviewController::class, 'store'])->middleware('throttle:store-action')->name('reviews.store');
         Route::get('/packs/{pack:slug}', [StoreController::class, 'showPack'])->name('packs.show');
         Route::get('/panier', [StoreCartController::class, 'index'])->name('cart.index');
         Route::post('/panier/articles', [StoreCartController::class, 'addProduct'])->middleware('throttle:store-action')->name('cart.add');
@@ -280,6 +282,12 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
                 Route::put('articles/{product}', [Admin\StoreProductController::class, 'update'])->whereNumber('product')->name('products.update');
                 Route::delete('articles/{product}', [Admin\StoreProductController::class, 'destroy'])->whereNumber('product')->name('products.destroy');
                 Route::post('articles/{product}/variantes', [Admin\StoreProductController::class, 'storeVariants'])->whereNumber('product')->name('products.variants.store');
+                Route::post('articles/{product}/photos', [Admin\StoreProductController::class, 'storeImages'])->whereNumber('product')->name('products.images.store');
+                Route::put('photos/{image}', [Admin\StoreProductController::class, 'updateImage'])->whereNumber('image')->name('products.images.update');
+                Route::delete('photos/{image}', [Admin\StoreProductController::class, 'destroyImage'])->whereNumber('image')->name('products.images.destroy');
+                Route::get('avis', [Admin\StoreReviewController::class, 'index'])->name('reviews.index');
+                Route::put('avis/{review}', [Admin\StoreReviewController::class, 'update'])->whereNumber('review')->name('reviews.update');
+                Route::delete('avis/{review}', [Admin\StoreReviewController::class, 'destroy'])->whereNumber('review')->name('reviews.destroy');
                 Route::put('variantes/{variant}', [Admin\StoreProductController::class, 'updateVariant'])->whereNumber('variant')->name('products.variants.update');
                 Route::delete('variantes/{variant}', [Admin\StoreProductController::class, 'destroyVariant'])->whereNumber('variant')->name('products.variants.destroy');
                 Route::get('packs', [Admin\StorePackController::class, 'index'])->name('packs.index');

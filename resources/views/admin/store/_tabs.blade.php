@@ -9,6 +9,7 @@
         ['Articles', 'admin.store.products.index', 'admin.store.products.*', 'store.catalog', null],
         ['Packs', 'admin.store.packs.index', 'admin.store.packs.*', 'store.catalog', null],
         ['Stock', 'admin.store.stock.index', 'admin.store.stock.*', 'store.stock', null],
+        ['Avis', 'admin.store.reviews.index', 'admin.store.reviews.*', 'store.catalog', null],
         ['Catégories et couleurs', 'admin.store.refs.index', 'admin.store.refs.*', 'store.catalog', null],
         ['Réglages', 'admin.store.settings.edit', 'admin.store.settings.*', 'store.settings', null],
     ];

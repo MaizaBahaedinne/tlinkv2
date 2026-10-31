@@ -473,6 +473,15 @@ a.team-title:hover { color: var(--cyan); }
 .store-photo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .store-photo .grow { flex: 1; min-width: 200px; display: grid; gap: 10px; }
 
+.store-gallery { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.store-gallery-item { display: grid; gap: 8px; align-content: start; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.store-gallery-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--neutral-bg); }
+.store-gallery-item form:first-of-type { display: grid; grid-template-columns: minmax(0, 1fr) 56px auto; gap: 6px; }
+.store-gallery-item select, .store-gallery-item input[type="number"] { min-width: 0; }
+
+.review-text { max-width: 420px; color: var(--muted); font-size: 13px; }
+.stars { color: #f59e0b; letter-spacing: 1px; white-space: nowrap; }
+
 .stock-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800; background: var(--success-bg); color: var(--success); white-space: nowrap; }
 .stock-pill.is-low { background: var(--warning-bg); color: var(--warning); }
 .stock-pill.is-out { background: var(--danger-bg); color: var(--danger); }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\StoreCategory;
 use App\Models\StorePack;
 use App\Models\StoreProduct;
+use App\Models\StoreReview;
 use App\Models\StoreType;
 use App\Support\Store\StoreSettings;
 use Illuminate\Http\Request;
@@ -42,13 +43,27 @@ class StoreController extends Controller
         ]);
     }
 
-    public function showProduct(StoreProduct $product): View
+    public function showProduct(Request $request, StoreProduct $product): View
     {
         abort_unless($product->is_active, 404);
 
-        $product->load(['category:id,name,slug', 'type:id,name', 'variants' => fn ($query) => $query->where('is_active', true)->with(['color', 'size'])->orderBy('id')]);
+        $product->load([
+            'category:id,name,slug',
+            'type:id,name',
+            'images',
+            'variants' => fn ($query) => $query->where('is_active', true)->with(['color', 'size'])->orderBy('id'),
+            'reviews' => fn ($query) => $query->published()->with('user:id,name')->latest('id'),
+        ]);
 
-        return view('store.product', ['product' => $product, 'settings' => StoreSettings::all()]);
+        $user = $request->user();
+
+        return view('store.product', [
+            'product' => $product,
+            'settings' => StoreSettings::all(),
+            'rating' => $product->ratingSummary(),
+            'canReview' => StoreReview::canReview($user, $product),
+            'myReview' => $user ? StoreReview::query()->where('product_id', $product->id)->where('user_id', $user->id)->first() : null,
+        ]);
     }
 
     public function showPack(StorePack $pack): View
