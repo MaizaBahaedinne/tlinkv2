@@ -1,4 +1,4 @@
-{{-- En-tête du profil (cover, avatar, identité, chiffres clés). $person = membre affiché, $editable = propriétaire du profil. --}}
+{{-- En-tête du profil (cover, avatar, identité). $person = membre affiché, $editable = propriétaire du profil. --}}
 <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
     <div class="relative h-44 overflow-hidden bg-gradient-to-br from-tlink-blue via-tlink-blue to-slate-900 sm:h-60">
         @if($coverUrl)
@@ -68,23 +68,6 @@
         </div>
 
         @include('profile.partials.highlights')
-
-        <dl class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            @foreach([
-                ['Posts', $stats['posts_count'], 'fa-regular fa-newspaper'],
-                ['Commentaires', $stats['comments_count'], 'fa-regular fa-comment'],
-                ['Réactions', $stats['reactions_count'], 'fa-regular fa-heart'],
-                ['Badges', $earnedBadges->count(), 'fa-solid fa-medal'],
-            ] as [$label, $value, $icon])
-                <div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-tlink-blue shadow-sm"><i class="{{ $icon }}"></i></span>
-                    <div>
-                        <dd class="text-xl font-semibold leading-none text-slate-900">{{ $value }}</dd>
-                        <dt class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ $label }}</dt>
-                    </div>
-                </div>
-            @endforeach
-        </dl>
     </div>
 </section>
 
