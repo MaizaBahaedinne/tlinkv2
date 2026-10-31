@@ -9,6 +9,12 @@
             <a href="{{ route('admin.activities.index') }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour</a>
             <a href="{{ route('admin.activities.qr', $activity) }}" class="btn btn-secondary"><x-admin.icon name="activity" :size="16" /> QR code de présence</a>
             @if($canLead)<a href="{{ route('admin.activities.edit', $activity) }}" class="btn btn-primary"><x-admin.icon name="edit" :size="16" /> Modifier</a>@endif
+            @if($canLead)
+                <form method="post" action="{{ route('admin.activities.destroy', $activity) }}" data-confirm="{{ $activity->registrations()->exists() ? 'Les inscrits seront prévenus et leur inscription annulée. ' : '' }}« {{ $activity->title }} » sera supprimée définitivement." data-confirm-title="Supprimer cette activité ?" style="display:inline">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-danger"><x-admin.icon name="trash" :size="16" /> Supprimer</button>
+                </form>
+            @endif
         </x-slot:actions>
     </x-admin.page-header>
 

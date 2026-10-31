@@ -15,6 +15,7 @@ use App\Support\OrgAccess;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -40,7 +41,7 @@ class ActivityController extends AdminController
             ->with(['club:id,title', 'activity.club:id,title', 'activity.challenge:id,title'])
             ->latest('id')->get();
 
-        return view('admin.activities.index', ['activities' => $activities, 'invitations' => $invitations]);
+        return view('admin.activities.index', ['activities' => $activities, 'invitations' => $invitations, 'manageable' => $ids]);
     }
 
     public function create(Request $request): View
@@ -104,13 +105,30 @@ class ActivityController extends AdminController
         $this->authorizeActivity($request, $activity);
         abort_unless(ActivityAccess::canManageClub($request->user(), $activity->club_id), 403, 'Seul le club porteur supprime l’activité.');
 
-        if ($activity->registrations()->exists() || $activity->scores()->exists()) {
-            return back()->with('error', 'Suppression impossible : des inscriptions ou des notes existent. Annulez plutôt l’activité.');
+        if ($activity->scores()->exists() || $activity->report?->isValidated()) {
+            return back()->with('error', 'Suppression impossible : l’activité a déjà été notée ou son compte rendu est validé. Passez-la plutôt en « Annulée ».');
         }
 
         $title = $activity->title;
-        $this->audit($request, 'admin.activity.deleted', $activity, ['title' => $title]);
+        $registrants = $activity->registrations()->where('status', '!=', 'cancelled')->pluck('user_id')->all();
+        $reportId = $activity->report?->id;
+
+        $this->audit($request, 'admin.activity.deleted', $activity, ['title' => $title, 'registrations' => count($registrants)]);
         $activity->delete();
+
+        if ($reportId !== null) {
+            Storage::disk('public')->deleteDirectory('activity-reports/'.$reportId);
+        }
+
+        foreach (array_unique($registrants) as $userId) {
+            AppNotification::query()->create([
+                'user_id' => $userId,
+                'type' => 'activity.deleted',
+                'title' => 'Activité supprimée',
+                'body' => "L’activité « {$title} » a été supprimée par les organisateurs : votre inscription est annulée.",
+                'data' => ['url' => route('challenges.index', [], false)],
+            ]);
+        }
 
         return redirect()->route('admin.activities.index')->with('status', "Activité « {$title} » supprimée.");
     }

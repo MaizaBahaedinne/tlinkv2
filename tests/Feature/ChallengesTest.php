@@ -183,6 +183,48 @@ class ChallengesTest extends TestCase
         $this->actingAs($president)->post('/admin/activites', $base)->assertSessionHasErrors('challenge_id');
     }
 
+    public function test_the_lead_club_deletes_an_activity_and_registrants_are_told(): void
+    {
+        $club = $this->club('ESPRIT', true);
+        $rival = $this->club('ISET', true);
+        [$president, $rivalPresident, $member] = [User::factory()->create(), User::factory()->create(), User::factory()->create()];
+        $this->placeOn(OrgNode::query()->where('subtitle', $club->title)->where('role_key', 'president')->firstOrFail(), $president);
+        $this->placeOn(OrgNode::query()->where('subtitle', $rival->title)->where('role_key', 'president')->firstOrFail(), $rivalPresident);
+        $challenge = $this->challenge();
+        $activity = $this->activity($challenge, $club);
+        $activity->registrations()->create(['user_id' => $member->id, 'status' => 'registered']);
+
+        // Le bouton est proposé au club porteur, avec ses inscrits.
+        $this->actingAs($president)->get('/admin/activites')->assertOk()->assertSee(route('admin.activities.destroy', $activity), false);
+        $this->actingAs($president)->get('/admin/activites/'.$activity->id)->assertOk()->assertSee('Supprimer cette activité ?');
+
+        // Un autre club ne supprime pas l'activité.
+        $this->actingAs($rivalPresident)->delete('/admin/activites/'.$activity->id)->assertForbidden();
+        $this->assertSame(1, ClubActivity::query()->count());
+
+        $this->actingAs($president)->delete('/admin/activites/'.$activity->id)->assertRedirect(route('admin.activities.index'))->assertSessionHas('status');
+        $this->assertSame(0, ClubActivity::query()->count());
+        $this->assertSame(0, \App\Models\ActivityRegistration::query()->count());
+        $this->assertTrue(\App\Models\AppNotification::query()->where('user_id', $member->id)->where('type', 'activity.deleted')->exists());
+    }
+
+    public function test_a_scored_activity_cannot_be_deleted(): void
+    {
+        $club = $this->club('ESPRIT', true);
+        $president = User::factory()->create();
+        $this->placeOn(OrgNode::query()->where('subtitle', $club->title)->where('role_key', 'president')->firstOrFail(), $president);
+        $juror = $this->committeeMember();
+        $challenge = $this->challenge($juror);
+        $scored = $this->activity($challenge, $club);
+        ActivityScore::query()->create(['activity_id' => $scored->id, 'criterion_id' => $challenge->criteria()->first()->id, 'evaluator_id' => $juror->id, 'points' => 5]);
+        $reported = $this->activity($challenge, $club, ['title' => 'Avec compte rendu']);
+        $this->validatedReport($reported);
+
+        $this->actingAs($president)->delete('/admin/activites/'.$scored->id)->assertSessionHas('error');
+        $this->actingAs($president)->delete('/admin/activites/'.$reported->id)->assertSessionHas('error');
+        $this->assertSame(2, ClubActivity::query()->count());
+    }
+
     public function test_club_not_invited_to_the_challenge_cannot_propose(): void
     {
         $club = $this->club('ESPRIT', true);

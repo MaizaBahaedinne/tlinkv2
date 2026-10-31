@@ -50,7 +50,10 @@
                                 <td><x-admin.badge :status="$activity->status" /></td>
                                 <td class="cell-actions">
                                     <a href="{{ route('admin.activities.show', $activity) }}" class="btn btn-secondary btn-icon btn-sm" title="Détails" aria-label="Détails"><x-admin.icon name="eye" :size="15" /></a>
-                                    <a href="{{ route('admin.activities.edit', $activity) }}" class="btn btn-secondary btn-icon btn-sm" title="Modifier" aria-label="Modifier"><x-admin.icon name="edit" :size="15" /></a>
+                                    @if($manageable === null || in_array($activity->club_id, $manageable, true))
+                                        <a href="{{ route('admin.activities.edit', $activity) }}" class="btn btn-secondary btn-icon btn-sm" title="Modifier" aria-label="Modifier"><x-admin.icon name="edit" :size="15" /></a>
+                                        <x-admin.delete-button :action="route('admin.activities.destroy', $activity)" :message="'« '.$activity->title.' » sera supprimée définitivement ; les éventuels inscrits seront prévenus.'" title="Supprimer cette activité ?" />
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
