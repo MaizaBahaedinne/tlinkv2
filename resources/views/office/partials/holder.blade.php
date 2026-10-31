@@ -9,7 +9,7 @@
         <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600" aria-hidden="true">{{ $initials }}</span>
     @endif
     <span>
-        <span class="font-medium text-slate-800">{{ $holder['name'] }}</span>
+        <span class="font-medium text-slate-800">{{ $holder['name'] }}</span> <x-verified-badge :verified="$holder['verified'] ?? false" />
         @if($holder['job_title'])<span class="text-slate-500"> · {{ $holder['job_title'] }}</span>@endif
         @if(! empty($withMailto) && $holder['email'])<span class="text-slate-500"> · <a class="underline" href="mailto:{{ $holder['email'] }}">{{ $holder['email'] }}</a></span>
         @elseif($holder['email'])<span class="text-slate-500"> · {{ $holder['email'] }}</span>@endif

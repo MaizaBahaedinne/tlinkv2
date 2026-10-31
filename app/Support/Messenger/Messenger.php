@@ -289,6 +289,7 @@ final class Messenger
                 'type' => $conversation->type,
                 'title' => self::title($conversation, $me, $participants),
                 'avatar' => $conversation->isGroup() ? null : $others->first()?->user?->profile?->photoUrl(),
+                'verified' => ! $conversation->isGroup() && $others->first()?->user?->profile?->identity_verified_at !== null,
                 'members' => $participants->map(fn (MessengerParticipant $row): string => (string) $row->user?->name)->filter()->values()->all(),
                 'other_id' => $conversation->isGroup() ? null : $others->first()?->user_id,
                 'restriction' => self::restriction($conversation, $me),
@@ -311,6 +312,7 @@ final class Messenger
             'user_id' => $message->user_id,
             'author' => $author?->name ?? 'Membre supprimé',
             'avatar' => $author?->profile?->photoUrl(),
+            'verified' => $author?->profile?->identity_verified_at !== null,
             'mine' => $message->user_id === $viewer->id,
             'body' => $deleted ? null : $message->body,
             'deleted' => $deleted,
@@ -372,6 +374,7 @@ final class Messenger
                 'type' => $conversation->type,
                 'title' => self::title($conversation, $me, $participants),
                 'avatar' => $other?->profile?->photoUrl(),
+                'verified' => $other?->profile?->identity_verified_at !== null,
                 'preview' => ($message !== null && $message->user_id === $me->id ? 'Vous : ' : '').$preview,
                 'last_at' => $conversation->last_message_at?->toIso8601String(),
                 'unread' => (int) ($unread[$conversation->id] ?? 0),
@@ -414,6 +417,6 @@ final class Messenger
         }
 
         return $query->orderBy('name')->limit(8)->get()
-            ->map(fn (User $user): array => ['id' => $user->id, 'name' => $user->name, 'avatar' => $user->profile?->photoUrl()])->all();
+            ->map(fn (User $user): array => ['id' => $user->id, 'name' => $user->name, 'avatar' => $user->profile?->photoUrl(), 'verified' => $user->profile?->identity_verified_at !== null])->all();
     }
 }

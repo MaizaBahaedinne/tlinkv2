@@ -33,7 +33,7 @@
                                     <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-rose-50 text-sm font-bold text-tlink-blue">{{ mb_strtoupper(mb_substr($item['title'], 0, 1)) }}</span>
                                 @endif
                                 <span class="min-w-0">
-                                    <span class="block truncate font-semibold text-slate-900">{{ $item['title'] }}</span>
+                                    <span class="block truncate font-semibold text-slate-900">{{ $item['title'] }} <x-verified-badge :verified="$item['verified'] ?? false" /></span>
                                     @if($item['subtitle'])
                                         <span class="block truncate text-sm text-slate-500">{{ $item['subtitle'] }}</span>
                                     @endif

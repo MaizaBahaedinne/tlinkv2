@@ -63,7 +63,7 @@ class IdentityVerificationTest extends TestCase
         }
 
         $this->get('/profil/verification')->assertOk()->assertSee('en cours d’examen');
-        $this->get('/profil')->assertOk()->assertSee('Vérification en cours')->assertDontSee('Profil vérifié');
+        $this->get('/profil')->assertOk()->assertSee('Vérification en cours')->assertDontSee('Identité vérifiée par la Fondation Tunivisions');
     }
 
     public function test_cannot_submit_twice_while_pending(): void

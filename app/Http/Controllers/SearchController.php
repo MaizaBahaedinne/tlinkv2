@@ -83,7 +83,7 @@ class SearchController extends Controller
     private function people(string $term, int $limit): array
     {
         $query = OrgPerson::query()
-            ->with(['user:id,name', 'user.profile:id,user_id,photo_path', 'assignments.node:id,title'])
+            ->with(['user:id,name', 'user.profile:id,user_id,photo_path,identity_verified_at', 'assignments.node:id,title'])
             ->whereHas('assignments')
             ->where(fn (Builder $q) => $q->whereNull('user_id')->orWhereHas('user', fn (Builder $u) => $u->where('is_active', true)));
 
@@ -104,6 +104,7 @@ class SearchController extends Controller
                     'title' => $person->displayName(),
                     'subtitle' => collect([$person->job_title, $node?->title])->filter()->unique()->implode(' · ') ?: null,
                     'image' => $person->photoUrl(),
+                    'verified' => $person->user?->profile?->identity_verified_at !== null,
                     'url' => $person->user_id
                         ? route('member.show', $person->user_id)
                         : ($node ? route('orgchart.index', ['bloc' => $node->id]) : route('orgchart.index')),

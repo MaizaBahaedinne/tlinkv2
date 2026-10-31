@@ -271,7 +271,7 @@ class MessengerTest extends TestCase
 
         $this->assertCount(1, $json);
         $this->assertSame('Sami Trabelsi', $json[0]['name']);
-        $this->assertSame(['id', 'name', 'avatar'], array_keys($json[0]));
+        $this->assertSame(['id', 'name', 'avatar', 'verified'], array_keys($json[0]));
         $this->actingAs($me)->getJson(route('messenger.members', ['q' => 's']))->assertJson(['members' => []]);
     }
 

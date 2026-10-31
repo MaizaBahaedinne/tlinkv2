@@ -73,7 +73,7 @@
                 </summary>
                 <div class="absolute right-0 z-30 mt-2 w-60 rounded-2xl border border-slate-200 bg-white p-2 shadow-soft">
                     <div class="border-b border-slate-100 px-3 pb-2.5 pt-1.5">
-                        <p class="truncate text-sm font-semibold text-slate-900">{{ $me->name }}</p>
+                        <p class="truncate text-sm font-semibold text-slate-900">{{ $me->name }} <x-verified-badge :user="$me" /></p>
                         @unless(str_ends_with((string) $me->email, '@legacy.invalid'))
                             <p class="truncate text-xs text-slate-500">{{ $me->email }}</p>
                         @endunless
@@ -194,7 +194,15 @@
                     }
 
                     var text = el('span', 'min-w-0');
-                    text.appendChild(el('span', 'block truncate font-semibold text-slate-800', item.title));
+                    var nameLine = el('span', 'block truncate font-semibold text-slate-800', item.title);
+                    if (item.verified) {
+                        var badge = el('i', 'fa-solid fa-circle-check ml-1 text-sky-500');
+                        badge.title = 'Profil vérifié';
+                        badge.setAttribute('role', 'img');
+                        badge.setAttribute('aria-label', 'Profil vérifié');
+                        nameLine.appendChild(badge);
+                    }
+                    text.appendChild(nameLine);
                     if (item.subtitle) { text.appendChild(el('span', 'block truncate text-xs text-slate-500', item.subtitle)); }
                     link.appendChild(text);
 

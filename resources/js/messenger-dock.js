@@ -30,6 +30,15 @@
 
     function withId(template, id) { return template.replace(/\/0(\/|$)/, '/' + id + '$1'); }
 
+    // Pastille « Profil vérifié » à placer après un nom.
+    function verifiedBadge() {
+        var node = el('i', 'fa-solid fa-circle-check shrink-0 text-sky-500');
+        node.title = 'Profil vérifié';
+        node.setAttribute('role', 'img');
+        node.setAttribute('aria-label', 'Profil vérifié');
+        return node;
+    }
+
     function initials(name) {
         return (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(function (part) { return part.charAt(0).toUpperCase(); }).join('');
     }
@@ -225,7 +234,10 @@
 
             var text = el('span', 'min-w-0 flex-1');
             var top = el('span', 'flex items-baseline justify-between gap-2');
-            top.appendChild(el('span', 'truncate text-sm ' + (conversation.unread > 0 ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'), conversation.title));
+            var nameLine = el('span', 'flex min-w-0 items-center gap-1');
+            nameLine.appendChild(el('span', 'truncate text-sm ' + (conversation.unread > 0 ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'), conversation.title));
+            if (conversation.verified) { nameLine.appendChild(verifiedBadge()); }
+            top.appendChild(nameLine);
             top.appendChild(el('span', 'shrink-0 text-[11px] text-slate-400', relativeTime(conversation.last_at)));
             text.appendChild(top);
             text.appendChild(el('span', 'block truncate text-xs ' + (conversation.unread > 0 ? 'font-semibold text-slate-700' : 'text-slate-500'), conversation.preview));
@@ -292,6 +304,7 @@
             button.type = 'button';
             button.appendChild(avatar(member.avatar, member.name, 'h-9 w-9', false));
             button.appendChild(el('span', 'truncate font-semibold text-slate-800', member.name));
+            if (member.verified) { button.appendChild(verifiedBadge()); }
             button.addEventListener('click', function () {
                 request(withId(cfg.urlDirect, member.id), { method: 'POST' }).then(function (result) {
                     if (result.ok && result.data.conversation) {
@@ -484,7 +497,11 @@
             }
 
             var column = el('div', 'flex max-w-[82%] flex-col ' + (message.mine ? 'items-end' : 'items-start'));
-            if (showAuthor) { column.appendChild(el('span', 'mb-0.5 px-1 text-[10px] font-semibold text-slate-500', message.author)); }
+            if (showAuthor) {
+                var who = el('span', 'mb-0.5 inline-flex items-center gap-1 px-1 text-[10px] font-semibold text-slate-500', message.author);
+                if (message.verified) { who.appendChild(verifiedBadge()); }
+                column.appendChild(who);
+            }
 
             var bubble = el('div', 'rounded-2xl px-3 py-1.5 text-[13px] leading-relaxed ' + (message.deleted
                 ? 'border border-dashed border-slate-300 italic text-slate-400'
@@ -573,6 +590,11 @@
         function renderHead() {
             if (!meta) { return; }
             headTitle.textContent = meta.title;
+            if (meta.verified) {
+                var titleBadge = verifiedBadge();
+                titleBadge.classList.add('ml-1');
+                headTitle.appendChild(titleBadge);
+            }
             headAvatar.textContent = '';
             if (meta.avatar) {
                 var img = el('img', 'h-full w-full object-cover');

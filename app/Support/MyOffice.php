@@ -324,6 +324,7 @@ final class MyOffice
                 'job_title' => $person->job_title,
                 'email' => $person->contact_visible ? $person->displayEmail() : null,
                 'photo_url' => $person->photoUrl(),
+                'verified' => $person->user?->profile?->identity_verified_at !== null,
                 'is_me' => $person->user_id !== null && (int) $person->user_id === (int) $viewer->id,
             ];
         }

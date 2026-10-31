@@ -10,7 +10,7 @@ type FeedPost = {
   comments_enabled: boolean;
   can_manage: boolean;
   published_at: string | null;
-  author?: { id: number; name: string; headline?: string | null; avatar_url?: string | null };
+  author?: { id: number; name: string; headline?: string | null; avatar_url?: string | null; verified?: boolean };
   attachments: Array<{ url: string; mime_type: string; kind: 'image' | 'video' }>;
   counts: { comments: number; reactions: number; shares: number; views: number };
   reactions: Record<string, number>;
@@ -19,6 +19,7 @@ type FeedPost = {
     content: string;
     author: string;
     author_id?: number | null;
+    author_verified?: boolean;
     author_avatar_url?: string | null;
     created_at: string | null;
     replies: Array<{
@@ -26,6 +27,7 @@ type FeedPost = {
       content: string;
       author: string;
       author_id?: number | null;
+      author_verified?: boolean;
       author_avatar_url?: string | null;
       created_at: string | null;
     }>;
@@ -399,6 +401,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                 <p class="text-sm font-semibold text-slate-800">
                   <a v-if="post.author?.id" :href="`/membres/${post.author.id}`" class="hover:text-tlink-blue hover:underline">{{ post.author.name }}</a>
                   <template v-else>Membre Tunivisions</template>
+                  <i v-if="post.author?.verified" class="fa-solid fa-circle-check ml-1 text-[0.9em] text-sky-500" title="Profil vérifié" role="img" aria-label="Profil vérifié"></i>
                 </p>
                 <p class="text-xs text-slate-500">{{ post.author?.headline || 'Membre Tunivisions' }}</p>
                 <p class="mt-0.5 text-xs text-slate-400">
@@ -537,6 +540,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                     <strong>
                       <a v-if="comment.author_id" :href="`/membres/${comment.author_id}`" class="hover:text-tlink-blue hover:underline">{{ comment.author }}</a>
                       <template v-else>{{ comment.author }}</template>
+                      <i v-if="comment.author_verified" class="fa-solid fa-circle-check ml-1 text-[0.9em] text-sky-500" title="Profil vérifié" role="img" aria-label="Profil vérifié"></i>
                     </strong>
                     <span class="text-[11px] text-slate-400">{{ formatCommentAt(comment.created_at) }}</span>
                   </div>
@@ -563,6 +567,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                             <strong>
                               <a v-if="reply.author_id" :href="`/membres/${reply.author_id}`" class="hover:text-tlink-blue hover:underline">{{ reply.author }}</a>
                               <template v-else>{{ reply.author }}</template>
+                              <i v-if="reply.author_verified" class="fa-solid fa-circle-check ml-1 text-[0.9em] text-sky-500" title="Profil vérifié" role="img" aria-label="Profil vérifié"></i>
                             </strong>
                             <span class="text-[11px] text-slate-400">{{ formatCommentAt(reply.created_at) }}</span>
                           </div>

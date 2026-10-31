@@ -33,10 +33,10 @@ class FeedController extends Controller
         $posts = Post::query()
             ->with([
                 'author:id,name',
-                'author.profile:id,user_id,headline,photo_path',
+                'author.profile:id,user_id,headline,photo_path,identity_verified_at',
                 'attachments:id,post_id,disk,path,mime_type',
                 'comments' => fn ($query) => $query
-                    ->with(['author:id,name', 'author.profile:id,user_id,photo_path'])
+                    ->with(['author:id,name', 'author.profile:id,user_id,photo_path,identity_verified_at'])
                     ->orderBy('created_at'),
             ])
             ->withCount(['comments', 'reactions', 'shares', 'views'])
@@ -66,6 +66,7 @@ class FeedController extends Controller
                         'id' => $post->author->id,
                         'name' => $post->author->name,
                         'headline' => $post->author->profile?->headline,
+                        'verified' => $post->author->profile?->identity_verified_at !== null,
                         'avatar_url' => ($post->author->profile?->photo_path
                             && Storage::disk('public')->exists($post->author->profile->photo_path))
                             ? Storage::disk('public')->url($post->author->profile->photo_path)
@@ -99,6 +100,7 @@ class FeedController extends Controller
                             'content' => $comment->content,
                             'author' => $comment->author ? $comment->author->name : 'Membre',
                             'author_id' => $comment->user_id,
+                            'author_verified' => $comment->author?->profile?->identity_verified_at !== null,
                             'author_avatar_url' => ($authorPhotoPath && Storage::disk('public')->exists($authorPhotoPath))
                                 ? Storage::disk('public')->url($authorPhotoPath)
                                 : null,
@@ -114,6 +116,7 @@ class FeedController extends Controller
                                         'content' => $reply->content,
                                         'author' => $reply->author ? $reply->author->name : 'Membre',
                                         'author_id' => $reply->user_id,
+                                        'author_verified' => $reply->author?->profile?->identity_verified_at !== null,
                                         'author_avatar_url' => ($replyPhotoPath && Storage::disk('public')->exists($replyPhotoPath))
                                             ? Storage::disk('public')->url($replyPhotoPath)
                                             : null,
