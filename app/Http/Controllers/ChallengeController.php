@@ -60,7 +60,7 @@ class ChallengeController extends Controller
         abort_unless($challenge->isPublished() && $challenge->isCommitteeMember($user), 403, 'Réservé au comité d’évaluation.');
 
         $challenge->load('criteria');
-        $activities = $challenge->activities()->where('status', 'published')->with(['club:id,title', 'organizers.club:id,title', 'scores' => fn ($query) => $query->where('evaluator_id', $user->id)])->orderBy('starts_at')->get();
+        $activities = $challenge->activities()->where('status', 'published')->with(['club:id,title', 'organizers.club:id,title', 'report.members.user:id,name', 'report.items', 'report.partners', 'scores' => fn ($query) => $query->where('evaluator_id', $user->id)])->orderBy('starts_at')->get();
         $myNodes = ActivityAccess::nodeIds($user);
 
         return view('challenges.evaluation', [
@@ -83,6 +83,10 @@ class ChallengeController extends Controller
 
         if (array_intersect($activity->organizerClubIds(), ActivityAccess::nodeIds($user)) !== []) {
             return back()->with('error', 'Conflit d’intérêt : vous appartenez à un club organisateur de cette activité.');
+        }
+
+        if ($activity->report?->isValidated() !== true) {
+            return back()->with('error', 'Cette activité ne peut pas encore être notée : son compte rendu n’a pas été validé par le président du club.');
         }
 
         $data = $request->validate([

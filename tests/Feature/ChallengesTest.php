@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityReport;
 use App\Models\ActivityScore;
 use App\Models\AppModule;
 use App\Models\Challenge;
@@ -74,6 +75,11 @@ class ChallengesTest extends TestCase
             'challenge_id' => $challenge->id, 'club_id' => $club->id, 'title' => 'Nettoyage de plage', 'type' => 'event', 'audience' => 'public',
             'in_theme' => true, 'starts_at' => now()->addDays(2), 'ends_at' => now()->addDays(2)->addHours(3), 'status' => 'published',
         ]);
+    }
+
+    private function validatedReport(ClubActivity $activity): ActivityReport
+    {
+        return ActivityReport::query()->create(['activity_id' => $activity->id, 'status' => 'validated', 'summary' => 'Bilan', 'budget_spent' => 0, 'validated_at' => now()]);
     }
 
     private function approvedMember(User $user, OrgNode $node): void
@@ -373,6 +379,16 @@ class ChallengesTest extends TestCase
         [$impact, $quality] = $challenge->criteriaOf('theme')->all();
         $initiative = $challenge->criteriaOf('off_theme')->first();
         $form = fn (array $points) => ['points' => $points];
+
+        // Sans compte rendu validé, une activité n'est pas notée (même une fois la notation ouverte).
+        Carbon::setTestNow($challenge->ends_at->copy()->addDay());
+        $this->actingAs($juryA)->post("/defis/{$challenge->id}/evaluation/{$theme->id}", $form([$impact->id => 8, $quality->id => 4]))->assertSessionHas('error');
+        $this->assertSame(0, ActivityScore::query()->count());
+        Carbon::setTestNow();
+
+        foreach ([$theme, $offTheme, $other] as $activity) {
+            $this->validatedReport($activity);
+        }
 
         // Avant la fin du défi : fermé.
         $this->actingAs($juryA)->get('/defis/'.$challenge->id.'/evaluation')->assertOk()->assertSee('Atelier recyclage');

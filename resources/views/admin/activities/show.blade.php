@@ -59,6 +59,25 @@
             </article>
 
             <article class="card">
+                <div class="card-head"><div><h2>Compte rendu de clôture</h2><div class="sub">RH, marketing, partenaires et budget : validé par le président avant l’évaluation du comité.</div></div></div>
+                <div class="card-body text-sm">
+                    @php
+                        $report = $activity->report;
+                    @endphp
+                    @if($report)
+                        <p><strong>Statut :</strong> <span class="badge badge-{{ ['draft' => 'neutral', 'pending' => 'warning', 'validated' => 'success'][$report->status] ?? 'neutral' }}">{{ $report->statusLabel() }}</span></p>
+                    @elseif($activity->isFinished())
+                        <p class="text-muted">Pas encore rédigé : l’activité est terminée, le club doit remettre son compte rendu.</p>
+                    @else
+                        <p class="text-muted">Disponible une fois l’activité terminée.</p>
+                    @endif
+                    @if($report || $activity->isFinished())
+                        <a href="{{ route('admin.activities.report', $activity) }}" class="btn btn-secondary btn-sm" style="margin-top:8px">{{ $report && ! $report->isEditable() ? 'Consulter' : 'Rédiger' }} le compte rendu</a>
+                    @endif
+                </div>
+            </article>
+
+            <article class="card">
                 <div class="card-head"><div><h2>Co-organisateurs</h2><div class="sub">Chaque club organisateur reçoit la note complète de l’activité.</div></div></div>
                 <div class="card-body text-sm">
                     @forelse($activity->organizers as $organizer)

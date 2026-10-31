@@ -498,6 +498,10 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('activites/{activity}', [Admin\ActivityController::class, 'update'])->whereNumber('activity')->name('activities.update');
             Route::delete('activites/{activity}', [Admin\ActivityController::class, 'destroy'])->whereNumber('activity')->name('activities.destroy');
             Route::get('activites/{activity}/qr', [Admin\ActivityController::class, 'qr'])->whereNumber('activity')->name('activities.qr');
+            Route::get('activites/{activity}/compte-rendu', [Admin\ActivityReportController::class, 'show'])->whereNumber('activity')->name('activities.report');
+            Route::put('activites/{activity}/compte-rendu', [Admin\ActivityReportController::class, 'update'])->whereNumber('activity')->name('activities.report.update');
+            Route::post('activites/{activity}/compte-rendu/valider', [Admin\ActivityReportController::class, 'approve'])->whereNumber('activity')->name('activities.report.approve');
+            Route::post('activites/{activity}/compte-rendu/renvoyer', [Admin\ActivityReportController::class, 'sendBack'])->whereNumber('activity')->name('activities.report.return');
             Route::post('activites/{activity}/co-organisateurs', [Admin\ActivityController::class, 'addOrganizer'])->whereNumber('activity')->name('activities.organizers.store');
             Route::patch('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'respondOrganizer'])->whereNumber('organizer')->name('activities.organizers.respond');
             Route::delete('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'removeOrganizer'])->whereNumber('organizer')->name('activities.organizers.destroy');

@@ -30,7 +30,8 @@
                 $mine = $activity->scores->keyBy('criterion_id');
                 $total = $totals[$activity->id] ?? null;
                 $conflict = in_array($activity->id, $conflicts, true);
-                $locked = ! $challenge->scoringOpen() || $conflict;
+                $reported = $activity->report?->isValidated() === true;
+                $locked = ! $challenge->scoringOpen() || $conflict || ! $reported;
             @endphp
             <section id="activite-{{ $activity->id }}" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
                 <div class="flex flex-wrap items-start justify-between gap-3">
@@ -45,8 +46,15 @@
                     </div>
                 </div>
 
+                @if($reported)
+                    @include('challenges.partials.report', ['report' => $activity->report])
+                @endif
+
                 @if($conflict)
                     <p class="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">Conflit d’intérêt : vous appartenez à un club organisateur, vous ne pouvez pas noter cette activité.</p>
+                @elseif(! $reported)
+                    <p class="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><i class="fa-solid fa-hourglass-half mr-2" aria-hidden="true"></i>
+                        {{ $activity->report?->status === 'pending' ? 'Compte rendu en attente de validation du président du club.' : 'Compte rendu pas encore remis par le club.' }} L’activité sera notée une fois le compte rendu validé.</p>
                 @elseif($grid->isEmpty())
                     <p class="mt-3 text-sm text-slate-500">Aucun barème défini pour ce type d’activité.</p>
                 @else

@@ -4,6 +4,7 @@ namespace App\Support\Challenges;
 
 use App\Models\ClubActivity;
 use App\Models\Membership;
+use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\User;
 use App\Support\MyOffice;
@@ -114,6 +115,87 @@ final class ActivityAccess
     public static function isTunimateur(User $user): bool
     {
         return Membership::query()->where('user_id', $user->id)->where('status', 'approved')->exists() || MyOffice::heldNodeIds($user) !== [];
+    }
+
+    /**
+     * Présidents d'un club : titulaires, en ce moment, d'un poste de niveau « président de club » situé dans ce club.
+     *
+     * @return array<int, int>
+     */
+    public static function presidentIds(int $clubId): array
+    {
+        $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
+        $positions = OrgNode::query()->where('kind', 'position')->where('access_level', 'club_president')->pluck('id')
+            ->filter(fn ($id): bool => self::isInside((int) $id, $clubId, $parents))->all();
+
+        if ($positions === []) {
+            return [];
+        }
+
+        return OrgAssignment::query()
+            ->whereIn('node_id', $positions)
+            ->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now()->toDateString()))
+            ->with('person:id,user_id')
+            ->get()
+            ->map(fn (OrgAssignment $assignment): ?int => $assignment->person?->user_id !== null ? (int) $assignment->person->user_id : null)
+            ->filter()->unique()->values()->all();
+    }
+
+    /** Valide le compte rendu : le président du club porteur (à défaut de président, un administrateur à droits globaux). */
+    public static function canValidateReport(User $user, ClubActivity $activity): bool
+    {
+        $ids = self::presidentIds((int) $activity->club_id);
+
+        if (in_array($user->id, $ids, true)) {
+            return true;
+        }
+
+        return $ids === [] && self::manageableClubIds($user) === null;
+    }
+
+    /**
+     * Membres qui peuvent figurer dans la partie RH : adhérents validés et titulaires d'un poste des clubs organisateurs (départements compris).
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public static function reportCandidates(ClubActivity $activity): \Illuminate\Support\Collection
+    {
+        $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
+        $clubIds = $activity->organizerClubIds();
+        $nodeIds = array_values(array_filter(array_map('intval', array_keys($parents)), function (int $id) use ($clubIds, $parents): bool {
+            foreach ($clubIds as $clubId) {
+                if (self::isInside($id, $clubId, $parents) || $id === $clubId) {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
+
+        $userIds = Membership::query()->where('status', 'approved')->whereIn('node_id', $nodeIds)->pluck('user_id')
+            ->merge(OrgAssignment::query()
+                ->whereIn('node_id', $nodeIds)
+                ->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now()->toDateString()))
+                ->with('person:id,user_id')->get()->map(fn (OrgAssignment $assignment) => $assignment->person?->user_id))
+            ->filter()->unique()->values();
+
+        return User::query()->whereIn('id', $userIds)->orderBy('name')->get(['id', 'name']);
+    }
+
+    /** @param array<int, int|null> $parents */
+    private static function isInside(int $nodeId, int $ancestorId, array $parents): bool
+    {
+        $id = $parents[$nodeId] ?? null;
+
+        for ($guard = 0; $id !== null && $guard < 80; $guard++) {
+            if ((int) $id === $ancestorId) {
+                return true;
+            }
+
+            $id = $parents[$id] ?? null;
+        }
+
+        return false;
     }
 
     /** Motif pour lequel le membre ne peut pas s'inscrire ; null s'il le peut. */

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /** Activité proposée par un club (éventuellement co-organisée) dans le cadre d'un défi ; notée par le comité du défi. */
@@ -83,6 +84,17 @@ class ClubActivity extends Model
     public function scores(): HasMany
     {
         return $this->hasMany(ActivityScore::class, 'activity_id');
+    }
+
+    public function report(): HasOne
+    {
+        return $this->hasOne(ActivityReport::class, 'activity_id');
+    }
+
+    /** L'activité est terminée : le club peut rédiger son compte rendu de clôture. */
+    public function isFinished(): bool
+    {
+        return $this->status === 'published' && $this->endsAt()->isPast();
     }
 
     public function typeLabel(): string
