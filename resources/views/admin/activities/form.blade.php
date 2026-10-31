@@ -13,7 +13,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    <form method="post" action="{{ $editing ? route('admin.activities.update', $activity) : route('admin.activities.store') }}" class="card card-flush">
+    <form method="post" action="{{ $editing ? route('admin.activities.update', $activity) : route('admin.activities.store') }}" class="card card-flush" enctype="multipart/form-data">
         @csrf
         @if($editing) @method('PUT') @endif
 
@@ -28,6 +28,16 @@
                 @endif
                 <x-admin.input name="title" label="Titre" :value="$activity->title" required :maxlength="255" :span="true" />
                 <x-admin.textarea name="description" label="Description" :value="$activity->description" :maxlength="5000" />
+                <div class="field span-2 {{ $errors->has('cover') ? 'has-error' : '' }}">
+                    <label for="f-cover">Image de couverture</label>
+                    <input id="f-cover" type="file" name="cover" accept="image/png,image/jpeg,image/webp">
+                    <p class="hint">Bandeau en haut de la fiche (format paysage conseillé, 4 Mo max). Sans image, un fond aux couleurs de T.Link est utilisé. Le logo du club s’affiche automatiquement.</p>
+                    @if($coverUrl = $activity->coverUrl())
+                        <img src="{{ $coverUrl }}" alt="Couverture actuelle" style="margin-top:8px;max-width:100%;height:140px;object-fit:cover;border-radius:10px">
+                        <label class="check" style="margin-top:8px"><input type="checkbox" name="cover_remove" value="1"> Supprimer cette image</label>
+                    @endif
+                    @error('cover')<p class="error">{{ $message }}</p>@enderror
+                </div>
                 <x-admin.select name="type" label="Type d’activité" :options="\App\Models\ClubActivity::TYPES" :value="$activity->type" required :placeholder="null" />
                 <div class="field {{ $errors->has('in_theme') ? 'has-error' : '' }}">
                     <label>Nature</label>

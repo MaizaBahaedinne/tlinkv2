@@ -617,6 +617,70 @@ class ChallengesTest extends TestCase
         $this->actingAs($admin)->get('/defis')->assertOk()->assertSee('Défi Campus')->assertSee('Défi Lycées');
     }
 
+    public function test_activity_page_shows_the_hero_with_cover_club_logo_and_registration(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $club = $this->club('ESPRIT');
+        $club->update(['logo_path' => 'org/logos/esprit.png']);
+        $activity = $this->activity($this->challenge(), $club, ['title' => 'Tounes el khadhra', 'cover_path' => 'activities/covers/hero.jpg', 'capacity' => 3]);
+        $member = User::factory()->create();
+
+        $page = $this->actingAs($member)->get("/activites/{$activity->id}")->assertOk();
+        $page->assertSee('activities/covers/hero.jpg', false)->assertSee('org/logos/esprit.png', false)->assertSee('Logo ESPRIT', false);
+        $page->assertSee('Tounes el khadhra')->assertSee('M’inscrire')->assertSee('id="inscription"', false)->assertSee('Plus que 3 place(s)');
+
+        // Sans couverture ni logo : fond T.Link et initiales du club, l'inscription reste possible.
+        $bare = $this->activity($this->challenge(null, ['title' => 'Autre défi']), $this->club('ISET'), ['title' => 'Sans image']);
+        $this->actingAs($member)->get("/activites/{$bare->id}")->assertOk()->assertSee('M’inscrire')->assertDontSee('<img src="" ', false);
+
+        // Inscription directe depuis le bandeau.
+        $this->actingAs($member)->post("/activites/{$activity->id}/inscription")->assertSessionHas('status');
+        $this->actingAs($member)->get("/activites/{$activity->id}")->assertSee('Vous êtes inscrit');
+
+        // Activité terminée : le bandeau l'indique.
+        $over = $this->activity($this->challenge(null, ['title' => 'Défi passé']), $club, ['title' => 'Déjà finie', 'starts_at' => now()->subDays(2), 'ends_at' => now()->subDays(2)->addHours(2)]);
+        $this->actingAs(User::factory()->create())->get("/activites/{$over->id}")->assertOk()->assertSee('Activité terminée');
+    }
+
+    public function test_club_manager_uploads_replaces_and_removes_the_activity_cover(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $club = $this->club('ESPRIT');
+        $challenge = $this->challenge();
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'global_admin');
+
+        $payload = fn (array $extra = []): array => $extra + [
+            'challenge_id' => $challenge->id, 'club_id' => $club->id, 'title' => 'Avec couverture', 'type' => 'event', 'audience' => 'public', 'in_theme' => 1,
+            'starts_at' => now()->addDays(3)->format('Y-m-d\TH:i'), 'status' => 'published',
+        ];
+
+        $this->actingAs($admin)->get('/admin/activites/creer')->assertOk()->assertSee('Image de couverture')->assertSee('multipart/form-data');
+
+        $this->actingAs($admin)->post('/admin/activites', $payload(['cover' => \Illuminate\Http\UploadedFile::fake()->create('virus.php', 10, 'text/x-php')]))->assertSessionHasErrors('cover');
+        $this->actingAs($admin)->post('/admin/activites', $payload(['cover' => \Illuminate\Http\UploadedFile::fake()->image('big.jpg')->size(5000)]))->assertSessionHasErrors('cover');
+
+        $this->actingAs($admin)->post('/admin/activites', $payload(['cover' => \Illuminate\Http\UploadedFile::fake()->image('hero.jpg', 1600, 600)]))->assertSessionHasNoErrors();
+        $activity = ClubActivity::query()->where('title', 'Avec couverture')->firstOrFail();
+        $first = $activity->cover_path;
+        $this->assertStringStartsWith('activities/covers/', $first);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($first);
+
+        // Remplacement : l'ancienne image est supprimée.
+        $this->actingAs($admin)->put("/admin/activites/{$activity->id}", $payload(['cover' => \Illuminate\Http\UploadedFile::fake()->image('new.jpg')]))->assertSessionHasNoErrors();
+        $second = $activity->fresh()->cover_path;
+        $this->assertNotSame($first, $second);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($first);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($second);
+
+        // Sans nouveau fichier, la couverture est conservée ; la case la retire.
+        $this->actingAs($admin)->put("/admin/activites/{$activity->id}", $payload())->assertSessionHasNoErrors();
+        $this->assertSame($second, $activity->fresh()->cover_path);
+        $this->actingAs($admin)->put("/admin/activites/{$activity->id}", $payload(['cover_remove' => 1]))->assertSessionHasNoErrors();
+        $this->assertNull($activity->fresh()->cover_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($second);
+    }
+
     public function test_navigation_shows_the_challenges_entry(): void
     {
         $this->actingAs(User::factory()->create())->get('/defis')->assertOk()->assertSee(route('challenges.index'), false);

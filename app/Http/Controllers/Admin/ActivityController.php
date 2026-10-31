@@ -57,6 +57,7 @@ class ActivityController extends AdminController
         $data = $this->validated($request, null);
 
         $activity = ClubActivity::query()->create($data + ['created_by' => $request->user()->id]);
+        $this->syncCover($request, $activity);
 
         $this->audit($request, 'admin.activity.created', $activity, ['title' => $activity->title, 'challenge_id' => $activity->challenge_id, 'club_id' => $activity->club_id]);
 
@@ -95,6 +96,7 @@ class ActivityController extends AdminController
         abort_unless(ActivityAccess::canManageClub($request->user(), $activity->club_id), 403, 'Seul le club porteur modifie l’activité.');
 
         $activity->update($this->validated($request, $activity));
+        $this->syncCover($request, $activity);
         $this->audit($request, 'admin.activity.updated', $activity, ['title' => $activity->title, 'status' => $activity->status]);
 
         return redirect()->route('admin.activities.show', $activity)->with('status', 'Activité mise à jour.');
@@ -112,9 +114,11 @@ class ActivityController extends AdminController
         $title = $activity->title;
         $registrants = $activity->registrations()->where('status', '!=', 'cancelled')->pluck('user_id')->all();
         $reportId = $activity->report?->id;
+        $cover = $activity->cover_path;
 
         $this->audit($request, 'admin.activity.deleted', $activity, ['title' => $title, 'registrations' => count($registrants)]);
         $activity->delete();
+        $this->deleteCover($cover);
 
         if ($reportId !== null) {
             Storage::disk('public')->deleteDirectory('activity-reports/'.$reportId);
@@ -243,6 +247,27 @@ class ActivityController extends AdminController
         ];
     }
 
+    /** Enregistre, remplace ou retire l'image de couverture (disque public, dossier activities/covers). */
+    private function syncCover(Request $request, ClubActivity $activity): void
+    {
+        $old = $activity->cover_path;
+
+        if ($request->hasFile('cover')) {
+            $activity->update(['cover_path' => $request->file('cover')->store('activities/covers', 'public')]);
+            $this->deleteCover($old);
+        } elseif ($request->boolean('cover_remove') && $old) {
+            $activity->update(['cover_path' => null]);
+            $this->deleteCover($old);
+        }
+    }
+
+    private function deleteCover(?string $path): void
+    {
+        if ($path && str_starts_with($path, 'activities/covers/')) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
     /** @return array<string, mixed> */
     private function validated(Request $request, ?ClubActivity $existing): array
     {
@@ -264,6 +289,8 @@ class ActivityController extends AdminController
             'registration_ends_at' => ['nullable', 'date'],
             'status' => ['required', Rule::in(array_keys(ClubActivity::STATUSES))],
             'fields' => ['nullable', 'array', 'max:'.ClubActivity::MAX_FIELDS],
+            'cover' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'cover_remove' => ['nullable', 'boolean'],
         ]);
 
         // Le défi et le club porteur sont choisis à la création ; ensuite ils sont figés.

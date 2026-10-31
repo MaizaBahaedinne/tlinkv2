@@ -36,7 +36,7 @@ class ClubActivity extends Model
     public const MAX_FIELDS = 10;
 
     protected $fillable = [
-        'challenge_id', 'club_id', 'title', 'description', 'type', 'audience', 'department_id', 'in_theme',
+        'challenge_id', 'club_id', 'title', 'description', 'cover_path', 'type', 'audience', 'department_id', 'in_theme',
         'starts_at', 'ends_at', 'location', 'capacity', 'registration_ends_at', 'registration_fields', 'status', 'created_by',
     ];
 
@@ -95,6 +95,12 @@ class ClubActivity extends Model
     public function isFinished(): bool
     {
         return $this->status === 'published' && $this->endsAt()->isPast();
+    }
+
+    /** Image de couverture (bandeau de la fiche) ; null sans image. */
+    public function coverUrl(): ?string
+    {
+        return $this->cover_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->cover_path) : null;
     }
 
     public function typeLabel(): string

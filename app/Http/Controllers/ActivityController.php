@@ -18,7 +18,7 @@ class ActivityController extends Controller
         $user = $request->user();
         $this->authorizeView($request, $activity);
 
-        $activity->load(['club:id,title', 'challenge', 'department:id,title', 'organizers.club:id,title']);
+        $activity->load(['club.institution', 'challenge', 'department:id,title', 'organizers.club.institution']);
         $registration = $activity->registrations()->where('user_id', $user->id)->first();
 
         return view('challenges.activity', [
