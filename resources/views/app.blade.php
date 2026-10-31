@@ -5,6 +5,11 @@
     @auth
         @include('partials.app-header')
     @endauth
+    @if (session('error'))
+        <div class="fixed inset-x-0 top-3 z-50 mx-auto w-full max-w-xl rounded-xl bg-rose-600 px-4 py-3 text-sm font-medium text-white shadow-soft" role="alert">
+            {{ session('error') }}
+        </div>
+    @endif
     <div id="tlink-app">
         <main style="max-width:960px;margin:32px auto;padding:24px;font-family:system-ui,sans-serif;line-height:1.5;">
             <h1 style="margin:0 0 8px;color:#d00031;">T.Link</h1>
@@ -31,6 +36,7 @@
             partners: @json($partners),
             links: @json($links),
             myBadges: @json($myBadges ?? []),
+            calendar: @json($calendar ?? []),
             governorates: @json($governorates),
             csrf: @json(csrf_token()),
         };

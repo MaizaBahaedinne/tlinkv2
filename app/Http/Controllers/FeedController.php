@@ -156,6 +156,7 @@ class FeedController extends Controller
                     'icon' => $earned->badge->iconClass(),
                     'gradient' => $earned->badge->gradient(),
                 ])->values(),
+            'calendar' => \App\Support\Challenges\ActivityCalendar::for($request->user()),
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
     }

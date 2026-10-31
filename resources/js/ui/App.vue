@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import ActivityCalendar from './ActivityCalendar.vue';
 
 type FeedPost = {
   id: number;
@@ -49,6 +50,22 @@ type RootData = {
   partners?: Array<{ id: number; name: string; logo_url: string; url: string | null }>;
   links?: { mission?: string; badges?: string; academy?: string };
   myBadges?: Array<{ id: number; name: string; tier: string; icon: string; gradient: string }>;
+  calendar?: Array<{
+    id: number;
+    title: string;
+    club: string | null;
+    type: string;
+    day: string;
+    time: string;
+    location: string | null;
+    state: 'open' | 'full' | 'closed' | 'registered' | 'waitlisted';
+    needs_form: boolean;
+    registered: number;
+    capacity: number | null;
+    url: string;
+    register_url: string;
+    scan_url: string | null;
+  }>;
   governorates: Array<{ id: number; name: string; slug: string }>;
   csrf: string;
 };
@@ -60,6 +77,7 @@ const data = (window.__TLINK__ ?? {
   partners: [],
   links: {},
   myBadges: [],
+  calendar: [],
   governorates: [],
   csrf: '',
 }) as RootData;
@@ -291,6 +309,9 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
         </aside>
 
         <section class="space-y-4 lg:col-span-6">
+        <div v-if="data.auth.isAuthenticated && data.calendar?.length" class="lg:hidden">
+          <ActivityCalendar :entries="data.calendar" :csrf="data.csrf" />
+        </div>
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4">
           <input type="hidden" name="_token" :value="data.csrf" />
           <textarea
@@ -623,6 +644,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
 
         <aside class="hidden lg:col-span-3 lg:block">
           <div class="sticky top-24 space-y-4">
+            <ActivityCalendar v-if="data.auth.isAuthenticated && data.calendar?.length" :entries="data.calendar" :csrf="data.csrf" />
+
             <section class="card overflow-hidden p-0">
               <div class="bg-gradient-to-r from-tlink-blue to-tlink-blue-700 px-4 py-3 text-white">
                 <p class="text-xs font-semibold uppercase tracking-wide">Publicite</p>
