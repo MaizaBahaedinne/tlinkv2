@@ -46,4 +46,16 @@ class StoreReturn extends Model
     {
         return self::RESOLUTIONS[$this->resolution] ?? $this->resolution;
     }
+
+    /** Ton du badge admin (success, warning, danger, info, neutral). */
+    public function statusTone(): string
+    {
+        return match ($this->status) {
+            'requested' => 'warning',
+            'approved', 'received' => 'info',
+            'rejected' => 'danger',
+            'completed' => 'success',
+            default => 'neutral',
+        };
+    }
 }

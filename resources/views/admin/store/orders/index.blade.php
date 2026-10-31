@@ -4,9 +4,9 @@
 @section('section', 'Tunivisions Stores')
 
 @section('content')
-    <x-admin.page-header title="Commandes" subtitle="Commandes de la boutique : confirmation, préparation, expédition, paiement et annulation." />
+    <x-admin.page-header title="Commandes" subtitle="Confirmation, préparation, expédition, paiement et annulation des commandes de la boutique." />
 
-    @error('order')<p class="error" style="margin-bottom:12px">{{ $message }}</p>@enderror
+    @include('admin.store._tabs')
 
     <article class="card card-flush">
         <div class="toolbar">
@@ -35,20 +35,39 @@
         </div>
 
         @if($orders->count())
-            <div class="list">
-                @foreach($orders as $order)
-                    <div class="list-item">
-                        <div class="grow">
-                            <a href="{{ route('admin.store.orders.show', $order) }}"><strong style="display:inline">{{ $order->reference }}</strong></a>
-                            <x-admin.badge :status="$order->status" :label="$order->statusLabel()" />
-                            <x-admin.badge :status="$order->payment_status === 'paid' ? 'approved' : ($order->payment_status === 'unpaid' ? 'pending' : 'rejected')" :label="$order->paymentStatusLabel()" />
-                            <div class="text-sm text-muted">
-                                {{ $order->totalLabel() }} · {{ $order->ship_name }} ({{ $order->user?->email ?? 'compte supprimé' }}) · {{ $order->delivery_name }} · {{ $order->created_at->translatedFormat('d M Y H:i') }}
-                            </div>
-                        </div>
-                        <a href="{{ route('admin.store.orders.show', $order) }}" class="btn btn-secondary btn-sm">Ouvrir</a>
-                    </div>
-                @endforeach
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th>Commande</th>
+                            <th>Client</th>
+                            <th>Livraison</th>
+                            <th class="num">Total</th>
+                            <th>Statut</th>
+                            <th>Paiement</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($orders as $order)
+                            <tr>
+                                <td>
+                                    <a href="{{ route('admin.store.orders.show', $order) }}" class="cell-main link-strong">{{ $order->reference }}</a>
+                                    <div class="cell-sub">{{ $order->created_at->translatedFormat('d M Y H:i') }}</div>
+                                </td>
+                                <td>
+                                    <div class="cell-main">{{ $order->ship_name }}</div>
+                                    <div class="cell-sub">{{ $order->user?->email ?? 'Compte supprimé' }}</div>
+                                </td>
+                                <td class="text-sm">{{ $order->delivery_name }}</td>
+                                <td class="num cell-main">{{ $order->totalLabel() }}</td>
+                                <td><span class="badge badge-{{ $order->statusTone() }}">{{ $order->statusLabel() }}</span></td>
+                                <td><span class="badge badge-{{ $order->paymentTone() }}">{{ $order->paymentStatusLabel() }}</span></td>
+                                <td class="cell-actions"><a href="{{ route('admin.store.orders.show', $order) }}" class="btn btn-secondary btn-sm">Ouvrir</a></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
             {{ $orders->links('admin.partials.pagination') }}
         @else

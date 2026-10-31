@@ -1,27 +1,56 @@
-{{-- Champs d'un mode de livraison (création et modification). --}}
-<div class="field"><label>Nom</label><input type="text" name="name" value="{{ $method->name }}" maxlength="100" required></div>
+{{-- Champs d'un mode de livraison (création et modification). Attend $method et $governorates. --}}
+@php
+    $uid = 'dm-'.($method->id ?? 'new');
+@endphp
 <div class="field">
-    <label>Type</label>
-    <select name="kind">
+    <label for="{{ $uid }}-name">Nom <span class="req">*</span></label>
+    <input id="{{ $uid }}-name" type="text" name="name" value="{{ $method->name }}" maxlength="100" required placeholder="Livraison à domicile">
+</div>
+<div class="field">
+    <label for="{{ $uid }}-kind">Type</label>
+    <select id="{{ $uid }}-kind" name="kind">
         @foreach(\App\Models\StoreDeliveryMethod::KINDS as $value => $label)
             <option value="{{ $value }}" @selected($method->kind === $value)>{{ $label }}</option>
         @endforeach
     </select>
 </div>
-<div class="field"><label>Frais de base (TND)</label><input type="number" name="fee" value="{{ $method->fee }}" step="0.01" min="0"><p class="hint">Ignoré pour un retrait sur place.</p></div>
-<div class="field"><label>Gratuit dès (TND)</label><input type="number" name="free_above" value="{{ $method->free_above }}" step="0.01" min="0"><p class="hint">Livraison offerte à partir de ce sous-total (facultatif).</p></div>
-<div class="field"><label>Délai estimé</label><input type="text" name="estimated_delay" value="{{ $method->estimated_delay }}" maxlength="100" placeholder="2 à 4 jours ouvrés"></div>
-<div class="field"><label>Ordre</label><input type="number" name="sort_order" value="{{ $method->sort_order }}" min="0"></div>
-<div class="field span-2"><label>Consignes affichées au membre (adresse de retrait, horaires…)</label><textarea name="instructions" rows="2" maxlength="3000">{{ $method->instructions }}</textarea></div>
+<div class="field">
+    <label for="{{ $uid }}-fee">Frais de base (TND)</label>
+    <input id="{{ $uid }}-fee" type="number" name="fee" value="{{ $method->fee }}" step="0.01" min="0">
+    <p class="hint">Sans effet pour un retrait sur place (toujours gratuit).</p>
+</div>
+<div class="field">
+    <label for="{{ $uid }}-free">Livraison offerte dès (TND)</label>
+    <input id="{{ $uid }}-free" type="number" name="free_above" value="{{ $method->free_above }}" step="0.01" min="0">
+    <p class="hint">Facultatif : sous-total à partir duquel la livraison est gratuite.</p>
+</div>
+<div class="field">
+    <label for="{{ $uid }}-delay">Délai estimé</label>
+    <input id="{{ $uid }}-delay" type="text" name="estimated_delay" value="{{ $method->estimated_delay }}" maxlength="100" placeholder="2 à 4 jours ouvrés">
+</div>
+<div class="field">
+    <label for="{{ $uid }}-sort">Ordre d’affichage</label>
+    <input id="{{ $uid }}-sort" type="number" name="sort_order" value="{{ $method->sort_order ?? 0 }}" min="0">
+</div>
 <div class="field span-2">
-    <label>Tarif par gouvernorat (TND) — laissez vide pour appliquer les frais de base</label>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px">
+    <label for="{{ $uid }}-instructions">Consignes affichées au membre</label>
+    <textarea id="{{ $uid }}-instructions" name="instructions" rows="2" maxlength="3000" placeholder="Adresse de retrait, horaires, précautions…">{{ $method->instructions }}</textarea>
+</div>
+<div class="field span-2">
+    <label>Tarif par gouvernorat (TND)</label>
+    <div class="fee-grid">
         @foreach($governorates as $governorate)
-            <label style="font-weight:400;display:flex;gap:6px;align-items:center;justify-content:space-between">
+            <label>
                 {{ $governorate->name }}
-                <input type="number" name="governorate_fees[{{ $governorate->id }}]" value="{{ ($method->governorate_fees ?? [])[(string) $governorate->id] ?? '' }}" step="0.01" min="0" style="width:80px">
+                <input type="number" name="governorate_fees[{{ $governorate->id }}]" value="{{ ($method->governorate_fees ?? [])[(string) $governorate->id] ?? '' }}" step="0.01" min="0" placeholder="{{ number_format((float) $method->fee, 2, ',', '') }}">
             </label>
         @endforeach
     </div>
+    <p class="hint">Laissez vide pour appliquer les frais de base.</p>
 </div>
-<div class="field span-2"><label style="font-weight:400"><input type="checkbox" name="is_active" value="1" @checked($method->is_active)> Activé (proposé aux membres)</label></div>
+<div class="field span-2">
+    <label class="check check-card">
+        <input type="checkbox" name="is_active" value="1" @checked($method->is_active)>
+        <span>Activé<small>Proposé aux membres au moment de la commande.</small></span>
+    </label>
+</div>

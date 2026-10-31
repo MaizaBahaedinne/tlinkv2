@@ -272,6 +272,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
 
             // Tunivisions Stores : catalogue, stock, packs, commandes, retours et réglages
             Route::prefix('boutique')->name('store.')->group(function (): void {
+                Route::get('/', [Admin\StoreDashboardController::class, 'index'])->name('index');
                 Route::get('articles', [Admin\StoreProductController::class, 'index'])->name('products.index');
                 Route::get('articles/creer', [Admin\StoreProductController::class, 'create'])->name('products.create');
                 Route::post('articles', [Admin\StoreProductController::class, 'store'])->name('products.store');

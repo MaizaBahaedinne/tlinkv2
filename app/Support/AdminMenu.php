@@ -52,6 +52,7 @@ class AdminMenu
         'admin.academy.sessions.*' => 'academy.sessions',
         'admin.academy.orders.*' => 'academy.orders',
         'admin.academy.settings.*' => 'academy.plans',
+        'admin.store.index' => 'store.orders',
         'admin.store.products.*' => 'store.catalog',
         'admin.store.packs.*' => 'store.catalog',
         'admin.store.refs.*' => 'store.catalog',
@@ -152,6 +153,7 @@ class AdminMenu
             [
                 'title' => 'Tunivisions Stores',
                 'items' => [
+                    ['label' => 'Vue d’ensemble', 'route' => 'admin.store.index', 'icon' => 'home', 'match' => 'admin.store.index', 'perms' => ['entity.manage']],
                     ['label' => 'Commandes', 'route' => 'admin.store.orders.index', 'icon' => 'shopping-bag', 'match' => 'admin.store.orders.*', 'perms' => ['entity.manage'], 'badge' => 'store_orders'],
                     ['label' => 'Retours', 'route' => 'admin.store.returns.index', 'icon' => 'inbox', 'match' => 'admin.store.returns.*', 'perms' => ['entity.manage'], 'badge' => 'store_returns'],
                     ['label' => 'Articles', 'route' => 'admin.store.products.index', 'icon' => 'package', 'match' => 'admin.store.products.*', 'perms' => ['entity.manage']],

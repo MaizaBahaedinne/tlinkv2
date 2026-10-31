@@ -470,6 +470,48 @@ class StoreTest extends TestCase
         $this->actingAs($member)->get(route('admin.store.products.index'))->assertForbidden();
         $this->actingAs($member)->get(route('admin.store.orders.index'))->assertForbidden();
         $this->actingAs($member)->get(route('admin.store.settings.edit'))->assertForbidden();
+        $this->actingAs($member)->get(route('admin.store.index'))->assertForbidden();
+    }
+
+    public function test_admin_overview_shows_checklist_then_figures(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->get('/admin/boutique')
+            ->assertOk()
+            ->assertSee('Mise en route')
+            ->assertSee('Boutique fermée')
+            ->assertSee('Aucune commande');
+
+        $this->open();
+        [, $variant] = $this->product(3);
+        $this->delivery();
+        $this->payment();
+        $order = $this->place(User::factory()->create(), $variant, 2);
+
+        $this->actingAs($admin)->get(route('admin.store.index'))
+            ->assertOk()
+            ->assertDontSee('Mise en route')
+            ->assertSee($order->reference)
+            ->assertSee('Stock à surveiller');
+    }
+
+    public function test_order_detail_shows_tracker_and_cancelled_notice(): void
+    {
+        $admin = $this->admin();
+        $this->open();
+        [, $variant] = $this->product();
+        $this->delivery('pickup');
+        $this->payment();
+        $order = $this->place(User::factory()->create(), $variant, 1);
+        StoreOrders::advance($order, 'shipped');
+
+        $this->actingAs($admin)->get(route('admin.store.orders.show', $order))->assertOk()->assertSee('Prête au retrait')->assertSee('is-current', false);
+
+        $order->fresh()->forceFill(['status' => 'pending'])->save();
+        StoreOrders::cancel($order->fresh());
+
+        $this->actingAs($admin)->get(route('admin.store.orders.show', $order))->assertOk()->assertSee('Commande annulée');
     }
 
     public function test_admin_pages_render(): void
@@ -486,7 +528,7 @@ class StoreTest extends TestCase
         StorePack::query()->create(['name' => 'Pack', 'slug' => 'pack', 'price' => 10, 'is_active' => true]);
 
         foreach ([
-            route('admin.store.products.index'), route('admin.store.products.create'), route('admin.store.products.edit', $product),
+            route('admin.store.index'), route('admin.store.products.index'), route('admin.store.products.create'), route('admin.store.products.edit', $product),
             route('admin.store.packs.index'), route('admin.store.packs.create'), route('admin.store.refs.index'),
             route('admin.store.stock.index'), route('admin.store.orders.index'), route('admin.store.orders.show', $order),
             route('admin.store.returns.index'), route('admin.store.returns.show', $return), route('admin.store.settings.edit'),

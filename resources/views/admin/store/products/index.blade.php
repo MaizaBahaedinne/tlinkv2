@@ -10,7 +10,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    @error('product')<p class="error" style="margin-bottom:12px">{{ $message }}</p>@enderror
+    @include('admin.store._tabs')
 
     <article class="card card-flush">
         <div class="toolbar">
@@ -38,33 +38,64 @@
         </div>
 
         @if($products->count())
-            <div class="list">
-                @foreach($products as $product)
-                    @php
-                        $stock = $product->variants->sum('stock');
-                        $low = $product->variants->where('is_active', true)->filter(fn ($variant) => $variant->isLow())->count();
-                    @endphp
-                    <div class="list-item">
-                        @if($product->imageUrl())
-                            <img src="{{ $product->imageUrl() }}" alt="" width="44" height="44" style="border-radius:8px;object-fit:cover">
-                        @endif
-                        <div class="grow">
-                            <a href="{{ route('admin.store.products.edit', $product) }}"><strong style="display:inline">{{ $product->name }}</strong></a>
-                            <x-admin.badge :status="$product->is_active ? 'active' : 'inactive'" :label="$product->is_active ? 'En vente' : 'Masqué'" />
-                            @if($product->is_featured)<x-admin.badge status="info" label="À la une" />@endif
-                            <div class="text-sm text-muted">
-                                {{ $product->category?->name ?? 'Sans catégorie' }}@if($product->type) · {{ $product->type->name }}@endif
-                                · {{ $product->priceLabel() }} · {{ $product->variants->count() }} variante(s) · {{ $stock }} en stock
-                                @if($low > 0) · <span style="color:var(--danger)">{{ $low }} à réapprovisionner</span>@endif
-                            </div>
-                        </div>
-                        <a href="{{ route('admin.store.products.edit', $product) }}" class="btn btn-secondary btn-sm"><x-admin.icon name="edit" :size="15" /> Modifier</a>
-                    </div>
-                @endforeach
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Catégorie</th>
+                            <th class="num">Prix</th>
+                            <th class="num">Variantes</th>
+                            <th>Stock</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($products as $product)
+                            @php
+                                $active = $product->variants->where('is_active', true);
+                                $stock = (int) $active->sum('stock');
+                                $low = $active->filter(fn ($variant) => $variant->isLow())->count();
+                                $tone = $stock === 0 ? 'is-out' : ($low > 0 ? 'is-low' : '');
+                            @endphp
+                            <tr>
+                                <td>
+                                    <div class="cell-user">
+                                        <span class="store-thumb">
+                                            @if($product->imageUrl())<img src="{{ $product->imageUrl() }}" alt="">@else<x-admin.icon name="package" :size="20" />@endif
+                                        </span>
+                                        <div>
+                                            <a href="{{ route('admin.store.products.edit', $product) }}" class="cell-main link-strong">{{ $product->name }}</a>
+                                            <div class="chips" style="gap:6px;margin-top:3px">
+                                                <span class="badge badge-{{ $product->is_active ? 'success' : 'neutral' }}">{{ $product->is_active ? 'En vente' : 'Masqué' }}</span>
+                                                @if($product->is_featured)<span class="badge badge-info">À la une</span>@endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="cell-main">{{ $product->category?->name ?? '—' }}</div>
+                                    @if($product->type)<div class="cell-sub">{{ $product->type->name }}</div>@endif
+                                </td>
+                                <td class="num cell-main">{{ $product->priceLabel() }}</td>
+                                <td class="num">{{ $product->variants->count() }}</td>
+                                <td>
+                                    <span class="stock-pill {{ $tone }}">{{ $stock }} en stock</span>
+                                    @if($low > 0 && $stock > 0)<div class="cell-sub">{{ $low }} variante(s) à réapprovisionner</div>@endif
+                                </td>
+                                <td class="cell-actions">
+                                    <a href="{{ route('admin.store.products.edit', $product) }}" class="btn btn-secondary btn-sm"><x-admin.icon name="edit" :size="15" /> Modifier</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
             {{ $products->links('admin.partials.pagination') }}
         @else
-            <x-admin.empty icon="package" title="Aucun article" text="Créez des catégories, couleurs et tailles, puis votre premier article." />
+            <x-admin.empty icon="package" title="Aucun article" text="Créez des catégories, couleurs et tailles, puis votre premier article.">
+                <a href="{{ route('admin.store.products.create') }}" class="btn btn-primary btn-sm"><x-admin.icon name="plus" :size="15" /> Nouvel article</a>
+            </x-admin.empty>
         @endif
     </article>
 @endsection

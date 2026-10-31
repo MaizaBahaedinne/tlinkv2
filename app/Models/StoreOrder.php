@@ -79,6 +79,27 @@ class StoreOrder extends Model
         return self::PAYMENT_STATUSES[$this->payment_status] ?? $this->payment_status;
     }
 
+    /** Ton du badge admin (success, warning, danger, info, neutral). */
+    public function statusTone(): string
+    {
+        return match ($this->status) {
+            'pending' => 'warning',
+            'confirmed', 'preparing', 'shipped' => 'info',
+            'delivered' => 'success',
+            default => 'neutral',
+        };
+    }
+
+    public function paymentTone(): string
+    {
+        return match ($this->payment_status) {
+            'unpaid' => 'warning',
+            'paid' => 'success',
+            'partially_refunded' => 'info',
+            default => 'neutral',
+        };
+    }
+
     public function totalLabel(): string
     {
         return StoreSettings::money((float) $this->total);
