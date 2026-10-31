@@ -49,7 +49,10 @@
                                         @if(! empty($auto['department']))<p class="mt-1 text-xs text-slate-500">{{ $auto['department'] }}</p>@endif
                                         @if(! empty($auto['info']))<p class="mt-1 text-xs text-slate-500">{{ $auto['info'] }}</p>@endif
                                         <p class="mt-1 text-xs text-slate-500">@if($auto['mandate'])Mandat {{ $auto['mandate'] }}@else{{ $auto['start_date'] ?? '-' }} - {{ ($auto['end_date'] ?? '') !== '' ? $auto['end_date'] : 'En cours' }}@endif</p>
-                                        <p class="mt-2"><span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Adhésion validée Tunivisions</span></p>
+                                        <p class="mt-2 flex flex-wrap items-center gap-2">
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Adhésion validée Tunivisions</span>
+                                            @if(! empty($auto['kind_label']))<span class="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">{{ $auto['kind_label'] }}</span>@endif
+                                        </p>
                                     </div>
                                 </article>
                             @endif

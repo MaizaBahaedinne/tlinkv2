@@ -11,6 +11,7 @@ use App\Models\OrgNode;
 use App\Models\Profile;
 use App\Support\Academy\AcademySettings;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -215,50 +216,52 @@ class ProfileOrganizations
 
     /**
      * Adhésions validées du membre, ajoutées automatiquement à ses expériences associatives :
-     * adhésions approuvées rattachées à un club ou une unité, et participations acceptées à d'anciens mandats.
-     * Les demandes en attente ou refusées, et les adhésions sans rattachement, n'apparaissent pas.
+     * adhésions approuvées dans un club, mais aussi hors club (fondation, chapitre, projet — avec ou sans bloc précis),
+     * et participations acceptées à d'anciens mandats. Les demandes en attente ou refusées n'apparaissent pas.
      *
      * @return Collection<int, array<string, mixed>>
      */
     public function foundationMemberships(int $userId): Collection
     {
         $rows = Membership::query()
-            ->where('user_id', $userId)->where('status', 'approved')->whereNotNull('node_id')
-            ->whereHas('node')->with('node')->get()
+            ->where('user_id', $userId)->where('status', 'approved')
+            ->where(fn ($query) => $query->whereNull('node_id')->orWhereHas('node'))->with('node')->get()
+            ->filter(fn (Membership $membership): bool => $membership->node !== null || filled($membership->scope))
             ->map(function (Membership $membership): array {
-                $club = $this->clubOf($membership->node);
-                $isClub = $membership->node->kind === 'club';
+                $place = $this->placeOf($membership->node, $membership->scope);
 
                 return [
-                    'club_name' => $club?->title ?? $membership->node->title,
+                    'club_name' => $place['name'],
                     'role' => self::MEMBERSHIP_TYPES[$membership->membership_type] ?? ($membership->membership_type ? ucfirst(str_replace('_', ' ', $membership->membership_type)) : 'Membre'),
-                    'department' => $isClub ? null : $membership->node->title,
+                    'department' => $place['department'],
                     'start_date' => ($membership->starts_at ?? $membership->approved_at ?? $membership->created_at)?->toDateString(),
                     'end_date' => $membership->ends_at?->toDateString(),
                     'mandate' => null,
-                    'logo_url' => $club?->logoUrl() ?? $club?->institution?->logoUrl(),
-                    'info' => $club ? collect([$club->governorate?->name, $club->institution?->name])->filter()->implode(' · ') : null,
-                    'key' => ($club?->id ?? $membership->node_id).'|'.($membership->membership_type ?: 'member'),
+                    'logo_url' => $place['logo_url'],
+                    'info' => $place['info'],
+                    'kind_label' => $place['kind_label'],
+                    'key' => $place['key'].'|'.($membership->membership_type ?: 'member'),
                 ];
             });
 
         $participations = MandateParticipation::query()
-            ->where('user_id', $userId)->where('status', 'approved')->whereNotNull('node_id')
-            ->whereHas('node')->with(['node', 'mandate'])->get()
+            ->where('user_id', $userId)->where('status', 'approved')
+            ->where(fn ($query) => $query->whereNull('node_id')->orWhereHas('node'))->with(['node', 'mandate'])->get()
+            ->filter(fn (MandateParticipation $participation): bool => $participation->node !== null || filled($participation->scope))
             ->map(function (MandateParticipation $participation): array {
-                $club = $this->clubOf($participation->node);
-                $isClub = $participation->node->kind === 'club';
+                $place = $this->placeOf($participation->node, $participation->scope);
                 $mandate = $participation->mandate;
 
                 return [
-                    'club_name' => $club?->title ?? $participation->node->title,
+                    'club_name' => $place['name'],
                     'role' => $participation->position_title ?: 'Membre',
-                    'department' => $isClub ? null : $participation->node->title,
+                    'department' => $place['department'],
                     'start_date' => $mandate?->start_year ? $mandate->start_year.'-09-01' : null,
                     'end_date' => $mandate?->end_year ? $mandate->end_year.'-08-31' : null,
                     'mandate' => $mandate?->label,
-                    'logo_url' => $club?->logoUrl() ?? $club?->institution?->logoUrl(),
-                    'info' => $club ? collect([$club->governorate?->name, $club->institution?->name])->filter()->implode(' · ') : null,
+                    'logo_url' => $place['logo_url'],
+                    'info' => $place['info'],
+                    'kind_label' => $place['kind_label'],
                     'key' => 'p'.$participation->id,
                 ];
             });
@@ -288,6 +291,44 @@ class ProfileOrganizations
                 'logo_url' => $logo,
             ])
             ->values();
+    }
+
+    /**
+     * Structure affichée pour une adhésion : le club (bloc club ou son plus proche parent club) ; à défaut
+     * le périmètre (fondation, chapitre, projet) avec le bloc précis comme département.
+     *
+     * @return array{name: string, department: ?string, logo_url: ?string, info: ?string, kind_label: string, key: string}
+     */
+    private function placeOf(?OrgNode $node, ?string $scope): array
+    {
+        $club = $this->clubOf($node);
+
+        if ($club !== null) {
+            return [
+                'name' => (string) $club->title,
+                'department' => $node->kind === 'club' ? null : $node->title,
+                'logo_url' => $club->logoUrl() ?? $club->institution?->logoUrl(),
+                'info' => collect([$club->governorate?->name, $club->institution?->name])->filter()->implode(' · '),
+                'kind_label' => 'Club',
+                'key' => 'c'.$club->id,
+            ];
+        }
+
+        $scopeName = filled($scope) ? (string) OrgScopes::label($scope) : (string) $node?->title;
+        $logo = filled($scope) ? (OrgScopes::logos()[$scope] ?? null) : null;
+
+        return [
+            'name' => $scopeName,
+            'department' => $node !== null && $node->title !== $scopeName ? $node->title : null,
+            'logo_url' => $logo && Storage::disk('public')->exists($logo) ? Storage::disk('public')->url($logo) : null,
+            'info' => null,
+            'kind_label' => match (filled($scope) ? OrgScopes::type($scope) : null) {
+                'chapter' => 'Chapitre',
+                'project' => 'Projet',
+                default => 'Fondation',
+            },
+            'key' => 's'.($scope ?? '').'n'.($node?->id ?? ''),
+        ];
     }
 
     /** Club auquel appartient un bloc : lui-même s'il en est un, sinon son plus proche parent qui en est un. */

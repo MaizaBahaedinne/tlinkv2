@@ -55,11 +55,14 @@ class ProfileRecordsTest extends TestCase
 
         $rows = (new ProfileOrganizations())->foundationMemberships($member->id);
 
-        $this->assertCount(1, $rows);
-        $this->assertSame('ESPRIT', $rows[0]['club_name']);
-        $this->assertSame('Membre', $rows[0]['role']);
-        $this->assertSame('2025-09-15', $rows[0]['start_date']);
-        $this->assertNull($rows[0]['end_date']);
+        // Club + adhésion validée hors club (périmètre « University », sans bloc précis) ; ni attente ni refus.
+        $this->assertCount(2, $rows);
+        $byName = $rows->keyBy('club_name');
+        $this->assertSame('Club', $byName['ESPRIT']['kind_label']);
+        $this->assertSame('Membre', $byName['ESPRIT']['role']);
+        $this->assertSame('2025-09-15', $byName['ESPRIT']['start_date']);
+        $this->assertNull($byName['ESPRIT']['end_date']);
+        $this->assertSame('Chapitre', $byName['University']['kind_label']);
 
         $this->actingAs($member)->get('/profil')
             ->assertOk()
@@ -69,6 +72,28 @@ class ProfileRecordsTest extends TestCase
             ->assertDontSee('Membre · ISET', false);
 
         $this->actingAs(User::factory()->create())->get('/membres/'.$member->id)->assertOk()->assertSee('Adhésion validée Tunivisions')->assertSee('ESPRIT');
+    }
+
+    public function test_non_club_memberships_show_foundation_project_and_chapter(): void
+    {
+        $member = User::factory()->create();
+        $unit = OrgNode::query()->create(['title' => 'Chef de projet We Are Carthage', 'kind' => 'unit', 'category' => 'project', 'scope' => 'alumni']);
+
+        Membership::query()->create(['user_id' => $member->id, 'scope' => 'foundation', 'node_id' => null, 'status' => 'approved', 'membership_type' => 'member', 'starts_at' => '2024-01-10']);
+        Membership::query()->create(['user_id' => $member->id, 'scope' => 'alumni', 'node_id' => $unit->id, 'status' => 'approved', 'membership_type' => 'manager', 'starts_at' => '2025-02-01']);
+        Membership::query()->create(['user_id' => $member->id, 'scope' => 'high-school', 'node_id' => null, 'status' => 'pending', 'membership_type' => 'member']);
+
+        $byName = (new ProfileOrganizations())->foundationMemberships($member->id)->keyBy('club_name');
+
+        $this->assertCount(2, $byName);
+        $this->assertSame('Fondation', $byName['Fondation']['kind_label']);
+        $this->assertSame('Projet', $byName['Alumni']['kind_label']);
+        $this->assertSame('Chef de projet We Are Carthage', $byName['Alumni']['department']);
+        $this->assertSame('Manager', $byName['Alumni']['role']);
+
+        $this->actingAs($member)->get('/profil')->assertOk()
+            ->assertSee('Membre · Fondation', false)->assertSee('Manager · Alumni', false)
+            ->assertSee('Chef de projet We Are Carthage')->assertDontSee('High School');
     }
 
     public function test_accepted_mandate_participations_are_listed_with_their_position(): void
