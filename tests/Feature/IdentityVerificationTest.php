@@ -141,6 +141,15 @@ class IdentityVerificationTest extends TestCase
         $this->assertNull($raw->card_issued_place);
     }
 
+    public function test_module_is_in_catalog_and_menu_entry_is_visible_to_global_admin(): void
+    {
+        $this->assertTrue(\App\Models\AppModule::query()->where('key', 'members.verification')->where('is_active', true)->exists());
+
+        $this->actingAs($this->admin())->get('/admin')->assertOk()
+            ->assertSee('Vérifications d’identité')
+            ->assertSee(route('admin.verifications.index'), false);
+    }
+
     public function test_guest_cannot_access_verification(): void
     {
         $this->get('/profil/verification')->assertRedirect();

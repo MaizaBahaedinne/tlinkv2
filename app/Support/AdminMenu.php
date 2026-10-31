@@ -264,7 +264,9 @@ class AdminMenu
             'reports' => ModerationReport::query()->where('status', 'pending')->count(),
             'messages' => ContactMessage::query()->where('status', 'new')->count(),
             'applications' => PositionApplication::query()->where('status', 'pending')->count(),
-            'verifications' => \App\Models\IdentityVerification::query()->where('status', 'pending')->count(),
+            'verifications' => \Illuminate\Support\Facades\Schema::hasTable('identity_verifications')
+                ? \App\Models\IdentityVerification::query()->where('status', 'pending')->count()
+                : 0,
             'mentoring' => Mentoring::enabled() ? MentoringTicket::query()->where('status', 'new')->count() : 0,
             'store_orders' => \App\Support\Store\StoreSettings::tablesReady() ? \App\Models\StoreOrder::query()->where('status', 'pending')->count() : 0,
             'store_returns' => \App\Support\Store\StoreSettings::tablesReady() ? \App\Models\StoreReturn::query()->where('status', 'requested')->count() : 0,
