@@ -6,10 +6,10 @@ use App\Models\ActivityRegistration;
 use App\Models\ClubActivity;
 use App\Models\User;
 
-/** Calendrier du fil d'actualité : prochaines activités de clubs accessibles au membre, avec l'état de son inscription. */
+/** Activités à venir du fil d'actualité : toutes les activités publiques publiées, avec l'état d'inscription du membre. */
 final class ActivityCalendar
 {
-    /** Horizon du calendrier, en jours. */
+    /** Horizon, en jours. */
     public const HORIZON_DAYS = 90;
 
     public const LIMIT = 40;
@@ -26,18 +26,17 @@ final class ActivityCalendar
             return [];
         }
 
-        $scopes = ActivityAccess::scopesOf($user);
-
         $activities = ClubActivity::query()
             ->where('status', 'published')
+            ->where('audience', 'public')
             ->whereHas('challenge', fn ($query) => $query->where('status', 'published'))
             ->where('starts_at', '<=', now()->addDays(self::HORIZON_DAYS))
             ->where(fn ($query) => $query
                 ->where(fn ($ended) => $ended->whereNotNull('ends_at')->where('ends_at', '>=', now()))
                 ->orWhere(fn ($open) => $open->whereNull('ends_at')->where('starts_at', '>=', now()->subHours(4))))
-            ->with(['challenge', 'club:id,title', 'organizers'])
+            ->with(['challenge', 'club:id,title'])
             ->orderBy('starts_at')
-            ->limit(150)
+            ->limit(self::LIMIT)
             ->get();
 
         if ($activities->isEmpty()) {
@@ -49,21 +48,13 @@ final class ActivityCalendar
         $counts = ActivityRegistration::query()->where('status', 'registered')->whereIn('activity_id', $ids)
             ->selectRaw('activity_id, COUNT(*) as total')->groupBy('activity_id')->pluck('total', 'activity_id');
 
-        $entries = [];
-
-        foreach ($activities as $activity) {
+        return $activities->map(function (ClubActivity $activity) use ($mine, $counts): array {
             $status = $mine->get($activity->id)?->status;
             $joined = in_array($status, ['registered', 'waitlisted'], true);
-
-            // Les activités hors périmètre ou fermées au profil du membre n'encombrent pas son calendrier.
-            if (! $joined && (! $activity->challenge->reachesScopes($scopes) || ActivityAccess::ineligibleReason($user, $activity) !== null)) {
-                continue;
-            }
-
             $registered = (int) ($counts[$activity->id] ?? 0);
             $full = $activity->capacity !== null && $registered >= $activity->capacity;
 
-            $entries[] = [
+            return [
                 'id' => $activity->id,
                 'title' => $activity->title,
                 'club' => $activity->club?->title,
@@ -83,12 +74,6 @@ final class ActivityCalendar
                 'register_url' => route('activities.register', $activity),
                 'scan_url' => $status === 'registered' && $activity->checkinOpen() ? route('activities.scan') : null,
             ];
-
-            if (count($entries) >= self::LIMIT) {
-                break;
-            }
-        }
-
-        return $entries;
+        })->values()->all();
     }
 }

@@ -622,39 +622,52 @@ class ChallengesTest extends TestCase
         $this->actingAs(User::factory()->create())->get('/defis')->assertOk()->assertSee(route('challenges.index'), false);
     }
 
-    public function test_feed_calendar_lists_the_activities_the_member_can_join_and_registers_directly(): void
+    public function test_feed_lists_upcoming_public_activities_and_registers_directly(): void
     {
         $club = $this->club('ESPRIT');
         $challenge = $this->challenge();
         $member = User::factory()->create();
-        $this->approvedMember($member, $club);
 
         $open = $this->activity($challenge, $club, ['title' => 'Plage propre', 'capacity' => 2]);
         $this->activity($challenge, $club, ['title' => 'Avec formulaire', 'registration_fields' => [['label' => 'Taille de t-shirt', 'type' => 'text', 'required' => true]]]);
         $this->activity($challenge, $club, ['title' => 'Brouillon caché', 'status' => 'draft']);
         $this->activity($challenge, $club, ['title' => 'Déjà passée', 'starts_at' => now()->subDays(3), 'ends_at' => now()->subDays(3)->addHours(2)]);
-        $this->activity($challenge, $club, ['title' => 'Interne à un autre club', 'audience' => 'club', 'club_id' => $this->club('ISET')->id]);
-        $this->activity($this->challenge(null, ['title' => 'Défi Lycées', 'scope' => 'high-school']), $club, ['title' => 'Hors périmètre']);
+        $this->activity($challenge, $club, ['title' => 'Interne au club', 'audience' => 'club']);
+        $this->activity($challenge, $club, ['title' => 'Réservée Tunimateurs', 'audience' => 'tunimateurs']);
+        $this->activity($this->challenge(null, ['title' => 'Défi Brouillon', 'status' => 'draft']), $club, ['title' => 'Défi non publié']);
+        // Le périmètre du défi n'est pas un filtre : seul le public « Public » compte, même sans aucun rattachement du membre.
+        $this->activity($this->challenge(null, ['title' => 'Défi Lycées', 'scope' => 'high-school']), $club, ['title' => 'Autre périmètre']);
 
         $calendar = collect($this->actingAs($member)->get('/feed')->assertOk()->viewData('calendar'))->keyBy('title');
 
-        $this->assertSame(['Avec formulaire', 'Plage propre'], $calendar->keys()->sort()->values()->all());
+        $this->assertSame(['Autre périmètre', 'Avec formulaire', 'Plage propre'], $calendar->keys()->sort()->values()->all());
         $this->assertSame('open', $calendar['Plage propre']['state']);
         $this->assertFalse($calendar['Plage propre']['needs_form']);
         $this->assertTrue($calendar['Avec formulaire']['needs_form']);
         $this->assertSame($open->starts_at->format('Y-m-d'), $calendar['Plage propre']['day']);
 
-        // Inscription depuis le calendrier : retour sur le fil, état mis à jour.
+        // Inscription depuis le fil : retour sur le fil, état mis à jour.
         $this->actingAs($member)->from('/feed')->post($calendar['Plage propre']['register_url'])->assertRedirect('/feed')->assertSessionHas('status');
         $this->assertSame('registered', collect($this->actingAs($member)->get('/feed')->viewData('calendar'))->firstWhere('title', 'Plage propre')['state']);
 
         // Une fois complète, l'activité propose la liste d'attente ; les inscriptions closes sont signalées.
         $other = User::factory()->create();
-        $this->approvedMember($other, $club);
         $open->update(['capacity' => 1]);
         $this->assertSame('full', collect($this->actingAs($other)->get('/feed')->viewData('calendar'))->firstWhere('title', 'Plage propre')['state']);
         $open->update(['registration_ends_at' => now()->subHour()]);
         $this->assertSame('closed', collect($this->actingAs($other)->get('/feed')->viewData('calendar'))->firstWhere('title', 'Plage propre')['state']);
+    }
+
+    public function test_feed_activities_are_sorted_by_date(): void
+    {
+        $club = $this->club('ESPRIT');
+        $challenge = $this->challenge();
+        $this->activity($challenge, $club, ['title' => 'Plus tard', 'starts_at' => now()->addDays(9), 'ends_at' => now()->addDays(9)->addHours(2)]);
+        $this->activity($challenge, $club, ['title' => 'Bientôt', 'starts_at' => now()->addDay(), 'ends_at' => now()->addDay()->addHours(2)]);
+
+        $titles = collect($this->actingAs(User::factory()->create())->get('/feed')->viewData('calendar'))->pluck('title')->all();
+
+        $this->assertSame(['Bientôt', 'Plus tard'], $titles);
     }
 
     public function test_feed_calendar_is_empty_without_activities_or_when_the_module_is_unavailable(): void
