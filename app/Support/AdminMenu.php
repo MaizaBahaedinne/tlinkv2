@@ -52,6 +52,13 @@ class AdminMenu
         'admin.academy.sessions.*' => 'academy.sessions',
         'admin.academy.orders.*' => 'academy.orders',
         'admin.academy.settings.*' => 'academy.plans',
+        'admin.store.products.*' => 'store.catalog',
+        'admin.store.packs.*' => 'store.catalog',
+        'admin.store.refs.*' => 'store.catalog',
+        'admin.store.stock.*' => 'store.stock',
+        'admin.store.orders.*' => 'store.orders',
+        'admin.store.returns.*' => 'store.returns',
+        'admin.store.settings.*' => 'store.settings',
         'admin.mentoring.tickets.*' => 'mentoring.tickets',
         'admin.mentoring.mentors.*' => 'mentoring.tickets',
     ];
@@ -140,6 +147,18 @@ class AdminMenu
                     ['label' => 'Calendrier des sessions', 'route' => 'admin.academy.sessions.index', 'icon' => 'calendar', 'match' => 'admin.academy.sessions.*', 'perms' => ['event.manage']],
                     ['label' => 'Commandes et paiements', 'route' => 'admin.academy.orders.index', 'icon' => 'file-text', 'match' => 'admin.academy.orders.*', 'perms' => ['entity.manage']],
                     ['label' => 'Abonnements et réglages', 'route' => 'admin.academy.settings.edit', 'icon' => 'layers', 'match' => 'admin.academy.settings.*', 'perms' => ['entity.manage']],
+                ],
+            ],
+            [
+                'title' => 'Tunivisions Stores',
+                'items' => [
+                    ['label' => 'Commandes', 'route' => 'admin.store.orders.index', 'icon' => 'shopping-bag', 'match' => 'admin.store.orders.*', 'perms' => ['entity.manage'], 'badge' => 'store_orders'],
+                    ['label' => 'Retours', 'route' => 'admin.store.returns.index', 'icon' => 'inbox', 'match' => 'admin.store.returns.*', 'perms' => ['entity.manage'], 'badge' => 'store_returns'],
+                    ['label' => 'Articles', 'route' => 'admin.store.products.index', 'icon' => 'package', 'match' => 'admin.store.products.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Packs', 'route' => 'admin.store.packs.index', 'icon' => 'layers', 'match' => 'admin.store.packs.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Stock', 'route' => 'admin.store.stock.index', 'icon' => 'activity', 'match' => 'admin.store.stock.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Catégories, couleurs, tailles', 'route' => 'admin.store.refs.index', 'icon' => 'file-text', 'match' => 'admin.store.refs.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Réglages, livraison, paiement', 'route' => 'admin.store.settings.edit', 'icon' => 'key', 'match' => 'admin.store.settings.*', 'perms' => ['entity.manage']],
                 ],
             ],
             [
@@ -241,6 +260,8 @@ class AdminMenu
             'messages' => ContactMessage::query()->where('status', 'new')->count(),
             'applications' => PositionApplication::query()->where('status', 'pending')->count(),
             'mentoring' => Mentoring::enabled() ? MentoringTicket::query()->where('status', 'new')->count() : 0,
+            'store_orders' => \App\Support\Store\StoreSettings::tablesReady() ? \App\Models\StoreOrder::query()->where('status', 'pending')->count() : 0,
+            'store_returns' => \App\Support\Store\StoreSettings::tablesReady() ? \App\Models\StoreReturn::query()->where('status', 'requested')->count() : 0,
             default => 0,
         };
 

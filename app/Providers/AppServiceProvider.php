@@ -47,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
             'search-suggest' => 60,
             'academy-action' => 20,
             'academy-quiz' => 30,
+            'store-action' => 60,
             'certificate-check' => 60,
             'office-assign' => 30,
         ] as $name => $perMinute) {
@@ -85,6 +86,11 @@ class AppServiceProvider extends ServiceProvider
 
             // Mentorat : entrée de la navigation (uniquement si le module est ouvert).
             $view->with('mentoringEnabled', $user !== null && \App\Support\Mentoring\Mentoring::enabled());
+
+            // Tunivisions Stores : entrée de la navigation (uniquement si la boutique est ouverte) et pastille du panier.
+            $storeOpen = $user !== null && \App\Support\Store\StoreSettings::enabled();
+            $view->with('storeEnabled', $storeOpen);
+            $view->with('storeCartCount', $storeOpen ? \App\Support\Store\StoreCart::count($user) : 0);
         });
     }
 }

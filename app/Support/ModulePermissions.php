@@ -51,6 +51,11 @@ final class ModulePermissions
         'academy.sessions' => 'event.manage',
         'academy.orders' => 'entity.manage',
         'academy.plans' => 'entity.manage',
+        'store.catalog' => 'entity.manage',
+        'store.stock' => 'entity.manage',
+        'store.orders' => 'entity.manage',
+        'store.returns' => 'entity.manage',
+        'store.settings' => 'entity.manage',
     ];
 
     /**

@@ -20,6 +20,9 @@ use App\Http\Controllers\PositionJoinController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StoreCartController;
+use App\Http\Controllers\StoreController;
+use App\Http\Controllers\StoreOrderController;
 use Illuminate\Support\Facades\Route;
 
 // Site vitrine de la Fondation : racine du site (/ puis /fr, /ar, /en).
@@ -70,6 +73,24 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/adhesions/postes', [MembershipRequestController::class, 'positions'])->name('memberships.positions');
     Route::post('/adhesions/mandats', [MembershipRequestController::class, 'storePast'])->middleware('throttle:20,10')->name('memberships.past');
     Route::delete('/adhesions/mandats/{participation}', [MembershipRequestController::class, 'destroyPast'])->name('memberships.past.destroy');
+
+    // Tunivisions Stores : boutique, panier, commande, suivi et retours (fermée tant que l'administration ne l'ouvre pas).
+    Route::prefix('boutique')->name('store.')->middleware('store.open')->group(function (): void {
+        Route::get('/', [StoreController::class, 'index'])->name('index');
+        Route::get('/articles/{product:slug}', [StoreController::class, 'showProduct'])->name('products.show');
+        Route::get('/packs/{pack:slug}', [StoreController::class, 'showPack'])->name('packs.show');
+        Route::get('/panier', [StoreCartController::class, 'index'])->name('cart.index');
+        Route::post('/panier/articles', [StoreCartController::class, 'addProduct'])->middleware('throttle:store-action')->name('cart.add');
+        Route::post('/panier/packs/{pack}', [StoreCartController::class, 'addPack'])->whereNumber('pack')->middleware('throttle:store-action')->name('cart.add-pack');
+        Route::patch('/panier/{item}', [StoreCartController::class, 'update'])->whereNumber('item')->name('cart.update');
+        Route::delete('/panier/{item}', [StoreCartController::class, 'remove'])->whereNumber('item')->name('cart.remove');
+        Route::get('/commander', [StoreOrderController::class, 'checkout'])->name('checkout');
+        Route::post('/commander', [StoreOrderController::class, 'place'])->middleware('throttle:store-action')->name('checkout.place');
+        Route::get('/commandes', [StoreOrderController::class, 'index'])->name('orders.index');
+        Route::get('/commandes/{order}', [StoreOrderController::class, 'show'])->whereNumber('order')->name('orders.show');
+        Route::post('/commandes/{order}/annuler', [StoreOrderController::class, 'cancel'])->whereNumber('order')->name('orders.cancel');
+        Route::post('/commandes/{order}/retour', [StoreOrderController::class, 'requestReturn'])->whereNumber('order')->middleware('throttle:store-action')->name('orders.return');
+    });
 
     // Tunivisions Academy : catalogue, cours, leçons, commandes et calendrier.
     Route::prefix('academy')->name('academy.')->group(function (): void {
@@ -248,6 +269,48 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::delete('badges/points/{checkpoint}', [Admin\BadgeController::class, 'destroyCheckpoint'])->name('badges.checkpoints.destroy');
             Route::get('etablissements', [Admin\InstitutionController::class, 'index'])->name('institutions.index');
             Route::post('etablissements', [Admin\InstitutionController::class, 'store'])->name('institutions.store');
+
+            // Tunivisions Stores : catalogue, stock, packs, commandes, retours et réglages
+            Route::prefix('boutique')->name('store.')->group(function (): void {
+                Route::get('articles', [Admin\StoreProductController::class, 'index'])->name('products.index');
+                Route::get('articles/creer', [Admin\StoreProductController::class, 'create'])->name('products.create');
+                Route::post('articles', [Admin\StoreProductController::class, 'store'])->name('products.store');
+                Route::get('articles/{product}/modifier', [Admin\StoreProductController::class, 'edit'])->whereNumber('product')->name('products.edit');
+                Route::put('articles/{product}', [Admin\StoreProductController::class, 'update'])->whereNumber('product')->name('products.update');
+                Route::delete('articles/{product}', [Admin\StoreProductController::class, 'destroy'])->whereNumber('product')->name('products.destroy');
+                Route::post('articles/{product}/variantes', [Admin\StoreProductController::class, 'storeVariants'])->whereNumber('product')->name('products.variants.store');
+                Route::put('variantes/{variant}', [Admin\StoreProductController::class, 'updateVariant'])->whereNumber('variant')->name('products.variants.update');
+                Route::delete('variantes/{variant}', [Admin\StoreProductController::class, 'destroyVariant'])->whereNumber('variant')->name('products.variants.destroy');
+                Route::get('packs', [Admin\StorePackController::class, 'index'])->name('packs.index');
+                Route::get('packs/creer', [Admin\StorePackController::class, 'create'])->name('packs.create');
+                Route::post('packs', [Admin\StorePackController::class, 'store'])->name('packs.store');
+                Route::get('packs/{pack}/modifier', [Admin\StorePackController::class, 'edit'])->whereNumber('pack')->name('packs.edit');
+                Route::put('packs/{pack}', [Admin\StorePackController::class, 'update'])->whereNumber('pack')->name('packs.update');
+                Route::delete('packs/{pack}', [Admin\StorePackController::class, 'destroy'])->whereNumber('pack')->name('packs.destroy');
+                Route::get('referentiels', [Admin\StoreReferenceController::class, 'index'])->name('refs.index');
+                Route::post('referentiels/{kind}', [Admin\StoreReferenceController::class, 'store'])->where('kind', 'categories|types|colors|sizes')->name('refs.store');
+                Route::put('referentiels/{kind}/{id}', [Admin\StoreReferenceController::class, 'update'])->where('kind', 'categories|types|colors|sizes')->whereNumber('id')->name('refs.update');
+                Route::delete('referentiels/{kind}/{id}', [Admin\StoreReferenceController::class, 'destroy'])->where('kind', 'categories|types|colors|sizes')->whereNumber('id')->name('refs.destroy');
+                Route::get('stock', [Admin\StoreStockController::class, 'index'])->name('stock.index');
+                Route::post('stock/{variant}', [Admin\StoreStockController::class, 'adjust'])->whereNumber('variant')->name('stock.adjust');
+                Route::get('commandes', [Admin\StoreOrderController::class, 'index'])->name('orders.index');
+                Route::get('commandes/{order}', [Admin\StoreOrderController::class, 'show'])->whereNumber('order')->name('orders.show');
+                Route::post('commandes/{order}/statut', [Admin\StoreOrderController::class, 'status'])->whereNumber('order')->name('orders.status');
+                Route::post('commandes/{order}/paiement', [Admin\StoreOrderController::class, 'pay'])->whereNumber('order')->name('orders.pay');
+                Route::post('commandes/{order}/annuler', [Admin\StoreOrderController::class, 'cancel'])->whereNumber('order')->name('orders.cancel');
+                Route::put('commandes/{order}/suivi', [Admin\StoreOrderController::class, 'tracking'])->whereNumber('order')->name('orders.tracking');
+                Route::get('retours', [Admin\StoreReturnController::class, 'index'])->name('returns.index');
+                Route::get('retours/{storeReturn}', [Admin\StoreReturnController::class, 'show'])->whereNumber('storeReturn')->name('returns.show');
+                Route::post('retours/{storeReturn}/decision', [Admin\StoreReturnController::class, 'decide'])->whereNumber('storeReturn')->name('returns.decide');
+                Route::post('retours/{storeReturn}/reception', [Admin\StoreReturnController::class, 'receive'])->whereNumber('storeReturn')->name('returns.receive');
+                Route::post('retours/{storeReturn}/cloture', [Admin\StoreReturnController::class, 'complete'])->whereNumber('storeReturn')->name('returns.complete');
+                Route::get('reglages', [Admin\StoreSettingsController::class, 'edit'])->name('settings.edit');
+                Route::put('reglages', [Admin\StoreSettingsController::class, 'update'])->name('settings.update');
+                Route::post('reglages/livraison', [Admin\StoreSettingsController::class, 'storeDelivery'])->name('settings.delivery.store');
+                Route::put('reglages/livraison/{method}', [Admin\StoreSettingsController::class, 'updateDelivery'])->whereNumber('method')->name('settings.delivery.update');
+                Route::delete('reglages/livraison/{method}', [Admin\StoreSettingsController::class, 'destroyDelivery'])->whereNumber('method')->name('settings.delivery.destroy');
+                Route::put('reglages/paiement/{method}', [Admin\StoreSettingsController::class, 'updatePayment'])->whereNumber('method')->name('settings.payment.update');
+            });
 
             // Tunivisions Academy : cours, commandes, abonnements et réglages
             Route::get('academy/cours', [Admin\AcademyCourseController::class, 'index'])->name('academy.courses.index');

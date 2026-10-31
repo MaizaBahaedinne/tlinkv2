@@ -71,6 +71,16 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'store', 'name' => 'Tunivisions Stores', 'description' => 'Boutique : articles, stock, packs, commandes, livraison et retours.',
+                'children' => [
+                    ['key' => 'store.catalog', 'name' => 'Catalogue', 'description' => 'Catégories, types, couleurs, tailles, articles et packs. Désactiver ce module ferme la boutique pour tous.', 'actions' => self::CRUD],
+                    ['key' => 'store.stock', 'name' => 'Stock', 'description' => 'Niveaux de stock et réapprovisionnements.', 'actions' => ['read', 'update']],
+                    ['key' => 'store.orders', 'name' => 'Commandes', 'description' => 'Suivi, paiement, expédition et annulation des commandes.', 'actions' => ['read', 'update']],
+                    ['key' => 'store.returns', 'name' => 'Retours', 'description' => 'Demandes de retour, réception, remboursement ou échange.', 'actions' => ['read', 'update']],
+                    ['key' => 'store.settings', 'name' => 'Réglages, livraison et paiement', 'description' => 'Ouverture de la boutique, modes de livraison et de paiement.', 'actions' => ['read', 'update']],
+                ],
+            ],
+            [
                 'key' => 'messenger', 'name' => 'T.Link Messenger', 'description' => 'Messagerie instantanée entre membres.',
                 'children' => [
                     ['key' => 'messenger.chat', 'name' => 'Messagerie', 'description' => 'Conversations directes et de groupe entre membres, en temps réel. Désactiver ce module ferme la messagerie pour tous.', 'actions' => ['read', 'update']],
