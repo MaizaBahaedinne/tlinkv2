@@ -146,11 +146,13 @@
                 <div class="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-2">
                     <input name="items[{{ $index }}][name]" value="{{ $item['name'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom certification">
                     <input name="items[{{ $index }}][issuer]" value="{{ $item['issuer'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Organisme">
-                    <input type="date" name="items[{{ $index }}][date_obtained]" value="{{ $item['date_obtained'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2">
+                    <input type="date" name="items[{{ $index }}][date_obtained]" value="{{ $item['date_obtained'] ?? '' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <input type="url" name="items[{{ $index }}][url]" value="{{ $item['url'] ?? '' }}" maxlength="300" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Lien de vérification (https://…)">
                 </div>
             @endforeach
         </div>
         <button type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs" onclick="addProfileRow('certification-list')">Ajouter certification</button>
+        <p class="text-xs text-slate-500">Ajoutez ici vos certifications <strong>externes</strong>. Celles obtenues sur Tunivisions Academy s’affichent automatiquement.</p>
         <button class="w-full rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700">Enregistrer</button>
     </form>
 </dialog>
@@ -179,6 +181,7 @@
             @endforeach
         </div>
         <button type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs" onclick="addProfileRow('associative-list')">Ajouter experience</button>
+        <p class="text-xs text-slate-500">Ajoutez ici vos expériences associatives <strong>externes</strong> (hors Tunivisions). Vos adhésions Tunivisions validées s’affichent automatiquement.</p>
         <button class="w-full rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700">Enregistrer</button>
     </form>
 </dialog>
@@ -269,7 +272,8 @@
     <div class="grid gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-2">
         <input name="items[__INDEX__][name]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Nom certification">
         <input name="items[__INDEX__][issuer]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Organisme">
-        <input type="date" name="items[__INDEX__][date_obtained]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2">
+        <input type="date" name="items[__INDEX__][date_obtained]" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <input type="url" name="items[__INDEX__][url]" maxlength="300" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Lien de vérification (https://…)">
     </div>
 </template>
 

@@ -2,10 +2,14 @@
 
 namespace App\Support;
 
+use App\Models\AcademyEnrollment;
 use App\Models\Company;
 use App\Models\Institution;
+use App\Models\MandateParticipation;
+use App\Models\Membership;
 use App\Models\OrgNode;
 use App\Models\Profile;
+use App\Support\Academy\AcademySettings;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -18,6 +22,13 @@ use Illuminate\Support\Str;
  */
 class ProfileOrganizations
 {
+    /** Libellé du rôle d'une adhésion (types hérités inclus) ; un type inconnu est affiché lisiblement, sans tiret bas. */
+    private const MEMBERSHIP_TYPES = [
+        'member' => 'Membre', 'president' => 'Président(e)', 'coordinator' => 'Coordinateur', 'vice_president' => 'Vice-président(e)',
+        'responsible' => 'Responsable', 'assistant' => 'Assistant(e)', 'manager' => 'Manager', 'project_manager' => 'Project Manager',
+        'advisor' => 'Conseiller', 'executive_manager' => 'Exécutif manager', 'tunifan' => 'TuniFan',
+    ];
+
     /** @var Collection<int, OrgNode>|null */
     private ?Collection $clubs = null;
 
@@ -195,9 +206,102 @@ class ProfileOrganizations
             'educations' => $educations,
             'certifications' => collect($settings['certifications'] ?? [])->values(),
             'associativeExperiences' => $this->newestFirst($this->withLogos($settings['associative_experiences'] ?? [], 'club')),
+            'foundationMemberships' => $profile->user_id ? $this->foundationMemberships((int) $profile->user_id) : collect(),
+            'academyCertificates' => $profile->user_id ? $this->academyCertificates((int) $profile->user_id) : collect(),
             'skillKeywords' => collect($settings['skill_keywords'] ?? [])->values(),
             'languageItems' => collect($settings['languages'] ?? [])->values(),
         ];
+    }
+
+    /**
+     * Adhésions validées du membre, ajoutées automatiquement à ses expériences associatives :
+     * adhésions approuvées rattachées à un club ou une unité, et participations acceptées à d'anciens mandats.
+     * Les demandes en attente ou refusées, et les adhésions sans rattachement, n'apparaissent pas.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function foundationMemberships(int $userId): Collection
+    {
+        $rows = Membership::query()
+            ->where('user_id', $userId)->where('status', 'approved')->whereNotNull('node_id')
+            ->whereHas('node')->with('node')->get()
+            ->map(function (Membership $membership): array {
+                $club = $this->clubOf($membership->node);
+                $isClub = $membership->node->kind === 'club';
+
+                return [
+                    'club_name' => $club?->title ?? $membership->node->title,
+                    'role' => self::MEMBERSHIP_TYPES[$membership->membership_type] ?? ($membership->membership_type ? ucfirst(str_replace('_', ' ', $membership->membership_type)) : 'Membre'),
+                    'department' => $isClub ? null : $membership->node->title,
+                    'start_date' => ($membership->starts_at ?? $membership->approved_at ?? $membership->created_at)?->toDateString(),
+                    'end_date' => $membership->ends_at?->toDateString(),
+                    'mandate' => null,
+                    'logo_url' => $club?->logoUrl() ?? $club?->institution?->logoUrl(),
+                    'info' => $club ? collect([$club->governorate?->name, $club->institution?->name])->filter()->implode(' · ') : null,
+                    'key' => ($club?->id ?? $membership->node_id).'|'.($membership->membership_type ?: 'member'),
+                ];
+            });
+
+        $participations = MandateParticipation::query()
+            ->where('user_id', $userId)->where('status', 'approved')->whereNotNull('node_id')
+            ->whereHas('node')->with(['node', 'mandate'])->get()
+            ->map(function (MandateParticipation $participation): array {
+                $club = $this->clubOf($participation->node);
+                $isClub = $participation->node->kind === 'club';
+                $mandate = $participation->mandate;
+
+                return [
+                    'club_name' => $club?->title ?? $participation->node->title,
+                    'role' => $participation->position_title ?: 'Membre',
+                    'department' => $isClub ? null : $participation->node->title,
+                    'start_date' => $mandate?->start_year ? $mandate->start_year.'-09-01' : null,
+                    'end_date' => $mandate?->end_year ? $mandate->end_year.'-08-31' : null,
+                    'mandate' => $mandate?->label,
+                    'logo_url' => $club?->logoUrl() ?? $club?->institution?->logoUrl(),
+                    'info' => $club ? collect([$club->governorate?->name, $club->institution?->name])->filter()->implode(' · ') : null,
+                    'key' => 'p'.$participation->id,
+                ];
+            });
+
+        return $this->newestFirst($rows->concat($participations)->unique('key')->values());
+    }
+
+    /**
+     * Certificats obtenus sur Tunivisions Academy (cours terminés), vérifiables grâce à leur code.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function academyCertificates(int $userId): Collection
+    {
+        $logo = AcademySettings::fileUrl('logo_path');
+
+        return AcademyEnrollment::query()
+            ->where('user_id', $userId)->whereNotNull('completed_at')->whereNotNull('certificate_code')
+            ->with('course:id,title')->orderByDesc('completed_at')->orderByDesc('id')->get()
+            ->filter(fn (AcademyEnrollment $enrollment): bool => $enrollment->course !== null)
+            ->map(fn (AcademyEnrollment $enrollment): array => [
+                'name' => $enrollment->course->title,
+                'issuer' => AcademySettings::NAME,
+                'date_obtained' => $enrollment->completed_at->toDateString(),
+                'code' => $enrollment->certificate_code,
+                'url' => route('academy.certificate', $enrollment->certificate_code),
+                'logo_url' => $logo,
+            ])
+            ->values();
+    }
+
+    /** Club auquel appartient un bloc : lui-même s'il en est un, sinon son plus proche parent qui en est un. */
+    private function clubOf(?OrgNode $node): ?OrgNode
+    {
+        for ($guard = 0; $guard < 20 && $node !== null; $guard++) {
+            if ($node->kind === 'club') {
+                return $this->clubs()->firstWhere('id', $node->id) ?? $node->loadMissing(['institution', 'governorate']);
+            }
+
+            $node = $node->parent_id !== null ? OrgNode::query()->find($node->parent_id) : null;
+        }
+
+        return null;
     }
 
     /**

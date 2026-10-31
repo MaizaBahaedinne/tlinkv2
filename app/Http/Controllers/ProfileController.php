@@ -178,9 +178,10 @@ class ProfileController extends Controller
                 'items.*.name' => ['nullable', 'string', 'max:180'],
                 'items.*.issuer' => ['nullable', 'string', 'max:160'],
                 'items.*.date_obtained' => ['nullable', 'date'],
+                'items.*.url' => ['nullable', 'url:http,https', 'max:300'],
             ]);
 
-            $settings['certifications'] = $this->cleanRows($data['items'] ?? [], ['name', 'issuer', 'date_obtained']);
+            $settings['certifications'] = $this->cleanRows($data['items'] ?? [], ['name', 'issuer', 'date_obtained', 'url']);
         }
 
         if ($section === 'associative_experiences') {
