@@ -264,6 +264,7 @@ class ChallengesTest extends TestCase
         $closed = $this->activity($challenge, $club, ['registration_ends_at' => now()->subHour()]);
         $draft = $this->activity($challenge, $club, ['status' => 'draft', 'title' => 'Brouillon secret']);
         $user = User::factory()->create();
+        $this->approvedMember($user, $club);
 
         $this->actingAs($user)->post("/activites/{$closed->id}/inscription")->assertSessionHas('error');
         $this->assertSame(0, $closed->registrations()->count());
@@ -411,6 +412,7 @@ class ChallengesTest extends TestCase
 
         // Les résultats restent cachés aux membres jusqu'à la date de publication.
         $member = User::factory()->create();
+        $this->approvedMember($member, $club);
         $this->actingAs($member)->get('/defis/'.$challenge->id)->assertOk()->assertDontSee('Rang</th>', false)->assertDontSee('Atelier recyclage 14');
         Carbon::setTestNow($challenge->results_at->copy()->addMinute());
         $this->actingAs($member)->get('/defis/'.$challenge->id)->assertOk()->assertSee('ESPRIT')->assertSee('Rang</th>', false);
@@ -450,6 +452,7 @@ class ChallengesTest extends TestCase
     public function test_challenge_pages_follow_the_calendar_and_the_module_switch(): void
     {
         $member = User::factory()->create();
+        $this->approvedMember($member, $this->club('ESPRIT'));
         $running = $this->challenge();
         $draft = $this->challenge(null, ['title' => 'Défi secret', 'status' => 'draft']);
 
@@ -468,6 +471,34 @@ class ChallengesTest extends TestCase
 
         AppModule::query()->where('key', 'challenges.challenges')->update(['is_active' => false]);
         $this->actingAs($member)->get('/defis')->assertNotFound();
+    }
+
+    public function test_members_only_see_challenges_of_their_perimeters(): void
+    {
+        $club = $this->club('ESPRIT');
+        $university = $this->challenge(null, ['title' => 'Défi Campus', 'scope' => 'university']);
+        $school = $this->challenge(null, ['title' => 'Défi Lycées', 'scope' => 'high-school']);
+        $invited = $this->challenge(null, ['title' => 'Défi Ouvert', 'scope' => 'high-school', 'invited_scopes' => ['university']]);
+        $juror = $this->committeeMember();
+        $jury = $this->challenge($juror, ['title' => 'Défi Jury', 'scope' => 'high-school']);
+
+        $member = User::factory()->create();
+        $this->approvedMember($member, $club);
+
+        $this->actingAs($member)->get('/defis')->assertOk()->assertSee('Défi Campus')->assertSee('Défi Ouvert')->assertDontSee('Défi Lycées')->assertDontSee('Défi Jury');
+        $this->actingAs($member)->get('/defis/'.$university->id)->assertOk();
+        $this->actingAs($member)->get('/defis/'.$invited->id)->assertOk();
+        $this->actingAs($member)->get('/defis/'.$school->id)->assertNotFound();
+
+        // Sans rattachement : aucun défi. Un membre du comité voit les défis qu'il évalue.
+        $this->actingAs(User::factory()->create())->get('/defis')->assertOk()->assertDontSee('Défi Campus');
+        $this->actingAs($juror)->get('/defis')->assertOk()->assertSee('Défi Jury')->assertDontSee('Défi Campus');
+        $this->actingAs($juror)->get('/defis/'.$jury->id)->assertOk();
+
+        // Droits globaux : tous les défis.
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'global_admin');
+        $this->actingAs($admin)->get('/defis')->assertOk()->assertSee('Défi Campus')->assertSee('Défi Lycées');
     }
 
     public function test_navigation_shows_the_challenges_entry(): void

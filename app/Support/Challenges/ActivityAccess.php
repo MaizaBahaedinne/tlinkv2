@@ -8,6 +8,7 @@ use App\Models\OrgNode;
 use App\Models\User;
 use App\Support\MyOffice;
 use App\Support\OrgAccess;
+use App\Support\OrgScopes;
 use Illuminate\Database\Eloquent\Builder;
 
 /** Qui peut gérer les activités d'un club, et qui peut s'inscrire à une activité selon son public. */
@@ -87,6 +88,26 @@ final class ActivityAccess
         }
 
         return array_values($all);
+    }
+
+    /**
+     * Périmètres de l'utilisateur : ceux de ses blocs d'organigramme (adhésions, postes, parents), des clubs qu'il gère
+     * et des périmètres dont il a la responsabilité. null = tous (droits globaux).
+     *
+     * @return array<int, string>|null
+     */
+    public static function scopesOf(User $user): ?array
+    {
+        $responsibility = OrgAccess::responsibility($user, self::PERMISSION);
+
+        if ($responsibility['all']) {
+            return null;
+        }
+
+        $nodeIds = array_merge(self::nodeIds($user), array_map('intval', $responsibility['clubs']));
+        $scopes = $nodeIds === [] ? [] : OrgNode::query()->whereIn('id', $nodeIds)->whereNotNull('scope')->pluck('scope')->all();
+
+        return array_values(array_unique(array_merge(array_map('strval', $scopes), OrgScopes::expandManaged($responsibility['scopes']))));
     }
 
     /** Tunimateur : membre validé d'au moins un périmètre ou titulaire d'un poste. */

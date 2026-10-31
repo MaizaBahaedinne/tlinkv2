@@ -116,6 +116,26 @@ class Challenge extends Model
         return $scopes !== [] ? $scopes : array_filter([$this->scope]);
     }
 
+    /** Le défi concerne l'un des périmètres donnés (organisateur ou invités) ; null = tous les périmètres. */
+    public function reachesScopes(?array $scopes): bool
+    {
+        if ($scopes === null) {
+            return true;
+        }
+
+        $targets = array_values(array_unique(array_filter(array_merge($this->invitedScopes(), [$this->scope]))));
+
+        foreach ($scopes as $scope) {
+            foreach ($targets as $target) {
+                if (OrgScopes::covers((string) $target, (string) $scope)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /** Un club est invité si son périmètre est couvert par l'un des périmètres invités (aucun périmètre : tous les clubs). */
     public function invitesClub(OrgNode $club): bool
     {

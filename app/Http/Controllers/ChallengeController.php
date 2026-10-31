@@ -16,10 +16,15 @@ class ChallengeController extends Controller
 {
     public function index(Request $request): View
     {
-        $challenges = Challenge::query()->where('status', 'published')->withCount(['activities' => fn ($query) => $query->where('status', 'published')])
-            ->orderByDesc('starts_at')->get()->groupBy(fn (Challenge $challenge): string => in_array($challenge->phase(), ['upcoming', 'running'], true) ? 'open' : 'past');
+        $user = $request->user();
+        $evaluating = Challenge::query()->where('status', 'published')->whereHas('committee', fn ($query) => $query->whereKey($user->id))->get();
+        $scopes = ActivityAccess::scopesOf($user);
 
-        $evaluating = Challenge::query()->where('status', 'published')->whereHas('committee', fn ($query) => $query->whereKey($request->user()->id))->get();
+        // Seuls les défis des périmètres de l'utilisateur (ou ceux où il siège au comité).
+        $challenges = Challenge::query()->where('status', 'published')->withCount(['activities' => fn ($query) => $query->where('status', 'published')])
+            ->orderByDesc('starts_at')->get()
+            ->filter(fn (Challenge $challenge): bool => $evaluating->contains('id', $challenge->id) || $challenge->reachesScopes($scopes))
+            ->groupBy(fn (Challenge $challenge): string => in_array($challenge->phase(), ['upcoming', 'running'], true) ? 'open' : 'past');
 
         return view('challenges.index', [
             'open' => $challenges->get('open', collect()),
@@ -91,10 +96,12 @@ class ChallengeController extends Controller
         return redirect()->to(route('challenges.evaluation', $challenge).'#activite-'.$activity->id)->with('status', "Notes enregistrées pour « {$activity->title} ».");
     }
 
-    /** Un défi publié est visible de tous les membres ; un brouillon seulement de ses gestionnaires. */
+    /** Un défi publié est visible des membres de ses périmètres et de son comité ; un brouillon seulement de ses gestionnaires. */
     private function authorizeView($user, Challenge $challenge): void
     {
         if ($challenge->isPublished() && $challenge->status === 'published') {
+            abort_unless($challenge->reachesScopes(ActivityAccess::scopesOf($user)) || $challenge->isCommitteeMember($user), 404);
+
             return;
         }
 
