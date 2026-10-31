@@ -560,6 +560,35 @@ class ChallengesTest extends TestCase
         $this->actingAs($member)->get('/defis')->assertNotFound();
     }
 
+    public function test_secondary_perimeters_of_a_club_and_the_membership_scope_also_count(): void
+    {
+        $club = $this->club('ESPRIT');
+        $school = $this->challenge(null, ['title' => 'Défi Lycées', 'scope' => 'high-school']);
+        $alumni = $this->challenge(null, ['title' => 'Défi Anciens', 'scope' => 'alumni']);
+        $this->activity($school, $club, ['title' => 'Atelier lycées']);
+
+        $member = User::factory()->create();
+        $this->approvedMember($member, $club);
+        $this->assertNotContains('high-school', \App\Support\Challenges\ActivityAccess::scopesOf($member));
+        $this->actingAs($member)->get('/defis')->assertDontSee('Défi Lycées');
+
+        // Le club rayonne aussi sur un périmètre secondaire.
+        $club->update(['extra_scopes' => ['high-school']]);
+        $this->assertContains('high-school', \App\Support\Challenges\ActivityAccess::scopesOf($member));
+        $this->actingAs($member)->get('/defis')->assertSee('Défi Lycées')->assertDontSee('Défi Anciens');
+        $this->actingAs($member)->get('/defis/'.$school->id)->assertOk();
+        $this->assertContains('Atelier lycées', collect($this->actingAs($member)->get('/feed')->viewData('calendar'))->pluck('title')->all());
+
+        // Adhésion validée portant un autre périmètre.
+        \App\Models\Membership::query()->where('user_id', $member->id)->update(['scope' => 'alumni']);
+        $this->actingAs($member)->get('/defis')->assertSee('Défi Anciens');
+
+        // Une adhésion en attente ne donne aucun périmètre.
+        $pending = User::factory()->create();
+        \App\Models\Membership::query()->create(['user_id' => $pending->id, 'scope' => 'alumni', 'node_id' => $club->id, 'status' => 'pending', 'membership_type' => 'member']);
+        $this->assertSame([], \App\Support\Challenges\ActivityAccess::scopesOf($pending));
+    }
+
     public function test_members_only_see_challenges_of_their_perimeters(): void
     {
         $club = $this->club('ESPRIT');

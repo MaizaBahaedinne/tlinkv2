@@ -92,8 +92,8 @@ final class ActivityAccess
     }
 
     /**
-     * Périmètres de l'utilisateur : ceux de ses blocs d'organigramme (adhésions, postes, parents), des clubs qu'il gère
-     * et des périmètres dont il a la responsabilité. null = tous (droits globaux).
+     * Périmètres de l'utilisateur : principal et secondaires de ses blocs d'organigramme (adhésions, postes, parents),
+     * périmètre de ses adhésions validées, clubs qu'il gère et périmètres dont il a la responsabilité. null = tous (droits globaux).
      *
      * @return array<int, string>|null
      */
@@ -106,9 +106,23 @@ final class ActivityAccess
         }
 
         $nodeIds = array_merge(self::nodeIds($user), array_map('intval', $responsibility['clubs']));
-        $scopes = $nodeIds === [] ? [] : OrgNode::query()->whereIn('id', $nodeIds)->whereNotNull('scope')->pluck('scope')->all();
+        $scopes = [];
 
-        return array_values(array_unique(array_merge(array_map('strval', $scopes), OrgScopes::expandManaged($responsibility['scopes']))));
+        if ($nodeIds !== []) {
+            foreach (OrgNode::query()->whereIn('id', $nodeIds)->get(['id', 'scope', 'extra_scopes']) as $node) {
+                $scopes[] = $node->scope;
+                array_push($scopes, ...array_values((array) $node->extra_scopes));
+            }
+        }
+
+        $scopes = array_merge(
+            $scopes,
+            Membership::query()->where('user_id', $user->id)->where('status', 'approved')->whereNotNull('scope')->pluck('scope')->all(),
+        );
+
+        $scopes = array_values(array_unique(array_map('strval', array_filter($scopes, fn ($scope): bool => is_string($scope) && $scope !== ''))));
+
+        return array_values(array_unique(array_merge($scopes, OrgScopes::expandManaged($responsibility['scopes']))));
     }
 
     /** Tunimateur : membre validé d'au moins un périmètre ou titulaire d'un poste. */
