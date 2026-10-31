@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\LaunchCountdown;
 use App\Http\Middleware\SecurityHeaders;
+use App\Support\ErrorReport;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -29,6 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Chaque erreur rapportée porte la référence affichée au membre : l'administrateur la retrouve dans les logs.
+        $exceptions->context(fn () => ErrorReport::logContext());
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
