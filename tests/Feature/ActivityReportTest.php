@@ -10,6 +10,7 @@ use App\Models\Governorate;
 use App\Models\Membership;
 use App\Models\OrgNode;
 use App\Models\User;
+use App\Support\Challenges\ActivityAccess;
 use App\Support\OrgChart\OrgChartInstaller;
 use Database\Seeders\GovernorateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -180,6 +181,27 @@ class ActivityReportTest extends TestCase
         $this->actingAs($this->writer)->put($url, $this->complete(['members' => [['user_id' => $this->member->id, 'role' => 'Accueil']]]))->assertSessionHasErrors('members.0.implication');
         $this->actingAs($this->writer)->put($url, $this->complete(['media' => [['kind' => 'instagram', 'label' => 'Story']]]))->assertSessionHasErrors('media.0.url');
         $this->assertSame(0, ActivityReport::query()->count());
+    }
+
+    public function test_vice_presidents_and_assistants_are_listed_with_their_position(): void
+    {
+        $vp = User::factory()->create(['name' => 'Karim VP']);
+        $assistant = User::factory()->create(['name' => 'Amel Assistante']);
+        $vpNode = OrgNode::query()->where('subtitle', $this->club->title)->where('kind', 'position')->where('title', 'like', 'VP %')->firstOrFail();
+        $assistantNode = OrgNode::query()->where('subtitle', $this->club->title)->where('kind', 'position')->where('title', 'like', 'Assistant %')->firstOrFail();
+        $this->placeOn($vpNode, $vp);
+        $this->placeOn($assistantNode, $assistant);
+
+        $candidates = ActivityAccess::reportCandidates($this->activity)->keyBy('id');
+
+        $this->assertTrue($candidates->has($vp->id));
+        $this->assertTrue($candidates->has($assistant->id));
+        $this->assertTrue($candidates->has($this->member->id));
+        $this->assertSame($vpNode->title, $candidates[$vp->id]->report_role);
+        $this->assertSame($assistantNode->title, $candidates[$assistant->id]->report_role);
+        $this->assertSame('', $candidates[$this->member->id]->report_role);
+
+        $this->actingAs($this->writer)->get("/admin/activites/{$this->activity->id}/compte-rendu")->assertOk()->assertSee('Karim VP')->assertSee($assistantNode->title);
     }
 
     public function test_proof_must_be_a_facebook_publication_and_nothing_is_uploaded(): void

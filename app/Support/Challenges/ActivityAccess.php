@@ -186,14 +186,41 @@ final class ActivityAccess
             return false;
         }));
 
-        $userIds = Membership::query()->where('status', 'approved')->whereIn('node_id', $nodeIds)->pluck('user_id')
-            ->merge(OrgAssignment::query()
-                ->whereIn('node_id', $nodeIds)
-                ->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now()->toDateString()))
-                ->with('person:id,user_id')->get()->map(fn (OrgAssignment $assignment) => $assignment->person?->user_id))
-            ->filter()->unique()->values();
+        // Titulaires de postes (président, VP, assistants, membres de département) : compte lié, ou à défaut e-mail identique.
+        $assignments = OrgAssignment::query()
+            ->whereIn('node_id', $nodeIds)
+            ->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now()->toDateString()))
+            ->with(['person:id,user_id,email', 'node:id,title,kind'])
+            ->get();
 
-        return User::query()->whereIn('id', $userIds)->orderBy('name')->get(['id', 'name']);
+        $emails = $assignments->map(fn (OrgAssignment $assignment) => $assignment->person?->user_id === null ? strtolower((string) $assignment->person?->email) : null)
+            ->filter()->unique()->values()->all();
+        $byEmail = $emails === [] ? [] : User::query()->whereIn('email', $emails)->pluck('id', 'email')->mapWithKeys(fn ($id, $email) => [strtolower((string) $email) => $id])->all();
+
+        $positions = [];
+
+        foreach ($assignments as $assignment) {
+            $userId = $assignment->person?->user_id ?? ($byEmail[strtolower((string) $assignment->person?->email)] ?? null);
+
+            if ($userId === null) {
+                continue;
+            }
+
+            $positions[(int) $userId] ??= [];
+
+            if ($assignment->node?->kind === 'position') {
+                $positions[(int) $userId][] = $assignment->node->title;
+            }
+        }
+
+        $userIds = Membership::query()->where('status', 'approved')->whereIn('node_id', $nodeIds)->pluck('user_id')
+            ->merge(array_keys($positions))
+            ->map(fn ($id): int => (int) $id)->unique()->values();
+
+        return User::query()->whereIn('id', $userIds)->get(['id', 'name'])
+            ->each(fn (User $user) => $user->setAttribute('report_role', implode(', ', array_unique($positions[$user->id] ?? []))))
+            ->sortBy(fn (User $user): string => ($user->report_role !== '' ? '0' : '1').mb_strtolower($user->name))
+            ->values();
     }
 
     /** @param array<int, int|null> $parents */

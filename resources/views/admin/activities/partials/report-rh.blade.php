@@ -1,5 +1,5 @@
 @if($editable)
-    <p class="text-sm text-muted">Les membres des clubs organisateurs sont listés automatiquement. Notez uniquement ceux qui ont réellement participé (1 = faible, 5 = exceptionnelle).</p>
+    <p class="text-sm text-muted">Les membres, vice-présidents et assistants des clubs organisateurs sont listés automatiquement. Notez uniquement ceux qui ont réellement participé (1 = faible, 5 = exceptionnelle).</p>
     @php($memberMap = collect($memberRows)->keyBy('user_id'))
     @if($candidates->isEmpty())
         <p class="hint">Aucun membre validé n’est rattaché aux clubs organisateurs.</p>
@@ -14,6 +14,7 @@
                             <td class="cell-main">
                                 <input type="hidden" name="members[{{ $candidate->id }}][user_id]" value="{{ $candidate->id }}">
                                 {{ $candidate->name }}
+                                @if($candidate->report_role !== '')<div class="text-sm text-muted">{{ $candidate->report_role }}</div>@endif
                                 @error('members.'.$candidate->id.'.user_id')<p class="error">{{ $message }}</p>@enderror
                             </td>
                             <td><input type="text" name="members[{{ $candidate->id }}][role]" maxlength="120" placeholder="Rôle (facultatif)" aria-label="Rôle {{ $candidate->name }}" value="{{ old('members.'.$candidate->id.'.role', $row['role'] ?? '') }}"></td>
