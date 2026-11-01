@@ -285,7 +285,10 @@ class ActivityReportController extends AdminController
         $members = [];
 
         foreach ($rows as $index => $row) {
-            $userId = (int) ($row['user_id'] ?? 0);
+            $userId = (int) ($row['user_id'] ?? (is_numeric((string) $index) ? $index : 0));
+            $implication = $row['implication'] ?? null;
+            $role = filled($row['role'] ?? null) ? trim((string) $row['role']) : null;
+            $comment = filled($row['comment'] ?? null) ? trim((string) $row['comment']) : null;
 
             if ($userId === 0) {
                 continue;
@@ -295,15 +298,20 @@ class ActivityReportController extends AdminController
                 throw ValidationException::withMessages(["members.$index.user_id" => 'Ce membre n’appartient pas aux clubs organisateurs.']);
             }
 
-            if (empty($row['implication'])) {
-                throw ValidationException::withMessages(["members.$index.implication" => 'Notez l’implication de ce membre.']);
+            // Dans le formulaire RH, tous les membres sont listés automatiquement : une ligne vide est ignorée.
+            if (empty($implication)) {
+                if ($role !== null || $comment !== null) {
+                    throw ValidationException::withMessages(["members.$index.implication" => 'Notez l’implication de ce membre.']);
+                }
+
+                continue;
             }
 
             $members[$userId] = [
                 'user_id' => $userId,
-                'role' => filled($row['role'] ?? null) ? trim((string) $row['role']) : null,
-                'implication' => (int) $row['implication'],
-                'comment' => filled($row['comment'] ?? null) ? trim((string) $row['comment']) : null,
+                'role' => $role,
+                'implication' => (int) $implication,
+                'comment' => $comment,
             ];
         }
 

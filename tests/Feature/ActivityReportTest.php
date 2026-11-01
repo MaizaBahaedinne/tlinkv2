@@ -177,7 +177,7 @@ class ActivityReportTest extends TestCase
         $url = "/admin/activites/{$this->activity->id}/compte-rendu";
 
         $this->actingAs($this->writer)->put($url, $this->complete(['members' => [['user_id' => $stranger->id, 'implication' => 3]]]))->assertSessionHasErrors('members.0.user_id');
-        $this->actingAs($this->writer)->put($url, $this->complete(['members' => [['user_id' => $this->member->id]]]))->assertSessionHasErrors('members.0.implication');
+        $this->actingAs($this->writer)->put($url, $this->complete(['members' => [['user_id' => $this->member->id, 'role' => 'Accueil']]]))->assertSessionHasErrors('members.0.implication');
         $this->actingAs($this->writer)->put($url, $this->complete(['media' => [['kind' => 'instagram', 'label' => 'Story']]]))->assertSessionHasErrors('media.0.url');
         $this->assertSame(0, ActivityReport::query()->count());
     }
