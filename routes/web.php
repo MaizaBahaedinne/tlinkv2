@@ -197,6 +197,12 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/posts/{post}/react', [FeedController::class, 'react'])->name('posts.react');
     Route::post('/posts/{post}/comment', [FeedController::class, 'comment'])->name('posts.comment');
     Route::post('/posts/{post}/share', [FeedController::class, 'share'])->name('posts.share');
+
+    // Stories 24 h du fil.
+    Route::post('/stories', [\App\Http\Controllers\StoryController::class, 'store'])->middleware('throttle:20,10')->name('stories.store');
+    Route::get('/stories/{story}/media', [\App\Http\Controllers\StoryController::class, 'media'])->whereNumber('story')->name('stories.media');
+    Route::post('/stories/{story}/vue', [\App\Http\Controllers\StoryController::class, 'view'])->whereNumber('story')->middleware('throttle:240,1')->name('stories.view');
+    Route::delete('/stories/{story}', [\App\Http\Controllers\StoryController::class, 'destroy'])->whereNumber('story')->name('stories.destroy');
     Route::get('/notifications', [NotificationPageController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{notification}/read', [NotificationPageController::class, 'markRead'])->name('notifications.mark-read');
     Route::post('/notifications/read-all', [NotificationPageController::class, 'markAllRead'])->name('notifications.mark-all-read');

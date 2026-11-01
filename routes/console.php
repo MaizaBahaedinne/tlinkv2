@@ -12,6 +12,12 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Artisan::command('stories:purge', function () {
+    $this->info(\App\Support\Stories::purgeExpired().' story(ies) expirée(s) supprimée(s).');
+})->purpose('Supprime les stories de plus de 24 h (lignes et fichiers)');
+
+\Illuminate\Support\Facades\Schedule::command('stories:purge')->hourly();
+
 Artisan::command('gamification:sync', function () {
     $result = GamificationEngine::refreshEveryone();
 

@@ -28,6 +28,7 @@ final class ModuleCatalog
                     ['key' => 'feed.shares', 'name' => 'Partages', 'description' => 'Partager une publication.', 'actions' => ['create', 'read', 'delete']],
                     ['key' => 'feed.attachments', 'name' => 'Pièces jointes', 'description' => 'Images, vidéos et fichiers joints aux publications.', 'actions' => ['create', 'read', 'delete']],
                     ['key' => 'feed.public_posts', 'name' => 'Publications publiques', 'description' => 'Publier des contenus visibles publiquement.', 'actions' => ['create']],
+                    ['key' => 'feed.stories', 'name' => 'Stories 24 h', 'description' => 'Photos et vidéos éphémères visibles 24 h par les membres, en haut du fil. Désactiver ce module masque les stories pour tous.', 'actions' => ['create', 'read', 'delete']],
                 ],
             ],
             [

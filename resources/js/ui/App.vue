@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import ActivityCalendar from './ActivityCalendar.vue';
+import StoriesBar from './StoriesBar.vue';
 
 type FeedPost = {
   id: number;
@@ -49,7 +50,14 @@ type RootData = {
   };
   partners?: Array<{ id: number; name: string; logo_url: string; url: string | null }>;
   links?: { mission?: string; badges?: string; academy?: string; challenges?: string };
-  myBadges?: Array<{ id: number; name: string; tier: string; icon: string; gradient: string }>;
+  myBadges?: Array<{ id: number; name: string; tier: string; tier_key?: string; chip?: string; icon: string; gradient: string }>;
+  menu?: Array<{ key: string; label: string; href: string; icon: string; active: boolean; badge: number }>;
+  storiesEnabled?: boolean;
+  stories?: Array<{
+    user: { id: number; name: string; avatar_url: string | null; is_me: boolean };
+    all_seen: boolean;
+    items: Array<{ id: number; type: 'image' | 'video'; url: string; caption: string | null; created_at: string | null; seen: boolean; views: number | null }>;
+  }>;
   calendar?: Array<{
     id: number;
     title: string;
@@ -97,6 +105,21 @@ const uploadState = reactive({
 });
 
 const latestPosts = computed(() => data.feed.slice(0, 20));
+
+// Badges regroupés par type (du plus élevé au plus courant).
+const TIER_ORDER = ['platinum', 'gold', 'silver', 'bronze'];
+const badgeGroups = computed(() => {
+  const groups = new Map<string, { key: string; label: string; chip: string; badges: NonNullable<RootData['myBadges']> }>();
+  for (const badge of data.myBadges ?? []) {
+    const key = badge.tier_key ?? badge.tier;
+    if (!groups.has(key)) groups.set(key, { key, label: badge.tier, chip: badge.chip ?? 'border-slate-200 bg-slate-50 text-slate-700', badges: [] });
+    groups.get(key)?.badges.push(badge);
+  }
+  return [...groups.values()].sort((a, b) => {
+    const rank = (key: string) => (TIER_ORDER.includes(key) ? TIER_ORDER.indexOf(key) : TIER_ORDER.length);
+    return rank(a.key) - rank(b.key);
+  });
+});
 
 const initials = computed(() => {
   const full = data.auth.user?.name ?? 'Invité';
@@ -256,51 +279,46 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
           <div class="sticky top-24 space-y-4">
             <nav class="card p-4" aria-label="Menu">
               <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Menu</p>
-              <ul class="space-y-2 text-sm">
-                <li>
-                  <a href="/feed" aria-current="page" class="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-slate-800">
-                    <i class="fa-solid fa-house w-4 text-center text-slate-500"></i>
-                    <span>Accueil</span>
+              <ul class="space-y-1 text-sm">
+                <li v-for="item in data.menu ?? []" :key="item.key">
+                  <a
+                    :href="item.href"
+                    :aria-current="item.active ? 'page' : undefined"
+                    class="flex items-center gap-2 rounded-lg px-3 py-2"
+                    :class="item.active ? 'bg-slate-100 text-slate-800' : 'text-slate-700 hover:bg-slate-50'"
+                  >
+                    <i :class="item.icon" class="w-4 text-center text-slate-500" aria-hidden="true"></i>
+                    <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+                    <span v-if="item.badge > 0" class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-tlink-blue px-1.5 text-[10px] font-bold leading-5 text-white">{{ item.badge > 99 ? '99+' : item.badge }}</span>
                   </a>
-                </li>
-                <li>
-                  <a :href="data.links?.mission ?? '#'" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-solid fa-bullseye w-4 text-center text-slate-500"></i>
-                    <span>Mission</span>
-                  </a>
-                </li>
-                <li>
-                  <a :href="data.links?.academy ?? '/academy'" class="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-solid fa-graduation-cap w-4 text-center text-slate-500"></i>
-                    <span>Academy</span>
-                  </a>
-                </li>
-                <li>
-                  <span class="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-slate-500" aria-disabled="true">
-                    <i class="fa-solid fa-store w-4 text-center text-slate-400"></i>
-                    <span>Store</span>
-                    <span class="ml-auto rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Soon</span>
-                  </span>
                 </li>
               </ul>
             </nav>
 
             <section class="card p-4">
-              <div class="mb-2 flex items-center justify-between">
+              <div class="mb-3 flex items-center justify-between">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mes badges</p>
                 <a :href="data.links?.badges ?? '/badges'" class="text-xs font-semibold text-tlink-blue hover:underline">Missions</a>
               </div>
-              <ul v-if="data.myBadges?.length" class="flex flex-wrap gap-2">
-                <li v-for="badge in data.myBadges" :key="badge.id">
-                  <span
-                    class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-base text-white shadow-soft ring-2 ring-white"
-                    :class="badge.gradient"
-                    :title="`${badge.name} · ${badge.tier}`"
-                  >
-                    <i :class="badge.icon" aria-hidden="true"></i>
-                  </span>
-                </li>
-              </ul>
+              <div v-if="badgeGroups.length" class="space-y-3">
+                <div v-for="group in badgeGroups" :key="group.key">
+                  <p class="mb-1.5 flex items-center gap-2">
+                    <span class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide" :class="group.chip">{{ group.label }}</span>
+                    <span class="text-xs text-slate-400">{{ group.badges.length }}</span>
+                  </p>
+                  <ul class="flex flex-wrap gap-2">
+                    <li v-for="badge in group.badges" :key="badge.id">
+                      <span
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-base text-white shadow-soft ring-2 ring-white"
+                        :class="badge.gradient"
+                        :title="`${badge.name} · ${badge.tier}`"
+                      >
+                        <i :class="badge.icon" aria-hidden="true"></i>
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
               <a v-else :href="data.links?.badges ?? '/badges'" class="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600 hover:bg-slate-100">
                 <i class="fa-solid fa-award text-lg text-slate-400"></i>
                 <span>Relevez des missions pour gagner vos premiers badges.</span>
@@ -310,6 +328,13 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
         </aside>
 
         <section class="space-y-4 lg:col-span-6">
+        <StoriesBar
+          v-if="data.auth.isAuthenticated && data.storiesEnabled"
+          :groups="data.stories ?? []"
+          :csrf="data.csrf"
+          :me-name="data.auth.user?.name ?? ''"
+          :me-avatar="data.auth.user?.avatar_url"
+        />
         <div v-if="data.auth.isAuthenticated && data.calendarEnabled" class="lg:hidden">
           <ActivityCalendar :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
         </div>
