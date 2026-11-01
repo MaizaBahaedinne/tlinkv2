@@ -154,6 +154,7 @@ return [
         'until' => 'until :date',
         'status_cancelled' => 'Cancelled',
         'status_completed' => 'Completed',
+        'share' => 'Share this event',
         'register' => 'To take part, sign in or create your T.Link account.',
     ],
 

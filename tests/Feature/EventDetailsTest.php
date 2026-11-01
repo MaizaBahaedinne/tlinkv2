@@ -54,6 +54,26 @@ class EventDetailsTest extends TestCase
         $this->get('/fr/evenements')->assertOk()->assertSee('Sfax')->assertSee('15,5 TND');
     }
 
+    public function test_event_page_has_a_hero_and_social_sharing(): void
+    {
+        $withCover = FoundationEvent::query()->create(['title' => 'Forum Tunivisions', 'starts_at' => now()->addDays(5), 'status' => 'published', 'cover_image_path' => 'events/covers/forum.jpg']);
+        $plain = FoundationEvent::query()->create(['title' => 'Atelier simple', 'starts_at' => now()->addDays(5), 'status' => 'published']);
+
+        $url = rawurlencode(url('/fr/evenements/'.$withCover->id));
+
+        $this->get('/fr/evenements/'.$withCover->id)->assertOk()
+            ->assertSee('Partager cet événement')
+            ->assertSee('https://www.facebook.com/sharer/sharer.php?u='.$url, false)
+            ->assertSee('https://www.linkedin.com/sharing/share-offsite/?u', false)
+            ->assertSee('https://wa.me/?text=', false)
+            ->assertSee('https://twitter.com/intent/tweet?text=', false)
+            ->assertSee('data-copy-link', false)
+            ->assertSee('<meta property="og:image" content="'.asset('storage/events/covers/forum.jpg').'">', false)
+            ->assertSee('À venir');
+
+        $this->get('/fr/evenements/'.$plain->id)->assertOk()->assertSee('Partager cet événement')->assertDontSee('og:image', false);
+    }
+
     public function test_zero_price_is_free_and_empty_price_is_hidden(): void
     {
         $free = FoundationEvent::query()->create(['title' => 'Atelier libre', 'starts_at' => now()->addDay(), 'status' => 'published', 'price' => 0]);

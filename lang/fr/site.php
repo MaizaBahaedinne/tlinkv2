@@ -154,6 +154,7 @@ return [
         'until' => 'jusqu\'au :date',
         'status_cancelled' => 'Annulé',
         'status_completed' => 'Terminé',
+        'share' => 'Partager cet événement',
         'register' => 'Pour participer, connectez-vous ou créez votre compte T.Link.',
     ],
 

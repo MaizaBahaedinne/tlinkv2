@@ -154,6 +154,7 @@ return [
         'until' => 'إلى غاية :date',
         'status_cancelled' => 'ملغاة',
         'status_completed' => 'منتهية',
+        'share' => 'شارك هذه الفعالية',
         'register' => 'للمشاركة، سجّل الدخول أو أنشئ حسابك على T.Link.',
     ],
 
