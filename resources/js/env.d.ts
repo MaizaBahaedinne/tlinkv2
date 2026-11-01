@@ -9,6 +9,7 @@ declare global {
           id: number;
           name: string;
           email: string;
+          avatar_url?: string | null;
         };
       };
       feed: Array<{

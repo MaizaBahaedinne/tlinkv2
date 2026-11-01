@@ -40,7 +40,7 @@ type RootData = {
     isAuthenticated: boolean;
     canAdmin?: boolean;
     hasOffice?: boolean;
-    user?: { id: number; name: string; email: string };
+    user?: { id: number; name: string; email: string; avatar_url?: string | null };
   };
   feed: FeedPost[];
   composer: {
@@ -315,40 +315,54 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
         </div>
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4">
           <input type="hidden" name="_token" :value="data.csrf" />
-          <textarea
-            id="composer"
-            v-model="form.content"
-            name="content"
-            rows="3"
-            class="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-tlink-blue"
-            placeholder="Partage une actualite de ton club, projet ou evenement..."
-            required
-          ></textarea>
+          <div class="flex items-start gap-3">
+            <img
+              v-if="data.auth.user?.avatar_url"
+              :src="data.auth.user.avatar_url"
+              :alt="data.auth.user.name"
+              class="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover"
+            />
+            <span v-else class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tlink-blue text-xs font-semibold text-white" aria-hidden="true">
+              {{ initials }}
+            </span>
+            <textarea
+              id="composer"
+              v-model="form.content"
+              name="content"
+              rows="2"
+              class="min-h-[4.5rem] w-full flex-1 resize-y rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-tlink-blue focus:bg-white"
+              placeholder="Partage une actualité de ton club, projet ou événement…"
+              required
+            ></textarea>
+          </div>
           <input ref="photoInput" type="file" name="photos[]" accept="image/*" multiple class="hidden" @change="onPhotosChanged" />
           <input ref="videoInput" type="file" name="video" accept="video/mp4,video/webm,video/quicktime" class="hidden" @change="onVideoChanged" />
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" title="Ajouter des photos" @click="triggerPhotos">
+          <div class="mt-3 flex items-center justify-between gap-2 sm:pl-[3.25rem]">
+          <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+            <button type="button" class="inline-flex h-9 items-center gap-1 rounded-full border border-slate-200 px-3 text-sm text-slate-600 hover:bg-slate-50" title="Ajouter des photos" aria-label="Ajouter des photos" @click="triggerPhotos">
               <i class="fa-regular fa-image"></i>
-              <span v-if="uploadState.photos" class="ml-1 text-xs text-slate-500">{{ uploadState.photos }}</span>
+              <span v-if="uploadState.photos" class="text-xs font-semibold text-tlink-blue">{{ uploadState.photos }}</span>
             </button>
-            <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50" title="Ajouter une video" @click="triggerVideo">
+            <button type="button" class="inline-flex h-9 items-center gap-1 rounded-full border border-slate-200 px-3 text-sm text-slate-600 hover:bg-slate-50" title="Ajouter une vidéo" aria-label="Ajouter une vidéo" @click="triggerVideo">
               <i class="fa-solid fa-video"></i>
-              <span v-if="uploadState.hasVideo" class="ml-1 text-xs text-slate-500">1</span>
+              <span v-if="uploadState.hasVideo" class="text-xs font-semibold text-tlink-blue">1</span>
             </button>
+            <span class="mx-1 hidden h-5 w-px bg-slate-200 sm:block" aria-hidden="true"></span>
             <input type="hidden" name="visibility" :value="form.visibility" />
             <input type="hidden" name="sentiment" :value="form.sentiment" />
-            <div ref="composerMenus" class="flex flex-wrap items-center gap-2">
+            <div ref="composerMenus" class="flex flex-wrap items-center gap-1.5">
               <div class="relative">
                 <button
                   type="button"
-                  class="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  class="flex h-9 items-center gap-2 rounded-full border border-slate-200 px-3 text-sm text-slate-700 hover:bg-slate-50"
                   aria-haspopup="listbox"
                   :aria-expanded="openMenu === 'visibility'"
-                  title="Qui peut voir cette publication"
+                  :aria-label="`Qui peut voir cette publication : ${currentVisibility?.title ?? ''}`"
+                  :title="`Qui peut voir cette publication : ${currentVisibility?.title ?? ''}`"
                   @click="toggleMenu('visibility')"
                 >
                   <i class="fa-solid w-4 text-center text-tlink-blue" :class="currentVisibility?.icon"></i>
-                  <span>{{ currentVisibility?.title }}</span>
+                  <span class="hidden sm:inline">{{ currentVisibility?.title }}</span>
                   <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
                 </button>
                 <ul v-if="openMenu === 'visibility'" role="listbox" class="absolute left-0 z-20 mt-1 min-w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
@@ -369,14 +383,15 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
               <div class="relative">
                 <button
                   type="button"
-                  class="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  class="flex h-9 items-center gap-2 rounded-full border border-slate-200 px-3 text-sm text-slate-700 hover:bg-slate-50"
                   aria-haspopup="listbox"
                   :aria-expanded="openMenu === 'sentiment'"
-                  title="Ton de la publication"
+                  :aria-label="`Ton de la publication : ${currentSentiment?.title ?? ''}`"
+                  :title="`Ton de la publication : ${currentSentiment?.title ?? ''}`"
                   @click="toggleMenu('sentiment')"
                 >
                   <i class="fa-regular w-4 text-center text-tlink-blue" :class="currentSentiment?.icon"></i>
-                  <span>{{ currentSentiment?.title }}</span>
+                  <span class="hidden sm:inline">{{ currentSentiment?.title }}</span>
                   <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
                 </button>
                 <ul v-if="openMenu === 'sentiment'" role="listbox" class="absolute left-0 z-20 mt-1 min-w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
@@ -395,10 +410,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
               </div>
             </div>
           </div>
-          <div class="mt-3 flex justify-end">
-            <button class="rounded-xl bg-tlink-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-tlink-blue-700" type="submit">
-              <i class="fa-solid fa-paper-plane mr-1"></i>
-              Publier
+            <button class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tlink-cyan text-white shadow-soft hover:bg-tlink-blue-700" type="submit" title="Publier" aria-label="Publier">
+              <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
             </button>
           </div>
         </form>

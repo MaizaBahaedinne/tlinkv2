@@ -27,6 +27,22 @@ class FeedSidebarsTest extends TestCase
         $this->get('/feed')->assertOk()->assertSee('/a-propos#mission', false);
     }
 
+    public function test_the_composer_receives_the_avatar_of_the_member(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \Illuminate\Support\Facades\Storage::disk('public')->put('profiles/me.jpg', 'x');
+
+        $user = User::factory()->create();
+        \App\Models\Profile::query()->updateOrCreate(['user_id' => $user->id], ['photo_path' => 'profiles/me.jpg']);
+
+        $auth = $this->actingAs($user)->get('/feed')->assertOk()->viewData('authUser');
+        $this->assertSame($user->id, $auth['id']);
+        $this->assertStringContainsString('profiles/me.jpg', $auth['avatar_url']);
+
+        $other = User::factory()->create();
+        $this->assertNull($this->actingAs($other)->get('/feed')->assertOk()->viewData('authUser')['avatar_url']);
+    }
+
     public function test_the_mission_anchor_exists_on_the_about_page(): void
     {
         $this->get('/fr/a-propos')->assertOk()->assertSee('id="mission"', false);

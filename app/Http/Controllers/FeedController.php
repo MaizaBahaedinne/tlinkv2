@@ -128,10 +128,21 @@ class FeedController extends Controller
             ];
         })->values();
 
+        $composerPhoto = $request->user()?->profile?->photo_path;
+        $composerAvatar = $composerPhoto && Storage::disk('public')->exists($composerPhoto)
+            ? Storage::disk('public')->url($composerPhoto)
+            : null;
+
         return view('app', [
             'posts' => $posts,
             'feedPayload' => $feedPayload,
             'user' => $request->user(),
+            'authUser' => $request->user() === null ? null : [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+                'avatar_url' => $composerAvatar,
+            ],
             'composerCapabilities' => [
                 'can_publish_public' => $canPublishPublic,
                 'allowed_visibilities' => $allowedVisibilities,

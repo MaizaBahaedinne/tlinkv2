@@ -29,7 +29,7 @@
                 isAuthenticated: @json((bool) $user),
                 canAdmin: @json((bool) ($canAdmin ?? false)),
                 hasOffice: @json((bool) ($hasOffice ?? false)),
-                user: @json($user ? ['id' => $user->id, 'name' => $user->name, 'email' => $user->email] : null),
+                user: @json($authUser ?? null),
             },
             feed: @json($feedPayload),
             composer: @json($composer),
