@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T.Link — Le système de scoring des défis</title>
+<style>
+    :root {
+        --blue: #1d4ed8;
+        --blue-dark: #0f2a6b;
+        --blue-soft: #e8efff;
+        --ink: #0f172a;
+        --muted: #55627a;
+        --line: #d9e1f0;
+        --green: #15803d;
+        --green-soft: #e3f6ea;
+        --amber: #b45309;
+        --amber-soft: #fff1d6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #0b1220; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); }
+
+    .deck { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+    .slide {
+        position: absolute; inset: 0; display: none; flex-direction: column; justify-content: center;
+        padding: 6vh 8vw; background: #fff;
+    }
+    .slide.active { display: flex; }
+    .slide.dark { background: linear-gradient(135deg, var(--blue-dark), var(--blue)); color: #fff; }
+    .slide.dark h1, .slide.dark h2 { color: #fff; }
+    .slide.dark .lead, .slide.dark p { color: #dbe6ff; }
+
+    h1 { font-size: clamp(34px, 5.4vw, 72px); line-height: 1.08; letter-spacing: -0.02em; }
+    h2 { font-size: clamp(26px, 3.4vw, 46px); line-height: 1.15; letter-spacing: -0.01em; color: var(--blue-dark); margin-bottom: 3vh; }
+    h3 { font-size: clamp(16px, 1.7vw, 24px); margin-bottom: 8px; color: var(--blue-dark); }
+    .eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: clamp(12px, 1.1vw, 16px); font-weight: 700; color: #9db8ff; margin-bottom: 2vh; }
+    .lead { font-size: clamp(18px, 2vw, 28px); color: var(--muted); line-height: 1.4; max-width: 62ch; margin-top: 2.5vh; }
+    p, li { font-size: clamp(15px, 1.55vw, 22px); line-height: 1.45; color: var(--ink); }
+    ul { padding-left: 1.2em; display: grid; gap: .6em; }
+    strong { color: var(--blue-dark); }
+    .dark strong { color: #fff; }
+
+    .grid { display: grid; gap: 2vw; }
+    .g2 { grid-template-columns: repeat(2, 1fr); }
+    .g3 { grid-template-columns: repeat(3, 1fr); }
+    .g4 { grid-template-columns: repeat(4, 1fr); }
+    .card { border: 1px solid var(--line); border-radius: 14px; padding: 2.2vh 1.6vw; background: #fff; }
+    .card.soft { background: var(--blue-soft); border-color: #cfdcff; }
+    .card.ok { background: var(--green-soft); border-color: #b7e3c5; }
+    .card.warn { background: var(--amber-soft); border-color: #f3d9a4; }
+    .card p, .card li { font-size: clamp(14px, 1.35vw, 19px); }
+    .big { font-size: clamp(28px, 3.6vw, 52px); font-weight: 800; color: var(--blue); line-height: 1; margin-bottom: 6px; }
+
+    .formula {
+        background: var(--blue-soft); border: 1px solid #cfdcff; border-radius: 16px; padding: 3vh 2vw; margin-bottom: 2.5vh;
+        font-size: clamp(16px, 2vw, 28px); font-weight: 700; color: var(--blue-dark); line-height: 1.5;
+    }
+    .formula small { display: block; font-weight: 600; font-size: .6em; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .08em; }
+    .plus { color: var(--muted); font-weight: 400; padding: 0 .25em; }
+
+    table { width: 100%; border-collapse: collapse; font-size: clamp(14px, 1.45vw, 21px); }
+    th, td { padding: 1.3vh 1vw; border-bottom: 1px solid var(--line); text-align: center; }
+    th { background: var(--blue-soft); color: var(--blue-dark); font-weight: 700; }
+    td:first-child, th:first-child { text-align: left; font-weight: 700; }
+    tr.total td { border-top: 2px solid var(--blue); font-weight: 800; color: var(--blue-dark); font-size: 1.1em; }
+
+    .flow { display: flex; align-items: stretch; gap: 1vw; }
+    .step { flex: 1; background: var(--blue-soft); border: 1px solid #cfdcff; border-radius: 12px; padding: 2vh 1vw; text-align: center; }
+    .step b { display: block; font-size: clamp(20px, 2.4vw, 34px); color: var(--blue); }
+    .step span { font-size: clamp(12px, 1.2vw, 17px); color: var(--ink); }
+    .arrow { align-self: center; color: var(--blue); font-size: clamp(18px, 2vw, 30px); }
+
+    .tag { display: inline-block; font-size: clamp(11px, 1vw, 14px); font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--green-soft); color: var(--green); margin-right: 6px; }
+    .tag.todo { background: var(--amber-soft); color: var(--amber); }
+    .note { margin-top: 2vh; font-size: clamp(12px, 1.15vw, 16px); color: var(--muted); }
+
+    .bar { position: fixed; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.2); z-index: 5; }
+    .bar i { display: block; height: 100%; width: 0; background: #60a5fa; transition: width .25s; }
+    .counter { position: fixed; right: 20px; bottom: 14px; font-size: 13px; color: #94a3b8; z-index: 5; }
+    .hint { position: fixed; left: 20px; bottom: 14px; font-size: 13px; color: #94a3b8; z-index: 5; }
+
+    @media print {
+        @page { size: 297mm 167mm; margin: 0; }
+        html, body { background: #fff; height: auto; }
+        .deck { position: static; width: auto; height: auto; overflow: visible; }
+        .slide { position: relative; display: flex !important; width: 297mm; height: 167mm; padding: 14mm 20mm; page-break-after: always; break-after: page; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .bar, .counter, .hint { display: none; }
+    }
+</style>
+</head>
+<body>
+<main class="deck" id="deck">
+
+<!-- 1 -->
+<section class="slide dark">
+    <div class="eyebrow">Fondation Tunivisions · T.Link</div>
+    <h1>Mesurer l’engagement des clubs,<br>simplement et équitablement</h1>
+    <p class="lead">Le système de scoring des défis : une base objective, des bonus qui valorisent l’écosystème, et un jury pour la qualité.</p>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+    <h2>T.Link en bref</h2>
+    <div class="grid g3">
+        <div class="card soft"><h3>Une plateforme unique</h3><p>Fil social, organigramme, adhésions, validations, événements, notifications : tout au même endroit, sur web et bientôt mobile.</p></div>
+        <div class="card soft"><h3>Pilotée par l’organigramme</h3><p>Fondation, University, High School, Alumni : chaque club, département et poste a ses droits et son périmètre.</p></div>
+        <div class="card soft"><h3>Configurable par les admins</h3><p>Périmètres, modules, listes et barèmes sont paramétrés en base depuis l’interface d’administration, sans toucher au code.</p></div>
+    </div>
+    <p class="note">Le module « Défis » relie les clubs, leurs activités, un comité d’évaluation et un classement.</p>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+    <h2>Le principe d’un défi</h2>
+    <div class="flow">
+        <div class="step"><b>1</b><span>Un bureau lance un défi : thème, calendrier, barème, comité</span></div><div class="arrow">→</div>
+        <div class="step"><b>2</b><span>Les clubs publient des activités rattachées au défi</span></div><div class="arrow">→</div>
+        <div class="step"><b>3</b><span>Les membres s’inscrivent depuis le fil T.Link</span></div><div class="arrow">→</div>
+        <div class="step"><b>4</b><span>Présence scannée par QR, avis des participants</span></div><div class="arrow">→</div>
+        <div class="step"><b>5</b><span>Compte rendu du club, validé par son président</span></div><div class="arrow">→</div>
+        <div class="step"><b>6</b><span>Score et classement des clubs</span></div>
+    </div>
+    <p class="note" style="margin-top:4vh">Une activité est « dans la thématique » du défi ou « hors thématique » : les deux catégories sont comptées séparément.</p>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+    <h2>Pourquoi faire évoluer le scoring</h2>
+    <div class="grid g2">
+        <div class="card warn">
+            <h3>Aujourd’hui</h3>
+            <ul>
+                <li>La note est <strong>uniquement subjective</strong> : moyenne des notes du jury.</li>
+                <li>Aucune mesure de <strong>l’ampleur</strong> : 5 ou 300 participants, même poids.</li>
+                <li>Le <strong>type d’activité</strong> et la <strong>cible</strong> ne comptent pas.</li>
+                <li>Les petites activités peuvent <strong>s’empiler</strong> sans limite.</li>
+            </ul>
+        </div>
+        <div class="card ok">
+            <h3>Ce que nous voulons</h3>
+            <ul>
+                <li>Un score <strong>mesurable</strong> à partir de données réelles.</li>
+                <li>Des points qui reflètent <strong>l’effort et la portée</strong> de l’activité.</li>
+                <li>Des <strong>bonus</strong> pour l’écosystème Tunivisions.</li>
+                <li>Un jury qui juge ce que les chiffres ne voient pas : la <strong>qualité</strong>.</li>
+                <li>Un classement <strong>explicable</strong> à chaque club.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+    <h2>Les deux formules</h2>
+    <div class="formula">
+        <small>Activité dans la thématique</small>
+        Base <span class="plus">+</span> Volume <span class="plus">+</span> Bonus T.Link <span class="plus">+</span> Évaluation du jury
+    </div>
+    <div class="formula">
+        <small>Activité hors thématique</small>
+        Base <span class="plus">+</span> Volume <span class="plus">+</span> Bonus T.Link
+    </div>
+    <p>Le score d’un club est la somme de ses meilleures activités, avec un <strong>plafond d’activités comptées par défi</strong> et par catégorie.</p>
+    <p class="note">Tout est paramétrable défi par défi : matrice, volume, bonus et plafonds.</p>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+    <h2>Base : la matrice type d’activité × cible</h2>
+    <table>
+        <thead><tr><th>Type d’activité</th><th>Étudiants</th><th>Lycéens</th><th>Jeunes diplômés</th><th>Entreprises</th><th>Grand public</th></tr></thead>
+        <tbody>
+            <tr><td>Formation</td><td>30</td><td>30</td><td>25</td><td>35</td><td>20</td></tr>
+            <tr><td>Conférence</td><td>25</td><td>25</td><td>20</td><td>30</td><td>20</td></tr>
+            <tr><td>Compétition</td><td>25</td><td>25</td><td>20</td><td>25</td><td>15</td></tr>
+            <tr><td>Soirée</td><td>10</td><td>10</td><td>8</td><td>8</td><td>8</td></tr>
+        </tbody>
+    </table>
+    <p class="note">Valeurs données à titre d’exemple. Chaque défi définit sa propre matrice, et les activités hors thématique ont la leur. La liste des cibles est gérée en administration.</p>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+    <h2>Volume : récompenser la portée réelle</h2>
+    <div class="grid g2">
+        <div>
+            <ul>
+                <li><strong>X points par participant présent</strong>, confirmé par le scan du QR code.</li>
+                <li>Les inscrits absents ne comptent pas.</li>
+                <li>Un <strong>plafond par activité</strong> évite qu’un seul événement écrase le reste.</li>
+                <li>Valable pour les activités thématiques et hors thématique.</li>
+            </ul>
+        </div>
+        <div class="card soft">
+            <div class="big">0,5 pt</div>
+            <p>par présent, plafonné à 25 points<br>(exemple : 40 présents → 20 points)</p>
+        </div>
+    </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+    <h2>Bonus T.Link : valoriser l’écosystème</h2>
+    <div class="grid g3">
+        <div class="card"><h3>Formateur Tunivisions Academy</h3><p>Un intervenant de l’activité appartient au périmètre Academy. Détecté automatiquement à partir de l’organigramme.</p></div>
+        <div class="card"><h3>Co-organisation</h3><p>Plusieurs clubs organisent ensemble, après acceptation de l’invitation.</p></div>
+        <div class="card"><h3>Partenaire ou sponsor</h3><p>Déclaré dans le compte rendu.</p></div>
+        <div class="card"><h3>Retombées médias</h3><p>Publication, radio, TV ou presse renseignée dans le compte rendu.</p></div>
+        <div class="card"><h3>Satisfaction élevée</h3><p>Moyenne des avis anonymes des participants au-dessus d’un seuil.</p></div>
+        <div class="card"><h3>Forte présence</h3><p>Taux de présence au-dessus d’un seuil (présents ÷ inscrits).</p></div>
+    </div>
+    <p class="note">Chaque bonus est activable ou non, avec ses points, pour chaque défi. D’autres règles peuvent être ajoutées.</p>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+    <h2>Le jury évalue la qualité</h2>
+    <div class="grid g2">
+        <div>
+            <ul>
+                <li>Uniquement pour les <strong>activités dans la thématique</strong>.</li>
+                <li>Une grille de critères définie par défi (impact, créativité, organisation…).</li>
+                <li>Chaque membre du comité note chaque critère ; la note finale est la <strong>moyenne du comité</strong>.</li>
+                <li>Le jury ne note qu’une activité dont le <strong>compte rendu est validé</strong>.</li>
+            </ul>
+        </div>
+        <div class="card ok">
+            <h3>Déjà en place</h3>
+            <p><span class="tag">En production</span>Comité, grille de critères, saisie des notes et calcul de la moyenne existent déjà. Le jury continue de fonctionner tel quel.</p>
+        </div>
+    </div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+    <h2>Anti-abus : un plafond par défi</h2>
+    <div class="grid g2">
+        <div>
+            <ul>
+                <li>Un <strong>nombre maximum d’activités comptées</strong> par club et par défi.</li>
+                <li>Un plafond distinct pour les activités thématiques et hors thématique.</li>
+                <li>On retient les <strong>meilleures</strong> activités ; les autres restent visibles mais ne rapportent rien.</li>
+                <li>Multiplier les petites activités n’est plus une stratégie gagnante.</li>
+            </ul>
+        </div>
+        <div class="card soft">
+            <h3>Exemple de réglage</h3>
+            <p>6 activités thématiques comptées<br>4 activités hors thématique comptées<br>par club, pour ce défi.</p>
+        </div>
+    </div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+    <h2>Exemple chiffré</h2>
+    <div class="grid g2">
+        <div>
+            <h3>Activité thématique : formation pour étudiants</h3>
+            <table>
+                <tbody>
+                    <tr><td>Base (formation × étudiants)</td><td>30</td></tr>
+                    <tr><td>Volume (40 présents)</td><td>20</td></tr>
+                    <tr><td>Bonus formateur Academy</td><td>10</td></tr>
+                    <tr><td>Bonus partenaire</td><td>5</td></tr>
+                    <tr><td>Bonus satisfaction</td><td>5</td></tr>
+                    <tr><td>Évaluation du jury</td><td>14</td></tr>
+                    <tr class="total"><td>Total</td><td>84</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <h3>Activité hors thématique : soirée</h3>
+            <table>
+                <tbody>
+                    <tr><td>Base (soirée × étudiants)</td><td>10</td></tr>
+                    <tr><td>Volume (80 présents, plafonné)</td><td>25</td></tr>
+                    <tr><td>Bonus co-organisation</td><td>5</td></tr>
+                    <tr class="total"><td>Total</td><td>40</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <p class="note">Chiffres fictifs, pour illustrer le calcul.</p>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+    <h2>Un score transparent</h2>
+    <div class="grid g3">
+        <div class="card soft"><h3>Détail par activité</h3><p>Chaque club voit d’où viennent ses points : base, volume, bonus, jury.</p></div>
+        <div class="card soft"><h3>Points figés</h3><p>Les points sont calculés et figés quand le président valide le compte rendu. Changer le barème plus tard ne modifie pas les classements publiés.</p></div>
+        <div class="card soft"><h3>Règles publiées</h3><p>Le barème du défi est visible par tous les clubs avant le début : mêmes règles pour chacun.</p></div>
+    </div>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+    <h2>Des données collectées sans saisie supplémentaire</h2>
+    <table>
+        <thead><tr><th>Donnée</th><th>Source dans T.Link</th><th>Utilisée pour</th></tr></thead>
+        <tbody>
+            <tr><td>Participants présents</td><td>Scan du QR code</td><td>Volume, taux de présence</td></tr>
+            <tr><td>Satisfaction</td><td>Avis anonyme après scan</td><td>Bonus satisfaction</td></tr>
+            <tr><td>Partenaires, médias</td><td>Compte rendu du club</td><td>Bonus partenaire, médias</td></tr>
+            <tr><td>Co-organisateurs</td><td>Invitation acceptée</td><td>Bonus co-organisation</td></tr>
+            <tr><td>Intervenants Academy</td><td>Organigramme et périmètres</td><td>Bonus formateur</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<!-- 14 -->
+<section class="slide">
+    <h2>Où en sommes-nous ?</h2>
+    <div class="grid g2">
+        <div class="card ok">
+            <h3><span class="tag">En place</span></h3>
+            <ul>
+                <li>Défis, activités, co-organisation, inscriptions</li>
+                <li>Calendrier des activités dans le fil T.Link</li>
+                <li>Scan QR de présence et avis des participants</li>
+                <li>Compte rendu structuré, validé par le président</li>
+                <li>Comité, grille de critères, notes et classement</li>
+            </ul>
+        </div>
+        <div class="card warn">
+            <h3><span class="tag todo">À construire</span></h3>
+            <ul>
+                <li>Cible de l’activité et liste des cibles</li>
+                <li>Matrice type × cible, volume et bonus paramétrables par défi</li>
+                <li>Intervenants de l’activité et bonus Academy</li>
+                <li>Plafond d’activités comptées</li>
+                <li>Gel des points et détail du score par activité</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- 15 -->
+<section class="slide">
+    <h2>Feuille de route</h2>
+    <div class="flow">
+        <div class="step"><b>1</b><span>Données : cibles, intervenants, paramètres du barème</span></div><div class="arrow">→</div>
+        <div class="step"><b>2</b><span>Calcul : base, volume, bonus, plafond</span></div><div class="arrow">→</div>
+        <div class="step"><b>3</b><span>Écran admin « Barème » par défi</span></div><div class="arrow">→</div>
+        <div class="step"><b>4</b><span>Détail du score et classement</span></div><div class="arrow">→</div>
+        <div class="step"><b>5</b><span>Tests et passage des défis existants</span></div>
+    </div>
+    <p class="note" style="margin-top:4vh">Les défis déjà créés continuent de fonctionner avec le jury seul tant que leur barème n’est pas renseigné.</p>
+</section>
+
+<!-- 16 -->
+<section class="slide">
+    <h2>Points à valider ensemble</h2>
+    <div class="grid g2">
+        <div class="card"><h3>Volume</h3><p>Nombre brut de présents, ou rapporté à la taille du club pour ne pas favoriser les grands clubs ?</p></div>
+        <div class="card"><h3>Plafond</h3><p>Un nombre d’activités comptées par catégorie. Quelles valeurs par défaut ?</p></div>
+        <div class="card"><h3>Bonus</h3><p>Quelle liste initiale de règles, et quels points pour chacune ?</p></div>
+        <div class="card"><h3>Poids du jury</h3><p>Quelle part du score total pour les activités thématiques ?</p></div>
+    </div>
+</section>
+
+<!-- 17 -->
+<section class="slide dark">
+    <div class="eyebrow">En résumé</div>
+    <h1>Mesurable, paramétrable,<br>explicable.</h1>
+    <p class="lead">Une base objective, des bonus pour l’écosystème Tunivisions, un jury pour la qualité, et un barème propre à chaque défi.</p>
+</section>
+
+</main>
+
+<div class="hint">← → ou espace pour naviguer · F plein écran · Imprimer pour exporter en PDF</div>
+<div class="counter" id="counter"></div>
+<div class="bar"><i id="progress"></i></div>
+
+<script>
+    (function () {
+        var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+        var counter = document.getElementById('counter');
+        var progress = document.getElementById('progress');
+        var index = 0;
+
+        function fromHash() {
+            var n = parseInt(location.hash.replace('#', ''), 10);
+            return isNaN(n) ? 0 : Math.min(Math.max(n - 1, 0), slides.length - 1);
+        }
+
+        function show(i) {
+            index = Math.min(Math.max(i, 0), slides.length - 1);
+            slides.forEach(function (s, k) { s.classList.toggle('active', k === index); });
+            counter.textContent = (index + 1) + ' / ' + slides.length;
+            progress.style.width = ((index + 1) / slides.length * 100) + '%';
+            history.replaceState(null, '', '#' + (index + 1));
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].indexOf(e.key) !== -1) { e.preventDefault(); show(index + 1); }
+            else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].indexOf(e.key) !== -1) { e.preventDefault(); show(index - 1); }
+            else if (e.key === 'Home') { show(0); }
+            else if (e.key === 'End') { show(slides.length - 1); }
+            else if (e.key === 'f' || e.key === 'F') {
+                if (document.fullscreenElement) { document.exitFullscreen(); } else { document.documentElement.requestFullscreen(); }
+            }
+        });
+
+        document.getElementById('deck').addEventListener('click', function (e) {
+            show(e.clientX < window.innerWidth / 3 ? index - 1 : index + 1);
+        });
+
+        show(fromHash());
+    })();
+</script>
+</body>
+</html>
