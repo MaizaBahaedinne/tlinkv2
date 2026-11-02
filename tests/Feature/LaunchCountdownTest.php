@@ -115,6 +115,38 @@ class LaunchCountdownTest extends TestCase
         $this->assertTrue(LaunchGate::isClosed());
     }
 
+    public function test_listed_members_bypass_the_countdown_while_others_stay_blocked(): void
+    {
+        $this->closeUntil();
+        $allowed = User::factory()->create(['email' => 'testeur@exemple.tn']);
+        $other = User::factory()->create();
+
+        $payload = ['enabled' => '1', 'launch_at' => now()->addDay()->format('Y-m-d\TH:i'), 'allowed_emails' => "Testeur@Exemple.tn\n"];
+        $this->actingAs($this->globalAdmin())->put('/admin/lancement', $payload)->assertSessionHasNoErrors();
+        $this->assertSame([$allowed->id], LaunchGate::settings()['allowed_user_ids']);
+
+        $this->actingAs($allowed)->get('/feed')->assertOk();
+        $this->actingAs($other)->get('/feed')->assertStatus(503);
+        $this->actingAs($allowed)->get('/admin/lancement')->assertForbidden();
+    }
+
+    public function test_unknown_emails_in_the_allow_list_are_rejected(): void
+    {
+        $this->actingAs($this->globalAdmin())
+            ->put('/admin/lancement', ['enabled' => '1', 'launch_at' => now()->addDay()->format('Y-m-d\TH:i'), 'allowed_emails' => 'inconnu@exemple.tn'])
+            ->assertSessionHasErrors('allowed_emails');
+        $this->assertFalse(LaunchGate::settings()['enabled']);
+    }
+
+    public function test_the_allow_list_is_shown_on_the_admin_page(): void
+    {
+        User::factory()->create(['email' => 'visible@exemple.tn']);
+        $admin = $this->globalAdmin();
+        $this->actingAs($admin)->put('/admin/lancement', ['launch_at' => '', 'allowed_emails' => 'visible@exemple.tn']);
+
+        $this->get('/admin/lancement')->assertOk()->assertSee('visible@exemple.tn');
+    }
+
     public function test_enabling_requires_a_launch_date(): void
     {
         $this->actingAs($this->globalAdmin())->put('/admin/lancement', ['enabled' => '1'])->assertSessionHasErrors('launch_at');

@@ -4,7 +4,7 @@
 @section('section', 'Lancement du site')
 
 @section('content')
-    <x-admin.page-header title="Lancement du site" subtitle="Compte à rebours affiché à la place du site public et de T.Link. Les administrateurs globaux voient toujours le site normalement.">
+    <x-admin.page-header title="Lancement du site" subtitle="Compte à rebours affiché à la place du site public et de T.Link. Les administrateurs globaux et les comptes autorisés voient toujours le site normalement.">
         <x-slot:actions>
             <a href="{{ route('site.root') }}" target="_blank" rel="noopener" class="btn btn-secondary"><x-admin.icon name="external" :size="16" /> Voir le site</a>
         </x-slot:actions>
@@ -42,6 +42,13 @@
                     <p class="hint">Laissez vide pour utiliser les textes par défaut.</p>
                     @error('message')<p class="error">{{ $message }}</p>@enderror
                 </div>
+            </div>
+
+            <div class="field span-2 {{ $errors->has('allowed_emails') ? 'has-error' : '' }}" style="margin-bottom:16px">
+                <label for="f-allowed_emails">Comptes autorisés pendant la fermeture</label>
+                <textarea id="f-allowed_emails" name="allowed_emails" rows="5" placeholder="prenom.nom@exemple.tn">{{ old('allowed_emails', $allowedEmails) }}</textarea>
+                <p class="hint">Un e-mail par ligne. Ces membres se connectent et utilisent le site normalement malgré le compte à rebours, comme les administrateurs globaux. Les comptes doivent déjà exister.</p>
+                @error('allowed_emails')<p class="error">{{ $message }}</p>@enderror
             </div>
 
             <p class="text-sm text-muted" style="margin-bottom:0">Pendant la fermeture, seule la page de connexion reste accessible (lien « Accès administrateur » en bas du compte à rebours). Connectez-vous avec votre compte administrateur global pour parcourir le site.</p>

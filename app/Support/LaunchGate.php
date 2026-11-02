@@ -8,7 +8,8 @@ use Illuminate\Http\Request;
 
 /**
  * Compte à rebours de lancement : tant que la date n'est pas atteinte, le site public et T.Link
- * n'affichent qu'un compte à rebours, sauf aux administrateurs globaux (et à leurs sessions d'incarnation).
+ * n'affichent qu'un compte à rebours, sauf aux administrateurs globaux (et à leurs sessions d'incarnation)
+ * et aux comptes de la liste d'accès anticipé.
  * Réglages stockés en base (groupe « site », clé « launch »), modifiables depuis l'administration.
  */
 class LaunchGate
@@ -25,7 +26,7 @@ class LaunchGate
     private const OPEN_PATHS = ['up', 'connexion', 'deconnexion', 'auth/*', 'rejoindre/*', 'impersonation/quitter', 'api/v1/auth/login', 'api/v1/auth/logout', 'api/v1/auth/me'];
 
     /**
-     * @return array{enabled: bool, launch_at: string, title: string, message: string}
+     * @return array{enabled: bool, launch_at: string, title: string, message: string, allowed_user_ids: array<int, int>}
      */
     public static function settings(): array
     {
@@ -43,6 +44,7 @@ class LaunchGate
             'launch_at' => (string) ($data['launch_at'] ?? ''),
             'title' => trim((string) ($data['title'] ?? '')),
             'message' => trim((string) ($data['message'] ?? '')),
+            'allowed_user_ids' => array_values(array_unique(array_map('intval', (array) ($data['allowed_user_ids'] ?? [])))),
         ];
     }
 
@@ -93,7 +95,7 @@ class LaunchGate
         return $request->is(self::OPEN_PATHS);
     }
 
-    /** Administrateur global, ou administrateur en train d'incarner un autre utilisateur. */
+    /** Administrateur global, administrateur en train d'incarner un autre utilisateur, ou compte autorisé dans la liste d'accès anticipé. */
     public static function bypasses(Request $request): bool
     {
         $user = $request->user();
@@ -103,6 +105,7 @@ class LaunchGate
         }
 
         return $request->hasSession() && $request->session()->has('impersonator_id')
+            || in_array($user->id, self::settings()['allowed_user_ids'], true)
             || AdminContext::of($request)->isGlobal('entity.manage');
     }
 }
