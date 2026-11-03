@@ -13,6 +13,27 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
+    /** Sections du parcours dont le membre peut supprimer un bloc. */
+    public const JOURNEY_SECTIONS = ['professional_experiences', 'educations', 'certifications', 'associative_experiences'];
+
+    public function destroyJourneyEntry(Request $request, string $section, int $index): RedirectResponse
+    {
+        abort_unless(in_array($section, self::JOURNEY_SECTIONS, true), 404);
+
+        $profile = $request->user()->profile()->firstOrCreate([]);
+        $settings = is_array($profile->privacy_settings) ? $profile->privacy_settings : [];
+        $rows = array_values(is_array($settings[$section] ?? null) ? $settings[$section] : []);
+
+        abort_unless(array_key_exists($index, $rows), 404);
+
+        unset($rows[$index]);
+        $settings[$section] = array_values($rows);
+        $profile->privacy_settings = $settings;
+        $profile->save();
+
+        return redirect()->to(route('profile.show').'#parcours')->with('status', 'Bloc supprime de votre parcours.');
+    }
+
     public function show(Request $request): View
     {
         $user = $request->user()->loadMissing('profile');

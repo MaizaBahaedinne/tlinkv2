@@ -61,6 +61,7 @@
                             @if($block['kind'] === 'pro')
                                 <article class="relative flex gap-3 rounded-2xl bg-slate-50 px-4 py-3" data-logo="{{ $item['logo_url'] ?? '' }}">
                                     <span class="{{ $dot }}"></span>
+                                    @include('profile.partials.journey-delete', ['section' => 'professional_experiences'])
                                     <x-org-logo :url="$item['logo_url'] ?? null" :name="$item['company'] ?? ''" icon="fa-solid fa-building" />
                                     <div class="min-w-0 flex-1">
                                         <p class="text-sm font-semibold text-slate-900">{{ $item['role'] ?? 'Poste' }} · {{ $item['company'] ?? 'Societe' }}</p>
@@ -72,6 +73,7 @@
                             @elseif($block['kind'] === 'edu')
                                 <article class="relative flex gap-3 rounded-2xl bg-slate-50 px-4 py-3" data-logo="{{ $item['logo_url'] ?? '' }}">
                                     <span class="{{ $dot }}"></span>
+                                    @include('profile.partials.journey-delete', ['section' => 'educations'])
                                     <x-org-logo :url="$item['logo_url'] ?? null" :name="$item['school'] ?? ''" icon="fa-solid fa-graduation-cap" />
                                     <div class="min-w-0 flex-1">
                                         <p class="text-sm font-semibold text-slate-900">{{ $item['degree_type'] ?? 'Diplome' }} · {{ $item['diploma_name'] ?? 'Intitule' }}</p>
@@ -84,6 +86,7 @@
                             @elseif($block['kind'] === 'cert')
                                 <article class="relative rounded-2xl bg-slate-50 px-4 py-3">
                                     <span class="{{ $dot }}"></span>
+                                    @include('profile.partials.journey-delete', ['section' => 'certifications'])
                                     <p class="text-sm font-semibold text-slate-900">{{ $item['name'] ?? 'Certification' }}</p>
                                     <p class="mt-1 text-xs text-slate-500">{{ $item['issuer'] ?? 'Organisme' }} · {{ $item['date_obtained'] ?? '-' }}</p>
                                     <p class="mt-2 flex flex-wrap items-center gap-3 text-xs">
@@ -94,6 +97,7 @@
                             @else
                                 <article class="relative flex gap-3 rounded-2xl bg-slate-50 px-4 py-3" data-logo="{{ $item['logo_url'] ?? '' }}">
                                     <span class="{{ $dot }}"></span>
+                                    @include('profile.partials.journey-delete', ['section' => 'associative_experiences'])
                                     <x-org-logo :url="$item['logo_url'] ?? null" :name="$item['club_name'] ?? ''" icon="fa-solid fa-people-group" />
                                     <div class="min-w-0 flex-1">
                                         <p class="text-sm font-semibold text-slate-900">{{ $item['role'] ?? 'Poste' }} · {{ $item['club_name'] ?? 'Club' }}</p>

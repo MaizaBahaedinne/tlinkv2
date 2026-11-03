@@ -182,6 +182,8 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/mon-bureau/postes/{node}/titulaires', [MyOfficeController::class, 'assign'])->middleware('throttle:office-assign')->name('office.assign');
     Route::delete('/mon-bureau/postes/{node}/titulaires/{person}', [MyOfficeController::class, 'unassign'])->name('office.unassign');
     Route::patch('/profil', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profil/parcours/{section}/{index}', [ProfileController::class, 'destroyJourneyEntry'])
+        ->whereIn('section', ProfileController::JOURNEY_SECTIONS)->whereNumber('index')->name('profile.journey.destroy');
     Route::get('/profil/verification', [IdentityVerificationController::class, 'show'])->name('profile.verification');
     Route::post('/profil/verification', [IdentityVerificationController::class, 'store'])->middleware('throttle:5,60')->name('profile.verification.store');
 

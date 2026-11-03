@@ -190,8 +190,10 @@ class ProfileOrganizations
     public function sections(Profile $profile): array
     {
         $settings = is_array($profile->privacy_settings) ? $profile->privacy_settings : [];
-        $experiences = $this->newestFirst($this->withLogos($settings['professional_experiences'] ?? [], 'company'));
-        $educations = $this->newestFirst($this->withLogos($settings['educations'] ?? [], 'school'));
+        // `_i` garde la position enregistrée de chaque ligne : l'affichage est trié, la suppression vise l'enregistrement.
+        $indexed = fn (mixed $rows): Collection => collect($rows)->values()->map(fn (mixed $row, int $i): mixed => is_array($row) ? $row + ['_i' => $i] : $row);
+        $experiences = $this->newestFirst($this->withLogos($indexed($settings['professional_experiences'] ?? []), 'company'));
+        $educations = $this->newestFirst($this->withLogos($indexed($settings['educations'] ?? []), 'school'));
 
         // En-tête du profil : entreprise actuelle (poste sans date de fin, sinon le premier) et établissement principal.
         $current = $experiences->first(fn (array $row): bool => blank($row['end_date'] ?? null) && filled($row['company'] ?? null))
@@ -205,8 +207,8 @@ class ProfileOrganizations
             ])->filter()->values(),
             'professionalExperiences' => $experiences,
             'educations' => $educations,
-            'certifications' => collect($settings['certifications'] ?? [])->values(),
-            'associativeExperiences' => $this->newestFirst($this->withLogos($settings['associative_experiences'] ?? [], 'club')),
+            'certifications' => $indexed($settings['certifications'] ?? []),
+            'associativeExperiences' => $this->newestFirst($this->withLogos($indexed($settings['associative_experiences'] ?? []), 'club')),
             'foundationMemberships' => $profile->user_id ? $this->foundationMemberships((int) $profile->user_id) : collect(),
             'academyCertificates' => $profile->user_id ? $this->academyCertificates((int) $profile->user_id) : collect(),
             'skillKeywords' => collect($settings['skill_keywords'] ?? [])->values(),
