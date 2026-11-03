@@ -536,9 +536,9 @@ class StructureController extends AdminController
             'cover' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'remove_cover' => ['nullable', 'boolean'],
             'address' => ['nullable', 'string', 'max:255'],
-            'website_url' => ['nullable', 'url', 'max:500'],
-            'instagram_url' => ['nullable', 'url', 'max:500'],
-            'linkedin_url' => ['nullable', 'url', 'max:500'],
+            'website_url' => ['nullable', 'url:http,https', 'max:500'],
+            'instagram_url' => ['nullable', 'url:http,https', 'max:500'],
+            'linkedin_url' => ['nullable', 'url:http,https', 'max:500'],
         ]);
 
         $kind = $node->kind === 'club' ? 'club' : ($data['kind'] ?? $node->kind);
@@ -551,6 +551,8 @@ class StructureController extends AdminController
         $legacyRights = null;
         $oldLogo = null;
         $oldCover = null;
+
+        if ($kind === 'position') {
             $attributes['capacity'] = $data['capacity'] ?? $node->capacity ?? 'single';
 
             // Périmètres supplémentaires (hors poste d'équipe type de club) ; le principal n'est pas répété.

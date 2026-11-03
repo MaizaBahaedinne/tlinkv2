@@ -12,6 +12,8 @@ class AuditLabels
         'approval.decision.recorded' => 'Décision d\'approbation',
         'moderation.report.created' => 'Signalement créé',
         'moderation.report.reviewed' => 'Signalement traité',
+        'club.news.published' => 'Actualité de club publiée',
+        'club.news.deleted' => 'Actualité de club supprimée',
         'event.created' => 'Événement créé (API)',
         'event.registration.created' => 'Inscription à un événement',
         'admin.entity.created' => 'Entité créée',

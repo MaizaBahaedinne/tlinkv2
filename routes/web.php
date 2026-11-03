@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\ChallengeController;
+use App\Http\Controllers\ClubController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\InfoSessionController;
 use App\Http\Controllers\MemberProfileController;
@@ -115,6 +116,13 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/quiz/tentatives/{attempt}', [AcademyQuizController::class, 'submit'])->whereNumber('attempt')->middleware('throttle:academy-quiz')->name('attempts.submit');
     });
     Route::get('/membres/{user}', [MemberProfileController::class, 'show'])->whereNumber('user')->name('member.show');
+
+    // Page profil d'un club : onglets chargés à la demande, actualités publiées par le club.
+    Route::get('/clubs', [ClubController::class, 'index'])->name('club.index');
+    Route::get('/clubs/{club}', [ClubController::class, 'show'])->whereNumber('club')->name('club.show');
+    Route::get('/clubs/{club}/onglets/{tab}', [ClubController::class, 'tab'])->whereNumber('club')->whereIn('tab', array_keys(\App\Support\ClubPage::TABS))->name('club.tab');
+    Route::post('/clubs/{club}/actualites', [ClubController::class, 'storeNews'])->whereNumber('club')->middleware('throttle:10,10')->name('club.news.store');
+    Route::delete('/clubs/{club}/actualites/{news}', [ClubController::class, 'destroyNews'])->whereNumber(['club', 'news'])->name('club.news.destroy');
 
     // T.Link Messenger : messagerie instantanée (pages + JSON interrogé par le navigateur).
     Route::prefix('messagerie')->name('messenger.')->group(function (): void {

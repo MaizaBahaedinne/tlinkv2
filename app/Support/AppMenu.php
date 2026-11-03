@@ -44,6 +44,8 @@ final class AppMenu
             $items[] = $item('office', self::officeLabel($user), route('office.index'), $holds ? 'fa-solid fa-briefcase' : 'fa-solid fa-people-group');
         }
 
+        $items[] = $item('clubs', 'Clubs', route('club.index'), 'fa-solid fa-people-roof');
+
         if (Messenger::enabled()) {
             $items[] = $item('messenger', 'T.Link Messenger', route('messenger.index'), 'fa-regular fa-comments', false, Messenger::unreadCount($user));
         }

@@ -8,6 +8,7 @@
     $navItems = array_values(array_filter([
         ['label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
         ['label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')],
+        ['label' => 'Clubs', 'href' => route('club.index'), 'icon' => 'fa-solid fa-people-roof', 'active' => request()->routeIs('club.*')],
         ($hasOffice ?? false) ? ['label' => \App\Support\AppMenu::officeLabel($me), 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
         ($mentoringEnabled ?? false) ? ['label' => 'Mentorat', 'href' => route('mentoring.index'), 'icon' => 'fa-solid fa-life-ring', 'active' => request()->routeIs('mentoring.*')] : null,
         ($challengesEnabled ?? false) ? ['label' => 'Défis', 'href' => route('challenges.index'), 'icon' => 'fa-solid fa-trophy', 'active' => request()->routeIs('challenges.*', 'activities.*')] : null,
