@@ -192,6 +192,10 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/info-session/quiz', [InfoSessionController::class, 'start'])->middleware('throttle:8,10')->name('info-session.start');
     Route::get('/info-session/quiz/{attempt}', [InfoSessionController::class, 'quiz'])->name('info-session.quiz');
     Route::post('/info-session/quiz/{attempt}', [InfoSessionController::class, 'submit'])->middleware('throttle:20,10')->name('info-session.submit');
+    // Après la validation : ancien ou nouveau membre, mandat et poste d'arrivée (historique de la Fondation).
+    Route::get('/bienvenue', [\App\Http\Controllers\HistoryOnboardingController::class, 'show'])->name('onboarding.history');
+    Route::post('/bienvenue/origine', [\App\Http\Controllers\HistoryOnboardingController::class, 'origin'])->middleware('throttle:20,10')->name('onboarding.origin');
+    Route::post('/bienvenue/arrivee', [\App\Http\Controllers\HistoryOnboardingController::class, 'entry'])->middleware('throttle:20,10')->name('onboarding.entry');
     Route::post('/posts', [FeedController::class, 'storePost'])->name('posts.store');
     Route::patch('/posts/{post}', [FeedController::class, 'updatePost'])->name('posts.update');
     Route::delete('/posts/{post}', [FeedController::class, 'destroyPost'])->name('posts.destroy');

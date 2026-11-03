@@ -106,14 +106,14 @@ class InfoSessionTest extends TestCase
         $attempt = InfoSession::start($user);
 
         $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => $this->answersFor($attempt)])
-            ->assertRedirect('/info-session');
+            ->assertRedirect(route('onboarding.history'));
 
         $attempt->refresh();
         $this->assertSame('passed', $attempt->status);
         $this->assertSame(6, $attempt->score);
         $this->assertNotNull($user->fresh()->onboarding_completed_at);
 
-        $this->actingAs($user)->get('/info-session')->assertSee('Bravo, quiz réussi : 6 / 6');
+        $this->actingAs($user)->get('/info-session')->assertOk();
     }
 
     public function test_one_wrong_answer_fails_with_the_default_threshold_and_allows_a_retry(): void

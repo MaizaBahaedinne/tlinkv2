@@ -14,6 +14,15 @@
             <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ session('status') }}</div>
         @endif
 
+        @if($joinedMandate)
+            <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">Vous avez rejoint le réseau au mandat <strong>{{ $joinedMandate->label }}</strong>. Déclarez votre participation aux mandats suivants ; les mandats antérieurs à votre arrivée sont grisés.</div>
+        @elseif($historyPending)
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                <span>Dites-nous si vous êtes un ancien ou un nouveau membre pour reconstituer l’historique de la Fondation.</span>
+                <a href="{{ route('onboarding.history') }}" class="rounded-xl bg-tlink-blue px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90">Répondre</a>
+            </div>
+        @endif
+
         <div class="grid gap-5 lg:grid-cols-3">
             <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft lg:col-span-2">
                 <h2 class="font-display text-lg font-semibold text-slate-900">Mes demandes et adhésions</h2>
@@ -67,15 +76,18 @@
                                 $mandate = $group['mandate'];
                                 $mandateStatus = $mandate ? (\App\Models\Mandate::STATUSES[$mandate->status] ?? null) : null;
                                 $isPast = $mandate !== null && $mandate->status === 'closed';
+                                $beforeArrival = $mandate !== null && $joinedMandate !== null && $mandate->precedes($joinedMandate);
                             @endphp
-                            <div>
+                            <div @class(['opacity-50' => $beforeArrival]) @if($beforeArrival) aria-disabled="true" data-before-arrival @endif>
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <p class="text-sm font-semibold text-tlink-blue">
                                         {{ $mandate ? 'Mandat '.$mandate->label : 'Hors mandat' }}
                                         @if($mandate && filled($mandate->bureau_name))<span class="text-xs font-normal text-slate-500">· {{ $mandate->bureau_name }}</span>@endif
                                         @if($mandateStatus)<span class="ml-1 rounded-full px-2 py-0.5 text-xs font-semibold {{ $mandate->status === 'current' ? 'bg-emerald-50 text-emerald-700' : ($mandate->status === 'upcoming' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600') }}">{{ $mandateStatus }}</span>@endif
                                     </p>
-                                    @if($isPast)
+                                    @if($isPast && $beforeArrival)
+                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Avant mon arrivée</span>
+                                    @elseif($isPast)
                                         <button type="button" data-open-past data-mandate-id="{{ $mandate->id }}" data-mandate-label="{{ $mandate->label }}" class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-tlink-blue hover:bg-slate-50">Ajouter ma participation</button>
                                     @endif
                                 </div>

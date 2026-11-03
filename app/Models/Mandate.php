@@ -60,6 +60,12 @@ class Mandate extends Model
         return $this->belongsTo(OrgNode::class, 'root_node_id');
     }
 
+    /** Ce mandat commence avant l'autre (ex. : avant l'arrivée du membre dans le réseau). */
+    public function precedes(Mandate $other): bool
+    {
+        return (int) $this->start_year < (int) $other->start_year;
+    }
+
     /** Un mandat court du 1er septembre de l'année de début au 31 août de l'année de fin. */
     public function windowStart(): Carbon
     {

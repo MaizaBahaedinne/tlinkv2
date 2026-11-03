@@ -63,6 +63,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'onboarding_completed_at' => 'datetime',
+            'history_onboarding_at' => 'datetime',
+            'joined_mandate_id' => 'integer',
             'password' => 'hashed',
             'is_active' => 'boolean',
             'deactivated_at' => 'datetime',
@@ -72,6 +74,12 @@ class User extends Authenticatable
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class);
+    }
+
+    /** Mandat auquel l'ancien membre a rejoint le réseau (déclaré à l'accueil). */
+    public function joinedMandate(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Mandate::class, 'joined_mandate_id');
     }
 
     public function posts(): HasMany

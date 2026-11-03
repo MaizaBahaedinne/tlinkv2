@@ -133,6 +133,12 @@ final class MembershipRequests
             throw ValidationException::withMessages(['past_target' => 'Seuls les mandats précédents peuvent être déclarés ainsi : pour le mandat en cours, envoyez une demande d’adhésion.']);
         }
 
+        $joined = $user->joined_mandate_id ? Mandate::query()->find($user->joined_mandate_id) : null;
+
+        if ($joined !== null && $mandate->precedes($joined)) {
+            throw ValidationException::withMessages(['past_target' => 'Vous avez rejoint le réseau au mandat '.$joined->label.' : les mandats précédents ne peuvent pas être déclarés.']);
+        }
+
         $club = $clubId !== null ? OrgNode::query()->where('kind', 'club')->find($clubId) : null;
 
         if ($clubId !== null && ($club === null || ($club->scope !== null && $club->scope !== $scope))) {
