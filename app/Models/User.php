@@ -71,6 +71,12 @@ class User extends Authenticatable
         ];
     }
 
+    /** Compte validé mais question d'accueil (ancien ou nouveau membre) pas encore terminée : réponse obligatoire. */
+    public function needsHistoryAnswer(): bool
+    {
+        return $this->onboarding_completed_at !== null && $this->history_onboarding_at === null;
+    }
+
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class);

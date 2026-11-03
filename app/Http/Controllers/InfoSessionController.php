@@ -28,7 +28,6 @@ class InfoSessionController extends Controller
             'videoId' => $videoId,
             'validated' => $user->onboarding_completed_at !== null,
             'validatedAt' => $user->onboarding_completed_at,
-            'historyPending' => $user->onboarding_completed_at !== null && $user->history_onboarding_at === null,
             'last' => $last,
             'review' => $last ? $this->review($last) : [],
             'open' => QuizAttempt::query()->where('user_id', $user->id)->where('status', 'in_progress')->exists(),

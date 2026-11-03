@@ -16,11 +16,6 @@
 
         @if($joinedMandate)
             <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">Vous avez rejoint le réseau au mandat <strong>{{ $joinedMandate->label }}</strong>. Déclarez votre participation aux mandats suivants ; les mandats antérieurs à votre arrivée sont grisés.</div>
-        @elseif($historyPending)
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                <span>Dites-nous si vous êtes un ancien ou un nouveau membre pour reconstituer l’historique de la Fondation.</span>
-                <a href="{{ route('onboarding.history') }}" class="rounded-xl bg-tlink-blue px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90">Répondre</a>
-            </div>
         @endif
 
         <div class="grid gap-5 lg:grid-cols-3">

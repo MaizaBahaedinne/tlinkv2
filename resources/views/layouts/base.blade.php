@@ -27,6 +27,8 @@
     @auth
         @if (auth()->user()->onboarding_completed_at === null && ! request()->routeIs('info-session.*'))
             @include('partials.account-gate')
+        @elseif (auth()->user()->needsHistoryAnswer() && ! request()->routeIs('onboarding.*') && ! (request()->hasSession() && request()->session()->has('impersonator_id')))
+            @include('partials.history-gate')
         @endif
     @endauth
 

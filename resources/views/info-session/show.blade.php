@@ -16,13 +16,6 @@
             </div>
         @endif
 
-        @if($historyPending)
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 text-sky-900">
-                <p class="text-sm font-medium">Dernière étape : dis-nous si tu es un ancien ou un nouveau membre Tunivisions, pour reconstituer l'histoire de la Fondation.</p>
-                <a href="{{ route('onboarding.history') }}" class="rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90">Continuer</a>
-            </div>
-        @endif
-
         @if($result)
             @if($result->status === 'passed')
                 <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-900" role="status">

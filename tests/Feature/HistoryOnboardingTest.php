@@ -147,14 +147,36 @@ class HistoryOnboardingTest extends TestCase
         $this->assertSame(1, MandateParticipation::query()->count());
     }
 
-    public function test_members_who_have_not_answered_yet_are_invited_to(): void
+    public function test_members_who_have_not_answered_get_a_blocking_popup_on_every_page(): void
     {
         $user = $this->validated();
 
-        $this->actingAs($user)->get('/adhesions')->assertOk()->assertSee(route('onboarding.history'), false);
-        $this->actingAs($user)->get('/info-session')->assertOk()->assertSee('Dernière étape');
+        foreach (['/feed', '/adhesions', '/profil', '/info-session'] as $path) {
+            $this->actingAs($user)->get($path)->assertOk()->assertSee('id="history-gate"', false)->assertSee('Ancien ou nouveau membre ?')
+                ->assertSee('value="alumni"', false)->assertSee('value="new"', false);
+        }
+
+        // La page d'accueil elle-même n'est pas bloquée, sinon on ne pourrait pas répondre.
+        $this->actingAs($user)->get('/bienvenue')->assertOk()->assertDontSee('id="history-gate"', false);
+    }
+
+    public function test_the_popup_asks_an_alumnus_to_finish_his_arrival_and_disappears_once_answered(): void
+    {
+        $user = $this->validated();
+        $user->forceFill(['member_origin' => 'alumni'])->save();
+
+        $this->actingAs($user)->get('/feed')->assertOk()->assertSee('id="history-gate"', false)->assertSee('Complète ton arrivée')->assertSee(route('onboarding.history'), false);
 
         $user->forceFill(['history_onboarding_at' => now(), 'member_origin' => 'new'])->save();
-        $this->actingAs($user)->get('/info-session')->assertDontSee('Dernière étape');
+        $this->actingAs($user)->get('/feed')->assertDontSee('id="history-gate"', false);
+    }
+
+    public function test_the_popup_is_not_shown_to_unvalidated_accounts_nor_during_impersonation(): void
+    {
+        $unvalidated = User::factory()->create();
+        $this->actingAs($unvalidated)->get('/feed')->assertSee('id="account-gate"', false)->assertDontSee('id="history-gate"', false);
+
+        $user = $this->validated();
+        $this->actingAs($user)->withSession(['impersonator_id' => 999])->get('/feed')->assertDontSee('id="history-gate"', false);
     }
 }

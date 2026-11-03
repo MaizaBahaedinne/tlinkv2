@@ -39,7 +39,6 @@ class MembershipRequestController extends Controller
             'statuses' => self::STATUSES,
             'positionsByMandate' => $this->mandateRows($user),
             'joinedMandate' => $user->joined_mandate_id ? Mandate::query()->find($user->joined_mandate_id) : null,
-            'historyPending' => $user->onboarding_completed_at !== null && $user->history_onboarding_at === null,
             'canEditPositions' => AdminContext::of($request)->isGlobal('entity.manage'),
             'missingCv' => MembershipRequests::missingCv($user->loadMissing('profile')),
             'motivationMin' => MembershipRequests::MOTIVATION_MIN,
