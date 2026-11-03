@@ -68,6 +68,11 @@ class OrgNode extends Model
         'institution_type',
         'institution_id',
         'logo_path',
+        'cover_path',
+        'address',
+        'website_url',
+        'instagram_url',
+        'linkedin_url',
         'validation_status',
         'validation_note',
         'children_layout',
@@ -176,6 +181,11 @@ class OrgNode extends Model
         }
 
         return $this->relationLoaded('institution') ? $this->institution?->logoUrl() : null;
+    }
+
+    public function coverUrl(): ?string
+    {
+        return $this->cover_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->cover_path) : null;
     }
 
     public function children(): HasMany

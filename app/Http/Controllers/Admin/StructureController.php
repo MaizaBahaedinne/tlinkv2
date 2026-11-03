@@ -38,7 +38,7 @@ use Illuminate\View\View;
  */
 class StructureController extends AdminController
 {
-    private const CLUB_FIELDS = ['status', 'email', 'facebook_url', 'founded_on', 'charter_signed', 'institution_name', 'institution_type', 'institution_id', 'governorate_id'];
+    private const CLUB_FIELDS = ['status', 'email', 'facebook_url', 'founded_on', 'charter_signed', 'institution_name', 'institution_type', 'institution_id', 'governorate_id', 'address', 'website_url', 'instagram_url', 'linkedin_url'];
 
     public function __construct(
         private readonly OrgChartRules $rules,
@@ -533,6 +533,12 @@ class StructureController extends AdminController
             'governorate_id' => ['nullable', 'integer', 'exists:governorates,id'],
             'logo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             'remove_logo' => ['nullable', 'boolean'],
+            'cover' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_cover' => ['nullable', 'boolean'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'website_url' => ['nullable', 'url', 'max:500'],
+            'instagram_url' => ['nullable', 'url', 'max:500'],
+            'linkedin_url' => ['nullable', 'url', 'max:500'],
         ]);
 
         $kind = $node->kind === 'club' ? 'club' : ($data['kind'] ?? $node->kind);
@@ -544,8 +550,7 @@ class StructureController extends AdminController
         $attributes = Arr::only($data, ['title', 'subtitle', 'description', 'scope']) + ['kind' => $kind, 'parent_id' => $parentId];
         $legacyRights = null;
         $oldLogo = null;
-
-        if ($kind === 'position') {
+        $oldCover = null;
             $attributes['capacity'] = $data['capacity'] ?? $node->capacity ?? 'single';
 
             // Périmètres supplémentaires (hors poste d'équipe type de club) ; le principal n'est pas répété.
@@ -581,6 +586,14 @@ class StructureController extends AdminController
                 $oldLogo = $node->logo_path;
                 $attributes['logo_path'] = null;
             }
+
+            if ($request->hasFile('cover')) {
+                $oldCover = $node->cover_path;
+                $attributes['cover_path'] = $request->file('cover')->store('clubs/covers', 'public');
+            } elseif ($request->boolean('remove_cover')) {
+                $oldCover = $node->cover_path;
+                $attributes['cover_path'] = null;
+            }
         }
 
         if ($parentId !== $node->parent_id) {
@@ -605,6 +618,10 @@ class StructureController extends AdminController
 
         if ($oldLogo !== null && str_starts_with($oldLogo, 'clubs/logos/')) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($oldLogo);
+        }
+
+        if ($oldCover !== null && str_starts_with($oldCover, 'clubs/covers/')) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldCover);
         }
 
         $changes = [];
