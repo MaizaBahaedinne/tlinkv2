@@ -107,6 +107,22 @@
                                     <x-admin.logo-field label="Logo du club" :current="$node->logo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($node->logo_path) : null" :name="$node->title" icon="building" />
                                     <p class="hint" style="margin-top:5px">Affiché sur les profils des membres dont l’expérience associative cite ce club. Sans logo de club, celui de son établissement est utilisé. <a href="{{ route('admin.institutions.index') }}">Gérer les établissements</a></p>
                                 </div>
+                                <div class="field span-2 {{ $errors->has('cover') ? 'has-error' : '' }}">
+                                    <label for="club-cover">Couverture de la page du club</label>
+                                    @if($node->cover_path)
+                                        <img src="{{ $node->coverUrl() }}" alt="Couverture actuelle" style="display:block;width:100%;max-width:520px;aspect-ratio:16/5;object-fit:cover;border-radius:12px;margin-bottom:8px">
+                                    @endif
+                                    <input id="club-cover" type="file" name="cover" accept="image/png,image/jpeg,image/webp">
+                                    <p class="hint">Bandeau en haut de la page du club (jpg, png ou webp, 5 Mo max, format large conseillé).</p>
+                                    @if($node->cover_path)
+                                        <label class="check"><input type="checkbox" name="remove_cover" value="1"> <span class="text-sm">Retirer la couverture</span></label>
+                                    @endif
+                                    @error('cover')<p class="error">{{ $message }}</p>@enderror
+                                </div>
+                                <x-admin.input name="address" label="Localisation (adresse)" :value="$node->address" :maxlength="255" :span="true" />
+                                <x-admin.input name="website_url" type="url" label="Site web" :value="$node->website_url" :maxlength="500" />
+                                <x-admin.input name="instagram_url" type="url" label="Instagram" :value="$node->instagram_url" :maxlength="500" />
+                                <x-admin.input name="linkedin_url" type="url" label="LinkedIn" :value="$node->linkedin_url" :maxlength="500" />
                                 <x-admin.input name="founded_on" type="date" label="Date de fondation" :value="$node->founded_on?->format('Y-m-d')" />
                                 <div class="field">
                                     <label>&nbsp;</label>
