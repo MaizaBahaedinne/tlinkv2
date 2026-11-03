@@ -147,6 +147,50 @@ class HistoryOnboardingTest extends TestCase
         $this->assertSame(1, MandateParticipation::query()->count());
     }
 
+    public function test_an_entry_already_declared_and_approved_lets_the_alumnus_through(): void
+    {
+        $joined = $this->mandate(2023);
+        $club = $this->club();
+        $user = $this->validated();
+        $user->forceFill(['member_origin' => 'alumni'])->save();
+
+        // Participation déjà déclarée depuis « Mes adhésions » (acceptée).
+        $this->actingAs($user)->post('/adhesions/mandats', ['mandate_id' => $joined->id, 'past_target' => 'club:'.$club->id])->assertSessionHasNoErrors();
+        $this->assertSame(1, MandateParticipation::query()->count());
+
+        $this->actingAs($user)->post('/bienvenue/arrivee', ['mandate_id' => $joined->id, 'past_target' => 'club:'.$club->id])
+            ->assertSessionHasNoErrors()->assertRedirect(route('onboarding.history'));
+
+        $user->refresh();
+        $this->assertSame($joined->id, $user->joined_mandate_id);
+        $this->assertNotNull($user->history_onboarding_at);
+        $this->assertSame(1, MandateParticipation::query()->count());
+        $this->actingAs($user)->get('/feed')->assertDontSee('id="history-gate"', false);
+    }
+
+    public function test_an_entry_already_pending_also_lets_the_alumnus_through_without_a_duplicate(): void
+    {
+        $joined = $this->mandate(2023);
+        $club = $this->club();
+        $president = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'access_level' => 'club_president', 'category' => 'university_club', 'title' => 'Président de club', 'sort_order' => 0]);
+        $user = $this->validated();
+        $user->forceFill(['member_origin' => 'alumni'])->save();
+
+        $payload = ['mandate_id' => $joined->id, 'past_target' => 'club:'.$club->id, 'position_id' => $president->id];
+        $this->actingAs($user)->post('/adhesions/mandats', $payload)->assertSessionHasNoErrors();
+        $this->actingAs($user)->post('/bienvenue/arrivee', $payload)->assertSessionHasNoErrors();
+
+        $this->assertSame($joined->id, $user->fresh()->joined_mandate_id);
+        $this->assertSame(1, MandateParticipation::query()->count());
+        $this->assertSame(1, \App\Models\ApprovalRequest::query()->where('request_type', 'mandate_leadership')->count());
+    }
+
+    public function test_reloading_the_post_urls_goes_back_to_the_welcome_page(): void
+    {
+        $this->actingAs($this->validated())->get('/bienvenue/origine')->assertRedirect('/bienvenue');
+        $this->actingAs($this->validated())->get('/bienvenue/arrivee')->assertRedirect('/bienvenue');
+    }
+
     public function test_members_who_have_not_answered_get_a_blocking_popup_on_every_page(): void
     {
         $user = $this->validated();

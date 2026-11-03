@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Mandate;
 use App\Models\MandateParticipation;
+use App\Models\OrgNode;
 use App\Support\AuditLogger;
 use App\Support\MembershipRequests;
 use App\Support\OrgScopes;
@@ -99,7 +100,22 @@ class HistoryOnboardingController extends Controller
         $mandate = Mandate::query()->findOrFail($data['mandate_id']);
 
         // Première adhésion pré-remplie : elle suit le circuit habituel (membre accepté, responsabilité validée par un administrateur).
-        MembershipRequests::declarePast($user, $mandate, $scope, $clubId, isset($data['position_id']) ? (int) $data['position_id'] : null, $request->ip());
+        // Si cette participation existe déjà (déclarée depuis « Mes adhésions », approuvée ou en attente), on la reprend et on passe.
+        $positionId = isset($data['position_id']) ? (int) $data['position_id'] : null;
+        $title = $positionId !== null ? OrgNode::query()->where('kind', 'position')->whereKey($positionId)->value('title') : null;
+
+        $existing = MandateParticipation::query()
+            ->where('user_id', $user->id)
+            ->where('mandate_id', $mandate->id)
+            ->where('scope', $scope)
+            ->where('node_id', $clubId)
+            ->where('position_title', $title)
+            ->whereIn('status', ['pending', 'approved'])
+            ->exists();
+
+        if (! $existing) {
+            MembershipRequests::declarePast($user, $mandate, $scope, $clubId, $positionId, $request->ip());
+        }
 
         $user->forceFill(['joined_mandate_id' => $mandate->id, 'history_onboarding_at' => now()])->save();
 
