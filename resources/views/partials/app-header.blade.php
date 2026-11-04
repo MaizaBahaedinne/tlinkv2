@@ -5,16 +5,23 @@
     $initials = mb_strtoupper(collect(preg_split('/\s+/u', trim($me->name)))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''));
     $unread = (int) ($unreadNotifications ?? 0);
 
-    $navItems = array_values(array_filter([
-        ['label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
-        ['label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')],
-        ['label' => 'Clubs', 'href' => route('club.index'), 'icon' => 'fa-solid fa-people-roof', 'active' => request()->routeIs('club.*')],
-        ($hasOffice ?? false) ? ['label' => \App\Support\AppMenu::officeLabel($me), 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
-        ($mentoringEnabled ?? false) ? ['label' => 'Mentorat', 'href' => route('mentoring.index'), 'icon' => 'fa-solid fa-life-ring', 'active' => request()->routeIs('mentoring.*')] : null,
-        ($challengesEnabled ?? false) ? ['label' => 'Défis', 'href' => route('challenges.index'), 'icon' => 'fa-solid fa-trophy', 'active' => request()->routeIs('challenges.*', 'activities.*')] : null,
-        ($storeEnabled ?? false) ? ['label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0)] : null,
-        ($canAdmin ?? false) ? ['label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
+    $allNav = array_values(array_filter([
+        ['key' => 'home', 'label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
+        ['key' => 'clubs', 'label' => 'Clubs', 'href' => route('club.index'), 'icon' => 'fa-solid fa-people-roof', 'active' => request()->routeIs('club.*')],
+        ['key' => 'academy', 'label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')],
+        ($hasOffice ?? false) ? ['key' => 'office', 'label' => \App\Support\AppMenu::officeLabel($me), 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
+        ($challengesEnabled ?? false) ? ['key' => 'challenges', 'label' => 'Défis', 'href' => route('challenges.index'), 'icon' => 'fa-solid fa-trophy', 'active' => request()->routeIs('challenges.*', 'activities.*')] : null,
+        ($mentoringEnabled ?? false) ? ['key' => 'mentoring', 'label' => 'Mentorat', 'href' => route('mentoring.index'), 'icon' => 'fa-solid fa-life-ring', 'active' => request()->routeIs('mentoring.*')] : null,
+        ($storeEnabled ?? false) ? ['key' => 'store', 'label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0)] : null,
+        ($canAdmin ?? false) ? ['key' => 'admin', 'label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
     ]));
+
+    // Barre principale : 4 icônes essentielles (Fil, Clubs, Academy, puis Mon bureau ou Défis) ; le reste va dans « Plus ».
+    $essentialKeys = ['home', 'clubs', 'academy', ($hasOffice ?? false) ? 'office' : 'challenges'];
+    $navItems = array_values(array_filter($allNav, fn (array $item): bool => in_array($item['key'], $essentialKeys, true)));
+    $moreItems = array_values(array_filter($allNav, fn (array $item): bool => ! in_array($item['key'], $essentialKeys, true)));
+    $moreActive = collect($moreItems)->contains('active', true);
+    $moreBadge = (int) collect($moreItems)->sum(fn (array $item): int => (int) ($item['badge'] ?? 0));
 @endphp
 <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 lg:backdrop-blur">
     <div class="app-container flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
@@ -34,6 +41,31 @@
                     <span class="max-w-full truncate px-1 text-[10px] font-medium leading-none lg:hidden">{{ $item['label'] }}</span>
                 </a>
             @endforeach
+
+            @if($moreItems)
+                <details id="nav-more" class="relative flex min-w-0 flex-1 lg:flex-none">
+                    <summary title="Plus" aria-label="Plus de rubriques" @if($moreActive) aria-current="page" @endif
+                             class="relative flex h-14 w-full cursor-pointer list-none flex-col items-center justify-center gap-0.5 text-base transition lg:h-10 lg:w-10 lg:rounded-xl [&::-webkit-details-marker]:hidden {{ $moreActive ? 'text-tlink-blue lg:bg-rose-50' : 'text-slate-500 hover:text-slate-900 lg:hover:bg-slate-100' }}">
+                        <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+                        @if($moreBadge > 0)
+                            <span class="absolute right-1/4 top-1.5 h-2.5 w-2.5 rounded-full bg-tlink-blue ring-2 ring-white lg:-right-0.5 lg:-top-0.5" aria-hidden="true"></span>
+                        @endif
+                        <span class="max-w-full truncate px-1 text-[10px] font-medium leading-none lg:hidden">Plus</span>
+                    </summary>
+                    <div class="absolute bottom-full right-2 z-40 mb-2 w-60 rounded-2xl border border-slate-200 bg-white p-2 shadow-soft lg:bottom-auto lg:right-1/2 lg:mb-0 lg:mt-2 lg:translate-x-1/2">
+                        @foreach($moreItems as $item)
+                            <a href="{{ $item['href'] }}" @if($item['active']) aria-current="page" @endif
+                               class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition {{ $item['active'] ? 'bg-rose-50 text-tlink-blue' : 'text-slate-700 hover:bg-slate-50' }}">
+                                <i class="{{ $item['icon'] }} w-5 text-center text-slate-500" aria-hidden="true"></i>
+                                <span class="flex-1 truncate">{{ $item['label'] }}</span>
+                                @if(($item['badge'] ?? 0) > 0)
+                                    <span class="inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white" aria-label="{{ $item['badge'] }} article(s) dans le panier">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
+                                @endif
+                            </a>
+                        @endforeach
+                    </div>
+                </details>
+            @endif
         </nav>
 
         <div class="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1.5 lg:basis-0">
@@ -129,12 +161,12 @@
 </script>
 
 <script>
-    // Le menu de l'avatar se referme au clic ailleurs ou sur Échap.
+    // Le menu de l'avatar et le menu « Plus » se referment au clic ailleurs ou sur Échap.
     (function () {
-        var menu = document.getElementById('nav-user');
-        if (!menu) { return; }
-        document.addEventListener('click', function (event) { if (!menu.contains(event.target)) { menu.open = false; } });
-        document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { menu.open = false; } });
+        var menus = [document.getElementById('nav-user'), document.getElementById('nav-more')].filter(Boolean);
+        if (!menus.length) { return; }
+        document.addEventListener('click', function (event) { menus.forEach(function (menu) { if (!menu.contains(event.target)) { menu.open = false; } }); });
+        document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { menus.forEach(function (menu) { menu.open = false; }); } });
     })();
 </script>
 
