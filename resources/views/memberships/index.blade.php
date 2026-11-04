@@ -5,21 +5,28 @@
     @include('partials.app-header')
 
     <div class="app-container space-y-5 py-6">
-        <div>
-            <h1 class="font-display text-2xl font-semibold text-tlink-blue">Mes adhésions</h1>
-            <p class="max-w-2xl text-sm text-slate-600">Suivez vos adhésions à la Fondation, à ses entités et à ses clubs, et demandez à en rejoindre une nouvelle. Chaque demande est examinée par l’équipe.</p>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h1 class="font-display text-2xl font-semibold text-tlink-blue">Mes adhésions</h1>
+                <p class="max-w-2xl text-sm text-slate-600">Suivez vos adhésions à la Fondation, à ses entités et à ses clubs, et demandez à en rejoindre une nouvelle. Chaque demande est examinée par l’équipe.</p>
+            </div>
+            <button type="button" data-open-request class="inline-flex items-center gap-2 rounded-xl bg-tlink-blue px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i> Demander une adhésion</button>
         </div>
 
         @if(session('status'))
             <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ session('status') }}</div>
         @endif
 
+        @if($errors->has('membership') && old('target') === null)
+            <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800" role="alert">{{ $errors->first('membership') }}</div>
+        @endif
+
         @if($joinedMandate)
             <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">Vous avez rejoint le réseau au mandat <strong>{{ $joinedMandate->label }}</strong>. Déclarez votre participation aux mandats suivants ; les mandats antérieurs à votre arrivée sont grisés.</div>
         @endif
 
-        <div class="grid gap-5 lg:grid-cols-3">
-            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft lg:col-span-2">
+        <div>
+            <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
                 <h2 class="font-display text-lg font-semibold text-slate-900">Mes demandes et adhésions</h2>
 
                 <ul class="mt-4 space-y-3">
@@ -49,7 +56,7 @@
                             @endif
                         </li>
                     @empty
-                        <li class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">Vous n’avez encore aucune adhésion. Faites votre première demande ci-contre.</li>
+                        <li class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">Vous n’avez encore aucune adhésion. <button type="button" data-open-request class="font-semibold text-tlink-blue underline">Faites votre première demande</button>.</li>
                     @endforelse
                 </ul>
 
@@ -65,15 +72,21 @@
                         @error('participation')<span class="mt-1 block font-semibold text-rose-700">{{ $message }}</span>@enderror
                     </p>
 
-                    <div class="mt-4 space-y-4">
+                    <ol class="relative ml-3 mt-5 space-y-7 border-l-2 border-slate-200 pl-6" aria-label="Chronologie des mandats">
                         @forelse($positionsByMandate as $group)
                             @php
                                 $mandate = $group['mandate'];
                                 $mandateStatus = $mandate ? (\App\Models\Mandate::STATUSES[$mandate->status] ?? null) : null;
                                 $isPast = $mandate !== null && $mandate->status === 'closed';
                                 $beforeArrival = $mandate !== null && $joinedMandate !== null && $mandate->precedes($joinedMandate);
+                                $dot = match ($mandate?->status) {
+                                    'current' => 'bg-emerald-500 ring-emerald-100',
+                                    'upcoming' => 'bg-sky-500 ring-sky-100',
+                                    default => 'bg-slate-400 ring-slate-100',
+                                };
                             @endphp
-                            <div @class(['opacity-50' => $beforeArrival]) @if($beforeArrival) aria-disabled="true" data-before-arrival @endif>
+                            <li @class(['relative', 'opacity-50' => $beforeArrival]) @if($beforeArrival) aria-disabled="true" data-before-arrival @endif>
+                                <span class="absolute -left-[2.15rem] top-1 h-4 w-4 rounded-full ring-4 {{ $dot }}" aria-hidden="true"></span>
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <p class="text-sm font-semibold text-tlink-blue">
                                         {{ $mandate ? 'Mandat '.$mandate->label : 'Hors mandat' }}
@@ -126,18 +139,21 @@
                                         </li>
                                     @endforeach
                                 </ul>
-                            </div>
+                            </li>
                         @empty
-                            <p class="rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm text-slate-500">Aucun mandat n’est encore enregistré.</p>
+                            <li class="-ml-6 list-none rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm text-slate-500">Aucun mandat n’est encore enregistré.</li>
                         @endforelse
-                    </div>
+                    </ol>
                 </div>
             </section>
 
-            <aside>
-                <form method="post" action="{{ route('memberships.store') }}" class="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
+            <dialog id="request-modal" class="m-auto max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-3xl p-0 shadow-soft backdrop:bg-slate-900/50" aria-labelledby="request-title">
+                <form method="post" action="{{ route('memberships.store') }}" class="space-y-4 p-5 sm:p-6">
                     @csrf
-                    <h2 class="font-display text-lg font-semibold text-slate-900">Demander une adhésion</h2>
+                    <div class="flex items-start justify-between gap-3">
+                        <h2 id="request-title" class="font-display text-lg font-semibold text-slate-900">Demander une adhésion</h2>
+                        <button type="button" data-close-request class="text-slate-400 hover:text-slate-600" aria-label="Fermer">✕</button>
+                    </div>
 
                     <div>
                         <label for="target" class="text-sm font-semibold text-slate-700">Où souhaitez-vous adhérer ?</label>
@@ -181,7 +197,7 @@
                     <button type="submit" @disabled($missingCv !== []) class="w-full rounded-xl bg-tlink-blue px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">Envoyer ma demande</button>
                     <p class="text-xs text-slate-500">Vous serez prévenu(e) dans vos notifications dès que votre demande sera traitée.</p>
                 </form>
-            </aside>
+            </dialog>
         </div>
     </div>
 </div>
@@ -198,7 +214,7 @@
         : null;
 @endphp
 
-<dialog id="past-modal" class="w-full max-w-lg rounded-3xl p-0 shadow-soft backdrop:bg-slate-900/50">
+<dialog id="past-modal" class="m-auto max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-3xl p-0 shadow-soft backdrop:bg-slate-900/50">
     <form id="past-form" method="post" action="{{ route('memberships.past') }}" data-positions-url="{{ route('memberships.positions') }}" class="space-y-4 p-6">
         @csrf
         <input type="hidden" name="mandate_id" id="past-mandate-id" value="{{ old('mandate_id') }}">
@@ -310,6 +326,26 @@
             loadPositions(reopen.position);
             modal.showModal();
         }
+    })();
+</script>
+
+<script>
+    // Demande d'adhésion en modale ; rouverte avec ses erreurs si l'envoi a été refusé.
+    (function () {
+        var modal = document.getElementById('request-modal');
+        if (!modal) { return; }
+
+        document.querySelectorAll('[data-open-request]').forEach(function (button) {
+            button.addEventListener('click', function () { modal.showModal(); });
+        });
+        modal.querySelectorAll('[data-close-request]').forEach(function (button) {
+            button.addEventListener('click', function () { modal.close(); });
+        });
+        modal.addEventListener('click', function (event) { if (event.target === modal) { modal.close(); } });
+
+        @if(old('target') !== null && $errors->any())
+            modal.showModal();
+        @endif
     })();
 </script>
 @endsection
