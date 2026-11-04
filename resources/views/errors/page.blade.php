@@ -162,5 +162,6 @@
     });
 })();
 </script>
+@include('partials.role-simulation-banner')
 </body>
 </html>

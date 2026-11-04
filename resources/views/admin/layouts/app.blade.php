@@ -126,5 +126,6 @@
 <script src="{{ asset('backoffice/admin.js') }}?v={{ @filemtime(public_path('backoffice/admin.js')) ?: 1 }}" defer></script>
 @stack('scripts')
 @include('partials.impersonation-banner')
+@include('partials.role-simulation-banner')
 </body>
 </html>

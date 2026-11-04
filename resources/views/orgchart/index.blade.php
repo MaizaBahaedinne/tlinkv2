@@ -284,5 +284,6 @@
 <script src="{{ asset('backoffice/orgchart-export.js') }}?v={{ $ocv }}" defer></script>
 <script src="{{ asset('backoffice/orgchart.js') }}?v={{ $ocv }}" defer></script>
 @include('partials.impersonation-banner')
+@include('partials.role-simulation-banner')
 </body>
 </html>

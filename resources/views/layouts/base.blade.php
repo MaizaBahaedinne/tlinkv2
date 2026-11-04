@@ -33,5 +33,6 @@
     @endauth
 
 @include('partials.impersonation-banner')
+@include('partials.role-simulation-banner')
 </body>
 </html>

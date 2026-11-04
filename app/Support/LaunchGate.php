@@ -134,6 +134,7 @@ class LaunchGate
         }
 
         return $request->hasSession() && $request->session()->has('impersonator_id')
+            || RoleSimulator::active()
             || in_array($user->id, self::settings()['allowed_user_ids'], true)
             || AdminContext::of($request)->isGlobal('entity.manage');
     }

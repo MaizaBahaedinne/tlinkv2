@@ -28,6 +28,11 @@ final class MyOffice
      */
     public static function heldNodeIds(User $user): array
     {
+        // Simulation de rôle : l'administrateur voit « Mon bureau » du poste simulé.
+        if (($simulated = RoleSimulator::nodeFor($user)) !== null) {
+            return [(int) $simulated->id];
+        }
+
         return OrgAssignment::query()
             ->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', now()->toDateString()))
             ->whereHas('person', fn (Builder $query) => $query->where('user_id', $user->id))

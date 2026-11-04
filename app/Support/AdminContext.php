@@ -40,7 +40,11 @@ class AdminContext
         $this->positions = OrgAccess::positions($user);
 
         // Mentorat : le rôle de manager mentor (annuaire) et la matrice du poste ouvrent la section « Mentorat » de l'administration.
-        $mentoring = Mentoring::adminActions($user);
+        // Simulation de rôle : seule la matrice du poste simulé compte, pas le rôle de manager mentor du vrai compte.
+        $simulated = RoleSimulator::nodeFor($user);
+        $mentoring = $simulated !== null
+            ? array_values(array_map('strval', (array) (((array) $simulated->module_permissions)[Mentoring::MODULE] ?? [])))
+            : Mentoring::adminActions($user);
 
         if ($mentoring !== []) {
             $this->positions[] = ['permissions' => [self::MENTORING_PERMISSION], 'scope' => null, 'matrix' => [Mentoring::MODULE => $mentoring]];

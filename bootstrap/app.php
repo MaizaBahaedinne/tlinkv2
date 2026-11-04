@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
         // Compte a rebours de lancement : ferme le site (web + API) aux non-administrateurs globaux jusqu'a la date choisie.
-        $middleware->web(append: [LaunchCountdown::class]);
+        $middleware->web(append: [\App\Http\Middleware\ApplyRoleSimulation::class, LaunchCountdown::class]);
         $middleware->api(append: [LaunchCountdown::class]);
         // Un utilisateur deja connecte qui ouvre /connexion ou /inscription arrive sur le fil, pas sur la vitrine.
         $middleware->redirectUsersTo(fn () => route('home'));

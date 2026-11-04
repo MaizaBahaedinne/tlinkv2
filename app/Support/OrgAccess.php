@@ -31,11 +31,25 @@ class OrgAccess
      */
     public static function positions(User $user): array
     {
-        $assignments = self::currentAssignments()
+        return self::describeAll(self::heldAssignments($user));
+    }
+
+    /**
+     * Affectations en cours d'un utilisateur ; pendant une simulation de rôle, le seul poste simulé.
+     *
+     * @return \Illuminate\Support\Collection<int, OrgAssignment>
+     */
+    private static function heldAssignments(User $user)
+    {
+        $simulated = RoleSimulator::nodeFor($user);
+
+        if ($simulated !== null) {
+            return collect([(new OrgAssignment())->forceFill(['node_id' => $simulated->id])->setRelation('node', $simulated)]);
+        }
+
+        return self::currentAssignments()
             ->whereHas('person', fn ($query) => $query->where('user_id', $user->id))
             ->get();
-
-        return self::describeAll($assignments);
     }
 
     /**
@@ -113,9 +127,7 @@ class OrgAccess
      */
     public static function responsibility(User $user, string $permission): array
     {
-        $assignments = self::currentAssignments()
-            ->whereHas('person', fn ($query) => $query->where('user_id', $user->id))
-            ->get();
+        $assignments = self::heldAssignments($user);
 
         $result = ['all' => false, 'scopes' => [], 'clubs' => []];
 
