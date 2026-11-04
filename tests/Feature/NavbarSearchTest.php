@@ -78,6 +78,36 @@ class NavbarSearchTest extends TestCase
         $this->assertSame(['structures', 'events'], array_column($json['groups'], 'key'));
     }
 
+    public function test_clubs_positions_and_members_lead_to_their_profile_pages(): void
+    {
+        $club = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'ESPRIT TIC', 'status' => 'active', 'sort_order' => 0]);
+        $draft = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'ESPRIT Secret', 'status' => 'draft', 'sort_order' => 0]);
+        $department = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'club_department', 'category' => 'university_club', 'title' => 'Département Média', 'subtitle' => 'ESPRIT TIC', 'sort_order' => 0]);
+        $position = OrgNode::query()->create(['parent_id' => $department->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'category' => 'university_club', 'title' => 'VP Média', 'subtitle' => 'ESPRIT TIC', 'sort_order' => 0]);
+        OrgNode::query()->create(['parent_id' => $draft->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'category' => 'university_club', 'title' => 'Président caché', 'subtitle' => 'ESPRIT Secret', 'sort_order' => 0]);
+
+        $holder = User::factory()->create(['name' => 'Yassine Esprit']);
+        $plain = User::factory()->create(['name' => 'Yasmine Simple']);
+        User::factory()->create(['name' => 'Yasser Inactif', 'is_active' => false]);
+        $person = OrgPerson::query()->create(['user_id' => $holder->id, 'full_name' => 'Yassine Esprit']);
+        OrgAssignment::query()->create(['node_id' => $position->id, 'person_id' => $person->id]);
+
+        $this->actingAs(User::factory()->create());
+
+        $json = $this->getJson('/recherche/suggestions?q=esprit+tic')->assertOk()->json();
+        $structures = collect($json['groups'])->firstWhere('key', 'structures')['items'];
+        $urls = array_column($structures, 'url', 'title');
+        $this->assertSame(route('club.show', $club), $urls['ESPRIT TIC']);
+        $this->assertSame(route('club.show', [$club, 'onglet' => 'bureaux']), $urls['VP Média']);
+        $this->assertSame(route('club.show', [$club, 'onglet' => 'bureaux']), $urls['Département Média']);
+        $this->assertArrayNotHasKey('ESPRIT Secret', $urls);
+        $this->assertArrayNotHasKey('Président caché', $urls);
+
+        $people = $this->getJson('/recherche/suggestions?q=yas')->assertOk()->json('groups.0.items');
+        $this->assertSame(['Yasmine Simple', 'Yassine Esprit'], array_column($people, 'title'));
+        $this->assertSame([route('member.show', $plain), route('member.show', $holder)], array_column($people, 'url'));
+    }
+
     public function test_people_without_a_position_and_short_terms_return_nothing(): void
     {
         $this->seedDirectory();
