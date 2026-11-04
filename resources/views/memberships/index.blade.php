@@ -72,21 +72,50 @@
                         @error('participation')<span class="mt-1 block font-semibold text-rose-700">{{ $message }}</span>@enderror
                     </p>
 
-                    <ol class="relative ml-3 mt-5 space-y-7 border-l-2 border-slate-200 pl-6" aria-label="Chronologie des mandats">
+                    @php
+                        $selectedMandate = $positionsByMandate->search(fn ($row) => $row['mandate']?->status === 'current');
+                        $selectedMandate = $selectedMandate === false ? 0 : $selectedMandate;
+                    @endphp
+
+                    @if($positionsByMandate->isNotEmpty())
+                        <div class="-mx-1 mt-5 overflow-x-auto px-1 pb-2" id="mandate-timeline">
+                            <ol class="relative flex min-w-max items-start gap-2" role="tablist" aria-label="Chronologie des mandats">
+                                <span class="absolute left-6 right-6 top-[0.7rem] h-0.5 bg-slate-200" aria-hidden="true"></span>
+                                @foreach($positionsByMandate as $group)
+                                    @php
+                                        $tabMandate = $group['mandate'];
+                                        $tabBefore = $tabMandate !== null && $joinedMandate !== null && $tabMandate->precedes($joinedMandate);
+                                        $tabDot = match ($tabMandate?->status) {
+                                            'current' => 'bg-emerald-500 ring-emerald-100',
+                                            'upcoming' => 'bg-sky-500 ring-sky-100',
+                                            default => 'bg-slate-400 ring-slate-100',
+                                        };
+                                    @endphp
+                                    <li class="relative z-10" role="presentation">
+                                        <button type="button" role="tab" id="mandate-tab-{{ $loop->index }}" data-mandate-tab="{{ $loop->index }}" aria-controls="mandate-panel-{{ $loop->index }}" aria-selected="{{ $loop->index === $selectedMandate ? 'true' : 'false' }}"
+                                                @class(['group flex min-w-[6.5rem] flex-col items-center gap-2 rounded-xl px-3 py-1 text-center transition hover:bg-slate-50', 'opacity-60' => $tabBefore])>
+                                            <span class="block h-4 w-4 rounded-full ring-4 transition group-aria-selected:scale-125 {{ $tabDot }}" aria-hidden="true"></span>
+                                            <span class="text-xs font-semibold text-slate-500 group-aria-selected:text-tlink-blue">{{ $tabMandate ? $tabMandate->label : 'Hors mandat' }}</span>
+                                            @if($tabMandate)
+                                                <span class="text-[10px] text-slate-400">{{ \App\Models\Mandate::STATUSES[$tabMandate->status] ?? '' }}</span>
+                                            @endif
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ol>
+                        </div>
+                    @endif
+
+                    <div class="mt-3">
                         @forelse($positionsByMandate as $group)
                             @php
                                 $mandate = $group['mandate'];
                                 $mandateStatus = $mandate ? (\App\Models\Mandate::STATUSES[$mandate->status] ?? null) : null;
                                 $isPast = $mandate !== null && $mandate->status === 'closed';
                                 $beforeArrival = $mandate !== null && $joinedMandate !== null && $mandate->precedes($joinedMandate);
-                                $dot = match ($mandate?->status) {
-                                    'current' => 'bg-emerald-500 ring-emerald-100',
-                                    'upcoming' => 'bg-sky-500 ring-sky-100',
-                                    default => 'bg-slate-400 ring-slate-100',
-                                };
                             @endphp
-                            <li @class(['relative', 'opacity-50' => $beforeArrival]) @if($beforeArrival) aria-disabled="true" data-before-arrival @endif>
-                                <span class="absolute -left-[2.15rem] top-1 h-4 w-4 rounded-full ring-4 {{ $dot }}" aria-hidden="true"></span>
+                            <div id="mandate-panel-{{ $loop->index }}" role="tabpanel" aria-labelledby="mandate-tab-{{ $loop->index }}" data-mandate-panel @if($loop->index !== $selectedMandate) hidden @endif
+                                 @class(['rounded-2xl border border-slate-100 bg-slate-50/60 p-4', 'opacity-50' => $beforeArrival]) @if($beforeArrival) aria-disabled="true" data-before-arrival @endif>
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <p class="text-sm font-semibold text-tlink-blue">
                                         {{ $mandate ? 'Mandat '.$mandate->label : 'Hors mandat' }}
@@ -139,11 +168,11 @@
                                         </li>
                                     @endforeach
                                 </ul>
-                            </li>
+                            </div>
                         @empty
-                            <li class="-ml-6 list-none rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm text-slate-500">Aucun mandat n’est encore enregistré.</li>
+                            <p class="rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm text-slate-500">Aucun mandat n’est encore enregistré.</p>
                         @endforelse
-                    </ol>
+                    </div>
                 </div>
             </section>
 
@@ -346,6 +375,23 @@
         @if(old('target') !== null && $errors->any())
             modal.showModal();
         @endif
+    })();
+</script>
+
+<script>
+    // Timeline horizontale : un clic sur un mandat affiche son panneau.
+    (function () {
+        var tabs = document.querySelectorAll('[data-mandate-tab]');
+        var panels = document.querySelectorAll('[data-mandate-panel]');
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                tabs.forEach(function (other) { other.setAttribute('aria-selected', other === tab ? 'true' : 'false'); });
+                panels.forEach(function (panel, index) { panel.hidden = String(index) !== tab.dataset.mandateTab; });
+            });
+        });
+        var track = document.getElementById('mandate-timeline');
+        var selected = document.querySelector('[data-mandate-tab][aria-selected="true"]');
+        if (track && selected) { track.scrollLeft = Math.max(0, selected.parentNode.offsetLeft - 24); }
     })();
 </script>
 @endsection
