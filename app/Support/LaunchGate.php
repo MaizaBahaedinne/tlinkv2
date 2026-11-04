@@ -7,9 +7,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 
 /**
- * Compte à rebours de lancement : tant que la date n'est pas atteinte, le site public et T.Link
- * n'affichent qu'un compte à rebours, sauf aux administrateurs globaux (et à leurs sessions d'incarnation)
- * et aux comptes de la liste d'accès anticipé.
+ * Compte à rebours de lancement du site de la Fondation Tunivisions : tant que la date n'est pas atteinte, le site public
+ * n'affiche qu'un compte à rebours (avec inscription à la newsletter), sauf aux administrateurs globaux (et à leurs sessions
+ * d'incarnation) et aux comptes de la liste d'accès anticipé. T.Link n'est fermé que si l'option « include_app » est cochée.
  * Réglages stockés en base (groupe « site », clé « launch »), modifiables depuis l'administration.
  */
 class LaunchGate
@@ -20,13 +20,13 @@ class LaunchGate
 
     public const DEFAULT_TITLE = 'Bientôt disponible';
 
-    public const DEFAULT_MESSAGE = 'T.Link, la plateforme de la Fondation Tunivisions, ouvre bientôt ses portes. Rendez-vous à l’ouverture.';
+    public const DEFAULT_MESSAGE = 'Le nouveau site de la Fondation Tunivisions ouvre bientôt ses portes. Laissez-nous votre e-mail pour être prévenu(e) dès l’ouverture.';
 
     /** Chemins restant accessibles pendant la fermeture : connexion, liens de candidature aux postes et santé du serveur. */
     private const OPEN_PATHS = ['up', 'connexion', 'deconnexion', 'auth/*', 'rejoindre/*', 'impersonation/quitter', 'api/v1/auth/login', 'api/v1/auth/logout', 'api/v1/auth/me'];
 
     /**
-     * @return array{enabled: bool, launch_at: string, title: string, message: string, allowed_user_ids: array<int, int>}
+     * @return array{enabled: bool, include_app: bool, launch_at: string, title: string, message: string, allowed_user_ids: array<int, int>}
      */
     public static function settings(): array
     {
@@ -41,6 +41,7 @@ class LaunchGate
 
         return [
             'enabled' => (bool) ($data['enabled'] ?? false),
+            'include_app' => (bool) ($data['include_app'] ?? false),
             'launch_at' => (string) ($data['launch_at'] ?? ''),
             'title' => trim((string) ($data['title'] ?? '')),
             'message' => trim((string) ($data['message'] ?? '')),
@@ -92,7 +93,35 @@ class LaunchGate
 
     public static function isOpenPath(Request $request): bool
     {
-        return $request->is(self::OPEN_PATHS);
+        $locales = array_keys(config('site.locales'));
+        $newsletter = [];
+
+        // Inscription et désinscription à la newsletter : le compte à rebours en propose le formulaire.
+        foreach ($locales as $locale) {
+            $newsletter[] = $locale.'/newsletter';
+            $newsletter[] = $locale.'/newsletter/desinscription/*';
+        }
+
+        return $request->is([...self::OPEN_PATHS, ...$newsletter]);
+    }
+
+    /** Page du site vitrine (racine et préfixes de langue) ; le reste (feed, profil, API…) appartient à T.Link. */
+    public static function isSitePath(Request $request): bool
+    {
+        $patterns = ['/'];
+
+        foreach (array_keys(config('site.locales')) as $locale) {
+            $patterns[] = $locale;
+            $patterns[] = $locale.'/*';
+        }
+
+        return $request->is($patterns);
+    }
+
+    /** Le compte à rebours s'applique à cette requête : le site toujours, T.Link seulement si l'option est cochée. */
+    public static function covers(Request $request, array $settings): bool
+    {
+        return $settings['include_app'] || self::isSitePath($request);
     }
 
     /** Administrateur global, administrateur en train d'incarner un autre utilisateur, ou compte autorisé dans la liste d'accès anticipé. */

@@ -4,7 +4,7 @@
 @section('section', 'Lancement du site')
 
 @section('content')
-    <x-admin.page-header title="Lancement du site" subtitle="Compte à rebours affiché à la place du site public et de T.Link. Les administrateurs globaux et les comptes autorisés voient toujours le site normalement.">
+    <x-admin.page-header title="Lancement du site" subtitle="Compte à rebours affiché à la place du site web de la Fondation Tunivisions, avec inscription à la newsletter. Les administrateurs globaux et les comptes autorisés voient toujours le site normalement.">
         <x-slot:actions>
             <a href="{{ route('site.root') }}" target="_blank" rel="noopener" class="btn btn-secondary"><x-admin.icon name="external" :size="16" /> Voir le site</a>
         </x-slot:actions>
@@ -25,7 +25,11 @@
         <div class="card-body">
             <label class="check" style="margin-bottom:16px">
                 <input type="checkbox" name="enabled" value="1" @checked(old('enabled', $settings['enabled']))>
-                Activer le compte à rebours (le site est fermé aux visiteurs et aux membres, sauf aux administrateurs globaux)
+                Activer le compte à rebours (le site web est fermé aux visiteurs, sauf aux administrateurs globaux)
+            </label>
+            <label class="check" style="margin-bottom:16px">
+                <input type="checkbox" name="include_app" value="1" @checked(old('include_app', $settings['include_app']))>
+                Fermer aussi l’application T.Link (connexion, fil, profils, API). Laissé décoché, seul le site web de la Fondation est fermé.
             </label>
 
             <div class="form-grid">
@@ -51,7 +55,7 @@
                 @error('allowed_emails')<p class="error">{{ $message }}</p>@enderror
             </div>
 
-            <p class="text-sm text-muted" style="margin-bottom:0">Pendant la fermeture, seule la page de connexion reste accessible (lien « Accès administrateur » en bas du compte à rebours). Connectez-vous avec votre compte administrateur global pour parcourir le site.</p>
+            <p class="text-sm text-muted" style="margin-bottom:0">Les inscriptions à la newsletter faites depuis le compte à rebours sont listées dans le module Newsletter. Pendant la fermeture, la page de connexion reste accessible (lien « Accès administrateur » en bas du compte à rebours).</p>
         </div>
         <div class="card-body" style="border-top:1px solid var(--line)">
             <button type="submit" class="btn btn-primary"><x-admin.icon name="check" :size="16" /> Enregistrer</button>

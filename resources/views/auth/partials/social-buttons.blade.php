@@ -3,7 +3,7 @@
     $socialVerb = $socialVerb ?? 'Continuer';
 @endphp
 
-<div class="mt-7 space-y-3">
+<div class="mt-6 space-y-3 sm:mt-7">
             @foreach ($socialProviders as $key => $label)
                 <a href="{{ route('social.redirect', ['provider' => $key]) }}" rel="nofollow"
                    class="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-md">

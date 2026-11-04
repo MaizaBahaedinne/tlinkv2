@@ -8,7 +8,7 @@
     <div class="relative">
         <svg class="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         <input id="{{ $id }}" name="{{ $id }}" type="password" required autocomplete="{{ $autocomplete }}"
-               class="w-full rounded-xl border border-slate-300 bg-white py-3 pl-11 pr-12 text-sm outline-none transition focus:border-tlink-blue focus:ring-4 focus:ring-tlink-blue/10">
+               class="w-full rounded-xl border border-slate-300 bg-white py-3 pl-11 pr-12 text-base outline-none transition sm:text-sm focus:border-tlink-blue focus:ring-4 focus:ring-tlink-blue/10">
         @if ($toggle ?? true)
             <button type="button" data-toggle-password="{{ $id }}" aria-pressed="false" aria-label="Afficher ou masquer le mot de passe"
                     class="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:text-slate-700">

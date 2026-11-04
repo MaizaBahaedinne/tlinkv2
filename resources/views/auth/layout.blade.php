@@ -3,7 +3,7 @@
 @section('content')
 <div class="min-h-screen lg:grid lg:grid-cols-[1.1fr_1fr]">
     {{-- Hero --}}
-    <aside class="relative isolate overflow-hidden bg-gradient-to-br from-[#6e0019] via-[#a30027] to-[#d00031] px-6 py-10 text-white sm:px-10 lg:flex lg:min-h-screen lg:flex-col lg:justify-between lg:px-14 lg:py-14">
+    <aside class="relative isolate overflow-hidden bg-gradient-to-br from-[#6e0019] via-[#a30027] to-[#d00031] px-5 pb-16 pt-5 text-white sm:px-10 lg:flex lg:min-h-screen lg:flex-col lg:justify-between lg:px-14 lg:py-14">
         {{-- Motif en facettes derriere le contenu --}}
         <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
             <div class="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-2xl"></div>
@@ -23,12 +23,12 @@
 
         <div class="flex items-center justify-between">
             <a href="{{ url('/') }}" class="inline-flex items-center" aria-label="T.Link">
-                <img src="{{ asset('tlink-logo-white.webp') }}" alt="T.Link" width="447" height="169" class="h-12 w-auto">
+                <img src="{{ asset('tlink-logo-white.webp') }}" alt="T.Link" width="447" height="169" class="h-10 w-auto sm:h-12">
             </a>
-            <a href="{{ url('/') }}" class="text-sm font-medium text-white/80 transition hover:text-white">&larr; Site de la Fondation</a>
+            <a href="{{ url('/') }}" class="text-sm font-medium text-white/80 transition hover:text-white">&larr; <span class="sm:hidden">Site</span><span class="hidden sm:inline">Site de la Fondation</span></a>
         </div>
 
-        <div class="mt-10 max-w-xl lg:mt-0">
+        <div class="hidden max-w-xl lg:mt-0 lg:block">
             <span class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur">
                 <span class="h-1.5 w-1.5 rounded-full bg-[#f5a623]"></span>
                 Fondation Tunivisions
@@ -60,7 +60,7 @@
     </aside>
 
     {{-- Formulaire --}}
-    <main class="flex items-center justify-center px-4 py-10 sm:px-8 lg:min-h-screen">
+    <main class="relative z-10 -mt-10 flex items-start justify-center px-4 pb-10 sm:px-8 lg:mt-0 lg:min-h-screen lg:items-center lg:py-10">
         <div class="w-full {{ $formWidth ?? 'max-w-md' }}">
             @yield('form')
         </div>

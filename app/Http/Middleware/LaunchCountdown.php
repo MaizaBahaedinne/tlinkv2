@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Tant que le lancement n'a pas eu lieu, affiche le compte à rebours (503) à tout le monde sauf aux administrateurs globaux.
+ * Tant que le lancement n'a pas eu lieu, affiche le compte à rebours du site de la Fondation (503) à tout le monde sauf aux administrateurs globaux.
  */
 class LaunchCountdown
 {
@@ -16,7 +16,7 @@ class LaunchCountdown
     {
         $settings = LaunchGate::settings();
 
-        if (! LaunchGate::isClosed($settings) || LaunchGate::isOpenPath($request) || LaunchGate::bypasses($request)) {
+        if (! LaunchGate::isClosed($settings) || ! LaunchGate::covers($request, $settings) || LaunchGate::isOpenPath($request) || LaunchGate::bypasses($request)) {
             return $next($request);
         }
 

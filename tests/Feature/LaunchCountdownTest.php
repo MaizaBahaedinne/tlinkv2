@@ -13,10 +13,11 @@ class LaunchCountdownTest extends TestCase
     use GrantsAccess;
     use RefreshDatabase;
 
-    private function closeUntil(string $when = '+10 days'): void
+    private function closeUntil(string $when = '+10 days', bool $includeApp = true): void
     {
         LaunchGate::save([
             'enabled' => true,
+            'include_app' => $includeApp,
             'launch_at' => now()->modify($when)->format('Y-m-d\TH:i'),
             'title' => 'Ouverture prochaine',
             'message' => '',
@@ -53,6 +54,51 @@ class LaunchCountdownTest extends TestCase
         $this->closeUntil();
 
         $this->get('/connexion')->assertOk();
+    }
+
+    public function test_by_default_only_the_foundation_website_is_closed_and_tlink_stays_open(): void
+    {
+        $this->closeUntil('+10 days', false);
+
+        $this->get('/fr')->assertStatus(503);
+        $this->get('/fr/a-propos')->assertStatus(503);
+        $this->get('/')->assertStatus(503);
+        $this->get('/inscription')->assertOk();
+        $this->get('/connexion')->assertOk();
+        $this->actingAs(User::factory()->create())->get('/feed')->assertOk();
+        $this->getJson('/api/v1/posts')->assertOk();
+    }
+
+    public function test_the_countdown_is_branded_for_the_foundation_and_offers_the_newsletter(): void
+    {
+        $this->closeUntil('+10 days', false);
+
+        $this->get('/fr')->assertStatus(503)
+            ->assertSee('Fondation Tunivisions')
+            ->assertSee('Propulsé par Persomy.com')
+            ->assertSee('id="newsletter"', false)
+            ->assertSee(route('site.newsletter.store', ['locale' => 'fr']), false)
+            ->assertDontSee('tlink-logo-white');
+    }
+
+    public function test_visitors_can_subscribe_to_the_newsletter_while_the_site_is_closed(): void
+    {
+        foreach ([true, false] as $includeApp) {
+            $this->closeUntil('+10 days', $includeApp);
+
+            $this->post('/fr/newsletter', ['email' => 'Visiteur@Example.test'])->assertRedirect(route('site.root'))->assertSessionHas('newsletter_sent');
+        }
+
+        $this->assertDatabaseHas('newsletter_subscribers', ['email' => 'visiteur@example.test']);
+        $this->get('/')->assertStatus(503)->assertSee('Votre adresse est enregistrée');
+    }
+
+    public function test_an_invalid_newsletter_address_comes_back_to_the_countdown_with_the_error(): void
+    {
+        $this->closeUntil();
+
+        $this->from('/')->post('/fr/newsletter', ['email' => 'pas-un-email'])->assertRedirect('/')->assertSessionHasErrors('email');
+        $this->assertDatabaseCount('newsletter_subscribers', 0);
     }
 
     public function test_position_join_links_stay_open_while_closed(): void
@@ -121,7 +167,7 @@ class LaunchCountdownTest extends TestCase
         $allowed = User::factory()->create(['email' => 'testeur@exemple.tn']);
         $other = User::factory()->create();
 
-        $payload = ['enabled' => '1', 'launch_at' => now()->addDay()->format('Y-m-d\TH:i'), 'allowed_emails' => "Testeur@Exemple.tn\n"];
+        $payload = ['enabled' => '1', 'include_app' => '1', 'launch_at' => now()->addDay()->format('Y-m-d\TH:i'), 'allowed_emails' => "Testeur@Exemple.tn\n"];
         $this->actingAs($this->globalAdmin())->put('/admin/lancement', $payload)->assertSessionHasNoErrors();
         $this->assertSame([$allowed->id], LaunchGate::settings()['allowed_user_ids']);
 

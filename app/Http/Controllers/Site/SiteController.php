@@ -9,6 +9,7 @@ use App\Models\FoundationEvent;
 use App\Models\Governorate;
 use App\Models\Membership;
 use App\Models\NewsletterSubscriber;
+use App\Support\LaunchGate;
 use App\Models\OrgNode;
 use App\Models\Partner;
 use App\Models\Post;
@@ -368,6 +369,11 @@ class SiteController extends Controller
         }
 
         // Même réponse que l'adresse soit nouvelle ou déjà connue : on ne révèle pas qui est abonné.
+        // Site fermé : le visiteur revient sur le compte à rebours, le reste du site lui est inaccessible.
+        if (LaunchGate::isClosed() && ! LaunchGate::bypasses($request)) {
+            return redirect()->route('site.root')->with('newsletter_sent', true);
+        }
+
         return redirect(route('site.about').'#newsletter')->with('newsletter_sent', true);
     }
 

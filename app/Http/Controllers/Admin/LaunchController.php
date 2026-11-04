@@ -36,6 +36,7 @@ class LaunchController extends AdminController
 
         $data = $request->validate([
             'enabled' => ['nullable', 'boolean'],
+            'include_app' => ['nullable', 'boolean'],
             'launch_at' => ['nullable', 'date_format:Y-m-d\TH:i', 'required_if:enabled,1'],
             'title' => ['nullable', 'string', 'max:120'],
             'message' => ['nullable', 'string', 'max:1000'],
@@ -58,6 +59,7 @@ class LaunchController extends AdminController
         $setting = LaunchGate::save([
             'allowed_user_ids' => $users->pluck('id')->map(fn ($id): int => (int) $id)->all(),
             'enabled' => $request->boolean('enabled'),
+            'include_app' => $request->boolean('include_app'),
             'launch_at' => (string) ($data['launch_at'] ?? ''),
             'title' => trim((string) ($data['title'] ?? '')),
             'message' => trim((string) ($data['message'] ?? '')),
@@ -65,6 +67,7 @@ class LaunchController extends AdminController
 
         $this->audit($request, 'admin.launch.updated', $setting, [
             'enabled' => $request->boolean('enabled'),
+            'include_app' => $request->boolean('include_app'),
             'launch_at' => $data['launch_at'] ?? null,
             'allowed_user_ids' => $users->pluck('id')->all(),
         ]);
