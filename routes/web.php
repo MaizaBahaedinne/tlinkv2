@@ -315,6 +315,19 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::patch('mandats/{mandate}/statut', [Admin\MandateController::class, 'updateStatus'])->name('mandates.status');
             Route::delete('mandats/{mandate}', [Admin\MandateController::class, 'destroy'])->name('mandates.destroy');
             Route::get('journal', [Admin\AuditLogController::class, 'index'])->name('audit.index');
+
+            // Journal des versions et état du déploiement (administration globale)
+            Route::get('versions', [Admin\ReleaseController::class, 'index'])->name('releases.index');
+            Route::get('versions/nouvelle', [Admin\ReleaseController::class, 'create'])->name('releases.create');
+            Route::post('versions', [Admin\ReleaseController::class, 'store'])->name('releases.store');
+            Route::get('versions/{release}/modifier', [Admin\ReleaseController::class, 'edit'])->whereNumber('release')->name('releases.edit');
+            Route::put('versions/{release}', [Admin\ReleaseController::class, 'update'])->whereNumber('release')->name('releases.update');
+            Route::patch('versions/{release}/publication', [Admin\ReleaseController::class, 'toggle'])->whereNumber('release')->name('releases.toggle');
+            Route::delete('versions/{release}', [Admin\ReleaseController::class, 'destroy'])->whereNumber('release')->name('releases.destroy');
+            Route::get('deploiement', [Admin\DeploymentController::class, 'index'])->name('deployment.index');
+            Route::post('deploiement/caches', [Admin\DeploymentController::class, 'clearCaches'])->middleware('throttle:6,1')->name('deployment.caches');
+            Route::post('deploiement/maintenance', [Admin\DeploymentController::class, 'enableMaintenance'])->middleware('throttle:6,1')->name('deployment.maintenance.on');
+            Route::delete('deploiement/maintenance', [Admin\DeploymentController::class, 'disableMaintenance'])->middleware('throttle:6,1')->name('deployment.maintenance.off');
             Route::get('utilisateurs/{user}/modifier', [Admin\UserController::class, 'edit'])->name('users.edit');
             Route::put('utilisateurs/{user}', [Admin\UserController::class, 'update'])->name('users.update');
             Route::post('utilisateurs/{user}/se-connecter-en-tant-que', [Admin\ImpersonationController::class, 'start'])->name('users.impersonate');

@@ -135,3 +135,14 @@ Verifier:
 - creation post
 - API `/api/v1/entities`
 - API `/api/v1/governorates`
+
+## 15. Premier deploiement en production (OpenLiteSpeed)
+
+Le script `scripts/deploy_first_production.sh` (root) copie le site de developpement vers un dossier de production, sans `vendor/`, caches, journaux ni fichiers televerses. Il cree la base et l utilisateur MySQL, adapte le `.env` (production, cookie de session propre, HTTPS), installe les dependances sans paquets de developpement, execute les migrations, installe l organigramme, cree le premier administrateur global (`php artisan admin:create <email>`), puis bascule le `docRoot` du vhost et verifie `/up`. En cas d erreur, tout ce qu il a cree est annule.
+
+Ensuite, l etat de la production se suit dans l administration globale :
+
+- **Versions et changements** : notes de version (nouveautes, ameliorations, corrections, securite), brouillon ou publiee.
+- **Deploiement** : commit en ligne (`.release.json`), migrations en attente, controles de production, vidage des caches, mode maintenance.
+
+Les mises a jour suivantes passent par `scripts/release_all.sh` ; l interface ne lance jamais de migration ni de deploiement.

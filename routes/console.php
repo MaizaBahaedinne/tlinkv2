@@ -88,3 +88,51 @@ Artisan::command('orgchart:sync', function () {
     $this->line('Blocs systeme relies a un perimetre: '.$stats['linked']);
     $this->line('Clubs ranges ou mis a jour: '.$stats['updated']);
 })->purpose('Aligne les perimetres et le rangement des clubs de l\'organigramme');
+
+Artisan::command('admin:create {email : Adresse e-mail du compte} {--name= : Nom complet (création uniquement)} {--password= : Mot de passe (généré si absent)}', function (string $email) {
+    $email = mb_strtolower(trim($email));
+
+    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $this->error('Adresse e-mail invalide.');
+
+        return self::FAILURE;
+    }
+
+    $installer = app(OrgChartInstaller::class);
+
+    if (! \App\Models\OrgNode::query()->where('system_key', 'national-administrators')->exists()) {
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => \Database\Seeders\GovernorateSeeder::class, '--force' => true]);
+        $installer->install();
+    }
+
+    $user = \App\Models\User::query()->where('email', $email)->first();
+    $password = null;
+
+    if (! $user) {
+        $password = (string) ($this->option('password') ?: \Illuminate\Support\Str::password(16, symbols: false));
+        $user = \App\Models\User::query()->create([
+            'name' => trim((string) ($this->option('name') ?: 'Administrateur')),
+            'email' => $email,
+            'password' => $password,
+        ]);
+        $user->forceFill([
+            'email_verified_at' => now(),
+            'onboarding_completed_at' => now(),
+            'history_onboarding_at' => now(),
+        ])->save();
+    }
+
+    $node = \App\Models\OrgNode::query()->where('system_key', 'national-administrators')->firstOrFail();
+    $person = \App\Models\OrgPerson::query()->firstOrCreate(['user_id' => $user->id], ['full_name' => $user->name, 'contact_visible' => true]);
+    \App\Models\OrgAssignment::query()->firstOrCreate(['node_id' => $node->id, 'person_id' => $person->id]);
+
+    $this->info('Administrateur global : '.$email);
+
+    if ($password !== null) {
+        $this->line('Mot de passe : '.$password.' (à changer à la première connexion)');
+    } else {
+        $this->line('Compte existant : mot de passe inchangé.');
+    }
+
+    return self::SUCCESS;
+})->purpose('Crée (ou promeut) un administrateur global de la plateforme');

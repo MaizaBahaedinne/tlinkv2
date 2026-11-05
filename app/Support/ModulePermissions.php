@@ -40,6 +40,8 @@ final class ModulePermissions
         'governance.audit' => 'entity.manage',
         'governance.roadmap' => 'entity.manage',
         'governance.modules' => 'entity.manage',
+        'governance.releases' => 'entity.manage',
+        'governance.deployment' => 'entity.manage',
         'members.users' => 'membership.manage',
         'members.memberships' => 'membership.manage',
         'members.entity_members' => 'membership.manage',

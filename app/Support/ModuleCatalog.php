@@ -109,6 +109,8 @@ final class ModuleCatalog
                     ['key' => 'governance.audit', 'name' => 'Journal d’audit', 'description' => 'Historique des actions sensibles.', 'actions' => ['read']],
                     ['key' => 'governance.roadmap', 'name' => 'Feuille de route', 'description' => 'Avancement des modules du projet.', 'actions' => ['read', 'update']],
                     ['key' => 'governance.modules', 'name' => 'Modules et habilitations', 'description' => 'Catalogue des modules de l’application.', 'actions' => self::CRUD],
+                    ['key' => 'governance.releases', 'name' => 'Journal des versions', 'description' => 'Notes de version : nouveautés, améliorations et corrections de chaque mise à jour de la plateforme.', 'actions' => self::CRUD],
+                    ['key' => 'governance.deployment', 'name' => 'Déploiement et état du serveur', 'description' => 'Version en production, migrations en attente, vidage des caches et mode maintenance.', 'actions' => ['read', 'update']],
                 ],
             ],
             [
