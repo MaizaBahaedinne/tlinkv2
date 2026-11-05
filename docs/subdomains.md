@@ -30,9 +30,19 @@ Puis : `php artisan optimize:clear`. Tout le monde sera déconnecté une fois (l
 
 ## CyberPanel
 
-1. Créer un site (ou un « child domain ») par hôte, avec un certificat SSL pour chacun.
-2. Faire pointer le document root de chaque site vers le **même** dossier `public/` de l'application (lien symbolique ou chemin identique).
-3. DNS : un enregistrement A pour chaque sous-domaine vers le serveur.
+Le domaine principal (`tunivisionsfoundation.org`, site vitrine) existe déjà et sert `production-app/public`. Il reste trois sous-domaines à créer, qui servent le **même** dossier :
+
+1. **DNS** : un enregistrement A par sous-domaine (`link`, `store`, `academy`) vers l'IP du serveur (dans CyberPanel si elle gère le DNS, sinon chez le registrar). Attendre la propagation avant l'étape 4.
+2. **Child domain** : Websites > List Websites > Manage (tunivisionsfoundation.org) > Create Child Domain, une fois par sous-domaine. Garder la même version de PHP que le site principal.
+3. **Document root partagé** : dans chaque `vhost.conf` (`/usr/local/lsws/conf/vhosts/<sous-domaine>/vhost.conf`), mettre comme le site principal :
+   ```
+   docRoot                   /home/tunivisionsfoundation.org/production-app/public
+   ```
+   Vérifier aussi que l'option « Follow Symbolic Link » est active (les images passent par le lien `public/storage`). Redémarrer avec `/usr/local/lsws/bin/lswsctrl restart`.
+4. **SSL** : Websites > List Websites > Manage > Issue SSL, pour chaque sous-domaine.
+5. **Contrôle** : CyberPanel réécrit parfois un `vhost.conf` (émission SSL, enregistrement des règles de réécriture) : revérifier le `docRoot` ensuite.
+
+Tant que les `DOMAIN_*` du `.env` sont vides, chaque hôte sert toute l'application : on peut donc tester les sous-domaines (HTTPS, images, connexion) avant d'activer la séparation.
 
 ## Production et développement
 
