@@ -14,8 +14,11 @@ class SiteSettings
 
     public const KEY = 'content';
 
-    /** Identifiant de balise Google accepté : conteneur Tag Manager (GTM-), mesure GA4 (G-), balise Google (GT-) ou Google Ads (AW-). */
-    public const GOOGLE_TAG_PATTERN = '/^(G|GT|AW|GTM)-[A-Z0-9]{4,20}$/';
+    /** Google Analytics : mesure GA4 (G-), balise Google (GT-) ou Google Ads (AW-). */
+    public const GOOGLE_ANALYTICS_PATTERN = '/^(G|GT|AW)-[A-Z0-9]{4,20}$/';
+
+    /** Google Tag Manager : identifiant de conteneur (GTM-). */
+    public const GOOGLE_TAG_MANAGER_PATTERN = '/^GTM-[A-Z0-9]{4,20}$/';
 
     /** Champs traduisibles : cle => type de saisie. */
     public const LOCALIZED = [
@@ -113,7 +116,8 @@ class SiteSettings
         'instagram_url' => 'url',
         'linkedin_url' => 'url',
         'youtube_url' => 'url',
-        'google_tag_id' => 'text',
+        'google_analytics_id' => 'text',
+        'google_tag_manager_id' => 'text',
         'hero_bg_mark_a' => 'text',
         'hero_bg_mark_b' => 'text',
         'president_name' => 'text',
@@ -206,25 +210,31 @@ class SiteSettings
         return $path !== '' ? asset('storage/'.$path) : $fallback;
     }
 
-    /**
-     * Identifiant de la balise Google (Analytics / Ads) saisi en admin, ou null s'il est absent ou invalide.
-     * Jamais d'exception : cette valeur est lue jusque sur les pages d'erreur, base de données indisponible comprise.
-     */
-    public static function googleTagId(): ?string
+    /** Identifiant Google Analytics saisi en admin (G-…), ou null s'il est absent ou invalide. */
+    public static function googleAnalyticsId(): ?string
     {
-        static $memo = false;
+        return self::googleId('google_analytics_id', self::GOOGLE_ANALYTICS_PATTERN);
+    }
 
-        if ($memo === false || app()->runningUnitTests()) {
-            try {
-                $id = strtoupper((new self())->stored('google_tag_id'));
-            } catch (\Throwable) {
-                $id = '';
-            }
+    /** Identifiant de conteneur Google Tag Manager saisi en admin (GTM-…), ou null s'il est absent ou invalide. */
+    public static function googleTagManagerId(): ?string
+    {
+        return self::googleId('google_tag_manager_id', self::GOOGLE_TAG_MANAGER_PATTERN);
+    }
 
-            $memo = preg_match(self::GOOGLE_TAG_PATTERN, $id) === 1 ? $id : null;
+    /**
+     * Jamais d'exception : ces valeurs sont lues sur toutes les pages, base de données indisponible comprise.
+     * La valeur est relue à chaque appel (un enregistrement du site public s'applique tout de suite).
+     */
+    private static function googleId(string $key, string $pattern): ?string
+    {
+        try {
+            $id = strtoupper((new self())->stored($key));
+        } catch (\Throwable) {
+            $id = '';
         }
 
-        return $memo;
+        return preg_match($pattern, $id) === 1 ? $id : null;
     }
 
     /**

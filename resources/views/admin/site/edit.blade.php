@@ -94,11 +94,17 @@
                     <x-admin.input name="instagram_url" type="url" label="Instagram" :value="$site->stored('instagram_url')" placeholder="https://" :maxlength="255" />
                     <x-admin.input name="linkedin_url" type="url" label="LinkedIn" :value="$site->stored('linkedin_url')" placeholder="https://" :maxlength="255" />
                     <x-admin.input name="youtube_url" type="url" label="YouTube" :value="$site->stored('youtube_url')" placeholder="https://" :maxlength="255" />
-                    <div class="field span-2 {{ $errors->has('google_tag_id') ? 'has-error' : '' }}">
-                        <label for="f-google_tag_id">Balise Google (Tag Manager ou Analytics)</label>
-                        <input id="f-google_tag_id" type="text" name="google_tag_id" value="{{ old('google_tag_id', $site->stored('google_tag_id')) }}" placeholder="GTM-XXXXXXX" maxlength="24" autocomplete="off" spellcheck="false">
-                        <p class="hint">Un seul identifiant par page : conteneur Google Tag Manager (GTM-…) ou mesure Google (G-…, GT-…, AW-…). Avec Tag Manager, les balises Analytics se configurent dans le conteneur : ne saisissez pas aussi un G-… pour éviter de compter les visites deux fois. La balise est ajoutée dans l’en-tête des pages du site public et de l’application. Laissez vide pour la désactiver.</p>
-                        @error('google_tag_id')<p class="error">Identifiant invalide : il ressemble à GTM-XXXXXXX ou G-XXXXXXXXXX.</p>@enderror
+                    <div class="field span-2 {{ $errors->has('google_analytics_id') ? 'has-error' : '' }}">
+                        <label for="f-google_analytics_id">Google Analytics</label>
+                        <input id="f-google_analytics_id" type="text" name="google_analytics_id" value="{{ old('google_analytics_id', $site->stored('google_analytics_id')) }}" placeholder="G-XXXXXXXXXX" maxlength="24" autocomplete="off" spellcheck="false">
+                        <p class="hint">Identifiant de mesure Google Analytics (G-…). Le snippet gtag.js est ajouté dans l’en-tête des pages. Laissez vide pour désactiver Analytics.</p>
+                        @error('google_analytics_id')<p class="error">Identifiant invalide : il ressemble à G-XXXXXXXXXX.</p>@enderror
+                    </div>
+                    <div class="field span-2 {{ $errors->has('google_tag_manager_id') ? 'has-error' : '' }}">
+                        <label for="f-google_tag_manager_id">Google Tag Manager</label>
+                        <input id="f-google_tag_manager_id" type="text" name="google_tag_manager_id" value="{{ old('google_tag_manager_id', $site->stored('google_tag_manager_id')) }}" placeholder="GTM-XXXXXXX" maxlength="24" autocomplete="off" spellcheck="false">
+                        <p class="hint">Identifiant de conteneur Google Tag Manager (GTM-…). Le snippet est ajouté dans l’en-tête des pages, avec sa balise noscript après <code>&lt;body&gt;</code>. Application indépendante d’Analytics : laissez vide pour la désactiver.</p>
+                        @error('google_tag_manager_id')<p class="error">Identifiant invalide : il ressemble à GTM-XXXXXXX.</p>@enderror
                     </div>
                 </div>
             </section>
