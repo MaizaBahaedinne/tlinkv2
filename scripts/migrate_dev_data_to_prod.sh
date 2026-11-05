@@ -262,6 +262,9 @@ mkdir -p "$DEST_APP/storage/app/public" "$DEST_APP/storage/app/private"
 
 chown -R "$USER_ACCOUNT:$USER_ACCOUNT" "$DEST_APP/storage"
 chmod -R u+rwX,go-rwx "$DEST_APP/storage"
+# Fichiers publics (avatars, logos…) lisibles par le serveur web ; le disque privé reste fermé.
+chmod 711 "$DEST_APP/storage" "$DEST_APP/storage/app"
+chmod -R u+rwX,go+rX "$DEST_APP/storage/app/public"
 
 # ==================================================
 # RECHIFFREMENT (CIN, pièces d'identité) avec la clé de production

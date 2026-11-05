@@ -269,6 +269,10 @@ chmod 600 "$DEST/.env"
 
 chown -R "$USER_ACCOUNT:$USER_ACCOUNT" "$DEST"
 chmod -R u+rwX,go-rwx "$DEST/storage" "$DEST/bootstrap/cache"
+# Le serveur web (autre utilisateur) sert les fichiers publics (avatars, logos…) via public/storage : il doit pouvoir
+# traverser storage/ et lire storage/app/public. Le disque privé (pièces d'identité, messagerie) reste fermé.
+chmod 711 "$DEST/storage" "$DEST/storage/app"
+chmod -R u+rwX,go+rX "$DEST/storage/app/public"
 
 # ==================================================
 # DEPENDANCES, CLE, BASE, LIENS (le site n'est pas encore exposé)
