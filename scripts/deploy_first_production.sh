@@ -39,8 +39,9 @@ run_as_app() {
     sudo -u "$USER_ACCOUNT" -H env PATH="$(dirname "$PHP_BIN"):$PATH" "$@"
 }
 
+# Pas de sous-shell ici : il hériterait du piège ERR et l'annulation s'exécuterait deux fois.
 artisan() {
-    (cd "$DEST" && run_as_app "$PHP_BIN" artisan "$@")
+    run_as_app bash -c 'cd "$1" && shift && exec "$@"' _ "$DEST" "$PHP_BIN" artisan "$@"
 }
 
 reload_server() {
@@ -68,14 +69,14 @@ rollback() {
     fi
 
     if [ "$DB_CREATED" -eq 1 ]; then
-        mysql -e "DROP DATABASE \`${DB_NAME}\`" && echo "- base ${DB_NAME} supprimée"
+        mysql -e "DROP DATABASE IF EXISTS \`${DB_NAME}\`" && echo "- base ${DB_NAME} supprimée"
     fi
 
     if [ "$DB_USER_CREATED" -eq 1 ]; then
-        mysql -e "DROP USER '${DB_USER}'@'localhost'" && echo "- utilisateur ${DB_USER} supprimé"
+        mysql -e "DROP USER IF EXISTS '${DB_USER}'@'localhost'" && echo "- utilisateur ${DB_USER} supprimé"
     fi
 
-    if [ "$DEST_CREATED" -eq 1 ] && [ -n "$DEST" ] && [ "$DEST" != "/" ]; then
+    if [ "$DEST_CREATED" -eq 1 ] && [ -n "$DEST" ] && [ "$DEST" != "/" ] && [ -d "$DEST" ]; then
         rm -rf "$DEST" && echo "- dossier $DEST supprimé"
     fi
 

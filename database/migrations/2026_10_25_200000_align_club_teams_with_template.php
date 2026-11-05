@@ -12,7 +12,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('org_nodes')) {
+        // Le code d'aujourd'hui lit `role_key`, colonne créée par une migration ultérieure (2026_10_26_100000) qui
+        // aligne elle aussi les équipes de club : sur une base vierge, on laisse celle-ci s'en charger.
+        if (Schema::hasTable('org_nodes') && Schema::hasColumn('org_nodes', 'role_key')) {
             app(OrgChartInstaller::class)->alignClubTeams();
         }
     }
