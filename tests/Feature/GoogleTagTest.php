@@ -18,30 +18,45 @@ class GoogleTagTest extends TestCase
         (new SiteSettings())->save(['google_tag_id' => $id]);
     }
 
-    public function test_the_migrations_install_the_tag_manager_container(): void
+    public function test_the_migrations_install_the_gtag_measurement_id(): void
     {
-        $this->assertSame('GTM-P3PW7PKX', SiteSettings::googleTagId());
+        $this->assertSame('G-WX9RVDBH4P', SiteSettings::googleTagId());
+
+        $html = $this->get('/fr')->assertOk()->getContent();
+
+        $this->assertStringContainsString('https://www.googletagmanager.com/gtag/js?id=G-WX9RVDBH4P', $html);
+        $this->assertStringContainsString("gtag('config', \"G-WX9RVDBH4P\")", $html);
+        $this->assertSame(1, substr_count($html, 'googletagmanager.com'));
+        $this->assertStringNotContainsString('gtm.js', $html);
+        $this->assertLessThan(strpos($html, '<meta charset'), strpos($html, 'gtag/js?id='));
+    }
+
+    public function test_a_tag_manager_container_renders_the_gtm_snippet_and_noscript(): void
+    {
+        $this->setTag('GTM-P3PW7PKX');
 
         $html = $this->get('/fr')->assertOk()->getContent();
 
         $this->assertStringContainsString('www.googletagmanager.com/gtm.js?id=', $html);
         $this->assertStringContainsString('"GTM-P3PW7PKX"', $html);
         $this->assertStringContainsString('ns.html?id=GTM-P3PW7PKX', $html);
-        $this->assertSame(1, substr_count($html, 'www.googletagmanager.com/gtm.js'));
         $this->assertStringNotContainsString('gtag/js', $html);
-        $this->assertLessThan(strpos($html, '<meta charset'), strpos($html, 'gtm.start'));
         $this->assertGreaterThan(strpos($html, '<body'), strpos($html, 'ns.html?id='));
     }
 
-    public function test_a_gtag_measurement_id_renders_the_gtag_snippet(): void
+    public function test_a_migrated_tag_manager_default_is_switched_but_a_custom_value_is_kept(): void
     {
-        $this->setTag('G-WX9RVDBH4P');
+        $migration = require database_path('migrations/2026_11_24_100000_use_gtag_measurement_id.php');
 
-        $this->get('/fr')->assertOk()
-            ->assertSee('https://www.googletagmanager.com/gtag/js?id=G-WX9RVDBH4P', false)
-            ->assertSee("gtag('config', \"G-WX9RVDBH4P\")", false)
-            ->assertDontSee('ns.html', false);
+        $this->setTag('GTM-P3PW7PKX');
+        $migration->up();
+        $this->assertSame('G-WX9RVDBH4P', (new SiteSettings())->stored('google_tag_id'));
+
+        $this->setTag('GTM-CUSTOM123');
+        $migration->up();
+        $this->assertSame('GTM-CUSTOM123', (new SiteSettings())->stored('google_tag_id'));
     }
+
 
     public function test_tag_is_in_the_head_of_the_app_pages(): void
     {
