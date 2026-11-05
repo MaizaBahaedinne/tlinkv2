@@ -124,6 +124,9 @@ class NewsVideosTest extends TestCase
 
     public function test_unsafe_urls_already_stored_are_never_rendered(): void
     {
+        // Le conteneur Google Tag Manager par défaut ajoute son propre <noscript><iframe> : on le désactive pour isoler les vidéos.
+        (new \App\Support\SiteSettings())->save(['google_analytics_id' => '', 'google_tag_manager_id' => '']);
+
         $news = SiteNews::query()->create([
             'title' => ['fr' => 'Ancien'],
             'status' => 'published',

@@ -25,7 +25,7 @@
             <a href="{{ url('/') }}" class="inline-flex items-center" aria-label="T.Link">
                 <img src="{{ asset('tlink-logo-white.webp') }}" alt="T.Link" width="447" height="169" class="h-10 w-auto sm:h-12">
             </a>
-            <a href="{{ url('/') }}" class="text-sm font-medium text-white/80 transition hover:text-white">&larr; <span class="sm:hidden">Site</span><span class="hidden sm:inline">Site de la Fondation</span></a>
+            <a href="{{ \App\Support\Domains::url('site') }}" class="text-sm font-medium text-white/80 transition hover:text-white">&larr; <span class="sm:hidden">Site</span><span class="hidden sm:inline">Site de la Fondation</span></a>
         </div>
 
         <div class="hidden max-w-xl lg:mt-0 lg:block">

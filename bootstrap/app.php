@@ -19,7 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
         // Compte a rebours de lancement : ferme le site (web + API) aux non-administrateurs globaux jusqu'a la date choisie.
-        $middleware->web(append: [\App\Http\Middleware\ApplyRoleSimulation::class, LaunchCountdown::class]);
+        $middleware->web(append: [\App\Http\Middleware\RedirectToAppHost::class, \App\Http\Middleware\ApplyRoleSimulation::class, LaunchCountdown::class]);
+        // La redirection vers l'hôte T.Link passe avant l'authentification : un visiteur non connecté ne doit pas être renvoyé vers /connexion sur le mauvais hôte.
+        $middleware->prependToPriorityList(before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class, prepend: \App\Http\Middleware\RedirectToAppHost::class);
         $middleware->api(append: [LaunchCountdown::class]);
         // Un utilisateur deja connecte qui ouvre /connexion ou /inscription arrive sur le fil, pas sur la vitrine.
         $middleware->redirectUsersTo(fn () => route('home'));

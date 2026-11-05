@@ -28,13 +28,24 @@ use App\Http\Controllers\StoreCartController;
 use App\Http\Controllers\StoreReviewController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StoreOrderController;
+use App\Support\Domains;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Site vitrine de la Fondation : racine du site (/ puis /fr, /ar, /en).
 require base_path('routes/site.php');
 
+if (Domains::enabled()) {
+    // Racine des autres hôtes (T.Link, Store, Academy) : on renvoie vers la page d'accueil de la section.
+    Route::get('/', fn (Request $request) => redirect()->to(match (Domains::keyForHost($request->getHost())) {
+        'store' => route('store.index'),
+        'academy' => route('academy.index'),
+        default => route('home'),
+    }))->name('app.root');
+}
+
 // Certificat Academy : page publique, vérifiable grâce à son code.
-Route::get('/certificats/{code}', [AcademyController::class, 'certificate'])->where('code', 'TA-[A-Z0-9]{10}')->middleware('throttle:certificate-check')->name('academy.certificate');
+Domains::on('academy')->get('/certificats/{code}', [AcademyController::class, 'certificate'])->where('code', 'TA-[A-Z0-9]{10}')->middleware('throttle:certificate-check')->name('academy.certificate');
 
 // Lien d'inscription direct d'un poste de l'organigramme (public : jeton non devinable, candidature a valider).
 Route::get('/rejoindre/{token}', [PositionJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('position.join');
@@ -93,7 +104,7 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/adhesions/mandats/{participation}', [MembershipRequestController::class, 'destroyPast'])->name('memberships.past.destroy');
 
     // Tunivisions Stores : boutique, panier, commande, suivi et retours (fermée tant que l'administration ne l'ouvre pas).
-    Route::prefix('boutique')->name('store.')->middleware('store.open')->group(function (): void {
+    Domains::on('store')->prefix('boutique')->name('store.')->middleware('store.open')->group(function (): void {
         Route::get('/', [StoreController::class, 'index'])->name('index');
         Route::get('/articles/{product:slug}', [StoreController::class, 'showProduct'])->name('products.show');
         Route::post('/articles/{product:slug}/avis', [StoreReviewController::class, 'store'])->middleware('throttle:store-action')->name('reviews.store');
@@ -112,7 +123,7 @@ Route::middleware('auth')->group(function (): void {
     });
 
     // Tunivisions Academy : catalogue, cours, leçons, commandes et calendrier.
-    Route::prefix('academy')->name('academy.')->group(function (): void {
+    Domains::on('academy')->prefix('academy')->name('academy.')->group(function (): void {
         Route::get('/', [AcademyController::class, 'index'])->name('index');
         Route::get('/calendrier', [AcademyController::class, 'calendar'])->name('calendar');
         Route::get('/cours/{course:slug}', [AcademyController::class, 'show'])->name('courses.show');
@@ -551,3 +562,17 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::delete('academy/sessions/{session}', [Admin\AcademySessionController::class, 'destroy'])->whereNumber('session')->name('academy.sessions.destroy');
         });
     });
+
+// Sous-domaines : une ancienne adresse (/boutique, /academy, /certificats, /fr…) demandée sur un autre hôte est redirigée vers l'hôte
+// de sa section ; tout le reste est une 404 normale.
+if (Domains::enabled()) {
+    Route::fallback(function (Request $request) {
+        $owner = Domains::ownerOfPath($request);
+
+        if ($owner !== null && strtolower($request->getHost()) !== Domains::host($owner)) {
+            return redirect()->to(Domains::url($owner, $request->getRequestUri()), 301);
+        }
+
+        abort(404);
+    });
+}
