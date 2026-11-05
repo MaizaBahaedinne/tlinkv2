@@ -61,9 +61,7 @@ class AboutPageTest extends TestCase
     {
         $this->get('/fr/a-propos')->assertOk()->assertDontSee('id="president"', false);
 
-        Setting::query()->create([
-            'group' => SiteSettings::GROUP,
-            'key' => SiteSettings::KEY,
+        Setting::query()->updateOrCreate(['group' => SiteSettings::GROUP, 'key' => SiteSettings::KEY], [
             'value' => json_encode([
                 'president_message' => ['fr' => 'Ensemble, nous construisons demain.'],
                 'president_name' => 'Amel Ben Salah',

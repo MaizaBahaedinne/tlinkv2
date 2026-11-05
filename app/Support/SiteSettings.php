@@ -14,6 +14,9 @@ class SiteSettings
 
     public const KEY = 'content';
 
+    /** Identifiant de balise Google accepté : mesure GA4 (G-), balise Google (GT-) ou Google Ads (AW-). */
+    public const GOOGLE_TAG_PATTERN = '/^(G|GT|AW)-[A-Z0-9]{4,20}$/';
+
     /** Champs traduisibles : cle => type de saisie. */
     public const LOCALIZED = [
         'hero_title' => 'text',
@@ -110,7 +113,7 @@ class SiteSettings
         'instagram_url' => 'url',
         'linkedin_url' => 'url',
         'youtube_url' => 'url',
-        'hero_bg_main' => 'text',
+        'google_tag_id' => 'text',
         'hero_bg_mark_a' => 'text',
         'hero_bg_mark_b' => 'text',
         'president_name' => 'text',
@@ -201,6 +204,27 @@ class SiteSettings
         $path = ltrim($this->stored($key), '/');
 
         return $path !== '' ? asset('storage/'.$path) : $fallback;
+    }
+
+    /**
+     * Identifiant de la balise Google (Analytics / Ads) saisi en admin, ou null s'il est absent ou invalide.
+     * Jamais d'exception : cette valeur est lue jusque sur les pages d'erreur, base de données indisponible comprise.
+     */
+    public static function googleTagId(): ?string
+    {
+        static $memo = false;
+
+        if ($memo === false || app()->runningUnitTests()) {
+            try {
+                $id = strtoupper((new self())->stored('google_tag_id'));
+            } catch (\Throwable) {
+                $id = '';
+            }
+
+            $memo = preg_match(self::GOOGLE_TAG_PATTERN, $id) === 1 ? $id : null;
+        }
+
+        return $memo;
     }
 
     /**

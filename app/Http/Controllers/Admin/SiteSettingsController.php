@@ -42,6 +42,7 @@ class SiteSettingsController extends AdminController
             'instagram_url' => ['nullable', 'url:http,https', 'max:255'],
             'linkedin_url' => ['nullable', 'url:http,https', 'max:255'],
             'youtube_url' => ['nullable', 'url:http,https', 'max:255'],
+            'google_tag_id' => ['nullable', 'string', 'regex:'.SiteSettings::GOOGLE_TAG_PATTERN.'i'],
             'president_name' => ['nullable', 'string', 'max:120'],
             'president_photo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'president_photo_remove' => ['nullable', 'boolean'],
@@ -65,6 +66,7 @@ class SiteSettingsController extends AdminController
         foreach (array_keys(SiteSettings::PLAIN) as $key) {
             $values[$key] = trim((string) ($data[$key] ?? ''));
         }
+        $values['google_tag_id'] = strtoupper($values['google_tag_id']);
 
         $site = new SiteSettings();
         $current = $site->raw();

@@ -305,9 +305,7 @@ class PublicSiteTest extends TestCase
 
     public function test_site_settings_override_defaults_with_locale_fallback(): void
     {
-        Setting::query()->create([
-            'group' => SiteSettings::GROUP,
-            'key' => SiteSettings::KEY,
+        Setting::query()->updateOrCreate(['group' => SiteSettings::GROUP, 'key' => SiteSettings::KEY], [
             'value' => json_encode(['hero_title' => ['fr' => 'Titre français personnalisé'], 'contact_email' => 'contact@tunivisions.test', 'facebook_url' => 'javascript:alert(1)'], JSON_UNESCAPED_UNICODE),
         ]);
 
