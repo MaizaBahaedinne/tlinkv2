@@ -145,4 +145,4 @@ Ensuite, l etat de la production se suit dans l administration globale :
 - **Versions et changements** : notes de version (nouveautes, ameliorations, corrections, securite), brouillon ou publiee.
 - **Deploiement** : commit en ligne (`.release.json`), migrations en attente, controles de production, vidage des caches, mode maintenance.
 
-Les mises a jour suivantes passent par `scripts/release_all.sh` ; l interface ne lance jamais de migration ni de deploiement.
+Les mises a jour suivantes passent par `scripts/update_production.sh` (root) : `git pull` dans le dossier de developpement, sauvegarde de la base et du `.env`, mode maintenance, copie du code sans toucher au `.env`, aux fichiers televerses ni aux sessions, `composer install` si `composer.lock` change, migrations, caches, remise en ligne et mise a jour de `.release.json`. Le dossier de production n est pas un depot Git : ne pas y lancer `git pull`. L interface ne lance jamais de migration ni de deploiement.
