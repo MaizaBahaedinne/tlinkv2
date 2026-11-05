@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\OrgNode;
+use App\Models\User;
 use App\Support\AccessLevels;
 use App\Support\AdminContext;
 use App\Support\AdminMenu;
@@ -15,8 +16,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 /**
- * Simulateur de rôles : un administrateur global agit « comme » le titulaire d'un poste pour tester l'interface
- * et les autorisations de ce poste. Les postes d'administrateur global et de gestionnaire des postes et des droits
+ * Simulateur de rôles : un administrateur global (ou un compte qu'il a autorisé) agit « comme » le titulaire d'un poste pour tester
+ * l'interface et les autorisations de ce poste. Les postes d'administrateur global et de gestionnaire des postes et des droits
  * ne sont pas simulables. Chaque début et fin de simulation est tracé dans le journal d'audit.
  */
 class RoleSimulatorController extends AdminController
@@ -63,7 +64,45 @@ class RoleSimulatorController extends AdminController
             'term' => $term,
             'scopeMap' => $scopeMap,
             'levels' => AccessLevels::BADGES,
+            'canManageAccess' => RoleSimulator::isGlobalAdmin($request->user()),
+            'allowedUsers' => User::query()->whereIn('id', RoleSimulator::allowedUserIds())->orderBy('name')->get(),
         ]);
+    }
+
+    public function grantAccess(Request $request): RedirectResponse
+    {
+        $this->authorizeManageAccess($request);
+
+        $data = $request->validate(['email' => ['required', 'email:rfc', 'max:190']]);
+        $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower($data['email'])])->first();
+
+        if ($user === null || ! $user->is_active) {
+            return back()->withInput()->withErrors(['email' => 'Aucun compte actif ne correspond à cet e-mail.']);
+        }
+
+        $ids = RoleSimulator::allowedUserIds();
+
+        if (! in_array($user->id, $ids, true)) {
+            $ids[] = $user->id;
+            RoleSimulator::saveAllowedUserIds($ids);
+            $this->audit($request, 'admin.simulator.access.granted', $user, ['target' => $user->name]);
+        }
+
+        return back()->with('status', $user->name.' peut maintenant utiliser le simulateur de rôles.');
+    }
+
+    public function revokeAccess(Request $request, User $user): RedirectResponse
+    {
+        $this->authorizeManageAccess($request);
+
+        $ids = RoleSimulator::allowedUserIds();
+
+        if (in_array($user->id, $ids, true)) {
+            RoleSimulator::saveAllowedUserIds(array_values(array_diff($ids, [$user->id])));
+            $this->audit($request, 'admin.simulator.access.revoked', $user, ['target' => $user->name]);
+        }
+
+        return back()->with('status', 'Accès retiré à '.$user->name.'.');
     }
 
     public function start(Request $request, OrgNode $node): RedirectResponse
@@ -99,10 +138,17 @@ class RoleSimulatorController extends AdminController
         return redirect()->route('admin.simulator.index')->with('status', 'Simulation terminée : vous retrouvez vos droits.');
     }
 
-    /** Réservé aux administrateurs globaux (droits réels), hors simulation en cours. */
+    /** Utilisable par les administrateurs globaux et les comptes qu'ils ont autorisés, hors simulation en cours. */
     private function authorizeUse(Request $request): void
     {
         abort_if(RoleSimulator::active(), 403, 'Terminez la simulation en cours avant d’en démarrer une autre.');
-        abort_unless(RoleSimulator::canUse($request->user()), 403, 'Seuls les administrateurs globaux peuvent utiliser le simulateur de rôles.');
+        abort_unless(RoleSimulator::canUse($request->user()), 403, 'Vous n’êtes pas autorisé(e) à utiliser le simulateur de rôles.');
+    }
+
+    /** Accorder ou retirer l'accès : réservé aux administrateurs globaux (droits réels), jamais aux comptes simplement autorisés. */
+    private function authorizeManageAccess(Request $request): void
+    {
+        abort_if(RoleSimulator::active(), 403, 'Terminez la simulation en cours avant de gérer les accès.');
+        abort_unless(RoleSimulator::isGlobalAdmin($request->user()), 403, 'Seuls les administrateurs globaux peuvent gérer les accès au simulateur de rôles.');
     }
 }

@@ -90,6 +90,8 @@ class AuditLabels
         'admin.impersonation.stopped' => 'Connexion en tant qu’un autre utilisateur (fin)',
         'admin.simulation.started' => 'Simulation de rôle (début)',
         'admin.simulation.stopped' => 'Simulation de rôle (fin)',
+        'admin.simulator.access.granted' => 'Simulateur de rôles : accès accordé',
+        'admin.simulator.access.revoked' => 'Simulateur de rôles : accès retiré',
         'admin.launch.updated' => 'Compte à rebours de lancement modifié',
         'admin.partner.created' => 'Partenaire ajouté',
         'admin.partner.updated' => 'Partenaire modifié',

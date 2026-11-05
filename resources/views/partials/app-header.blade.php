@@ -14,6 +14,7 @@
         ($mentoringEnabled ?? false) ? ['key' => 'mentoring', 'label' => 'Mentorat', 'href' => route('mentoring.index'), 'icon' => 'fa-solid fa-life-ring', 'active' => request()->routeIs('mentoring.*')] : null,
         ($storeEnabled ?? false) ? ['key' => 'store', 'label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0)] : null,
         ($canAdmin ?? false) ? ['key' => 'admin', 'label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
+        ($canSimulate ?? false) ? ['key' => 'simulator', 'label' => 'Simulateur de rôles', 'href' => route('admin.simulator.index'), 'icon' => 'fa-solid fa-user-secret', 'active' => false] : null,
     ]));
 
     // Barre principale : 4 icônes essentielles (Fil, Clubs, Academy, puis Mon bureau ou Défis) ; le reste va dans « Plus ».

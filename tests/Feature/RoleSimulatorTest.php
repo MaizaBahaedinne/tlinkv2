@@ -178,6 +178,80 @@ class RoleSimulatorTest extends TestCase
         $this->assertSame([$position->id], \App\Support\MyOffice::heldNodeIds($admin));
     }
 
+    public function test_global_admin_can_authorize_another_account_to_use_the_simulator(): void
+    {
+        $admin = $this->globalAdmin();
+        $position = $this->managerPosition();
+        $tester = User::factory()->create(['onboarding_completed_at' => now()]);
+
+        $this->actingAs($tester)->get('/admin/simulateur')->assertForbidden();
+
+        $this->actingAs($admin)->post('/admin/simulateur/acces', ['email' => strtoupper($tester->email)])->assertSessionHasNoErrors();
+        $this->assertSame([$tester->id], \App\Support\RoleSimulator::allowedUserIds());
+        $this->assertDatabaseHas('audit_logs', ['actor_id' => $admin->id, 'action' => 'admin.simulator.access.granted', 'target_id' => $tester->id]);
+        $this->get('/admin/simulateur')->assertOk()->assertSee($tester->email);
+
+        // Le compte autorisé, sans aucun droit d'administration, simule un poste et agit avec ses droits uniquement.
+        $this->actingAs($tester)->get('/admin/simulateur')->assertOk()->assertDontSee('Comptes autorisés');
+        $this->get('/feed')->assertOk()->assertSee('Simulateur de rôles');
+        $this->get('/admin/utilisateurs')->assertForbidden();
+
+        $this->post('/admin/simulateur/'.$position->id)->assertRedirect(route('admin.dashboard'));
+        $this->get('/admin/utilisateurs')->assertOk();
+        $this->get('/admin/lancement')->assertForbidden();
+        $this->get('/admin/structure/postes')->assertForbidden();
+        $this->assertDatabaseHas('audit_logs', ['actor_id' => $tester->id, 'action' => 'admin.simulation.started', 'target_id' => $position->id]);
+
+        $this->post('/simulation/quitter')->assertRedirect(route('admin.simulator.index'));
+        $this->get('/admin/utilisateurs')->assertForbidden();
+    }
+
+    public function test_authorized_account_cannot_manage_access_nor_start_without_being_listed(): void
+    {
+        $admin = $this->globalAdmin();
+        $position = $this->managerPosition();
+        $tester = User::factory()->create();
+        $other = User::factory()->create();
+
+        $this->actingAs($admin)->post('/admin/simulateur/acces', ['email' => $tester->email]);
+
+        $this->actingAs($tester)->post('/admin/simulateur/acces', ['email' => $other->email])->assertForbidden();
+        $this->delete('/admin/simulateur/acces/'.$tester->id)->assertForbidden();
+        $this->assertSame([$tester->id], \App\Support\RoleSimulator::allowedUserIds());
+
+        $this->actingAs($other)->post('/admin/simulateur/'.$position->id)->assertForbidden();
+        $this->assertNull(session('role_simulation'));
+    }
+
+    public function test_revoking_access_stops_a_running_simulation(): void
+    {
+        $admin = $this->globalAdmin();
+        $position = $this->managerPosition();
+        $tester = User::factory()->create();
+
+        $this->actingAs($admin)->post('/admin/simulateur/acces', ['email' => $tester->email]);
+        $this->actingAs($tester)->post('/admin/simulateur/'.$position->id);
+        $this->get('/admin/utilisateurs')->assertOk();
+
+        $this->actingAs($admin)->delete('/admin/simulateur/acces/'.$tester->id)->assertRedirect();
+        $this->assertSame([], \App\Support\RoleSimulator::allowedUserIds());
+        $this->assertDatabaseHas('audit_logs', ['actor_id' => $admin->id, 'action' => 'admin.simulator.access.revoked', 'target_id' => $tester->id]);
+
+        $this->actingAs($tester)->get('/admin/utilisateurs')->assertForbidden();
+        $this->assertNull(session('role_simulation'));
+    }
+
+    public function test_unknown_or_inactive_accounts_cannot_be_authorized(): void
+    {
+        $admin = $this->globalAdmin();
+        $inactive = User::factory()->create(['is_active' => false]);
+
+        $this->actingAs($admin)->post('/admin/simulateur/acces', ['email' => 'inconnu@example.test'])->assertSessionHasErrors('email');
+        $this->post('/admin/simulateur/acces', ['email' => $inactive->email])->assertSessionHasErrors('email');
+        $this->post('/admin/simulateur/acces', ['email' => 'pas-un-email'])->assertSessionHasErrors('email');
+        $this->assertSame([], \App\Support\RoleSimulator::allowedUserIds());
+    }
+
     public function test_menu_entry_is_shown_to_global_admins_only(): void
     {
         $admin = $this->globalAdmin();

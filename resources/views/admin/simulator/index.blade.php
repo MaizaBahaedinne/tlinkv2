@@ -9,10 +9,65 @@
     <div class="alert alert-info" role="note">
         <x-admin.icon name="shield" />
         <span>
-            Pendant la simulation, vous n’avez <strong>que les droits du poste choisi</strong> : vos droits d’administrateur global sont suspendus. Un bandeau en bas de l’écran permet de <strong>quitter la simulation</strong> à tout moment.
+            Pendant la simulation, vous n’avez <strong>que les droits du poste choisi</strong> : vos droits habituels sont suspendus. Un bandeau en bas de l’écran permet de <strong>quitter la simulation</strong> à tout moment.
             Les actions réalisées restent de vraies actions faites avec votre compte. Les postes d’administrateur global et de gestionnaire des postes et des droits ne sont pas simulables.
         </span>
     </div>
+
+    @if($canManageAccess)
+        <article class="card card-flush">
+            <div class="card-head">
+                <div>
+                    <h2>Comptes autorisés</h2>
+                    <p class="sub">Les administrateurs globaux ont toujours accès au simulateur. Autorisez ici d’autres comptes (testeurs) : ils pourront simuler n’importe quel poste simulable, <strong>même sans droit d’administration</strong>, et leurs actions resteront de vraies actions faites avec leur compte. Ils ne peuvent pas autoriser d’autres comptes.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ route('admin.simulator.access.store') }}" class="inline-form">
+                    @csrf
+                    <input type="email" name="email" value="{{ old('email') }}" placeholder="E-mail du compte à autoriser" aria-label="E-mail du compte à autoriser" maxlength="190" required style="min-width:260px">
+                    <button type="submit" class="btn btn-primary btn-sm"><x-admin.icon name="plus" :size="16" /> Autoriser</button>
+                </form>
+                @error('email')<p class="error" style="margin-top:6px">{{ $message }}</p>@enderror
+            </div>
+            @if($allowedUsers->isNotEmpty())
+                <div class="table-wrap">
+                    <table class="tbl">
+                        <thead>
+                            <tr>
+                                <th>Compte</th>
+                                <th>Retirer l’accès</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($allowedUsers as $allowed)
+                                <tr>
+                                    <td>
+                                        <div class="cell-user">
+                                            <x-admin.avatar :name="$allowed->name" :size="34" />
+                                            <div>
+                                                <div class="cell-main">{{ $allowed->name }}</div>
+                                                <div class="cell-sub">{{ $allowed->email }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <form method="post" action="{{ route('admin.simulator.access.destroy', $allowed) }}" class="inline-form">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-secondary btn-sm"><x-admin.icon name="trash" :size="16" /> Retirer</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="card-body" style="border-top:1px solid var(--line)"><p class="text-sm text-muted" style="margin:0">Aucun compte autorisé pour le moment.</p></div>
+            @endif
+        </article>
+    @endif
 
     <article class="card card-flush">
         <div class="toolbar">

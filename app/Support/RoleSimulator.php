@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\OrgNode;
+use App\Models\Setting;
 use App\Models\User;
 use Closure;
 
@@ -17,6 +18,11 @@ use Closure;
 final class RoleSimulator
 {
     public const SESSION_KEY = 'role_simulation';
+
+    /** Réglage en base : comptes autorisés à utiliser le simulateur (modifiable depuis l'administration). */
+    public const SETTING_GROUP = 'admin';
+
+    public const SETTING_KEY = 'role_simulator';
 
     private const BINDING = 'role.simulation';
 
@@ -67,10 +73,66 @@ final class RoleSimulator
         }
     }
 
-    /** Seul un administrateur global (droits réels) peut utiliser le simulateur. */
+    /**
+     * Peut utiliser le simulateur : un administrateur global (droits réels) ou un compte autorisé par l'un d'eux
+     * (liste modifiable dans Admin > Simulateur de rôles). Résultat mémorisé pour la requête en cours.
+     */
     public static function canUse(User $user): bool
     {
-        return self::withoutSimulation(fn (): bool => (new AdminContext($user))->isGlobal('entity.manage'));
+        return self::remember('use', $user, fn (): bool => self::isGlobalAdmin($user)
+            || ($user->is_active !== false && in_array($user->id, self::allowedUserIds(), true)));
+    }
+
+    /** Simulateur proposable maintenant : utilisable, et aucune simulation n'est déjà en cours. */
+    public static function available(User $user): bool
+    {
+        return ! self::active() && self::canUse($user);
+    }
+
+    /** Administrateur global au sens des droits réels du compte, simulation suspendue. */
+    public static function isGlobalAdmin(User $user): bool
+    {
+        return self::remember('global', $user, fn (): bool => self::withoutSimulation(
+            fn (): bool => in_array(null, OrgAccess::grants($user)['entity.manage'] ?? [], true)
+        ));
+    }
+
+    /** Identifiants des comptes autorisés à utiliser le simulateur en plus des administrateurs globaux. */
+    public static function allowedUserIds(): array
+    {
+        try {
+            $value = Setting::query()->where('group', self::SETTING_GROUP)->where('key', self::SETTING_KEY)->value('value');
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $data = $value ? json_decode((string) $value, true) : null;
+
+        return array_values(array_unique(array_map('intval', (array) (is_array($data) ? ($data['user_ids'] ?? []) : []))));
+    }
+
+    /** @param array<int, int> $ids */
+    public static function saveAllowedUserIds(array $ids): void
+    {
+        Setting::query()->updateOrCreate(
+            ['group' => self::SETTING_GROUP, 'key' => self::SETTING_KEY],
+            ['value' => json_encode(['user_ids' => array_values(array_unique(array_map('intval', $ids)))])],
+        );
+    }
+
+    /**
+     * @param Closure(): bool $resolve
+     */
+    private static function remember(string $name, User $user, Closure $resolve): bool
+    {
+        $request = request();
+        $key = 'role.simulator.'.$name.'.'.$user->id;
+
+        if (! $request->attributes->has($key)) {
+            $request->attributes->set($key, $resolve());
+        }
+
+        return (bool) $request->attributes->get($key);
     }
 
     /**

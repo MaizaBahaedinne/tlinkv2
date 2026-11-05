@@ -107,7 +107,7 @@ class AdminMenu
                     ['label' => 'Lancement du site', 'route' => 'admin.launch.edit', 'icon' => 'flag', 'match' => 'admin.launch.*', 'perms' => ['entity.manage']],
                     ['label' => 'Modules de l\'application', 'route' => 'admin.modules.index', 'icon' => 'network', 'match' => 'admin.modules.*', 'perms' => ['entity.manage']],
                     ['label' => 'Journal d\'audit', 'route' => 'admin.audit.index', 'icon' => 'activity', 'match' => 'admin.audit.*', 'perms' => ['entity.manage']],
-                    ['label' => 'Simulateur de rôles', 'route' => 'admin.simulator.index', 'icon' => 'user-check', 'match' => 'admin.simulator.*', 'perms' => ['entity.manage'], 'global_only' => true],
+                    ['label' => 'Simulateur de rôles', 'route' => 'admin.simulator.index', 'icon' => 'user-check', 'match' => 'admin.simulator.*', 'perms' => null, 'simulator' => true],
                 ],
             ],
             [
@@ -202,6 +202,11 @@ class AdminMenu
             $items = [];
 
             foreach ($group['items'] as $item) {
+                // Simulateur : proposé aux comptes autorisés (même sans droit d'administration), masqué pendant une simulation.
+                if (($item['simulator'] ?? false) && ! RoleSimulator::available($context->user)) {
+                    continue;
+                }
+
                 if ($item['perms'] !== null && ! self::visible($item, $context)) {
                     continue;
                 }
@@ -245,10 +250,6 @@ class AdminMenu
      */
     private static function visible(array $item, AdminContext $context): bool
     {
-        // Outil réservé aux administrateurs globaux, masqué pendant une simulation.
-        if (($item['global_only'] ?? false) && (! $context->isGlobal('entity.manage') || RoleSimulator::active())) {
-            return false;
-        }
 
         $module = self::MODULES[$item['match']] ?? null;
 

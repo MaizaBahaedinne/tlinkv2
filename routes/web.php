@@ -64,6 +64,15 @@ Route::post('/simulation/quitter', [Admin\RoleSimulatorController::class, 'stop'
     ->middleware('auth')
     ->name('simulation.stop');
 
+// Simulateur de rôles : réservé aux administrateurs globaux et aux comptes qu'ils autorisent (contrôle dans le contrôleur,
+// car un compte autorisé n'a pas forcément de droit d'administration).
+Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): void {
+    Route::get('simulateur', [Admin\RoleSimulatorController::class, 'index'])->name('simulator.index');
+    Route::post('simulateur/acces', [Admin\RoleSimulatorController::class, 'grantAccess'])->name('simulator.access.store');
+    Route::delete('simulateur/acces/{user}', [Admin\RoleSimulatorController::class, 'revokeAccess'])->whereNumber('user')->name('simulator.access.destroy');
+    Route::post('simulateur/{node}', [Admin\RoleSimulatorController::class, 'start'])->whereNumber('node')->name('simulator.start');
+});
+
 Route::get('/posts/attachments/{attachment}', [FeedController::class, 'showAttachment'])
     ->name('posts.attachments.show');
 
@@ -298,8 +307,6 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('utilisateurs/{user}/modifier', [Admin\UserController::class, 'edit'])->name('users.edit');
             Route::put('utilisateurs/{user}', [Admin\UserController::class, 'update'])->name('users.update');
             Route::post('utilisateurs/{user}/se-connecter-en-tant-que', [Admin\ImpersonationController::class, 'start'])->name('users.impersonate');
-            Route::get('simulateur', [Admin\RoleSimulatorController::class, 'index'])->name('simulator.index');
-            Route::post('simulateur/{node}', [Admin\RoleSimulatorController::class, 'start'])->whereNumber('node')->name('simulator.start');
 
             // Site public de la Fondation
             Route::get('site-public', [Admin\SiteSettingsController::class, 'edit'])->name('site.edit');
