@@ -41,6 +41,7 @@
     </style>
 </head>
 <body>
+    @include('partials.google-tag-noscript')
     <main>
         <div class="brand">
             <picture>

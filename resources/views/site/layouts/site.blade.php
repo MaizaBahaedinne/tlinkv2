@@ -81,6 +81,7 @@
     @stack('head')
 </head>
 <body class="min-h-screen bg-brand-50 font-sans text-slate-800 antialiased">
+    @include('partials.google-tag-noscript')
     <a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">{{ __('site.skip') }}</a>
 
     <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">

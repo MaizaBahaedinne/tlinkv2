@@ -14,8 +14,8 @@ class SiteSettings
 
     public const KEY = 'content';
 
-    /** Identifiant de balise Google accepté : mesure GA4 (G-), balise Google (GT-) ou Google Ads (AW-). */
-    public const GOOGLE_TAG_PATTERN = '/^(G|GT|AW)-[A-Z0-9]{4,20}$/';
+    /** Identifiant de balise Google accepté : conteneur Tag Manager (GTM-), mesure GA4 (G-), balise Google (GT-) ou Google Ads (AW-). */
+    public const GOOGLE_TAG_PATTERN = '/^(G|GT|AW|GTM)-[A-Z0-9]{4,20}$/';
 
     /** Champs traduisibles : cle => type de saisie. */
     public const LOCALIZED = [

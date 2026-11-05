@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ asset('backoffice/orgchart.css') }}?v={{ $ocv }}">
 </head>
 <body class="oc-body">
+    @include('partials.google-tag-noscript')
 <div class="oc" id="oc-app" data-edit-mode="off">
 
     <header class="oc-top">

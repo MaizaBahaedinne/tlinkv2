@@ -17,6 +17,7 @@
     @endif
 </head>
 <body>
+    @include('partials.google-tag-noscript')
     @if (session('status'))
         <div class="fixed inset-x-0 top-3 z-50 mx-auto w-full max-w-xl rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-soft">
             {{ session('status') }}
