@@ -108,10 +108,8 @@ class LaunchGate
     /** Page du site vitrine (racine et préfixes de langue) ; le reste (feed, profil, API…) appartient à T.Link. */
     public static function isSitePath(Request $request): bool
     {
-        // Avec un sous-domaine dédié à T.Link, la racine et les langues n'y appartiennent pas au site vitrine.
-        $appHost = Domains::host('app');
-
-        if ($appHost !== null && Domains::enabled() && strtolower($request->getHost()) === $appHost) {
+        // Avec des sous-domaines dédiés, la racine et les langues n'appartiennent au site vitrine que sur son propre hôte.
+        if (Domains::enabled() && ! in_array(Domains::keyForHost($request->getHost()), [null, 'site'], true)) {
             return false;
         }
 

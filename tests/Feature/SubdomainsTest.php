@@ -81,11 +81,29 @@ class SubdomainsTest extends TestCase
         $this->actingAs($user)->getJson('http://academy.example.test/messagerie/non-lus')->assertOk();
     }
 
-    public function test_roots_of_the_other_hosts_lead_to_their_section(): void
+    public function test_app_root_leads_to_the_feed_and_store_academy_roots_are_public_showcases(): void
     {
         $this->get('http://link.example.test/')->assertRedirect('http://link.example.test/feed');
-        $this->get('http://store.example.test/')->assertRedirect('http://store.example.test/boutique');
-        $this->get('http://academy.example.test/')->assertRedirect('http://academy.example.test/academy');
+
+        $this->get('http://store.example.test/')->assertOk()->assertSee('Tunivisions Stores')->assertSee('Ouverture prochainement');
+        $this->get('http://academy.example.test/')->assertOk()->assertSee('Tunivisions Academy');
+    }
+
+    public function test_showcases_link_to_the_app_host_for_login_and_to_each_other(): void
+    {
+        $this->get('http://store.example.test/')
+            ->assertSee(Domains::url('app', '/connexion'), false)
+            ->assertSee(Domains::url('site'), false)
+            ->assertSee(route('academy.showcase'), false);
+
+        $this->get('http://academy.example.test/')->assertSee(route('store.showcase'), false);
+    }
+
+    public function test_launch_countdown_only_covers_the_site_host_root(): void
+    {
+        $this->assertTrue(LaunchGate::isSitePath(Request::create('http://example.test/fr')));
+        $this->assertFalse(LaunchGate::isSitePath(Request::create('http://store.example.test/')));
+        $this->assertFalse(LaunchGate::isSitePath(Request::create('http://academy.example.test/')));
     }
 
     public function test_launch_countdown_does_not_cover_the_app_host_root(): void

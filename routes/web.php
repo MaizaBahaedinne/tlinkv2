@@ -24,6 +24,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\IdentityVerificationController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ShowcaseController;
 use App\Http\Controllers\StoreCartController;
 use App\Http\Controllers\StoreReviewController;
 use App\Http\Controllers\StoreController;
@@ -35,13 +36,14 @@ use Illuminate\Support\Facades\Route;
 // Site vitrine de la Fondation : racine du site (/ puis /fr, /ar, /en).
 require base_path('routes/site.php');
 
+// Vitrines publiques de Tunivisions Stores et Academy : page d'accueil de leur sous-domaine (sans sous-domaine, /boutique/presentation
+// et /academy/presentation). Déclarées avant la racine de T.Link, qui ne doit pas répondre à leur place.
+Domains::on('store')->get(Domains::host('store') !== null ? '/' : '/boutique/presentation', [ShowcaseController::class, 'store'])->name('store.showcase');
+Domains::on('academy')->get(Domains::host('academy') !== null ? '/' : '/academy/presentation', [ShowcaseController::class, 'academy'])->name('academy.showcase');
+
 if (Domains::enabled()) {
-    // Racine des autres hôtes (T.Link, Store, Academy) : on renvoie vers la page d'accueil de la section.
-    Route::get('/', fn (Request $request) => redirect()->to(match (Domains::keyForHost($request->getHost())) {
-        'store' => route('store.index'),
-        'academy' => route('academy.index'),
-        default => route('home'),
-    }))->name('app.root');
+    // Racine de l'hôte T.Link : on renvoie vers le fil d'actualité.
+    Route::get('/', fn () => redirect()->route('home'))->name('app.root');
 }
 
 // Certificat Academy : page publique, vérifiable grâce à son code.
