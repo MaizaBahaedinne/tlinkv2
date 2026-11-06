@@ -106,6 +106,41 @@ Artisan::command('onboarding:waive {email : Adresse e-mail du compte} {--verify-
     $this->info('Parcours d\'intégration levé pour '.$user->email.'.');
 })->purpose('Dispense un compte du parcours d\'intégration (dépannage : e-mail non reçu, validation bloquée)');
 
+Artisan::command('onboarding:restart {email? : Adresse e-mail du compte} {--all : Tous les comptes} {--keep-email : Conserve la vérification de l\'e-mail}', function (?string $email = null) {
+    // Le parcours est calculé d'après l'état réel du compte : remettre `onboarding_done_at` à NULL ne suffit pas, une étape déjà
+    // franchie (e-mail vérifié, info session, ancien/nouveau, profil, adhésion approuvée) est revalidée aussitôt.
+    // La dernière étape (adhésion/poste du mandat en cours) reste franchie tant que l'adhésion approuvée ou le poste existent.
+    $query = \App\Models\User::query();
+
+    if ($this->option('all')) {
+        if (! $this->confirm('Remettre TOUS les comptes dans le parcours d\'intégration ?'.($this->option('keep-email') ? '' : ' Chacun devra revérifier son e-mail : MAIL_* doit être configuré.'))) {
+            return self::FAILURE;
+        }
+    } elseif ($email !== null) {
+        $query->where('email', mb_strtolower(trim($email)));
+    } else {
+        $this->error('Indiquez un e-mail ou --all.');
+
+        return self::FAILURE;
+    }
+
+    $reset = ['onboarding_done_at' => null, 'onboarding_completed_at' => null, 'history_onboarding_at' => null];
+
+    if (! $this->option('keep-email')) {
+        $reset['email_verified_at'] = null;
+    }
+
+    $count = $query->update($reset);
+
+    if ($count === 0) {
+        $this->error('Compte introuvable.');
+
+        return self::FAILURE;
+    }
+
+    $this->info($count.' compte(s) remis dans le parcours d\'intégration.');
+})->purpose('Remet un ou tous les comptes au début du parcours d\'intégration (test, ré-imposition)');
+
 Artisan::command('admin:create {email : Adresse e-mail du compte} {--name= : Nom complet (création uniquement)} {--password= : Mot de passe (généré si absent)}', function (string $email) {
     $email = mb_strtolower(trim($email));
 

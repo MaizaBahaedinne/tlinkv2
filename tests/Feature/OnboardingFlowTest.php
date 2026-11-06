@@ -239,4 +239,18 @@ class OnboardingFlowTest extends TestCase
     {
         $this->actingAs(User::factory()->create())->get('/integration')->assertRedirect(route('home'));
     }
+
+    public function test_the_restart_command_puts_an_existing_account_back_at_the_first_step(): void
+    {
+        $this->currentMandate();
+        $user = User::factory()->create(['email_verified_at' => now(), 'onboarding_completed_at' => now(), 'history_onboarding_at' => now()]);
+
+        $this->artisan('onboarding:restart', ['email' => $user->email])->assertSuccessful();
+
+        $user->refresh();
+        $this->assertNull($user->onboarding_done_at);
+        $this->assertNull($user->email_verified_at);
+        $this->assertSame('email', \App\Support\Onboarding::current($user));
+        $this->actingAs($user)->get('/feed')->assertRedirect(route('integration.show'));
+    }
 }
