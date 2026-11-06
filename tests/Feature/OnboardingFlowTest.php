@@ -8,10 +8,10 @@ use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\Profile;
 use App\Models\User;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\EmailVerificationCode;
+use App\Support\EmailVerificationCodes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\URL;
 use Tests\Concerns\GrantsAccess;
 use Tests\TestCase;
 
@@ -62,26 +62,113 @@ class OnboardingFlowTest extends TestCase
         $this->actingAs($user)->postJson('/posts', ['body' => 'x'])->assertForbidden();
     }
 
-    public function test_the_verification_mail_is_sent_and_the_signed_link_unlocks_the_next_step(): void
+    /** Envoie un code et le renvoie en clair (tel que reçu par e-mail). */
+    private function sentCode(User $user): string
+    {
+        $code = '';
+        Notification::assertSentTo($user, EmailVerificationCode::class, function (EmailVerificationCode $notification) use (&$code): bool {
+            $code = $notification->code;
+
+            return true;
+        });
+
+        return $code;
+    }
+
+    public function test_the_verification_code_is_mailed_and_unlocks_the_next_step(): void
     {
         Notification::fake();
         $user = User::factory()->unverified()->inOnboarding()->create();
 
         $this->actingAs($user)->post('/email/verification')->assertSessionHas('status');
-        Notification::assertSentTo($user, VerifyEmail::class);
+        $code = $this->sentCode($user);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
 
-        $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), ['id' => $user->id, 'hash' => sha1($user->email)]);
+        $this->actingAs($user)->get('/integration')->assertOk()->assertSee('code à 6 chiffres')->assertSee('15 minutes');
+        $this->actingAs($user)->post('/email/verifier', ['code' => $code])->assertRedirect(route('integration.show'))->assertSessionHasNoErrors();
 
-        $this->actingAs($user)->get($url)->assertRedirect(route('integration.show'));
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
         $this->actingAs($user->fresh())->get('/info-session')->assertOk();
     }
 
-    public function test_a_forged_verification_link_is_refused(): void
+    public function test_the_mail_carries_the_code_and_its_validity(): void
+    {
+        $mail = (new EmailVerificationCode('042137'))->toMail(User::factory()->make(['first_name' => 'Amel']));
+
+        $this->assertStringContainsString('042137', $mail->subject);
+        $this->assertContains('**042137**', $mail->introLines);
+        $this->assertStringContainsString('15 minutes', implode(' ', array_map('strval', $mail->introLines)));
+    }
+
+    public function test_a_wrong_code_is_refused_and_five_failures_destroy_it(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->inOnboarding()->create();
+        $this->actingAs($user)->post('/email/verification');
+        $code = $this->sentCode($user);
+        $wrong = $code === '000000' ? '111111' : '000000';
+
+        $this->actingAs($user)->post('/email/verifier', ['code' => $wrong])->assertSessionHasErrors('code');
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+
+        foreach (range(1, 4) as $attempt) {
+            $this->actingAs($user)->post('/email/verifier', ['code' => $wrong]);
+        }
+
+        // Le code juste est lui aussi inutilisable après 5 essais ratés.
+        $this->actingAs($user)->post('/email/verifier', ['code' => $code])->assertSessionHasErrors('code');
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_a_code_expires_after_fifteen_minutes(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->inOnboarding()->create();
+        $this->actingAs($user)->post('/email/verification');
+        $code = $this->sentCode($user);
+
+        $this->travel(14)->minutes();
+        $this->assertSame(EmailVerificationCodes::INVALID, EmailVerificationCodes::check($user, '999999' === $code ? '888888' : '999999'));
+
+        $this->travel(2)->minutes();
+        $this->actingAs($user)->post('/email/verifier', ['code' => $code])->assertSessionHasErrors('code');
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_a_new_code_replaces_the_previous_one_and_malformed_codes_are_refused(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->inOnboarding()->create();
+        $first = EmailVerificationCodes::issue($user);
+        $second = EmailVerificationCodes::issue($user);
+
+        if ($first !== $second) {
+            $this->assertSame(EmailVerificationCodes::INVALID, EmailVerificationCodes::check($user, $first));
+        }
+
+        $this->actingAs($user)->post('/email/verifier', ['code' => 'abc'])->assertSessionHasErrors('code');
+        $this->actingAs($user)->post('/email/verifier', ['code' => ''])->assertSessionHasErrors('code');
+        $this->actingAs($user)->post('/email/verifier', ['code' => substr($second, 0, 3).' '.substr($second, 3)])->assertSessionHasNoErrors();
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_a_code_sent_to_the_old_address_does_not_validate_the_corrected_one(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->inOnboarding()->create();
+        $old = EmailVerificationCodes::issue($user);
+
+        $this->actingAs($user)->post('/integration/email', ['email' => 'corrige@example.com'])->assertSessionHasNoErrors();
+
+        $this->assertNotSame(EmailVerificationCodes::OK, EmailVerificationCodes::check($user->fresh(), $old));
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_the_old_signed_link_no_longer_exists(): void
     {
         $user = User::factory()->unverified()->inOnboarding()->create();
 
-        $this->actingAs($user)->get('/email/verifier/'.$user->id.'/'.sha1($user->email))->assertForbidden();
+        $this->actingAs($user)->get('/email/verifier/'.$user->id.'/'.sha1($user->email))->assertNotFound();
         $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
 
@@ -92,7 +179,7 @@ class OnboardingFlowTest extends TestCase
 
         $this->actingAs($user)->post('/integration/email', ['email' => 'Nouveau@Example.com'])->assertSessionHasNoErrors();
         $this->assertSame('nouveau@example.com', $user->fresh()->email);
-        Notification::assertSentTo($user->fresh(), VerifyEmail::class);
+        Notification::assertSentTo($user->fresh(), EmailVerificationCode::class);
 
         $verified = User::factory()->inOnboarding()->create();
         $this->actingAs($verified)->post('/integration/email', ['email' => 'autre@example.com'])->assertForbidden();
@@ -108,7 +195,7 @@ class OnboardingFlowTest extends TestCase
         ])->assertRedirect();
 
         $user = User::query()->where('email', 'jean@example.com')->firstOrFail();
-        Notification::assertSentTo($user, VerifyEmail::class);
+        Notification::assertSentTo($user, EmailVerificationCode::class);
         $this->assertNull($user->onboarding_done_at);
         $this->get('/feed')->assertRedirect(route('integration.show'));
     }

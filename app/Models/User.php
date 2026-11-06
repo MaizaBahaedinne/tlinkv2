@@ -72,6 +72,12 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+    /** La confirmation de l'adresse se fait par un code à 6 chiffres (valable 15 minutes), pas par un lien. */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new \App\Notifications\EmailVerificationCode(\App\Support\EmailVerificationCodes::issue($this)));
+    }
+
     /** Compte validé mais question d'accueil (ancien ou nouveau membre) pas encore terminée : réponse obligatoire. */
     public function needsHistoryAnswer(): bool
     {

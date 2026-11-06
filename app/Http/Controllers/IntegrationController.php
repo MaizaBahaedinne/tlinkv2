@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\EmailVerificationCodes;
 use App\Support\MembershipRequests;
 use App\Support\Onboarding;
 use App\Support\OrgScopes;
 use App\Support\ProfileCompleteness;
 use App\Support\ProfileOrganizations;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -143,10 +144,36 @@ class IntegrationController extends Controller
         return redirect()->route('integration.show')->with('status', 'Votre profil est enregistré.');
     }
 
-    /** Clic sur le lien reçu par e-mail (lien signé). */
-    public function verify(EmailVerificationRequest $request): RedirectResponse
+    /** Code à 6 chiffres reçu par e-mail (valable 15 minutes, 5 essais). */
+    public function verify(Request $request): RedirectResponse
     {
-        $request->fulfill();
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return redirect()->route('integration.show');
+        }
+
+        $data = $request->validate([
+            'code' => ['required', 'string', 'regex:/^\s*\d{3}\s?\d{3}\s*$/'],
+        ], [
+            'code.required' => 'Saisissez le code reçu par e-mail.',
+            'code.regex' => 'Le code comporte 6 chiffres.',
+        ]);
+
+        $result = EmailVerificationCodes::check($user, $data['code']);
+
+        if ($result !== EmailVerificationCodes::OK) {
+            throw ValidationException::withMessages(['code' => match ($result) {
+                EmailVerificationCodes::EXPIRED => 'Ce code a expiré (il est valable '.EmailVerificationCodes::VALID_MINUTES.' minutes) : demandez-en un nouveau.',
+                EmailVerificationCodes::LOCKED => 'Trop d’essais : ce code n’est plus valable, demandez-en un nouveau.',
+                default => 'Code incorrect : vérifiez le dernier e-mail reçu (un nouveau code rend l’ancien inutilisable).',
+            }]);
+        }
+
+        if ($user->markEmailAsVerified()) {
+            event(new Verified($user));
+        }
 
         return redirect()->route('integration.show')->with('status', 'Votre adresse e-mail est confirmée.');
     }
@@ -161,7 +188,7 @@ class IntegrationController extends Controller
 
         $user->sendEmailVerificationNotification();
 
-        return back()->with('status', 'Un nouveau lien de confirmation vient d’être envoyé à '.$user->email.'.');
+        return back()->with('status', 'Un nouveau code vient d’être envoyé à '.$user->email.' ; il est valable '.EmailVerificationCodes::VALID_MINUTES.' minutes.');
     }
 
     /** Adresse saisie par erreur : possible uniquement tant qu'elle n'est pas confirmée. */
@@ -181,6 +208,6 @@ class IntegrationController extends Controller
         $user->forceFill(['email' => mb_strtolower($data['email']), 'email_verified_at' => null])->save();
         $user->sendEmailVerificationNotification();
 
-        return back()->with('status', 'Adresse mise à jour : un lien de confirmation vient d’être envoyé à '.$user->email.'.');
+        return back()->with('status', 'Adresse mise à jour : un code de confirmation vient d’être envoyé à '.$user->email.'.');
     }
 }

@@ -51,11 +51,21 @@
         <section class="mt-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
             @if($step === 'email')
                 <h2 class="font-display text-lg font-semibold text-slate-900">Confirmez votre adresse e-mail</h2>
-                <p class="mt-1 text-sm text-slate-600">Un lien de confirmation a été envoyé à <strong>{{ $user->email }}</strong>. Ouvrez-le pour continuer (pensez à vérifier vos courriers indésirables).</p>
+                <p class="mt-1 text-sm text-slate-600">Un code à 6 chiffres a été envoyé à <strong>{{ $user->email }}</strong>. Saisissez-le ci-dessous : il est valable {{ \App\Support\EmailVerificationCodes::VALID_MINUTES }} minutes (pensez à vérifier vos courriers indésirables).</p>
+
+                <form method="post" action="{{ route('verification.verify') }}" class="mt-4">
+                    @csrf
+                    <label for="code" class="text-sm font-semibold text-slate-700">Code de confirmation</label>
+                    <div class="mt-1 flex flex-wrap gap-2">
+                        <input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" autocomplete="one-time-code" required autofocus placeholder="123456" value="{{ old('code') }}" class="{{ $fieldClass }} w-44 text-center font-mono text-lg tracking-[0.4em]">
+                        <button type="submit" class="{{ $buttonClass }}">Valider</button>
+                    </div>
+                    @error('code')<p class="mt-2 text-sm font-semibold text-rose-700">{{ $message }}</p>@enderror
+                </form>
 
                 <form method="post" action="{{ route('verification.send') }}" class="mt-4">
                     @csrf
-                    <button type="submit" class="{{ $buttonClass }}">Renvoyer le lien</button>
+                    <button type="submit" class="text-sm font-semibold text-tlink-blue hover:underline">Je n’ai rien reçu : renvoyer un code</button>
                 </form>
 
                 <form method="post" action="{{ route('integration.email') }}" class="mt-6 border-t border-slate-100 pt-5">
