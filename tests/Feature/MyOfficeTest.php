@@ -229,17 +229,18 @@ class MyOfficeTest extends TestCase
         $this->actingAs($middle)->get('/mon-bureau')->assertNotFound();
     }
 
-    public function test_the_page_is_organised_in_tabs_without_the_header_buttons(): void
+    public function test_the_page_is_a_single_clear_layout_without_tabs_or_the_header_buttons(): void
     {
         $admin = $this->place($this->top, 'Karim Directeur');
 
         $html = $this->actingAs($admin)->get('/mon-bureau')->assertOk()
-            ->assertSee('role="tablist"', false)
-            ->assertSee('id="tab-en-cours"', false)
-            ->assertSee('id="tab-clubs"', false)
-            ->assertSee('id="tab-evenements"', false)
-            ->assertSee('id="tab-parcours"', false)
-            ->assertSee('id="tab-postes"', false)
+            ->assertDontSee('role="tablist"', false)
+            ->assertSee('id="en-cours"', false)
+            ->assertSee('id="postes"', false)
+            ->assertSee('id="clubs"', false)
+            ->assertSee('id="evenements"', false)
+            ->assertSee('id="parcours"', false)
+            ->assertSee('href="#postes"', false)
             ->assertDontSee('>Retour<', false)
             ->getContent();
 
@@ -313,7 +314,7 @@ class MyOfficeTest extends TestCase
             ->assertSee('Terminé')
             ->getContent();
 
-        $current = substr($html, strpos($html, 'id="en-cours"'), strpos($html, 'id="clubs"') - strpos($html, 'id="en-cours"'));
+        $current = substr($html, strpos($html, 'id="en-cours"'), strpos($html, 'id="postes"') - strpos($html, 'id="en-cours"'));
         $this->assertStringContainsString('Assistant de pôle', $current);
         $this->assertStringNotContainsString('Ancien poste de trésorier', $current);
     }
