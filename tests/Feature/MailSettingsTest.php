@@ -157,6 +157,24 @@ class MailSettingsTest extends TestCase
         $this->assertStringContainsString('Échec de l’envoi', (string) session('errors')->first('test'));
     }
 
+    public function test_a_position_with_an_older_matrix_gets_the_module_through_the_migration(): void
+    {
+        \App\Support\ModuleCatalog::sync();
+        $admin = User::factory()->create();
+        $node = $this->grantAccess($admin, 'global_admin');
+        \App\Support\ModulePermissions::apply($node, [
+            'website.launch' => ['read', 'update'],
+            'organization.chart' => ['read'],
+        ], true);
+
+        $this->assertArrayNotHasKey('website.mail', (array) $node->fresh()->module_permissions);
+        $this->actingAs($admin)->get('/admin/messagerie')->assertForbidden();
+
+        (require database_path('migrations/2026_11_28_100000_grant_mail_module_to_admin_positions.php'))->up();
+
+        $this->actingAs($admin)->get('/admin/messagerie')->assertOk();
+    }
+
     public function test_only_global_admins_can_open_or_change_it(): void
     {
         $member = User::factory()->create();
