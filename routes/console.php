@@ -124,13 +124,7 @@ Artisan::command('onboarding:restart {email? : Adresse e-mail du compte} {--all 
         return self::FAILURE;
     }
 
-    $reset = ['onboarding_done_at' => null, 'onboarding_completed_at' => null, 'history_onboarding_at' => null];
-
-    if (! $this->option('keep-email')) {
-        $reset['email_verified_at'] = null;
-    }
-
-    $count = $query->update($reset);
+    $count = \App\Support\Onboarding::restart($query, (bool) $this->option('keep-email'));
 
     if ($count === 0) {
         $this->error('Compte introuvable.');

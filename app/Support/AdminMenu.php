@@ -35,6 +35,7 @@ class AdminMenu
         'admin.roles.*' => 'organization.positions',
         'admin.scopes.*' => 'organization.scopes',
         'admin.users.*' => 'members.users',
+        'admin.onboarding.*' => 'members.users',
         'admin.memberships.*' => 'members.memberships',
         'admin.members.*' => 'members.entity_members',
         'admin.posts.*' => 'governance.moderation',
@@ -130,6 +131,7 @@ class AdminMenu
                 'title' => 'Communauté',
                 'items' => [
                     ['label' => 'Utilisateurs', 'route' => 'admin.users.index', 'icon' => 'user', 'match' => 'admin.users.*', 'perms' => ['entity.manage', 'membership.manage']],
+                    ['label' => 'Intégration des membres', 'route' => 'admin.onboarding.index', 'icon' => 'user-check', 'match' => 'admin.onboarding.*', 'perms' => ['entity.manage']],
                     ['label' => 'Adhésions', 'route' => 'admin.memberships.index', 'icon' => 'user-check', 'match' => 'admin.memberships.*', 'perms' => ['membership.manage'], 'badge' => 'memberships'],
                     ['label' => 'Membres de mon entité', 'route' => 'admin.members.index', 'icon' => 'user', 'match' => 'admin.members.*', 'perms' => ['membership.manage']],
                     ['label' => 'Badges et missions', 'route' => 'admin.badges.index', 'icon' => 'award', 'match' => 'admin.badges.*', 'perms' => ['entity.manage']],

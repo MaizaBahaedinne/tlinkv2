@@ -50,6 +50,46 @@ final class Onboarding
     }
 
     /**
+     * État du parcours d'un compte, sans rien enregistrer (contrairement à current()) : l'avancement vu par l'administration.
+     *
+     * @return array{steps: array<string, bool>, current: string|null, complete: bool}
+     */
+    public static function progress(User $user): array
+    {
+        $steps = [];
+
+        foreach (array_keys(self::STEPS) as $step) {
+            $steps[$step] = self::done($user, $step);
+        }
+
+        $current = array_search(false, $steps, true);
+
+        return [
+            'steps' => $steps,
+            'current' => $current === false ? null : $current,
+            'complete' => $user->onboarding_done_at !== null,
+        ];
+    }
+
+    /**
+     * Remet des comptes au début du parcours : e-mail (sauf $keepEmail), info session, ancien/nouveau et mandat d'arrivée.
+     * Le profil et l'adhésion/poste du mandat en cours se calculent d'après l'état réel du compte : ils restent franchis
+     * tant que la photo, le CV et une adhésion approuvée (ou un poste) existent.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder<User> $query
+     */
+    public static function restart($query, bool $keepEmail = true): int
+    {
+        $reset = ['onboarding_done_at' => null, 'onboarding_completed_at' => null, 'history_onboarding_at' => null, 'member_origin' => null, 'joined_mandate_id' => null];
+
+        if (! $keepEmail) {
+            $reset['email_verified_at'] = null;
+        }
+
+        return $query->update($reset);
+    }
+
+    /**
      * Première étape non terminée, ou null si le parcours est complet (il est alors enregistré comme terminé).
      */
     public static function current(User $user): ?string

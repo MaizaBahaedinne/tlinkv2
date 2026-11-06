@@ -81,6 +81,7 @@ class AuditLabels
         'infosession.passed' => 'Info session : compte validé par le quiz',
         'onboarding.origin' => 'Accueil : ancien ou nouveau membre indiqué',
         'onboarding.joined_mandate' => 'Accueil : mandat et poste d’arrivée déclarés',
+        'admin.onboarding.restarted' => 'Intégration relancée pour un membre',
         'orgchart.club_roles.updated' => 'Organigramme : droits des rôles de club modifiés',
         'orgchart.club.status_bulk' => 'Organigramme : statut de plusieurs clubs modifié',
         'orgchart.club.aligned' => 'Organigramme : clubs alignés sur l’équipe type',

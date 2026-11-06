@@ -339,6 +339,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('utilisateurs/{user}/modifier', [Admin\UserController::class, 'edit'])->name('users.edit');
             Route::put('utilisateurs/{user}', [Admin\UserController::class, 'update'])->name('users.update');
             Route::post('utilisateurs/{user}/se-connecter-en-tant-que', [Admin\ImpersonationController::class, 'start'])->name('users.impersonate');
+            Route::get('integration', [Admin\OnboardingController::class, 'index'])->name('onboarding.index');
+            Route::post('integration/{user}/relancer', [Admin\OnboardingController::class, 'restart'])->whereNumber('user')->name('onboarding.restart');
 
             // Site public de la Fondation
             Route::get('site-public', [Admin\SiteSettingsController::class, 'edit'])->name('site.edit');
