@@ -95,6 +95,37 @@ class HistoryOnboardingTest extends TestCase
         $this->assertNotNull($old->id);
     }
 
+    public function test_the_entry_form_asks_scope_then_club_then_position(): void
+    {
+        $joined = $this->mandate(2023);
+        $club = $this->club();
+        $user = $this->validated();
+        $this->actingAs($user)->post('/bienvenue/origine', ['origin' => 'alumni']);
+
+        $page = $this->actingAs($user)->get('/bienvenue')->assertOk()->getContent();
+        $this->assertLessThan(strpos($page, 'id="past-club"'), strpos($page, 'id="past-scope"'));
+        $this->assertLessThan(strpos($page, 'id="past-position"'), strpos($page, 'id="past-club"'));
+
+        // Une partie qui a des clubs : le club est obligatoire.
+        $this->actingAs($user)->post('/bienvenue/arrivee', ['mandate_id' => $joined->id, 'past_scope' => 'university'])
+            ->assertSessionHasErrors('past_club');
+        $this->assertNull($user->fresh()->joined_mandate_id);
+
+        $this->actingAs($user)->post('/bienvenue/arrivee', ['mandate_id' => $joined->id, 'past_scope' => 'university', 'past_club' => $club->id])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('mandate_participations', ['user_id' => $user->id, 'mandate_id' => $joined->id, 'node_id' => $club->id, 'scope' => 'university']);
+    }
+
+    public function test_a_scope_without_clubs_needs_no_club(): void
+    {
+        $joined = $this->mandate(2023);
+        $user = $this->validated();
+        $this->actingAs($user)->post('/bienvenue/origine', ['origin' => 'alumni']);
+
+        $this->actingAs($user)->post('/bienvenue/arrivee', ['mandate_id' => $joined->id, 'past_scope' => 'alumni'])->assertSessionHasNoErrors();
+        $this->assertSame($joined->id, $user->fresh()->joined_mandate_id);
+    }
+
     public function test_a_leadership_entry_post_waits_for_admin_approval(): void
     {
         $joined = $this->mandate(2023);

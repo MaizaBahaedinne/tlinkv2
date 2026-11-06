@@ -92,6 +92,15 @@ class HistoryOnboardingController extends Controller
             return redirect()->route('onboarding.history');
         }
 
+        // Le formulaire envoie la partie (past_scope) puis le club (past_club) ; past_target reste accepté tel quel.
+        if (! $request->filled('past_target')) {
+            $request->merge(['past_target' => match (true) {
+                $request->filled('past_club') => 'club:'.$request->input('past_club'),
+                $request->filled('past_scope') => 'scope:'.$request->input('past_scope'),
+                default => null,
+            }]);
+        }
+
         $data = $request->validate([
             'mandate_id' => ['required', 'integer', 'exists:mandates,id'],
             'past_target' => ['required', 'string', 'max:80'],
@@ -102,6 +111,11 @@ class HistoryOnboardingController extends Controller
         ]);
 
         [$scope, $clubId] = $this->parseTarget($data['past_target']);
+
+        if ($clubId === null && MembershipRequests::clubsByScope()->has($scope)) {
+            throw ValidationException::withMessages(['past_club' => 'Choisissez le club que vous avez rejoint dans cette partie.']);
+        }
+
         $mandate = Mandate::query()->findOrFail($data['mandate_id']);
 
         // Première adhésion pré-remplie : elle suit le circuit habituel (membre accepté, responsabilité validée par un administrateur).

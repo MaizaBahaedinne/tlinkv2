@@ -66,29 +66,28 @@
                         </div>
 
                         <div>
-                            <label for="past-target" class="text-sm font-semibold text-slate-700">Partie rejointe</label>
-                            <select id="past-target" name="past_target" required class="{{ $fieldClass }}">
+                            <label for="past-scope" class="text-sm font-semibold text-slate-700">Partie rejointe</label>
+                            <select id="past-scope" name="past_scope" required class="{{ $fieldClass }}">
                                 <option value="">Choisir…</option>
-                                <optgroup label="Entités de la Fondation">
-                                    @foreach($scopes as $slug => $label)
-                                        <option value="scope:{{ $slug }}" @selected(old('past_target') === 'scope:'.$slug)>{{ $label }}</option>
-                                    @endforeach
-                                </optgroup>
-                                @foreach($clubs as $slug => $list)
-                                    <optgroup label="Clubs · {{ $scopes[$slug] ?? $slug }}">
-                                        @foreach($list as $club)
-                                            <option value="club:{{ $club->id }}" @selected(old('past_target') === 'club:'.$club->id)>{{ $club->title }}{{ filled($club->subtitle) ? ' — '.$club->subtitle : '' }}</option>
-                                        @endforeach
-                                    </optgroup>
+                                @foreach($scopes as $slug => $label)
+                                    <option value="{{ $slug }}" @selected(old('past_scope') === $slug)>{{ $label }}</option>
                                 @endforeach
                             </select>
                             @error('past_target')<p class="mt-1 text-xs font-semibold text-rose-700">{{ $message }}</p>@enderror
                         </div>
 
                         <div>
+                            <label for="past-club" class="text-sm font-semibold text-slate-700">Club rejoint</label>
+                            <select id="past-club" name="past_club" disabled class="{{ $fieldClass }} disabled:bg-slate-50 disabled:text-slate-400">
+                                <option value="">Choisis d’abord la partie…</option>
+                            </select>
+                            @error('past_club')<p class="mt-1 text-xs font-semibold text-rose-700">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
                             <label for="past-position" class="text-sm font-semibold text-slate-700">Poste occupé à ton arrivée</label>
                             <select id="past-position" name="position_id" disabled class="{{ $fieldClass }} disabled:bg-slate-50 disabled:text-slate-400">
-                                <option value="">Choisis d’abord la partie…</option>
+                                <option value="">Choisis d’abord le club…</option>
                             </select>
                             <p class="mt-1 text-xs text-slate-500">Un poste de membre est enregistré directement. Un poste de responsabilité (président, vice-président, assistant…) doit être approuvé par un administrateur.</p>
                             @error('position_id')<p class="mt-1 text-xs font-semibold text-rose-700">{{ $message }}</p>@enderror
@@ -148,28 +147,30 @@
 <script>
     (function () {
         var form = document.getElementById('entry-form');
-        var target = document.getElementById('past-target');
+        var scope = document.getElementById('past-scope');
+        var club = document.getElementById('past-club');
         var position = document.getElementById('past-position');
-        var placeholder = 'Choisis d’abord la partie…';
-        var selected = @json((string) old('position_id'));
+        var clubsByScope = @json($clubs->map(fn ($list) => $list->map(fn ($c) => ['id' => $c->id, 'title' => $c->title.(filled($c->subtitle) ? ' — '.$c->subtitle : '')])->values()));
+        var selectedClub = @json((string) old('past_club'));
+        var selectedPosition = @json((string) old('position_id'));
 
-        function setOptions(text, disabled) {
-            position.innerHTML = '';
+        function reset(select, text, disabled) {
+            select.innerHTML = '';
             var option = document.createElement('option');
             option.value = '';
             option.textContent = text;
-            position.appendChild(option);
-            position.disabled = disabled;
+            select.appendChild(option);
+            select.disabled = disabled;
+            select.required = false;
         }
 
-        function loadPositions(preselect) {
-            if (!target.value) { setOptions(placeholder, true); return; }
-            setOptions('Chargement…', true);
+        function loadPositions(target, preselect) {
+            reset(position, 'Chargement…', true);
 
-            fetch(form.dataset.positionsUrl + '?target=' + encodeURIComponent(target.value), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+            fetch(form.dataset.positionsUrl + '?target=' + encodeURIComponent(target), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
                 .then(function (response) { if (!response.ok) { throw new Error('http'); } return response.json(); })
                 .then(function (data) {
-                    setOptions(data.positions.length ? 'Simple membre (sans poste précis)' : 'Aucun poste dans cette partie', false);
+                    reset(position, data.positions.length ? 'Simple membre (sans poste précis)' : 'Aucun poste dans cette partie', false);
                     data.positions.forEach(function (item) {
                         var option = document.createElement('option');
                         option.value = item.id;
@@ -178,11 +179,42 @@
                         position.appendChild(option);
                     });
                 })
-                .catch(function () { setOptions('Impossible de charger les postes', true); });
+                .catch(function () { reset(position, 'Impossible de charger les postes', true); });
         }
 
-        target.addEventListener('change', function () { loadPositions(''); });
-        if (target.value) { loadPositions(selected); }
+        // Partie → club (obligatoire quand la partie a des clubs) → poste.
+        function onScope(preselectClub, preselectPosition) {
+            reset(position, 'Choisis d’abord le club…', true);
+
+            if (!scope.value) { reset(club, 'Choisis d’abord la partie…', true); return; }
+
+            var clubs = clubsByScope[scope.value] || [];
+
+            if (!clubs.length) {
+                reset(club, 'Aucun club dans cette partie', true);
+                loadPositions('scope:' + scope.value, preselectPosition);
+                return;
+            }
+
+            reset(club, 'Choisir le club…', false);
+            club.required = true;
+            clubs.forEach(function (item) {
+                var option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.title;
+                if (String(item.id) === String(preselectClub)) { option.selected = true; }
+                club.appendChild(option);
+            });
+
+            if (club.value) { loadPositions('club:' + club.value, preselectPosition); }
+        }
+
+        scope.addEventListener('change', function () { onScope('', ''); });
+        club.addEventListener('change', function () {
+            if (club.value) { loadPositions('club:' + club.value, ''); } else { reset(position, 'Choisis d’abord le club…', true); }
+        });
+
+        if (scope.value) { onScope(selectedClub, selectedPosition); }
     })();
 </script>
 @endif
