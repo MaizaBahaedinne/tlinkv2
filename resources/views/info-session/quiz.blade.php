@@ -4,7 +4,7 @@
 <div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
     @include('partials.app-header')
 
-    <main class="app-container py-6">
+    <main class="app-container max-w-3xl py-6">
     {{-- Compte à rebours : le serveur reste maître du temps (échéance enregistrée à l'ouverture du quiz). Collé sous l'en-tête. --}}
     <div class="sticky top-[4.75rem] z-10 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/95 px-5 py-3 shadow-soft backdrop-blur">
         <p class="font-display text-lg font-semibold text-slate-900">{{ $title }}</p>

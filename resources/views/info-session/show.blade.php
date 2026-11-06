@@ -3,36 +3,58 @@
 @section('content')
 @php
     $result = session('quiz_result') ? $last : null;
-    $statusLabels = \App\Models\QuizAttempt::STATUSES;
+    $inIntegration = \App\Support\Onboarding::inProgress(auth()->user());
 @endphp
 <div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
     @include('partials.app-header')
 
-    <main class="app-container py-6">
+    <main class="app-container max-w-3xl py-6">
+        @if($result)
+            @php
+                $passed = $result->status === 'passed';
+                $percent = $result->total > 0 ? (int) round($result->score / $result->total * 100) : 0;
+                $primary = 'rounded-xl bg-tlink-blue px-6 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-tlink-blue-700';
+            @endphp
+            <section class="rounded-3xl border bg-white p-6 text-center shadow-soft sm:p-8 {{ $passed ? 'border-emerald-200' : 'border-amber-200' }}" role="{{ $passed ? 'status' : 'alert' }}">
+                @if($result->status === 'expired')
+                    <h1 class="font-display text-2xl font-semibold text-amber-800">Le temps est écoulé</h1>
+                    <p class="mt-2 text-sm text-slate-600">Ta tentative n'a pas pu être corrigée. Tu peux recommencer le quiz.</p>
+                @else
+                    <p class="text-sm font-semibold uppercase tracking-wide text-slate-400">Ta note</p>
+                    <p class="mt-1 font-display text-5xl font-semibold {{ $passed ? 'text-emerald-700' : 'text-amber-700' }}">{{ $result->score }} / {{ $result->total }}</p>
+                    <p class="mt-1 text-sm text-slate-500">{{ $percent }} % de bonnes réponses (il en faut {{ $settings['pass_percent'] }} %)</p>
+
+                    @if($passed)
+                        <h1 class="mt-5 font-display text-2xl font-semibold text-emerald-800">Bravo, quiz réussi !</h1>
+                        <p class="mt-1 text-sm text-slate-600">Ta session d'information est validée.</p>
+                    @else
+                        <h1 class="mt-5 font-display text-2xl font-semibold text-amber-800">Quiz non validé</h1>
+                        <p class="mt-1 text-sm text-slate-600">Tu peux recommencer : les questions et les réponses changent d'ordre à chaque tentative.</p>
+                    @endif
+                @endif
+
+                <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+                    @if($passed)
+                        @if($inIntegration)
+                            <a href="{{ route('integration.show') }}" class="{{ $primary }}">Compléter mon intégration</a>
+                        @else
+                            <a href="{{ route('home') }}" class="{{ $primary }}">Retour à l'accueil</a>
+                        @endif
+                    @else
+                        <form method="post" action="{{ route('info-session.start') }}">
+                            @csrf
+                            <button type="submit" class="{{ $primary }}">Recommencer le quiz</button>
+                        </form>
+                        <a href="{{ route('info-session.show') }}" class="rounded-xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Revoir la vidéo</a>
+                    @endif
+                </div>
+            </section>
+        @else
         @if($validated)
             <div class="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-900" role="status">
                 <span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">&#10003;</span>
                 <p class="text-sm font-medium">Ton compte est validé{{ $validatedAt ? ' depuis le '.$validatedAt->format('d/m/Y') : '' }}. Tu peux revoir l'info session quand tu veux.</p>
             </div>
-        @endif
-
-        @if($result)
-            @if($result->status === 'passed')
-                <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-900" role="status">
-                    <p class="font-display text-lg font-semibold">Bravo, quiz réussi : {{ $result->score }} / {{ $result->total }}</p>
-                    <p class="mt-1 text-sm">Ton compte est maintenant validé.</p>
-                </div>
-            @elseif($result->status === 'expired')
-                <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900" role="alert">
-                    <p class="font-display text-lg font-semibold">Le temps est écoulé</p>
-                    <p class="mt-1 text-sm">Ta tentative n'a pas pu être corrigée. Tu peux revoir la vidéo puis relancer le quiz.</p>
-                </div>
-            @else
-                <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900" role="alert">
-                    <p class="font-display text-lg font-semibold">Quiz non validé : {{ $result->score }} / {{ $result->total }}</p>
-                    <p class="mt-1 text-sm">Il faut {{ $settings['pass_percent'] }} % de bonnes réponses. Revois la vidéo, puis retente le quiz : les questions et les réponses changent d'ordre à chaque tentative.</p>
-                </div>
-            @endif
         @endif
 
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
@@ -83,61 +105,11 @@
             </form>
         </section>
 
-        @if($review !== [])
-            <section class="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft" id="correction">
-                <div class="flex flex-wrap items-center justify-between gap-3 px-6 pt-6 sm:px-8">
-                    <div>
-                        <h2 class="font-display text-xl font-semibold text-slate-900">Ta correction</h2>
-                        <p class="mt-1 text-sm text-slate-500">Dernière tentative, {{ $last->submitted_at?->format('d/m/Y à H:i') }}</p>
-                    </div>
-                    <span class="rounded-full px-4 py-1.5 text-sm font-semibold {{ $last->status === 'passed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">{{ $last->score }} / {{ $last->total }}</span>
-                </div>
-
-                <ol class="mt-5 space-y-4 px-6 pb-6 sm:px-8">
-                    @foreach($review as $index => $item)
-                        <li class="rounded-2xl border p-4 sm:p-5 {{ $item['ok'] ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50' }}">
-                            <div class="flex items-start justify-between gap-3">
-                                <p class="font-display text-base font-semibold text-slate-900"><span class="mr-2 text-tlink-blue">{{ $index + 1 }}.</span>{{ $item['text'] }}</p>
-                                <span class="shrink-0 rounded-full px-3 py-1 text-xs font-bold {{ $item['ok'] ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white' }}">{{ $item['ok'] ? 'VRAI' : 'FAUX' }}</span>
-                            </div>
-                            @if($item['type'] === 'multiple')
-                                <p class="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Plusieurs réponses possibles</p>
-                            @endif
-                            @unless($item['answered'])
-                                <p class="mt-2 text-sm font-medium text-rose-700">Tu n'as pas répondu à cette question.</p>
-                            @endunless
-
-                            <ul class="mt-3 grid gap-2">
-                                @foreach($item['options'] as $option)
-                                    @php
-                                        $style = match ($option['state']) {
-                                            'right' => 'border-emerald-300 bg-emerald-100 text-emerald-900',
-                                            'wrong' => 'border-rose-300 bg-rose-100 text-rose-900',
-                                            'missed' => 'border-dashed border-emerald-400 bg-white text-emerald-800',
-                                            default => 'border-slate-200 bg-white text-slate-500',
-                                        };
-                                        $tag = match ($option['state']) {
-                                            'right' => 'Ta réponse : juste',
-                                            'wrong' => 'Ta réponse : fausse',
-                                            'missed' => 'Bonne réponse',
-                                            default => null,
-                                        };
-                                    @endphp
-                                    <li class="flex items-start justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm {{ $style }}">
-                                        <span>{{ $option['text'] }}</span>
-                                        @if($tag)<span class="shrink-0 text-xs font-bold uppercase tracking-wide">{{ $tag }}</span>@endif
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </li>
-                    @endforeach
-                </ol>
-            </section>
         @endif
     </main>
 </div>
 
-@if($videoId)
+@if($videoId && ! $result)
 <script>
     (function () {
         var videoId = @json($videoId);

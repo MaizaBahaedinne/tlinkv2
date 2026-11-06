@@ -43,6 +43,12 @@ final class Onboarding
         return $user->onboarding_done_at === null && session('impersonator_id') === null;
     }
 
+    /** Le membre est en plein parcours d'intégration : il voit l'interface d'intégration, pas celle de l'application. */
+    public static function inProgress(User $user): bool
+    {
+        return self::applies($user) && self::current($user) !== null;
+    }
+
     /**
      * Première étape non terminée, ou null si le parcours est complet (il est alors enregistré comme terminé).
      */

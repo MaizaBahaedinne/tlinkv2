@@ -8,15 +8,7 @@
     $user = auth()->user();
 @endphp
 <div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
-    <header class="border-b border-slate-200 bg-white">
-        <div class="app-container flex max-w-3xl items-center justify-between py-3">
-            <span class="font-display text-lg font-semibold text-tlink-blue">T.Link</span>
-            <form method="post" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="text-sm font-semibold text-slate-500 hover:text-slate-800">Se déconnecter</button>
-            </form>
-        </div>
-    </header>
+    @include('partials.integration-header')
 
     <main class="app-container max-w-3xl py-6">
         <div>

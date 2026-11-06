@@ -29,7 +29,7 @@ class HistoryOnboardingTest extends TestCase
         return OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'Club Robotique', 'scope' => 'university', 'status' => 'active', 'sort_order' => 0]);
     }
 
-    public function test_passing_the_quiz_leads_to_the_welcome_questions_once(): void
+    public function test_passing_the_quiz_then_the_welcome_questions_are_reachable(): void
     {
         $user = User::factory()->create();
         $attempt = InfoSession::start($user);
@@ -38,7 +38,7 @@ class HistoryOnboardingTest extends TestCase
             $answers[$question['id']] = $attempt->snapshot['correct'][$question['id']];
         }
 
-        $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => $answers])->assertRedirect(route('onboarding.history'));
+        $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => $answers])->assertRedirect(route('info-session.show'));
 
         $this->actingAs($user->fresh())->get('/bienvenue')->assertOk()->assertSee('Ancien membre')->assertSee('Nouveau membre');
 

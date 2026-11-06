@@ -109,7 +109,7 @@ class InfoSessionTest extends TestCase
         $attempt = InfoSession::start($user);
 
         $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => $this->answersFor($attempt)])
-            ->assertRedirect(route('onboarding.history'));
+            ->assertRedirect(route('info-session.show'));
 
         $attempt->refresh();
         $this->assertSame('passed', $attempt->status);
@@ -168,19 +168,70 @@ class InfoSessionTest extends TestCase
         $this->assertNotNull($user->fresh()->onboarding_completed_at);
     }
 
-    public function test_the_correction_marks_each_answer_true_or_false(): void
+    public function test_the_score_is_shown_without_the_correction_and_a_failure_offers_a_restart(): void
+    {
+        $user = User::factory()->create();
+        $attempt = InfoSession::start($user);
+
+        $page = $this->actingAs($user)->followingRedirects()
+            ->post('/info-session/quiz/'.$attempt->id, ['answers' => $this->answersFor($attempt, 0)])
+            ->assertOk()
+            ->assertSee('5 / 6')
+            ->assertSee('Quiz non validé')
+            ->assertSee('Recommencer le quiz')
+            ->assertDontSee('Ta correction')
+            ->assertDontSee('Bonne réponse')
+            ->assertDontSee('Compléter mon intégration');
+
+        $this->assertStringNotContainsString('>VRAI<', $page->getContent());
+        $this->assertStringNotContainsString('>FAUX<', $page->getContent());
+
+        // La note n'est montrée qu'une fois : ensuite, retour à la page normale.
+        $this->actingAs($user)->get('/info-session')->assertDontSee('Recommencer le quiz')->assertDontSee('Ta note');
+    }
+
+    public function test_a_pass_offers_to_complete_the_integration_when_it_is_in_progress(): void
+    {
+        $user = User::factory()->inOnboarding()->create();
+        $attempt = InfoSession::start($user);
+
+        $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => $this->answersFor($attempt)])
+            ->assertRedirect(route('info-session.show'));
+
+        $this->actingAs($user)->withSession(['quiz_result' => $attempt->id])->get('/info-session')->assertOk()
+            ->assertSee('Bravo, quiz réussi')
+            ->assertSee('6 / 6')
+            ->assertSee('Compléter mon intégration')
+            ->assertSee('Se déconnecter')
+            ->assertDontSee('title="Notifications"', false);
+    }
+
+    public function test_an_expired_attempt_can_be_restarted_too(): void
+    {
+        $user = User::factory()->create();
+        $late = InfoSession::start($user);
+        $late->update(['expires_at' => now()->subSeconds(InfoSession::GRACE_SECONDS + 5)]);
+
+        $this->actingAs($user)->followingRedirects()
+            ->post('/info-session/quiz/'.$late->id, ['answers' => $this->answersFor($late)])
+            ->assertSee('Le temps est écoulé')
+            ->assertSee('Recommencer le quiz');
+    }
+
+    public function test_the_app_members_keep_the_application_navigation(): void
+    {
+        $this->actingAs(User::factory()->create())->get('/info-session')->assertOk()
+            ->assertSee('title="Notifications"', false)
+            ->assertDontSee('Se déconnecter');
+    }
+
+    public function test_the_correction_is_gone(): void
     {
         $user = User::factory()->create();
         $attempt = InfoSession::start($user);
         $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => $this->answersFor($attempt, 0)]);
 
-        $page = $this->actingAs($user)->get('/info-session')->assertOk()->assertSee('Ta correction')->assertSee('5 / 6');
-
-        $content = $page->getContent();
-        $this->assertSame(5, substr_count($content, '>VRAI<'));
-        $this->assertSame(1, substr_count($content, '>FAUX<'));
-        $this->assertStringContainsString('Ta réponse : fausse', $content);
-        $this->assertStringContainsString('Bonne réponse', $content);
+        $this->actingAs($user)->get('/info-session')->assertOk()->assertDontSee('Ta correction');
     }
 
     public function test_an_unanswered_question_is_false_and_an_expired_attempt_has_no_correction(): void
@@ -189,7 +240,7 @@ class InfoSessionTest extends TestCase
         $attempt = InfoSession::start($user);
         $this->actingAs($user)->post('/info-session/quiz/'.$attempt->id, ['answers' => []]);
 
-        $this->actingAs($user)->get('/info-session')->assertSee('Tu n\'as pas répondu à cette question.', false)->assertSee('0 / 6');
+        $this->assertSame(0, $attempt->fresh()->score);
 
         $late = InfoSession::start($user);
         $late->update(['expires_at' => now()->subSeconds(InfoSession::GRACE_SECONDS + 5)]);

@@ -22,7 +22,11 @@
     $moreItems = array_values(array_filter($allNav, fn (array $item): bool => ! in_array($item['key'], $essentialKeys, true)));
     $moreActive = collect($moreItems)->contains('active', true);
     $moreBadge = (int) collect($moreItems)->sum(fn (array $item): int => (int) ($item['badge'] ?? 0));
+    $inIntegration = \App\Support\Onboarding::inProgress($me);
 @endphp
+@if($inIntegration)
+    @include('partials.integration-header')
+@else
 <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 lg:backdrop-blur">
     <div class="app-container flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
         <a href="{{ route('home') }}" class="flex shrink-0 items-center lg:flex-1 lg:basis-0" aria-label="T.Link, accueil">
@@ -128,8 +132,9 @@
         </div>
     </div>
 </header>
+@endif
 
-@if(($messengerEnabled ?? false) && ! request()->routeIs('messenger.*'))
+@if(! $inIntegration && ($messengerEnabled ?? false) && ! request()->routeIs('messenger.*'))
     @include('messenger.dock')
 @endif
 
