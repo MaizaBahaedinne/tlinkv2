@@ -55,17 +55,20 @@ class InfoSessionTest extends TestCase
         $this->assertMatchesRegularExpression('/id="start-quiz"\s+disabled/', $page->getContent());
     }
 
-    public function test_unvalidated_members_get_a_blocking_alert_until_they_pass_the_quiz(): void
+    public function test_unvalidated_members_are_blocked_server_side_until_they_pass_the_quiz(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->inOnboarding()->create();
 
-        $this->actingAs($user)->get('/profil')->assertOk()->assertSee('account-gate', false)->assertSee('Compte non validé');
-        $this->actingAs($user)->get('/notifications')->assertOk()->assertSee('account-gate', false);
-        $this->actingAs($user)->get('/info-session')->assertDontSee('account-gate', false);
+        $this->actingAs($user)->get('/profil')->assertRedirect(route('integration.show'));
+        $this->actingAs($user)->get('/notifications')->assertOk();
+        $this->actingAs($user)->get('/info-session')->assertOk();
+        $this->actingAs($user)->get('/integration')->assertOk()->assertSee('Session d’information obligatoire');
 
         $user->forceFill(['onboarding_completed_at' => now()])->save();
 
-        $this->actingAs($user)->get('/profil')->assertDontSee('account-gate', false);
+        // Quiz réussi : la page suivante du parcours (ancien/nouveau) s'ouvre, le reste reste fermé.
+        $this->actingAs($user)->get('/bienvenue')->assertOk();
+        $this->actingAs($user)->get('/profil')->assertRedirect(route('integration.show'));
     }
 
     public function test_the_quiz_page_never_exposes_the_correct_answers_and_reuses_the_open_attempt(): void

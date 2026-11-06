@@ -165,7 +165,7 @@ class HistoryOnboardingTest extends TestCase
         $this->assertSame($joined->id, $user->joined_mandate_id);
         $this->assertNotNull($user->history_onboarding_at);
         $this->assertSame(1, MandateParticipation::query()->count());
-        $this->actingAs($user)->get('/feed')->assertDontSee('id="history-gate"', false);
+        $this->actingAs($user)->get('/feed')->assertOk();
     }
 
     public function test_an_entry_already_pending_also_lets_the_alumnus_through_without_a_duplicate(): void
@@ -191,36 +191,33 @@ class HistoryOnboardingTest extends TestCase
         $this->actingAs($this->validated())->get('/bienvenue/arrivee')->assertRedirect('/bienvenue');
     }
 
-    public function test_members_who_have_not_answered_get_a_blocking_popup_on_every_page(): void
+    public function test_members_who_have_not_answered_are_blocked_on_every_page_except_the_welcome_steps(): void
     {
-        $user = $this->validated();
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now()]);
 
-        foreach (['/feed', '/adhesions', '/profil', '/info-session'] as $path) {
-            $this->actingAs($user)->get($path)->assertOk()->assertSee('id="history-gate"', false)->assertSee('Ancien ou nouveau membre ?')
-                ->assertSee('value="alumni"', false)->assertSee('value="new"', false);
+        foreach (['/feed', '/adhesions', '/profil'] as $path) {
+            $this->actingAs($user)->get($path)->assertRedirect(route('integration.show'));
         }
 
-        // La page d'accueil elle-même n'est pas bloquée, sinon on ne pourrait pas répondre.
-        $this->actingAs($user)->get('/bienvenue')->assertOk()->assertDontSee('id="history-gate"', false);
+        $this->actingAs($user)->get('/integration')->assertOk()->assertSee('Ancien ou nouveau membre ?');
+        $this->actingAs($user)->get('/bienvenue')->assertOk()->assertSee('value="alumni"', false)->assertSee('value="new"', false);
     }
 
-    public function test_the_popup_asks_an_alumnus_to_finish_his_arrival_and_disappears_once_answered(): void
+    public function test_the_hub_asks_an_alumnus_to_finish_his_arrival_and_the_block_lifts_once_the_whole_flow_is_done(): void
     {
-        $user = $this->validated();
-        $user->forceFill(['member_origin' => 'alumni'])->save();
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'member_origin' => 'alumni']);
 
-        $this->actingAs($user)->get('/feed')->assertOk()->assertSee('id="history-gate"', false)->assertSee('Complète ton arrivée')->assertSee(route('onboarding.history'), false);
+        $this->actingAs($user)->get('/feed')->assertRedirect(route('integration.show'));
 
         $user->forceFill(['history_onboarding_at' => now(), 'member_origin' => 'new'])->save();
-        $this->actingAs($user)->get('/feed')->assertDontSee('id="history-gate"', false);
+        // Étape suivante : le profil reste à compléter, le fil reste fermé.
+        $this->actingAs($user)->get('/feed')->assertRedirect(route('integration.show'));
+        $this->actingAs($user)->get('/profil')->assertOk();
     }
 
-    public function test_the_popup_is_not_shown_to_unvalidated_accounts_nor_during_impersonation(): void
+    public function test_the_block_does_not_apply_during_impersonation(): void
     {
-        $unvalidated = User::factory()->create();
-        $this->actingAs($unvalidated)->get('/feed')->assertSee('id="account-gate"', false)->assertDontSee('id="history-gate"', false);
-
-        $user = $this->validated();
-        $this->actingAs($user)->withSession(['impersonator_id' => 999])->get('/feed')->assertDontSee('id="history-gate"', false);
+        $user = User::factory()->inOnboarding()->create();
+        $this->actingAs($user)->withSession(['impersonator_id' => 999])->get('/feed')->assertOk();
     }
 }

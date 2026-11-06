@@ -31,9 +31,21 @@ class UserFactory extends Factory
             'last_name' => fn (array $attributes): ?string => User::splitName($attributes['name'])[1],
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
+            // Parcours d'intégration terminé : les tests qui l'exercent utilisent `inOnboarding()`.
+            'onboarding_done_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /**
+     * Compte neuf : il doit encore passer par le parcours d'intégration (e-mail déjà vérifié).
+     */
+    public function inOnboarding(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'onboarding_done_at' => null,
+        ]);
     }
 
     /**

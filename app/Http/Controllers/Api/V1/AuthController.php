@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Profile;
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,6 +41,7 @@ class AuthController extends Controller
             'headline' => 'Nouveau membre Fondation Tunivisions',
         ]);
 
+        event(new Registered($user));
         Auth::login($user);
 
         return response()->json([

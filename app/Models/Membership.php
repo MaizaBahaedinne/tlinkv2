@@ -15,6 +15,7 @@ class Membership extends Model
         'user_id',
         'scope',
         'node_id',
+        'position_id',
         'status',
         'membership_type',
         'motivation_letter',
@@ -42,6 +43,12 @@ class Membership extends Model
     public function node(): BelongsTo
     {
         return $this->belongsTo(OrgNode::class, 'node_id');
+    }
+
+    /** Poste visé par une candidature (null pour une simple adhésion). */
+    public function position(): BelongsTo
+    {
+        return $this->belongsTo(OrgNode::class, 'position_id');
     }
 
     /**

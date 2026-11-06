@@ -93,6 +93,19 @@ class SocialAuthTest extends TestCase
         $this->assertSame(1, SocialAccount::query()->where('user_id', $existing->id)->count());
     }
 
+    public function test_linking_an_account_whose_email_was_never_verified_revokes_the_old_password(): void
+    {
+        $this->enable('google');
+        $squatter = User::factory()->unverified()->create(['email' => 'jean@example.com', 'password' => 'known-by-attacker']);
+        $this->fakeProvider('google', ['given_name' => 'Jean', 'family_name' => 'Dupont', 'email_verified' => true]);
+
+        $this->get('/auth/google/callback')->assertRedirect('/feed');
+
+        $squatter->refresh();
+        $this->assertNotNull($squatter->email_verified_at);
+        $this->assertFalse(\Illuminate\Support\Facades\Hash::check('known-by-attacker', $squatter->password));
+    }
+
     public function test_callback_refuses_to_link_an_unverified_email(): void
     {
         $this->enable('google');

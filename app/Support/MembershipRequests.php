@@ -108,6 +108,12 @@ final class MembershipRequests
         return $node->access_level !== AccessLevels::NONE || $node->capacity !== 'multiple';
     }
 
+    /** Le poste accorde des droits dans l'application : seul un administrateur global l'attribue. */
+    public static function grantsRights(OrgNode $node): bool
+    {
+        return $node->access_level !== null && $node->access_level !== AccessLevels::NONE;
+    }
+
     /**
      * Postes disponibles dans le périmètre (un seul par intitulé pour une entité), responsabilités comprises :
      * le contrôleur les marque pour que la liste indique qu'ils sont soumis à validation.
@@ -299,7 +305,7 @@ final class MembershipRequests
     /**
      * @throws ValidationException
      */
-    public static function submit(User $user, string $scope, ?int $nodeId, string $type, ?string $startsAt, ?string $ip, ?string $motivation = null): Membership
+    public static function submit(User $user, string $scope, ?int $nodeId, string $type, ?string $startsAt, ?string $ip, ?string $motivation = null, ?int $positionId = null): Membership
     {
         $motivation = trim((string) $motivation);
 
@@ -321,6 +327,16 @@ final class MembershipRequests
             throw ValidationException::withMessages(['target' => 'Ce club n’appartient pas à ce périmètre.']);
         }
 
+        $position = null;
+
+        if ($positionId !== null) {
+            $position = self::positionNodes($scope, $nodeId)->firstWhere('id', $positionId);
+
+            if ($position === null) {
+                throw ValidationException::withMessages(['position_id' => 'Ce poste n’existe pas dans cette partie.']);
+            }
+        }
+
         $existing = Membership::query()
             ->where('user_id', $user->id)
             ->where('scope', $scope)
@@ -339,13 +355,14 @@ final class MembershipRequests
             'user_id' => $user->id,
             'scope' => $scope,
             'node_id' => $nodeId,
+            'position_id' => $position?->id,
             'status' => 'pending',
             'membership_type' => $type,
             'motivation_letter' => $motivation,
             'starts_at' => $startsAt,
         ]);
 
-        $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id, $nodeId);
+        $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id, $nodeId, $position !== null && self::grantsRights($position));
 
         $approval = ApprovalRequest::query()->create([
             'request_type' => 'membership',
@@ -362,7 +379,7 @@ final class MembershipRequests
             action: 'membership.request.created',
             targetType: Membership::class,
             targetId: $membership->id,
-            metadata: ['approval_request_id' => $approval->id, 'scope' => $membership->scope],
+            metadata: ['approval_request_id' => $approval->id, 'scope' => $membership->scope, 'position_id' => $membership->position_id],
             ip: $ip,
         );
 
@@ -370,8 +387,10 @@ final class MembershipRequests
             AppNotification::query()->create([
                 'user_id' => $reviewerId,
                 'type' => 'membership.submitted',
-                'title' => 'Nouvelle demande d\'adhesion',
-                'body' => 'Une demande d\'adhesion attend votre validation.',
+                'title' => $position !== null ? 'Nouvelle candidature à un poste' : 'Nouvelle demande d\'adhesion',
+                'body' => $position !== null
+                    ? $user->name.' candidate au poste « '.$position->title.' ».'
+                    : 'Une demande d\'adhesion attend votre validation.',
                 'data' => ['membership_id' => $membership->id, 'approval_request_id' => $approval->id],
             ]);
         }

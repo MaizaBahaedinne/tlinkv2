@@ -89,6 +89,23 @@ Artisan::command('orgchart:sync', function () {
     $this->line('Clubs ranges ou mis a jour: '.$stats['updated']);
 })->purpose('Aligne les perimetres et le rangement des clubs de l\'organigramme');
 
+Artisan::command('onboarding:waive {email : Adresse e-mail du compte} {--verify-email : Confirme aussi l\'adresse e-mail}', function (string $email) {
+    $user = \App\Models\User::query()->where('email', mb_strtolower(trim($email)))->first();
+
+    if (! $user) {
+        $this->error('Compte introuvable.');
+
+        return self::FAILURE;
+    }
+
+    $user->forceFill(array_filter([
+        'onboarding_done_at' => now(),
+        'email_verified_at' => $this->option('verify-email') && ! $user->email_verified_at ? now() : null,
+    ]))->save();
+
+    $this->info('Parcours d\'intégration levé pour '.$user->email.'.');
+})->purpose('Dispense un compte du parcours d\'intégration (dépannage : e-mail non reçu, validation bloquée)');
+
 Artisan::command('admin:create {email : Adresse e-mail du compte} {--name= : Nom complet (création uniquement)} {--password= : Mot de passe (généré si absent)}', function (string $email) {
     $email = mb_strtolower(trim($email));
 
@@ -119,6 +136,7 @@ Artisan::command('admin:create {email : Adresse e-mail du compte} {--name= : Nom
             'email_verified_at' => now(),
             'onboarding_completed_at' => now(),
             'history_onboarding_at' => now(),
+            'onboarding_done_at' => now(),
         ])->save();
     }
 

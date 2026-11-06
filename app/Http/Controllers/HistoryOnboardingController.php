@@ -7,6 +7,7 @@ use App\Models\MandateParticipation;
 use App\Models\OrgNode;
 use App\Support\AuditLogger;
 use App\Support\MembershipRequests;
+use App\Support\Onboarding;
 use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -73,9 +74,13 @@ class HistoryOnboardingController extends Controller
 
         AuditLogger::record($user->id, 'onboarding.origin', \App\Models\User::class, $user->id, ['origin' => $data['origin']], ip: $request->ip());
 
-        return $data['origin'] === 'new'
-            ? redirect()->route('memberships.index')->with('status', 'Bienvenue ! Faites votre première demande d’adhésion pour rejoindre la Fondation.')
-            : redirect()->route('onboarding.history');
+        if ($data['origin'] === 'new') {
+            return Onboarding::applies($user)
+                ? redirect()->route('integration.show')
+                : redirect()->route('memberships.index')->with('status', 'Bienvenue ! Faites votre première demande d’adhésion pour rejoindre la Fondation.');
+        }
+
+        return redirect()->route('onboarding.history');
     }
 
     public function entry(Request $request): RedirectResponse

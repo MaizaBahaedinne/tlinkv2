@@ -9,8 +9,13 @@ class ApprovalResolver
      * puis un administrateur global. Le demandeur n'est jamais son propre validateur.
      * Pour un club, les responsables du club passent avant (president de club d'abord).
      */
-    public static function resolveMembershipReviewer(string $scope, int $requesterId, ?int $clubId = null): ?int
+    public static function resolveMembershipReviewer(string $scope, int $requesterId, ?int $clubId = null, bool $globalOnly = false): ?int
     {
+        if ($globalOnly) {
+            // Poste qui accorde des droits : seul un administrateur global peut l'attribuer.
+            return OrgAccess::userIdsWith('approval.review', $scope, $requesterId, 'global_admin')[0] ?? null;
+        }
+
         if ($clubId !== null) {
             $ids = OrgAccess::userIdsInClub('approval.review', $clubId, $requesterId);
 

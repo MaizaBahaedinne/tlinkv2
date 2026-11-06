@@ -7,8 +7,13 @@ use App\Models\ApprovalDecision;
 use App\Models\ApprovalRequest;
 use App\Models\MandateParticipation;
 use App\Models\Membership;
+use App\Models\OrgAssignment;
+use App\Models\OrgNode;
+use App\Models\OrgPerson;
 use App\Models\User;
+use App\Support\OrgChart\OrgChartRules;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ApprovalDecisionService
 {
@@ -37,6 +42,14 @@ class ApprovalDecisionService
 
             if (! AccessScope::can($actor, 'approval.review', $membership->scope) || ! $responsibility->covers($membership->scope, $membership->node_id)) {
                 return new ApprovalDecisionException('Permission insuffisante.', 403);
+            }
+
+            if ($membership->position_id !== null) {
+                $position = OrgNode::query()->find($membership->position_id);
+
+                if ($position !== null && MembershipRequests::grantsRights($position) && ! OrgAccess::responsibility($actor, 'approval.review')['all']) {
+                    return new ApprovalDecisionException('Ce poste accorde des droits : seul un administrateur global peut l\'attribuer.', 403);
+                }
             }
         }
 
@@ -82,6 +95,10 @@ class ApprovalDecisionService
             $approvalRequest->save();
 
             if ($membership !== null) {
+                if ($decision === 'approved' && $membership->position_id !== null) {
+                    $this->assignPosition($membership);
+                }
+
                 $membership->status = $decision === 'approved' ? 'approved' : 'rejected';
                 $membership->approved_by = $actor->id;
                 $membership->approved_at = now();
@@ -116,5 +133,42 @@ class ApprovalDecisionService
                 'data' => ['approval_request_id' => $approvalRequest->id, 'decision' => $decision],
             ]);
         });
+    }
+
+    /**
+     * Candidature approuvée : le membre devient titulaire du poste (le poste doit pouvoir l'accueillir).
+     *
+     * @throws ApprovalDecisionException
+     */
+    private function assignPosition(Membership $membership): void
+    {
+        $node = OrgNode::query()->find($membership->position_id);
+        $user = User::query()->find($membership->user_id);
+
+        if ($node === null || $user === null) {
+            throw new ApprovalDecisionException('Le poste ou le compte du candidat n\'existe plus.', 422);
+        }
+
+        $already = OrgAssignment::query()->where('node_id', $node->id)
+            ->whereHas('person', fn ($query) => $query->where('user_id', $user->id))->exists();
+
+        if ($already) {
+            return;
+        }
+
+        $rules = new OrgChartRules();
+
+        try {
+            $rules->assertCanHold($node, $rules->currentPeopleCount($node) + 1);
+        } catch (ValidationException) {
+            throw new ApprovalDecisionException('Le poste « '.$node->title.' » est déjà pourvu : refusez la candidature ou libérez le poste.', 422);
+        }
+
+        $person = OrgPerson::query()->firstOrCreate(['user_id' => $user->id], [
+            'full_name' => $user->name,
+            'contact_visible' => true,
+        ]);
+
+        OrgAssignment::query()->firstOrCreate(['node_id' => $node->id, 'person_id' => $person->id]);
     }
 }

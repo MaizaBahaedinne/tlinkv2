@@ -90,6 +90,12 @@ Route::get('/posts/attachments/{attachment}', [FeedController::class, 'showAttac
     ->name('posts.attachments.show');
 
 Route::middleware('auth')->group(function (): void {
+    // Parcours d'intégration : hub, confirmation de l'e-mail (lien signé), renvoi et correction de l'adresse.
+    Route::get('/integration', [\App\Http\Controllers\IntegrationController::class, 'show'])->name('integration.show');
+    Route::get('/email/verifier/{id}/{hash}', [\App\Http\Controllers\IntegrationController::class, 'verify'])->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+    Route::post('/email/verification', [\App\Http\Controllers\IntegrationController::class, 'resend'])->middleware('throttle:3,1')->name('verification.send');
+    Route::post('/integration/email', [\App\Http\Controllers\IntegrationController::class, 'changeEmail'])->middleware('throttle:3,10')->name('integration.email');
+
     // Fil d'actualite de l'application T.Link (reserve aux membres connectes).
     Route::get('/feed', [FeedController::class, 'index'])->name('home');
     Route::post('/posts/{post}/view', [FeedController::class, 'view'])->name('posts.view');

@@ -31,7 +31,9 @@
                             </div>
                             <div class="text-sm">
                                 @if($membership)
-                                    Demande d’adhésion à <strong>{{ \App\Support\OrgScopes::label($membership->scope) ?? '—' }}</strong>@if($membership->node) · {{ $membership->node->title }}@endif
+                                    {{ $membership->position ? 'Candidature au poste' : 'Demande d’adhésion à' }}
+                                    @if($membership->position)<strong>{{ $membership->position->title }}</strong> ·@endif
+                                    <strong>{{ \App\Support\OrgScopes::label($membership->scope) ?? '—' }}</strong>@if($membership->node) · {{ $membership->node->title }}@endif
                                 @elseif($participation)
                                     Poste de responsabilité sur le mandat <strong>{{ $participation->mandate?->label ?? '—' }}</strong> : {{ $participation->position_title ?? '—' }}
                                     · {{ $participation->node?->title ?? \App\Support\OrgScopes::label($participation->scope) }}

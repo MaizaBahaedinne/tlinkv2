@@ -134,7 +134,10 @@
                 </ul>
 
                 <div class="mt-6 flex flex-wrap items-center justify-end gap-3">
-                    <a href="{{ route('memberships.index') }}" class="rounded-xl bg-tlink-blue px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90">Compléter mes adhésions</a>
+                    <a href="{{ route('memberships.index') }}" class="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Compléter mes adhésions</a>
+                    @if(\App\Support\Onboarding::applies(auth()->user()))
+                        <a href="{{ route('integration.show') }}" class="rounded-xl bg-tlink-blue px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90">Continuer mon intégration</a>
+                    @endif
                 </div>
             @endif
         </section>

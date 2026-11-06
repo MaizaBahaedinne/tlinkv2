@@ -28,6 +28,15 @@ class AppServiceProvider extends ServiceProvider
         // Badges : le recalcul se déclenche à l'enregistrement des modèles listés dans le catalogue d'activités.
         \App\Support\Gamification\ActivityCatalog::listen();
 
+        // Courriel de confirmation d'adresse, en français.
+        \Illuminate\Auth\Notifications\VerifyEmail::toMailUsing(fn ($notifiable, string $url) => (new \Illuminate\Notifications\Messages\MailMessage())
+            ->subject('Confirmez votre adresse e-mail | T.Link')
+            ->greeting('Bienvenue '.$notifiable->first_name.' !')
+            ->line('Pour poursuivre votre intégration à la Fondation Tunivisions, confirmez votre adresse e-mail.')
+            ->action('Confirmer mon adresse', $url)
+            ->line('Ce lien est valable 60 minutes. Si vous n’avez pas créé de compte, ignorez ce message.')
+            ->salutation('L’équipe Tunivisions'));
+
         RateLimiter::for('api', function (Request $request) {
             $key = $request->user()?->id ? 'user:'.$request->user()->id : 'ip:'.$request->ip();
 

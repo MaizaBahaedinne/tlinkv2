@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Contracts\User as SocialUser;
@@ -106,7 +107,15 @@ class SocialAuthController extends Controller
             }
 
             if (! $user->email_verified_at) {
-                $user->forceFill(['email_verified_at' => now()])->save();
+                // Adresse jamais vérifiée : quelqu'un a pu créer ce compte avec l'e-mail d'autrui et un mot de passe connu de lui.
+                // Le propriétaire réel vient de le prouver via le réseau social : on invalide l'ancien accès.
+                $user->forceFill([
+                    'email_verified_at' => now(),
+                    'password' => Hash::make(Str::random(48)),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                DB::table('sessions')->where('user_id', $user->id)->delete();
             }
         } else {
             [$first, $last] = $this->names($socialUser);

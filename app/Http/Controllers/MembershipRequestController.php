@@ -8,6 +8,7 @@ use App\Models\Membership;
 use App\Support\AdminContext;
 use App\Support\MemberJourney;
 use App\Support\MembershipRequests;
+use App\Support\Onboarding;
 use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
@@ -77,6 +78,7 @@ class MembershipRequestController extends Controller
     {
         $data = $request->validate([
             'target' => ['required', 'string', 'max:80'],
+            'position_id' => ['nullable', 'integer'],
             'motivation_letter' => ['required', 'string', 'max:'.MembershipRequests::MOTIVATION_MAX],
         ], [
             'target.required' => 'Choisissez où vous souhaitez adhérer.',
@@ -86,16 +88,20 @@ class MembershipRequestController extends Controller
 
         [$scope, $nodeId] = $this->parseTarget($data['target']);
 
-        MembershipRequests::submit($request->user()->loadMissing('profile'), $scope, $nodeId, 'member', null, $request->ip(), $data['motivation_letter']);
+        MembershipRequests::submit($request->user()->loadMissing('profile'), $scope, $nodeId, 'member', null, $request->ip(), $data['motivation_letter'], isset($data['position_id']) ? (int) $data['position_id'] : null);
 
-        return redirect()->route('memberships.index')->with('status', 'Votre demande d’adhésion est envoyée : elle sera examinée par l’équipe.');
+        $status = isset($data['position_id'])
+            ? 'Votre candidature est envoyée : elle sera examinée par un de vos supérieurs.'
+            : 'Votre demande d’adhésion est envoyée : elle sera examinée par l’équipe.';
+
+        return redirect()->route(Onboarding::applies($request->user()) ? 'integration.show' : 'memberships.index')->with('status', $status);
     }
 
     public function destroy(Request $request, Membership $membership): RedirectResponse
     {
         MembershipRequests::withdraw($request->user(), $membership, $request->ip());
 
-        return redirect()->route('memberships.index')->with('status', 'Votre demande a été retirée.');
+        return redirect()->route(Onboarding::applies($request->user()) ? 'integration.show' : 'memberships.index')->with('status', 'Votre demande a été retirée.');
     }
 
     /**
@@ -108,7 +114,7 @@ class MembershipRequestController extends Controller
         [$scope, $clubId] = $this->parseTarget($data['target']);
 
         return response()->json(['positions' => MembershipRequests::memberPositions($scope, $clubId)
-            ->map(fn ($node) => ['id' => $node->id, 'title' => $node->title, 'subtitle' => $node->subtitle, 'leader' => MembershipRequests::isLeaderPosition($node)])
+            ->map(fn ($node) => ['id' => $node->id, 'title' => $node->title, 'subtitle' => $node->subtitle, 'leader' => MembershipRequests::isLeaderPosition($node), 'rights' => MembershipRequests::grantsRights($node)])
             ->values()]);
     }
 
