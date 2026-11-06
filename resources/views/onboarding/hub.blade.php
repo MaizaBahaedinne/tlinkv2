@@ -18,10 +18,28 @@
 
         <ol class="mt-5 grid gap-2 sm:grid-cols-5" aria-label="Étapes">
             @foreach($steps as $key => $label)
-                @php $index = array_search($key, $stepKeys, true) + 1; @endphp
-                <li class="rounded-2xl border px-3 py-3 text-xs font-semibold {{ $done[$key] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : ($key === $step ? 'border-tlink-blue bg-white text-tlink-blue' : 'border-slate-200 bg-slate-50 text-slate-400') }}" @if($key === $step) aria-current="step" @endif>
-                    <span class="block text-base">{{ $done[$key] ? '✓' : $index }}</span>
-                    {{ $label }}
+                @php
+                    $index = array_search($key, $stepKeys, true) + 1;
+                    $isDone = (bool) $done[$key];
+                    $isCurrent = ! $isDone && $key === $step;
+                @endphp
+                <li class="flex items-center gap-3 rounded-2xl border px-3 py-3 text-xs font-semibold sm:flex-col sm:items-start sm:gap-2 {{ $isDone ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : ($isCurrent ? 'border-tlink-blue bg-white text-tlink-blue' : 'border-slate-200 bg-slate-50 text-slate-400') }}" data-step="{{ $key }}" data-state="{{ $isDone ? 'done' : ($isCurrent ? 'current' : 'pending') }}" @if($isCurrent) aria-current="step" @endif>
+                    @if($isDone)
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+                        </span>
+                    @else
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm {{ $isCurrent ? 'border-tlink-blue' : 'border-slate-300' }}" aria-hidden="true">{{ $index }}</span>
+                    @endif
+                    <span class="block">
+                        <span class="block">{{ $label }}</span>
+                        <span class="mt-0.5 block text-[11px] font-medium">
+                            @if($isDone)<span class="sr-only">Étape </span>Terminée
+                            @elseif($isCurrent)En cours
+                            @else En attente
+                            @endif
+                        </span>
+                    </span>
                 </li>
             @endforeach
         </ol>

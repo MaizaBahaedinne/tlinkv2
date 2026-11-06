@@ -28,8 +28,8 @@ class OnboardingFlowTest extends TestCase
             'photo_path' => $photo ? 'profiles/avatars/test.jpg' : null,
             'privacy_settings' => [
                 'educations' => [['school' => 'ISI']],
-                'professional_experiences' => [['company' => 'Acme', 'role' => 'Stagiaire']],
                 'skill_keywords' => ['PHP'],
+                'languages' => [['name' => 'Français', 'level' => 'natif']],
             ],
         ]);
     }
@@ -117,6 +117,39 @@ class OnboardingFlowTest extends TestCase
         $this->actingAs($user)->get('/feed')->assertRedirect(route('integration.show'));
         $this->actingAs($user)->get('/integration')->assertOk()->assertSee('une photo de profil');
         $this->actingAs($user)->get('/profil')->assertOk();
+    }
+
+    public function test_the_hub_marks_finished_steps_done_and_the_others_pending(): void
+    {
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now()]);
+
+        $html = $this->actingAs($user)->get('/integration')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-step="email" data-state="done"', $html);
+        $this->assertStringContainsString('data-step="info_session" data-state="done"', $html);
+        $this->assertStringContainsString('data-step="history" data-state="current"', $html);
+        $this->assertStringContainsString('data-step="profile" data-state="pending"', $html);
+        $this->assertStringContainsString('En attente', $html);
+        $this->assertStringContainsString('Terminée', $html);
+    }
+
+    public function test_skills_and_languages_are_required_but_experience_is_not(): void
+    {
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now()]);
+        Profile::query()->create(['user_id' => $user->id, 'photo_path' => 'profiles/avatars/test.jpg', 'privacy_settings' => [
+            'educations' => [['school' => 'ISI']],
+        ]]);
+
+        $missing = \App\Support\ProfileCompleteness::missing($user->fresh());
+        $this->assertSame(['vos compétences', 'vos langues'], $missing);
+
+        $user->profile->update(['privacy_settings' => [
+            'educations' => [['school' => 'ISI']],
+            'skill_keywords' => ['PHP'],
+            'languages' => [['name' => 'Français', 'level' => 'natif']],
+        ]]);
+
+        $this->assertSame([], \App\Support\ProfileCompleteness::missing($user->fresh()));
     }
 
     public function test_the_placement_request_blocks_until_a_superior_approves_it(): void

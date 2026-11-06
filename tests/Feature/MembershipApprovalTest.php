@@ -22,6 +22,7 @@ class MembershipApprovalTest extends TestCase
             'educations' => [['school' => 'ISI']],
             'professional_experiences' => [['company' => 'Acme', 'role' => 'Stagiaire']],
             'skill_keywords' => ['PHP'],
+            'languages' => [['name' => 'Français', 'level' => 'natif']],
         ]]);
 
         $this->grantAccess($reviewer, 'entity_admin', 'university');

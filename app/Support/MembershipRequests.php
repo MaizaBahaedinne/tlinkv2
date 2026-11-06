@@ -58,12 +58,13 @@ final class MembershipRequests
             $missing[] = 'au moins une formation';
         }
 
-        if (! $filled('professional_experiences') && ! $filled('associative_experiences')) {
-            $missing[] = 'au moins une expérience (professionnelle ou associative)';
-        }
-
+        // Les expériences restent facultatives ; les compétences et les langues sont obligatoires.
         if (! $filled('skill_keywords')) {
             $missing[] = 'vos compétences';
+        }
+
+        if (! $filled('languages')) {
+            $missing[] = 'vos langues';
         }
 
         return $missing;

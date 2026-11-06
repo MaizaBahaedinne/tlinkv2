@@ -41,6 +41,7 @@ class MembershipRequestPageTest extends TestCase
                 'educations' => [['degree_type' => 'Licence', 'diploma_name' => 'Informatique', 'school' => 'ISI']],
                 'associative_experiences' => [['club_name' => 'Club Robotique', 'role' => 'Membre']],
                 'skill_keywords' => ['Laravel', 'Gestion de projet'],
+                'languages' => [['name' => 'Français', 'level' => 'natif']],
             ]]);
         }
 
