@@ -7,21 +7,24 @@ use App\Models\AcademyPlan;
 use App\Models\StoreProduct;
 use App\Support\Academy\AcademySettings;
 use App\Support\Domains;
+use App\Support\SiteSettings;
 use App\Support\Store\StoreSettings;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 
 /**
- * Pages d'accueil publiques des sous-domaines Store et Academy (aucune connexion requise) : présentation du service,
- * aperçu du catalogue et invitation à se connecter.
+ * Pages d'accueil publiques des sous-domaines Store et Academy (aucune connexion requise). Elles reprennent la mise en page
+ * (barre de navigation, pied de page, langue) du site de la Fondation : présentation du service, aperçu du catalogue et
+ * invitation à se connecter.
  */
 class ShowcaseController extends Controller
 {
-    public function store(): View
+    public function store(Request $request): View
     {
         $open = StoreSettings::enabled();
 
-        return view('showcase.store', $this->common('store') + [
-            'title' => StoreSettings::get('name').' | Fondation Tunivisions',
+        return $this->render($request, 'site.showcase.store', 'store', [
             'settings' => StoreSettings::all(),
             'open' => $open,
             'products' => $open
@@ -32,10 +35,9 @@ class ShowcaseController extends Controller
         ]);
     }
 
-    public function academy(): View
+    public function academy(Request $request): View
     {
-        return view('showcase.academy', $this->common('academy') + [
-            'title' => AcademySettings::NAME.' | Fondation Tunivisions',
+        return $this->render($request, 'site.showcase.academy', 'academy', [
             'name' => AcademySettings::NAME,
             'courses' => AcademyCourse::query()->where('status', 'published')
                 ->withCount(['modules', 'lessons'])
@@ -45,19 +47,23 @@ class ShowcaseController extends Controller
     }
 
     /**
-     * Liens communs aux vitrines. La connexion et l'inscription vivent sur l'hôte T.Link ; la session est partagée
-     * entre les sous-domaines, on revient donc sur la vitrine une fois connecté.
+     * Ces pages n'ont pas de segment de langue : on prend celle du navigateur, comme la racine du site. La connexion et
+     * l'inscription vivent sur l'hôte T.Link ; la session est partagée entre les sous-domaines.
      *
-     * @return array<string, string>
+     * @param  array<string, mixed>  $data
      */
-    private function common(string $service): array
+    private function render(Request $request, string $view, string $service, array $data): View
     {
-        return [
+        $locale = $request->getPreferredLanguage(array_keys(config('site.locales'))) ?? config('site.default_locale');
+
+        app()->setLocale($locale);
+        URL::defaults(['locale' => $locale]);
+
+        return view($view, $data + [
+            'site' => new SiteSettings(),
             'service' => $service,
-            'siteUrl' => Domains::url('site'),
-            'appUrl' => Domains::url('app'),
             'loginUrl' => Domains::url('app', route('login', [], false)),
             'registerUrl' => Domains::url('app', route('register', [], false)),
-        ];
+        ]);
     }
 }

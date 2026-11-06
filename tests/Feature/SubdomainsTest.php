@@ -85,15 +85,15 @@ class SubdomainsTest extends TestCase
     {
         $this->get('http://link.example.test/')->assertRedirect('http://link.example.test/feed');
 
-        $this->get('http://store.example.test/')->assertOk()->assertSee('Tunivisions Stores')->assertSee('Ouverture prochainement');
-        $this->get('http://academy.example.test/')->assertOk()->assertSee('Tunivisions Academy');
+        $this->withHeader('Accept-Language', 'fr')->get('http://store.example.test/')->assertOk()->assertSee('Tunivisions Stores')->assertSee('Ouverture prochainement');
+        $this->withHeader('Accept-Language', 'fr')->get('http://academy.example.test/')->assertOk()->assertSee('Tunivisions Academy');
     }
 
     public function test_showcases_link_to_the_app_host_for_login_and_to_each_other(): void
     {
         $this->get('http://store.example.test/')
             ->assertSee(Domains::url('app', '/connexion'), false)
-            ->assertSee(Domains::url('site'), false)
+            ->assertSee(route('site.about'), false)
             ->assertSee(route('academy.showcase'), false);
 
         $this->get('http://academy.example.test/')->assertSee(route('store.showcase'), false);

@@ -4,6 +4,8 @@
     $locales = config('site.locales');
     $route = request()->route();
     $routeName = $route?->getName();
+    // Les pages hors du site (vitrines Store et Academy) n'ont pas de segment de langue : leurs alternatives pointent vers l'accueil du site.
+    $isSiteRoute = str_starts_with((string) $routeName, 'site.');
     $nav = [
         'site.home' => __('site.nav.home'),
         'site.about' => __('site.nav.about'),
@@ -11,6 +13,8 @@
         'site.news' => __('site.nav.news'),
         'site.events' => __('site.nav.events'),
         'site.clubs' => __('site.nav.clubs'),
+        'store.showcase' => __('site.nav.store'),
+        'academy.showcase' => __('site.nav.academy'),
         'site.contact' => __('site.nav.contact'),
     ];
     $title = trim($__env->yieldContent('title'));
@@ -68,7 +72,7 @@
         <meta name="twitter:card" content="summary_large_image">
     @endif
     <meta property="og:locale" content="{{ $locale }}">
-    @if($routeName)
+    @if($routeName && $isSiteRoute)
         @foreach($locales as $code => $meta)
             <link rel="alternate" hreflang="{{ $code }}" href="{{ route($routeName, ['locale' => $code] + $route->parameters() + request()->query()) }}">
         @endforeach
@@ -96,7 +100,7 @@
             <nav class="hidden items-center gap-1 lg:flex" aria-label="{{ __('site.footer.navigation') }}">
                 @foreach($nav as $name => $label)
                     <a href="{{ route($name) }}"
-                       class="rounded-lg px-3 py-2 text-sm font-semibold {{ $routeName === $name || str_starts_with((string) $routeName, $name.'.') ? 'bg-brand-100 text-brand-800' : 'text-slate-600 hover:bg-slate-100' }}"
+                       class="rounded-lg px-2.5 py-2 text-sm font-semibold xl:px-3 {{ $routeName === $name || str_starts_with((string) $routeName, $name.'.') ? 'bg-brand-100 text-brand-800' : 'text-slate-600 hover:bg-slate-100' }}"
                        @if($routeName === $name) aria-current="page" @endif>{{ $label }}</a>
                 @endforeach
             </nav>
@@ -110,7 +114,7 @@
                     <ul class="absolute end-0 z-50 mt-2 min-w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
                         @foreach($locales as $code => $meta)
                             <li>
-                                <a href="{{ $routeName ? route($routeName, ['locale' => $code] + $route->parameters() + request()->query()) : route('site.home', ['locale' => $code]) }}"
+                                <a href="{{ $isSiteRoute ? route($routeName, ['locale' => $code] + $route->parameters() + request()->query()) : route('site.home', ['locale' => $code]) }}"
                                    hreflang="{{ $code }}" lang="{{ $code }}"
                                    class="flex items-center justify-between gap-3 px-4 py-2 text-sm {{ $code === $locale ? 'bg-brand-50 font-bold text-brand-800' : 'text-slate-700 hover:bg-slate-100' }}"
                                    @if($code === $locale) aria-current="true" @endif>

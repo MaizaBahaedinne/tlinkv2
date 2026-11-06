@@ -17,4 +17,6 @@
             </div>
         @endif
     </section>
+
+    @include('site.partials.service-cards')
 @endsection

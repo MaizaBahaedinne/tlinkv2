@@ -55,7 +55,7 @@ Les cookies d'un domaine parent sont partagés avec tous ses sous-domaines. Pour
 
 - Les anciennes adresses (`/boutique`, `/academy`, `/certificats/…`, `/fr`…) demandées sur un autre hôte sont redirigées (301) vers l'hôte de leur section.
 - Une page de T.Link demandée depuis le site, le Store ou l'Academy est redirigée vers l'hôte T.Link (301, ou 308 pour les requêtes non GET).
-- La racine de `link.` mène au fil. Celles de `store.` et `academy.` sont des vitrines publiques (présentation, aperçu du catalogue, connexion via `link.`) ; la boutique et les cours restent sous `/boutique` et `/academy`, réservés aux membres. Sans sous-domaine, ces vitrines sont à `/boutique/presentation` et `/academy/presentation`.
+- La racine de `link.` mène au fil. Celles de `store.` et `academy.` sont des vitrines publiques qui reprennent la mise en page du site de la Fondation (barre de navigation, pied de page, langue du navigateur) ; la barre de navigation et la page « Projets » du site renvoient vers elles. La boutique et les cours restent sous `/boutique` et `/academy`, réservés aux membres. Sans sous-domaine, ces vitrines sont à `/boutique/presentation` et `/academy/presentation`.
 - Le compte à rebours de lancement ne couvre la racine que sur l'hôte du site vitrine.
 - Un visiteur non connecté qui ouvre une page protégée du Store ou de l'Academy est renvoyé vers la connexion de T.Link, puis revient sur la page demandée grâce à la session partagée.
 - Le compte à rebours de lancement continue de s'appliquer au site vitrine ; T.Link n'est concerné que si l'option « inclure T.Link » est cochée.

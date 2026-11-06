@@ -13,7 +13,7 @@ class ShowcaseTest extends TestCase
 
     public function test_store_showcase_is_public_and_announces_the_opening(): void
     {
-        $this->get('/boutique/presentation')
+        $this->withHeader('Accept-Language', 'fr')->get('/boutique/presentation')
             ->assertOk()
             ->assertSee('Tunivisions Stores')
             ->assertSee('Ouverture prochainement');
@@ -23,7 +23,7 @@ class ShowcaseTest extends TestCase
     {
         Setting::query()->create(['group' => 'store', 'key' => 'config', 'value' => json_encode(['enabled' => true])]);
 
-        $this->get('/boutique/presentation')
+        $this->withHeader('Accept-Language', 'fr')->get('/boutique/presentation')
             ->assertOk()
             ->assertDontSee('Ouverture prochainement')
             ->assertSee(route('store.index'), false);
@@ -35,5 +35,27 @@ class ShowcaseTest extends TestCase
             ->assertOk()
             ->assertSee('Tunivisions Academy')
             ->assertSee(route('academy.index'), false);
+    }
+
+    public function test_showcases_use_the_foundation_site_layout_and_navbar(): void
+    {
+        $this->get('/boutique/presentation')
+            ->assertOk()
+            ->assertSee(route('site.about'), false)
+            ->assertSee(route('site.projects'), false)
+            ->assertSee(route('store.showcase'), false)
+            ->assertSee(route('academy.showcase'), false)
+            ->assertDontSee('hreflang="ar" href="'.route('store.showcase', ['locale' => 'ar']).'"', false);
+    }
+
+    public function test_foundation_navbar_and_projects_page_link_to_the_showcases(): void
+    {
+        $this->get('/fr')->assertOk()->assertSee(route('store.showcase'), false)->assertSee(route('academy.showcase'), false);
+
+        $this->get('/fr/projets')
+            ->assertOk()
+            ->assertSee(__('site.showcase.services_title'))
+            ->assertSee('Tunivisions Stores')
+            ->assertSee('Tunivisions Academy');
     }
 }
