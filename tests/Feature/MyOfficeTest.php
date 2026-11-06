@@ -75,7 +75,7 @@ class MyOfficeTest extends TestCase
             ->assertDontSee('Conseiller rattaché');
     }
 
-    public function test_only_positions_are_listed_and_ordered_by_level(): void
+    public function test_only_positions_are_listed_and_the_tree_shows_each_level(): void
     {
         $unit = $this->node('Unité Alpha', $this->top);
         $unit->update(['kind' => 'unit']);
@@ -96,8 +96,90 @@ class MyOfficeTest extends TestCase
             ->assertSee('Niveau −2')
             ->getContent();
 
-        $this->assertLessThan(strpos($html, 'Adjoint Profond'), strpos($html, 'Chef Second'), 'le niveau 1 passe avant le niveau 2');
-        $this->assertLessThan(strpos($html, 'Chef Second'), strpos($html, 'Chef Premier'));
+        $this->assertLessThan(strpos($html, 'Adjoint Profond'), strpos($html, 'Chef Premier'), 'un chef passe avant son adjoint dans l\'arbre');
+        $this->assertLessThan(strpos($html, 'Chef Second'), strpos($html, 'Adjoint Profond'), 'l\'arbre se lit branche par branche');
+        $this->assertStringContainsString('class="org-tree', $html);
+    }
+
+    public function test_the_team_is_drawn_as_a_tree_where_each_position_sits_under_its_own_parent(): void
+    {
+        $first = $this->node('Chef Premier', $this->top);
+        $deputy = $this->node('Adjoint Profond', $first);
+        $second = $this->node('Chef Second', $this->top);
+        $first->update(['sort_order' => 1]);
+        $second->update(['sort_order' => 2]);
+
+        $html = $this->actingAs($this->place($this->top, 'Karim Directeur'))->get('/mon-bureau')->assertOk()->getContent();
+
+        $tree = substr($html, strpos($html, 'class="org-tree'));
+        $firstBranch = substr($tree, strpos($tree, 'Chef Premier'), strpos($tree, 'Chef Second') - strpos($tree, 'Chef Premier'));
+
+        $this->assertStringContainsString('Adjoint Profond', $firstBranch, 'l\'adjoint est dans la branche de son chef');
+        $this->assertStringNotContainsString('Adjoint Profond', substr($tree, strpos($tree, 'Chef Second')));
+    }
+
+    public function test_superiors_are_drawn_above_my_position_in_the_tree(): void
+    {
+        $this->place($this->top, 'Karim Directeur');
+        $middle = $this->place($this->middle, 'Sonia Cheffe');
+
+        $html = $this->actingAs($middle)->get('/mon-bureau')->assertOk()->assertSee('Niveau +1')->getContent();
+
+        $tree = substr($html, strpos($html, '<ul>', strpos($html, 'class="org-tree')));
+        $this->assertLessThan(strpos($tree, 'Chef de pôle'), strpos($tree, 'Directeur du bureau'));
+        $this->assertLessThan(strpos($tree, 'Assistant de pôle'), strpos($tree, 'Chef de pôle'));
+    }
+
+    public function test_activities_the_member_took_part_in_are_listed(): void
+    {
+        $club = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Robotique Sfax', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
+        $challenge = \App\Models\Challenge::query()->create([
+            'title' => 'Défi Environnement', 'theme' => 'Sensibilisation', 'scope' => 'university',
+            'starts_at' => now()->subMonth(), 'ends_at' => now()->addMonth(), 'evaluation_at' => now()->addMonths(2), 'results_at' => now()->addMonths(3),
+            'status' => 'published',
+        ]);
+        $make = fn (string $title, $start, string $status = 'published') => \App\Models\ClubActivity::query()->create([
+            'challenge_id' => $challenge->id, 'club_id' => $club->id, 'title' => $title, 'type' => 'event', 'audience' => 'public',
+            'in_theme' => true, 'starts_at' => $start, 'status' => $status,
+        ]);
+
+        $attended = $make('Nettoyage de plage', now()->subDays(10));
+        $missed = $make('Atelier sans présence', now()->subDays(8));
+        $comingUp = $make('Hackathon à venir', now()->addDays(5));
+        $cancelled = $make('Sortie annulée', now()->subDays(6), 'cancelled');
+        $foreign = $make('Activité d\'un autre membre', now()->subDays(4));
+
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $register = fn ($activity, $user, array $extra = []) => \App\Models\ActivityRegistration::query()->create(['activity_id' => $activity->id, 'user_id' => $user->id, 'status' => 'registered'] + $extra);
+        $register($attended, $member, ['checked_in_at' => now()->subDays(10)]);
+        $register($missed, $member);
+        $register($comingUp, $member);
+        $register($cancelled, $member, ['checked_in_at' => now()->subDays(6)]);
+        $register($foreign, $other, ['checked_in_at' => now()->subDays(4)]);
+
+        $html = $this->actingAs($member)->get('/mon-bureau')->assertOk()
+            ->assertSee('Activités auxquelles j’ai participé')
+            ->assertSee('Nettoyage de plage')
+            ->assertDontSee('Atelier sans présence')
+            ->assertSee('Activité · Nettoyage de plage')
+            ->assertDontSee('Hackathon à venir')
+            ->assertDontSee('Sortie annulée')
+            ->assertDontSee('Activité d\'un autre membre', false)
+            ->getContent();
+
+        $this->assertStringContainsString('Présent(e)', $html);
+    }
+
+    public function test_the_clubs_button_is_gone_from_the_navigation_bar(): void
+    {
+        $html = $this->actingAs($this->place($this->middle, 'Sonia Cheffe'))->get('/mon-bureau')->assertOk()
+            ->assertDontSee('title="Clubs"', false)
+            ->assertDontSee('aria-label="Clubs"', false)
+            ->getContent();
+
+        $this->assertStringNotContainsString('fa-people-roof', $html);
+        $this->actingAs(User::factory()->create())->get('/clubs')->assertOk();
     }
 
     public function test_avatars_are_shown_and_phone_numbers_are_hidden(): void

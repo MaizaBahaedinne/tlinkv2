@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\ActivityRegistration;
+use App\Models\ClubActivity;
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Models\Membership;
@@ -42,7 +44,27 @@ final class MyOfficeSpace
     public static function hasActivity(User $user): bool
     {
         return Membership::query()->where('user_id', $user->id)->exists()
-            || EventRegistration::query()->where('user_id', $user->id)->exists();
+            || EventRegistration::query()->where('user_id', $user->id)->exists()
+            || ActivityRegistration::query()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Activités de clubs auxquelles le membre a participé : sa présence a été enregistrée (QR code de présence)
+     * sur une activité publiée. La plus récente d'abord.
+     *
+     * @return Collection<int, ActivityRegistration>
+     */
+    public static function participatedActivities(User $user): Collection
+    {
+        return ActivityRegistration::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'registered')
+            ->whereNotNull('checked_in_at')
+            ->whereHas('activity', fn (Builder $query) => $query->where('status', 'published'))
+            ->with('activity.club:id,title')
+            ->get()
+            ->sortByDesc(fn (ActivityRegistration $registration) => $registration->activity->starts_at?->getTimestamp() ?? 0)
+            ->values();
     }
 
     /**
@@ -100,6 +122,7 @@ final class MyOfficeSpace
         $clubs = self::clubs(array_keys($clubIds), $all, $user, $membershipRows, $mandateRows);
 
         [$upcoming, $past, $registrations] = self::events(array_keys($clubIds), $user);
+        $activities = self::participatedActivities($user);
 
         return [
             'memberships' => array_values(array_filter($membershipRows, fn (array $row): bool => $row['current'])),
@@ -108,7 +131,8 @@ final class MyOfficeSpace
             'upcoming' => $upcoming,
             'past' => $past,
             'registrations' => $registrations,
-            'journey' => self::journey($membershipRows, $mandateRows, $user),
+            'activities' => $activities,
+            'journey' => self::journey($membershipRows, $mandateRows, $user, $activities),
         ];
     }
 
@@ -245,9 +269,10 @@ final class MyOfficeSpace
      *
      * @param array<int, array<string, mixed>> $membershipRows
      * @param array<int, array<string, mixed>> $mandateRows
+     * @param Collection<int, ActivityRegistration> $activities
      * @return array<int, array{kind: string, icon: string, title: string, place: string|null, status: string, from: \Illuminate\Support\Carbon|null, to: \Illuminate\Support\Carbon|null, ongoing: bool, url: string|null}>
      */
-    private static function journey(array $membershipRows, array $mandateRows, User $user): array
+    private static function journey(array $membershipRows, array $mandateRows, User $user, Collection $activities): array
     {
         $items = [];
 
@@ -308,6 +333,24 @@ final class MyOfficeSpace
                     'url' => in_array($event->status, ['published', 'completed'], true) ? route('site.events.show', ['locale' => $locale, 'event' => $event->id]) : null,
                 ];
             });
+
+        $challenges = \App\Support\Challenges\Challenges::enabled();
+
+        foreach ($activities as $registration) {
+            $activity = $registration->activity;
+
+            $items[] = [
+                'kind' => 'activity',
+                'icon' => 'fa-solid fa-flag-checkered',
+                'title' => 'Activité · '.$activity->title,
+                'place' => $activity->club?->title,
+                'status' => 'Présent(e)',
+                'from' => $activity->starts_at,
+                'to' => null,
+                'ongoing' => false,
+                'url' => $challenges ? route('activities.show', $activity) : null,
+            ];
+        }
 
         usort($items, fn (array $a, array $b): int => ($b['from']?->getTimestamp() ?? 0) <=> ($a['from']?->getTimestamp() ?? 0));
 

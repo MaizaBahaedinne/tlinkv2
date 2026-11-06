@@ -130,7 +130,7 @@ final class MyOffice
 
             $team = [];
             $truncated = false;
-            self::walk($heldId, 1, $children, $all, $team, $truncated, self::insideClub($held, $all));
+            self::walk($heldId, 1, $children, $all, $team, $truncated, self::insideClub($held, $all), $heldId);
 
             // Par niveau (1 = juste sous mon poste), puis dans l'ordre de l'organigramme au sein d'un même niveau.
             usort($team, fn (array $a, array $b): int => [$a['depth'], $a['order']] <=> [$b['depth'], $b['order']]);
@@ -154,6 +154,7 @@ final class MyOffice
         foreach ($plans as $plan) {
             $result[] = [
                 'node' => $plan['node'],
+                'holders' => $holders[$plan['node']->id] ?? [],
                 'attached_to' => $plan['attached_to'],
                 'detached' => $plan['detached'],
                 'superiors' => array_map(fn (OrgNode $node): array => ['node' => $node, 'holders' => $holders[$node->id] ?? []], $plan['superiors']),
@@ -163,6 +164,7 @@ final class MyOffice
                     return [
                         'node' => $node,
                         'depth' => $row['depth'],
+                        'parent' => $row['parent'],
                         'holders' => $holders[$node->id] ?? [],
                         'manageable' => $node->kind === 'position' && self::covers($grants, $node),
                     ];
@@ -175,13 +177,63 @@ final class MyOffice
     }
 
     /**
+     * Organigramme d'un poste du membre : la chaîne de ses supérieurs (du sommet vers le bas), son poste,
+     * puis son équipe imbriquée selon les liens hiérarchiques. Chaque noeud : role (superior|me|team), niveau, titulaires.
+     *
+     * @param array<string, mixed> $office une entrée de overview()
+     * @return array<string, mixed>
+     */
+    public static function tree(array $office): array
+    {
+        $byParent = [];
+
+        foreach ($office['team'] as $row) {
+            $byParent[$row['parent']][] = $row;
+        }
+
+        $build = function (array $row) use (&$build, $byParent): array {
+            return [
+                'role' => 'team',
+                'level' => -$row['depth'],
+                'node' => $row['node'],
+                'holders' => $row['holders'],
+                'manageable' => $row['manageable'],
+                'children' => array_map($build, $byParent[$row['node']->id] ?? []),
+            ];
+        };
+
+        $root = [
+            'role' => 'me',
+            'level' => 0,
+            'node' => $office['node'],
+            'holders' => $office['holders'],
+            'manageable' => false,
+            'children' => array_map($build, $byParent[$office['node']->id] ?? []),
+        ];
+
+        // Supérieurs : du plus proche au plus éloigné dans overview() ; l'arbre part du sommet.
+        foreach ($office['superiors'] as $index => $superior) {
+            $root = [
+                'role' => 'superior',
+                'level' => $index + 1,
+                'node' => $superior['node'],
+                'holders' => $superior['holders'],
+                'manageable' => false,
+                'children' => [$root],
+            ];
+        }
+
+        return $root;
+    }
+
+    /**
      * Parcours en profondeur des blocs reliés par un lien hiérarchique.
      *
      * @param array<int, array<int, int>> $children
      * @param \Illuminate\Support\Collection<int, OrgNode> $all
      * @param array<int, array{id: int, depth: int, order: int}> $rows
      */
-    private static function walk(int $nodeId, int $depth, array $children, $all, array &$rows, bool &$truncated, bool $inClub): void
+    private static function walk(int $nodeId, int $depth, array $children, $all, array &$rows, bool &$truncated, bool $inClub, int $parentPosition): void
     {
         foreach ($children[$nodeId] ?? [] as $childId) {
             if (count($rows) >= self::MAX_TEAM_ROWS) {
@@ -199,10 +251,10 @@ final class MyOffice
 
             // Seuls les postes comptent : un bloc (unité, département) est traversé sans ajouter de niveau.
             if ($kind === 'position') {
-                $rows[] = ['id' => $childId, 'depth' => $depth, 'order' => count($rows)];
-                self::walk($childId, $depth + 1, $children, $all, $rows, $truncated, $inClub);
+                $rows[] = ['id' => $childId, 'depth' => $depth, 'order' => count($rows), 'parent' => $parentPosition];
+                self::walk($childId, $depth + 1, $children, $all, $rows, $truncated, $inClub, $childId);
             } else {
-                self::walk($childId, $depth, $children, $all, $rows, $truncated, $inClub);
+                self::walk($childId, $depth, $children, $all, $rows, $truncated, $inClub, $parentPosition);
             }
         }
     }

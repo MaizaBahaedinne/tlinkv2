@@ -68,7 +68,7 @@
                     <h2 class="font-display text-lg font-semibold text-slate-900"><i class="fa-solid fa-sitemap mr-2 text-slate-400" aria-hidden="true"></i>Mes postes et mon équipe</h2>
 
                     @forelse($offices as $office)
-                        @include('office.partials.post', ['office' => $office])
+                        @include('office.partials.post-tree', ['office' => $office])
                     @empty
                         <div class="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-5 text-sm text-slate-600">
                             Vous n’occupez aucun poste dans l’organigramme pour le moment.
@@ -82,6 +82,7 @@
 
             <div class="space-y-6">
                 @include('office.partials.events')
+                @include('office.partials.activities')
                 @include('office.partials.journey')
             </div>
         </div>

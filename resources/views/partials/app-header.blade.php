@@ -7,7 +7,6 @@
 
     $allNav = array_values(array_filter([
         ['key' => 'home', 'label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
-        ['key' => 'clubs', 'label' => 'Clubs', 'href' => route('club.index'), 'icon' => 'fa-solid fa-people-roof', 'active' => request()->routeIs('club.*')],
         ['key' => 'academy', 'label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')],
         ($hasOffice ?? false) ? ['key' => 'office', 'label' => \App\Support\AppMenu::officeLabel($me), 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
         ($challengesEnabled ?? false) ? ['key' => 'challenges', 'label' => 'Défis', 'href' => route('challenges.index'), 'icon' => 'fa-solid fa-trophy', 'active' => request()->routeIs('challenges.*', 'activities.*')] : null,
@@ -17,8 +16,8 @@
         ($canSimulate ?? false) ? ['key' => 'simulator', 'label' => 'Simulateur de rôles', 'href' => route('admin.simulator.index'), 'icon' => 'fa-solid fa-user-secret', 'active' => false] : null,
     ]));
 
-    // Barre principale : 4 icônes essentielles (Fil, Clubs, Academy, puis Mon bureau ou Défis) ; le reste va dans « Plus ».
-    $essentialKeys = ['home', 'clubs', 'academy', ($hasOffice ?? false) ? 'office' : 'challenges'];
+    // Barre principale : 3 icônes essentielles (Fil, Academy, puis Mon bureau ou Défis) ; le reste va dans « Plus ».
+    $essentialKeys = ['home', 'academy', ($hasOffice ?? false) ? 'office' : 'challenges'];
     $navItems = array_values(array_filter($allNav, fn (array $item): bool => in_array($item['key'], $essentialKeys, true)));
     $moreItems = array_values(array_filter($allNav, fn (array $item): bool => ! in_array($item['key'], $essentialKeys, true)));
     $moreActive = collect($moreItems)->contains('active', true);
