@@ -159,16 +159,23 @@ class MyOfficeTest extends TestCase
         $register($foreign, $other, ['checked_in_at' => now()->subDays(4)]);
 
         $html = $this->actingAs($member)->get('/mon-bureau')->assertOk()
-            ->assertSee('Activités auxquelles j’ai participé')
+            ->assertSee('Activités des clubs auxquelles j’ai participé ou je suis inscrit(e)')
             ->assertSee('Nettoyage de plage')
-            ->assertDontSee('Atelier sans présence')
-            ->assertSee('Activité · Nettoyage de plage')
-            ->assertDontSee('Hackathon à venir')
+            ->assertSee('Atelier sans présence')
+            ->assertSee('Hackathon à venir')
             ->assertDontSee('Sortie annulée')
             ->assertDontSee('Activité d\'un autre membre', false)
+            ->assertDontSee('Activité · Nettoyage de plage')
             ->getContent();
 
         $this->assertStringContainsString('Présent(e)', $html);
+        $this->assertStringContainsString('Inscrit(e)', $html);
+
+        // À venir et passées sont repliées, affichées sur demande.
+        $section = substr($html, strpos($html, 'id="activites"'));
+        $this->assertSame(2, substr_count($section, '<details'));
+        $this->assertStringNotContainsString('<details open', $section);
+        $this->assertLessThan(strpos($section, 'Atelier sans présence'), strpos($section, 'Hackathon à venir'));
     }
 
     public function test_the_clubs_button_is_gone_from_the_navigation_bar(): void
@@ -317,7 +324,9 @@ class MyOfficeTest extends TestCase
 
         $html = $this->actingAs($admin)->get('/mon-bureau')->assertOk()
             ->assertDontSee('role="tablist"', false)
-            ->assertSee('id="en-cours"', false)
+            ->assertSee('id="activites"', false)
+            ->assertDontSee('Mes adhésions en cours')
+            ->assertDontSee('Mes mandats en cours')
             ->assertSee('id="postes"', false)
             ->assertSee('id="clubs"', false)
             ->assertSee('id="evenements"', false)
@@ -364,8 +373,8 @@ class MyOfficeTest extends TestCase
         $this->actingAs($member)->get('/profil')->assertOk()->assertSee('/mon-bureau', false);
 
         $this->actingAs($member)->get('/mon-bureau')->assertOk()
-            ->assertSee('Mes adhésions en cours')
-            ->assertSee('Aucun mandat en cours.')
+            ->assertDontSee('Mes adhésions en cours')
+            ->assertDontSee('Aucun mandat en cours.')
             ->assertSee('Mes clubs')
             ->assertSee('Club Robotique Sfax')
             ->assertSee('Hiérarchie du club')
@@ -378,26 +387,23 @@ class MyOfficeTest extends TestCase
             ->assertSee('Présent(e)')
             ->assertSee('Mon parcours')
             ->assertSee('Adhésion · Club Robotique Sfax')
-            ->assertSee('Événement · Journée portes ouvertes')
+            ->assertDontSee('Événement · Journée portes ouvertes')
+            ->assertDontSee('Événement · Hackathon du club')
             ->assertDontSee('Salon d\'un autre club', false)
             ->assertDontSee('Brouillon du club');
     }
 
-    public function test_the_journey_keeps_ended_mandates_and_hides_them_from_the_current_list(): void
+    public function test_the_journey_keeps_ended_mandates(): void
     {
         $user = $this->place($this->low, 'Yassine Assistant');
         $past = $this->node('Ancien poste de trésorier', $this->top);
         $person = OrgPerson::query()->where('user_id', $user->id)->firstOrFail();
         OrgAssignment::query()->create(['node_id' => $past->id, 'person_id' => $person->id, 'starts_at' => now()->subYears(3), 'ends_at' => now()->subYear()]);
 
-        $html = $this->actingAs($user)->get('/mon-bureau')->assertOk()
+        $this->actingAs($user)->get('/mon-bureau')->assertOk()
             ->assertSee('Mandat · Assistant de pôle')
             ->assertSee('Mandat · Ancien poste de trésorier')
             ->assertSee('Terminé')
-            ->getContent();
-
-        $current = substr($html, strpos($html, 'id="en-cours"'), strpos($html, 'id="postes"') - strpos($html, 'id="en-cours"'));
-        $this->assertStringContainsString('Assistant de pôle', $current);
-        $this->assertStringNotContainsString('Ancien poste de trésorier', $current);
+            ->assertDontSee('Mes mandats en cours');
     }
 }

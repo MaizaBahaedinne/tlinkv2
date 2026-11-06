@@ -49,22 +49,27 @@ final class MyOfficeSpace
     }
 
     /**
-     * Activités de clubs auxquelles le membre a participé : sa présence a été enregistrée (QR code de présence)
-     * sur une activité publiée. La plus récente d'abord.
+     * Activités de clubs publiées auxquelles le membre est inscrit(e) ou a participé (présence enregistrée par QR code).
+     * Les inscriptions annulées ou en liste d'attente sont exclues.
      *
-     * @return Collection<int, ActivityRegistration>
+     * @return array{upcoming: Collection<int, ActivityRegistration>, past: Collection<int, ActivityRegistration>}
      */
-    public static function participatedActivities(User $user): Collection
+    public static function clubActivities(User $user): array
     {
-        return ActivityRegistration::query()
+        $registrations = ActivityRegistration::query()
             ->where('user_id', $user->id)
             ->where('status', 'registered')
-            ->whereNotNull('checked_in_at')
             ->whereHas('activity', fn (Builder $query) => $query->where('status', 'published'))
             ->with('activity.club:id,title')
-            ->get()
-            ->sortByDesc(fn (ActivityRegistration $registration) => $registration->activity->starts_at?->getTimestamp() ?? 0)
-            ->values();
+            ->get();
+
+        $startOfDay = now()->startOfDay();
+        $date = fn (ActivityRegistration $registration): int => $registration->activity->starts_at?->getTimestamp() ?? 0;
+
+        return [
+            'upcoming' => $registrations->filter(fn (ActivityRegistration $r): bool => $r->activity->starts_at?->gte($startOfDay) ?? false)->sortBy($date)->values(),
+            'past' => $registrations->filter(fn (ActivityRegistration $r): bool => $r->activity->starts_at?->lt($startOfDay) ?? false)->sortByDesc($date)->values(),
+        ];
     }
 
     /**
@@ -122,7 +127,7 @@ final class MyOfficeSpace
         $clubs = self::clubs(array_keys($clubIds), $all, $user, $membershipRows, $mandateRows);
 
         [$upcoming, $past, $registrations] = self::events(array_keys($clubIds), $user);
-        $activities = self::participatedActivities($user);
+        $activities = self::clubActivities($user);
 
         return [
             'memberships' => array_values(array_filter($membershipRows, fn (array $row): bool => $row['current'])),
@@ -132,7 +137,7 @@ final class MyOfficeSpace
             'past' => $past,
             'registrations' => $registrations,
             'activities' => $activities,
-            'journey' => self::journey($membershipRows, $mandateRows, $user, $activities),
+            'journey' => self::journey($membershipRows, $mandateRows),
         ];
     }
 
@@ -265,14 +270,14 @@ final class MyOfficeSpace
     }
 
     /**
-     * Parcours : adhésions, mandats et participations à des événements passés, du plus récent au plus ancien.
+     * Parcours Tunivisions : adhésions et mandats uniquement (les événements et activités ont leurs propres cartes),
+     * du plus récent au plus ancien.
      *
      * @param array<int, array<string, mixed>> $membershipRows
      * @param array<int, array<string, mixed>> $mandateRows
-     * @param Collection<int, ActivityRegistration> $activities
      * @return array<int, array{kind: string, icon: string, title: string, place: string|null, status: string, from: \Illuminate\Support\Carbon|null, to: \Illuminate\Support\Carbon|null, ongoing: bool, url: string|null}>
      */
-    private static function journey(array $membershipRows, array $mandateRows, User $user, Collection $activities): array
+    private static function journey(array $membershipRows, array $mandateRows): array
     {
         $items = [];
 
@@ -305,50 +310,6 @@ final class MyOfficeSpace
                 'to' => $assignment->ends_at,
                 'ongoing' => $row['current'],
                 'url' => null,
-            ];
-        }
-
-        $locale = app()->getLocale();
-        $locale = array_key_exists($locale, config('site.locales')) ? $locale : config('site.default_locale');
-        $startOfDay = now()->startOfDay();
-
-        EventRegistration::query()
-            ->where('user_id', $user->id)
-            ->whereNotIn('status', ['cancelled', 'rejected'])
-            ->with('event')
-            ->get()
-            ->filter(fn (EventRegistration $registration): bool => $registration->event?->starts_at !== null && $registration->event->starts_at->lt($startOfDay))
-            ->each(function (EventRegistration $registration) use (&$items, $locale): void {
-                $event = $registration->event;
-
-                $items[] = [
-                    'kind' => 'event',
-                    'icon' => 'fa-solid fa-calendar-check',
-                    'title' => 'Événement · '.$event->title,
-                    'place' => $event->location,
-                    'status' => self::registrationLabel($registration->status) ?? '',
-                    'from' => $event->starts_at,
-                    'to' => null,
-                    'ongoing' => false,
-                    'url' => in_array($event->status, ['published', 'completed'], true) ? route('site.events.show', ['locale' => $locale, 'event' => $event->id]) : null,
-                ];
-            });
-
-        $challenges = \App\Support\Challenges\Challenges::enabled();
-
-        foreach ($activities as $registration) {
-            $activity = $registration->activity;
-
-            $items[] = [
-                'kind' => 'activity',
-                'icon' => 'fa-solid fa-flag-checkered',
-                'title' => 'Activité · '.$activity->title,
-                'place' => $activity->club?->title,
-                'status' => 'Présent(e)',
-                'from' => $activity->starts_at,
-                'to' => null,
-                'ongoing' => false,
-                'url' => $challenges ? route('activities.show', $activity) : null,
             ];
         }
 

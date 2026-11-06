@@ -11,10 +11,10 @@
     $initials = mb_strtoupper(mb_substr($words[0] ?? '?', 0, 1).(count($words) > 1 ? mb_substr(end($words), 0, 1) : ''));
 
     $tiles = [
-        ['en-cours', 'Adhésions', count($space['memberships']), 'fa-solid fa-id-card'],
-        ['postes', 'Postes', count($offices), 'fa-solid fa-sitemap'],
-        ['clubs', 'Clubs', count($space['clubs']), 'fa-solid fa-people-group'],
-        ['evenements', 'Événements à venir', $space['upcoming']->count(), 'fa-solid fa-calendar-days'],
+        [route('memberships.index'), 'Adhésions', count($space['memberships']), 'fa-solid fa-id-card', true],
+        ['#postes', 'Postes', count($offices), 'fa-solid fa-sitemap', false],
+        ['#clubs', 'Clubs', count($space['clubs']), 'fa-solid fa-people-group', false],
+        ['#evenements', 'Événements à venir', $space['upcoming']->count(), 'fa-solid fa-calendar-days', false],
     ];
 @endphp
 <div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
@@ -40,9 +40,9 @@
         @endif
 
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            @foreach($tiles as [$anchor, $label, $count, $icon])
-                @if($count > 0)
-                    <a href="#{{ $anchor }}" class="card flex items-center gap-3 p-4 transition hover:border-tlink-blue">
+            @foreach($tiles as [$href, $label, $count, $icon, $always])
+                @if($always || $count > 0)
+                    <a href="{{ $href }}" class="card flex items-center gap-3 p-4 transition hover:border-tlink-blue">
                 @else
                     <div class="card flex items-center gap-3 p-4 opacity-60">
                 @endif
@@ -51,16 +51,13 @@
                             <span class="block text-2xl font-semibold leading-none text-slate-900">{{ $count }}</span>
                             <span class="mt-1 block text-xs text-slate-500">{{ $label }}</span>
                         </span>
-                @if($count > 0)
+                @if($always || $count > 0)
                     </a>
                 @else
                     </div>
                 @endif
             @endforeach
         </div>
-
-        {{-- Mon engagement : adhésions et mandats en cours --}}
-        @include('office.partials.engagement')
 
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">

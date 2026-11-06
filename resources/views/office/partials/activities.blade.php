@@ -1,36 +1,55 @@
-{{-- Activités de clubs auxquelles j'ai participé --}}
 @php
-    $activityLinks = \App\Support\Challenges\Challenges::enabled();
+    $groups = [
+        ['À venir', $space['activities']['upcoming']],
+        ['Passées', $space['activities']['past']],
+    ];
+    $linkable = \App\Support\Challenges\Challenges::enabled();
 @endphp
-<section id="activites" class="card p-5">
-    <h2 class="font-display text-lg font-semibold text-slate-900"><i class="fa-solid fa-flag-checkered mr-2 text-slate-400" aria-hidden="true"></i>Activités auxquelles j’ai participé</h2>
 
-    <ul class="mt-2 divide-y divide-slate-100">
-        @forelse($space['activities'] as $registration)
-            @php
-                $activity = $registration->activity;
-            @endphp
-            <li class="flex items-center gap-3 py-3">
-                <div class="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                    <span class="text-sm font-bold leading-none">{{ $activity->starts_at->format('d') }}</span>
-                    <span class="mt-0.5 text-[10px] uppercase">{{ $activity->starts_at->translatedFormat('M') }}</span>
+<section id="activites" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 class="text-lg font-bold text-slate-900">Activités des clubs auxquelles j’ai participé ou je suis inscrit(e)</h2>
+
+    <div class="mt-4 space-y-3">
+        @foreach ($groups as [$label, $items])
+            <details class="rounded-xl border border-slate-200">
+                <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800">
+                    <span>{{ $label }}</span>
+                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{{ count($items) }}</span>
+                </summary>
+
+                <div class="border-t border-slate-100 px-4 py-3">
+                    @forelse ($items as $registration)
+                        @php $activity = $registration->activity; @endphp
+                        <div class="flex items-center gap-3 py-2">
+                            <div class="w-12 shrink-0 rounded-lg bg-slate-50 py-1 text-center">
+                                <div class="text-lg font-bold leading-none text-slate-900">{{ $activity->starts_at->format('d') }}</div>
+                                <div class="text-[11px] uppercase text-slate-500">{{ $activity->starts_at->translatedFormat('M') }}</div>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate text-sm font-semibold text-slate-900">
+                                    @if ($linkable)
+                                        <a href="{{ route('activities.show', $activity) }}" class="hover:underline">{{ $activity->title }}</a>
+                                    @else
+                                        {{ $activity->title }}
+                                    @endif
+                                </div>
+                                <div class="truncate text-xs text-slate-500">
+                                    {{ $activity->starts_at->translatedFormat('d F Y, H:i') }}
+                                    @if ($activity->club) · {{ $activity->club->title }} @endif
+                                    · {{ \App\Models\ClubActivity::TYPES[$activity->type] ?? $activity->type }}
+                                </div>
+                            </div>
+                            @if ($registration->checked_in_at)
+                                <span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Présent(e)</span>
+                            @else
+                                <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">Inscrit(e)</span>
+                            @endif
+                        </div>
+                    @empty
+                        <p class="text-sm text-slate-500">Aucune activité {{ $label === 'À venir' ? 'à venir' : 'passée' }}.</p>
+                    @endforelse
                 </div>
-                <div class="min-w-0 flex-1">
-                    @if($activityLinks)
-                        <a href="{{ route('activities.show', $activity) }}" class="text-sm font-semibold text-slate-800 hover:underline">{{ $activity->title }}</a>
-                    @else
-                        <p class="text-sm font-semibold text-slate-800">{{ $activity->title }}</p>
-                    @endif
-                    <p class="text-xs text-slate-500">
-                        {{ $activity->starts_at->translatedFormat('d F Y') }}
-                        @if($activity->club) · {{ $activity->club->title }}@endif
-                        @if($type = \App\Models\ClubActivity::TYPES[$activity->type] ?? null) · {{ $type }}@endif
-                    </p>
-                    <span class="mt-1 inline-block rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Présent(e)</span>
-                </div>
-            </li>
-        @empty
-            <li class="py-2 text-sm text-slate-500">Aucune activité pour le moment. Elles apparaissent ici une fois votre présence enregistrée.</li>
-        @endforelse
-    </ul>
+            </details>
+        @endforeach
+    </div>
 </section>
