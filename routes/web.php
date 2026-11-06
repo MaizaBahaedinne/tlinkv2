@@ -95,6 +95,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/email/verifier/{id}/{hash}', [\App\Http\Controllers\IntegrationController::class, 'verify'])->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
     Route::post('/email/verification', [\App\Http\Controllers\IntegrationController::class, 'resend'])->middleware('throttle:3,1')->name('verification.send');
     Route::post('/integration/email', [\App\Http\Controllers\IntegrationController::class, 'changeEmail'])->middleware('throttle:3,10')->name('integration.email');
+    Route::post('/integration/profil', [\App\Http\Controllers\IntegrationController::class, 'saveProfile'])->middleware('throttle:30,10')->name('integration.profile');
 
     // Fil d'actualite de l'application T.Link (reserve aux membres connectes).
     Route::get('/feed', [FeedController::class, 'index'])->name('home');

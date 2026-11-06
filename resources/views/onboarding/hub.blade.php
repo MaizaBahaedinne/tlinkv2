@@ -79,18 +79,148 @@
                 <a href="{{ route('onboarding.history') }}" class="{{ $buttonClass }} mt-5 inline-block">Répondre</a>
 
             @elseif($step === 'profile')
+                @php
+                    $levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Natif'];
+                    $degrees = ['bac', 'licence', 'bts', 'master', 'ingenieur', 'doctorat', 'autre'];
+                    $educationRows = old('educations', $educations ?: [[]]);
+                    $languageList = old('languages', $languageRows ?: [[]]);
+                    $birth = old('birth_date', $profile?->birth_date?->toDateString());
+                    $gender = old('gender', $profile?->gender);
+                    $inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-tlink-blue';
+                @endphp
                 <h2 class="font-display text-lg font-semibold text-slate-900">Complétez votre profil</h2>
-                <p class="mt-1 text-sm text-slate-600">Il reste à renseigner :</p>
-                <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
-                    @foreach($missingProfile as $item)
-                        <li>{{ $item }}</li>
-                    @endforeach
-                </ul>
-                <a href="{{ route('profile.show') }}" class="{{ $buttonClass }} mt-5 inline-block">Compléter mon profil</a>
+                <p class="mt-1 text-sm text-slate-600">Tout se fait ici, sans quitter l’intégration. Les expériences professionnelles et associatives sont facultatives : vous pourrez les ajouter plus tard.</p>
+
+                @if($missingProfile !== [])
+                    <p class="mt-3 text-sm font-semibold text-slate-700">Il reste à renseigner :</p>
+                    <ul class="mt-1 list-disc space-y-0.5 pl-5 text-sm text-slate-700">
+                        @foreach($missingProfile as $item)
+                            <li>{{ $item }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                <form method="post" action="{{ route('integration.profile') }}" enctype="multipart/form-data" class="mt-5 space-y-6">
+                    @csrf
+
+                    <fieldset class="space-y-3">
+                        <legend class="text-sm font-semibold text-slate-900">Photo de profil *</legend>
+                        <div class="flex flex-wrap items-center gap-4">
+                            @if($profile?->photo_path)
+                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($profile->photo_path) }}" alt="Votre photo actuelle" class="h-16 w-16 rounded-full object-cover">
+                            @endif
+                            <input type="file" name="avatar" accept="image/*" class="text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold">
+                        </div>
+                        @if($errors->has('avatar'))<p class="text-sm font-semibold text-rose-700">{{ $errors->first('avatar') }}</p>@endif
+                    </fieldset>
+
+                    <fieldset class="space-y-3">
+                        <legend class="text-sm font-semibold text-slate-900">Identité et contact</legend>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="gender" class="text-xs font-semibold text-slate-600">Genre *</label>
+                                <select id="gender" name="gender" required class="{{ $inputClass }}">
+                                    <option value="">Choisir…</option>
+                                    <option value="female" @selected($gender === 'female')>Femme</option>
+                                    <option value="male" @selected($gender === 'male')>Homme</option>
+                                </select>
+                                @if($errors->has('gender'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('gender') }}</p>@endif
+                            </div>
+                            <div>
+                                <label for="birth_date" class="text-xs font-semibold text-slate-600">Date de naissance *</label>
+                                <input id="birth_date" name="birth_date" type="date" required max="{{ now()->toDateString() }}" value="{{ $birth }}" autocomplete="bday" class="{{ $inputClass }}">
+                                @if($errors->has('birth_date'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('birth_date') }}</p>@endif
+                            </div>
+                        </div>
+                        <div>
+                            <label for="address" class="text-xs font-semibold text-slate-600">Adresse *</label>
+                            <input id="address" name="address" type="text" required maxlength="255" value="{{ old('address', $profile?->address) }}" autocomplete="street-address" class="{{ $inputClass }}">
+                            @if($errors->has('address'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('address') }}</p>@endif
+                        </div>
+                        <div>
+                            <label for="facebook_url" class="text-xs font-semibold text-slate-600">Page Facebook *</label>
+                            <input id="facebook_url" name="facebook_url" type="url" required maxlength="255" placeholder="https://www.facebook.com/votre.nom" value="{{ old('facebook_url', $profile?->facebook_url) }}" class="{{ $inputClass }}">
+                            @if($errors->has('facebook_url'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('facebook_url') }}</p>@endif
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="space-y-3">
+                        <legend class="text-sm font-semibold text-slate-900">Formation * <span class="font-normal text-slate-500">(au moins une)</span></legend>
+                        <div id="education-list" class="space-y-3">
+                            @foreach($educationRows as $i => $row)
+                                <div class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-2">
+                                    <select name="educations[{{ $i }}][degree_type]" class="{{ $inputClass }}">
+                                        @foreach($degrees as $degree)
+                                            <option value="{{ $degree }}" @selected(($row['degree_type'] ?? '') === $degree)>{{ ucfirst($degree) }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input name="educations[{{ $i }}][diploma_name]" value="{{ $row['diploma_name'] ?? '' }}" maxlength="180" placeholder="Nom du diplôme" class="{{ $inputClass }}">
+                                    <input name="educations[{{ $i }}][school]" value="{{ $row['school'] ?? '' }}" maxlength="180" list="school-options" autocomplete="off" placeholder="École (choisissez dans la liste)" class="{{ $inputClass }} sm:col-span-2">
+                                    <input type="date" name="educations[{{ $i }}][start_date]" value="{{ $row['start_date'] ?? '' }}" class="{{ $inputClass }}" aria-label="Début">
+                                    <input type="date" name="educations[{{ $i }}][end_date]" value="{{ $row['end_date'] ?? '' }}" class="{{ $inputClass }}" aria-label="Fin">
+                                </div>
+                            @endforeach
+                        </div>
+                        <button type="button" data-add="education" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Ajouter une formation</button>
+                        @if($errors->has('educations'))<p class="text-sm font-semibold text-rose-700">{{ $errors->first('educations') }}</p>@endif
+                    </fieldset>
+
+                    <fieldset class="space-y-3">
+                        <legend class="text-sm font-semibold text-slate-900">Compétences *</legend>
+                        <textarea name="skills" rows="3" required maxlength="2000" placeholder="Mots-clés séparés par des virgules (ex. gestion de projet, Laravel, communication)" class="{{ $inputClass }}">{{ old('skills', $skillKeywords) }}</textarea>
+                        @if($errors->has('skills'))<p class="text-sm font-semibold text-rose-700">{{ $errors->first('skills') }}</p>@endif
+                    </fieldset>
+
+                    <fieldset class="space-y-3">
+                        <legend class="text-sm font-semibold text-slate-900">Langues * <span class="font-normal text-slate-500">(au moins une)</span></legend>
+                        <div id="language-list" class="space-y-3">
+                            @foreach($languageList as $i => $row)
+                                <div class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-2">
+                                    <input name="languages[{{ $i }}][name]" value="{{ $row['name'] ?? '' }}" maxlength="100" placeholder="Langue (ex. Français)" class="{{ $inputClass }}">
+                                    <select name="languages[{{ $i }}][level]" class="{{ $inputClass }}">
+                                        @foreach($levels as $level)
+                                            <option value="{{ $level }}" @selected(($row['level'] ?? '') === $level)>{{ $level }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endforeach
+                        </div>
+                        <button type="button" data-add="language" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Ajouter une langue</button>
+                        @if($errors->has('languages'))<p class="text-sm font-semibold text-rose-700">{{ $errors->first('languages') }}</p>@endif
+                    </fieldset>
+
+                    <datalist id="school-options">
+                        @foreach($schoolOptions as $option)<option value="{{ $option }}"></option>@endforeach
+                    </datalist>
+
+                    <template id="tpl-education">
+                        <div class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-2">
+                            <select name="educations[__INDEX__][degree_type]" class="{{ $inputClass }}">
+                                @foreach($degrees as $degree)<option value="{{ $degree }}">{{ ucfirst($degree) }}</option>@endforeach
+                            </select>
+                            <input name="educations[__INDEX__][diploma_name]" maxlength="180" placeholder="Nom du diplôme" class="{{ $inputClass }}">
+                            <input name="educations[__INDEX__][school]" maxlength="180" list="school-options" autocomplete="off" placeholder="École (choisissez dans la liste)" class="{{ $inputClass }} sm:col-span-2">
+                            <input type="date" name="educations[__INDEX__][start_date]" class="{{ $inputClass }}" aria-label="Début">
+                            <input type="date" name="educations[__INDEX__][end_date]" class="{{ $inputClass }}" aria-label="Fin">
+                        </div>
+                    </template>
+                    <template id="tpl-language">
+                        <div class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-2">
+                            <input name="languages[__INDEX__][name]" maxlength="100" placeholder="Langue (ex. Français)" class="{{ $inputClass }}">
+                            <select name="languages[__INDEX__][level]" class="{{ $inputClass }}">
+                                @foreach($levels as $level)<option value="{{ $level }}">{{ $level }}</option>@endforeach
+                            </select>
+                        </div>
+                    </template>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="{{ $buttonClass }}">Enregistrer mon profil</button>
+                    </div>
+                </form>
 
             @else
                 <h2 class="font-display text-lg font-semibold text-slate-900">
-                    Adhésion ou poste pour le mandat {{ $mandate?->label }}
+                    {{ $isAlumni ? 'Adhésion ou poste' : 'Adhésion à un club' }} pour le mandat {{ $mandate?->label }}
                 </h2>
 
                 @if($placement['state'] === 'pending')
@@ -120,17 +250,23 @@
                         </div>
                     @endif
 
-                    <p class="mt-2 text-sm text-slate-600">Choisissez où vous souhaitez vous engager pour ce mandat : une simple adhésion, ou une candidature à un poste. Elle sera examinée par l’un de vos supérieurs.</p>
+                    @if($isAlumni)
+                        <p class="mt-2 text-sm text-slate-600">En tant qu’ancien membre, vous pouvez rejoindre un club ou une entité, et candidater à un poste. Votre demande sera examinée et validée par l’un de vos supérieurs.</p>
+                    @else
+                        <p class="mt-2 text-sm text-slate-600">En tant que nouveau membre, vous rejoignez un club pour ce mandat. Votre demande sera examinée par l’un de vos supérieurs ; les postes dans les entités sont réservés aux anciens membres.</p>
+                    @endif
 
                     <form id="placement-form" method="post" action="{{ route('memberships.store') }}" data-positions-url="{{ route('memberships.positions') }}" class="mt-5 space-y-4">
                         @csrf
                         <div>
-                            <label for="target" class="text-sm font-semibold text-slate-700">Entité ou club</label>
+                            <label for="target" class="text-sm font-semibold text-slate-700">{{ $isAlumni ? 'Entité ou club' : 'Club' }}</label>
                             <select id="target" name="target" required class="{{ $fieldClass }}">
                                 <option value="">Choisir…</option>
-                                @foreach($scopes as $slug => $label)
-                                    <option value="scope:{{ $slug }}" @selected(old('target') === 'scope:'.$slug)>{{ $label }}</option>
-                                @endforeach
+                                @if($isAlumni)
+                                    @foreach($scopes as $slug => $label)
+                                        <option value="scope:{{ $slug }}" @selected(old('target') === 'scope:'.$slug)>{{ $label }}</option>
+                                    @endforeach
+                                @endif
                                 @foreach($clubs as $slug => $group)
                                     <optgroup label="Clubs — {{ $scopes[$slug] ?? $slug }}">
                                         @foreach($group as $club)
@@ -142,6 +278,7 @@
                             @error('target')<p class="mt-1 text-sm font-semibold text-rose-700">{{ $message }}</p>@enderror
                         </div>
 
+                        @if($isAlumni)
                         <div>
                             <label for="position_id" class="text-sm font-semibold text-slate-700">Poste visé <span class="font-normal text-slate-400">(facultatif : sans poste, simple adhésion)</span></label>
                             <select id="position_id" name="position_id" class="{{ $fieldClass }}">
@@ -150,6 +287,7 @@
                             <p id="position-hint" class="mt-1 hidden text-xs text-amber-700">Ce poste accorde des droits : seul un administrateur global peut l’attribuer.</p>
                             @error('position_id')<p class="mt-1 text-sm font-semibold text-rose-700">{{ $message }}</p>@enderror
                         </div>
+                        @endif
 
                         <div>
                             <label for="motivation_letter" class="text-sm font-semibold text-slate-700">Lettre de motivation</label>
@@ -171,7 +309,25 @@
     </main>
 </div>
 
-@if($step === 'placement' && $placement['state'] !== 'pending')
+@if($step === 'profile')
+<script>
+    (function () {
+        var counter = 100;
+
+        document.querySelectorAll('[data-add]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var kind = button.dataset.add;
+                var list = document.getElementById(kind + '-list');
+                var template = document.getElementById('tpl-' + kind);
+
+                list.insertAdjacentHTML('beforeend', template.innerHTML.replace(/__INDEX__/g, String(counter++)));
+            });
+        });
+    })();
+</script>
+@endif
+
+@if($step === 'placement' && $placement['state'] !== 'pending' && $isAlumni)
 <script>
     (function () {
         var form = document.getElementById('placement-form');

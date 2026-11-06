@@ -88,6 +88,18 @@ class MembershipRequestController extends Controller
 
         [$scope, $nodeId] = $this->parseTarget($data['target']);
 
+        // Parcours d'intégration : un nouveau membre rejoint un club (sans poste) ; seuls les anciens membres
+        // peuvent viser une entité ou un poste (validés par leurs supérieurs).
+        if (Onboarding::applies($request->user()) && $request->user()->member_origin !== 'alumni') {
+            if ($nodeId === null) {
+                throw ValidationException::withMessages(['target' => 'En tant que nouveau membre, vous rejoignez un club : choisissez-en un.']);
+            }
+
+            if (isset($data['position_id'])) {
+                throw ValidationException::withMessages(['position_id' => 'Les postes sont réservés aux anciens membres : demandez simplement à rejoindre ce club.']);
+            }
+        }
+
         MembershipRequests::submit($request->user()->loadMissing('profile'), $scope, $nodeId, 'member', null, $request->ip(), $data['motivation_letter'], isset($data['position_id']) ? (int) $data['position_id'] : null);
 
         $status = isset($data['position_id'])

@@ -5,7 +5,8 @@ namespace App\Support;
 use App\Models\User;
 
 /**
- * Éléments du profil à renseigner pour finir l'intégration : photo + CV (formation, expérience, compétences).
+ * Éléments du profil à renseigner pour finir l'intégration : photo, identité (genre, naissance, adresse, Facebook)
+ * et CV (formation, compétences, langues). Les expériences restent facultatives.
  */
 final class ProfileCompleteness
 {
@@ -14,10 +15,27 @@ final class ProfileCompleteness
      */
     public static function missing(User $user): array
     {
+        $profile = $user->profile;
         $missing = [];
 
-        if (blank($user->profile?->photo_path)) {
+        if (blank($profile?->photo_path)) {
             $missing[] = 'une photo de profil';
+        }
+
+        if (blank($profile?->gender)) {
+            $missing[] = 'votre genre';
+        }
+
+        if ($profile?->birth_date === null) {
+            $missing[] = 'votre date de naissance';
+        }
+
+        if (blank($profile?->address)) {
+            $missing[] = 'votre adresse';
+        }
+
+        if (blank($profile?->facebook_url)) {
+            $missing[] = 'votre page Facebook';
         }
 
         return [...$missing, ...MembershipRequests::missingCv($user)];

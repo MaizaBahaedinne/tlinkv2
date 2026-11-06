@@ -76,7 +76,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-COlnGBxA.css",
+    "file": "assets/app-CuweOTob.css",
     "name": "app",
     "names": [
       "app.css"
@@ -94,13 +94,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-ByPhfmbd.js",
+    "file": "assets/main-CUJdaVW1.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-COlnGBxA.css"
+      "assets/app-CuweOTob.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",

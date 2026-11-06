@@ -26,6 +26,10 @@ class OnboardingFlowTest extends TestCase
     {
         Profile::query()->updateOrCreate(['user_id' => $user->id], [
             'photo_path' => $photo ? 'profiles/avatars/test.jpg' : null,
+            'gender' => 'female',
+            'birth_date' => '2000-05-17',
+            'address' => '12 rue de la Liberté, Tunis',
+            'facebook_url' => 'https://www.facebook.com/test.membre',
             'privacy_settings' => [
                 'educations' => [['school' => 'ISI']],
                 'skill_keywords' => ['PHP'],
@@ -34,10 +38,10 @@ class OnboardingFlowTest extends TestCase
         ]);
     }
 
-    /** Compte arrivé à la dernière étape : e-mail, info session, ancien/nouveau et profil faits. */
-    private function readyForPlacement(): User
+    /** Compte arrivé à la dernière étape : e-mail, info session, ancien/nouveau et profil faits (ancien membre par défaut). */
+    private function readyForPlacement(string $origin = 'alumni'): User
     {
-        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now(), 'member_origin' => 'new']);
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now(), 'member_origin' => $origin]);
         $this->completeProfile($user);
 
         return $user->fresh();
@@ -141,15 +145,73 @@ class OnboardingFlowTest extends TestCase
         ]]);
 
         $missing = \App\Support\ProfileCompleteness::missing($user->fresh());
-        $this->assertSame(['vos compétences', 'vos langues'], $missing);
+        $this->assertSame(['votre genre', 'votre date de naissance', 'votre adresse', 'votre page Facebook', 'vos compétences', 'vos langues'], $missing);
 
-        $user->profile->update(['privacy_settings' => [
+        $user->profile->update(['gender' => 'male', 'birth_date' => '1999-01-02', 'address' => 'Sfax', 'facebook_url' => 'https://facebook.com/x', 'privacy_settings' => [
             'educations' => [['school' => 'ISI']],
             'skill_keywords' => ['PHP'],
             'languages' => [['name' => 'Français', 'level' => 'natif']],
         ]]);
 
         $this->assertSame([], \App\Support\ProfileCompleteness::missing($user->fresh()));
+    }
+
+    public function test_the_profile_is_filled_directly_on_the_integration_page(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now(), 'member_origin' => 'new']);
+
+        $this->actingAs($user)->get('/integration')->assertOk()
+            ->assertSee('name="facebook_url"', false)->assertSee('name="birth_date"', false)->assertSee('name="skills"', false)->assertSee('Enregistrer mon profil');
+
+        $this->actingAs($user)->post('/integration/profil', [
+            'avatar' => \Illuminate\Http\UploadedFile::fake()->image('moi.jpg'),
+            'gender' => 'female',
+            'birth_date' => '2001-03-04',
+            'address' => '5 avenue Habib Bourguiba, Tunis',
+            'facebook_url' => 'https://www.facebook.com/moi',
+            'educations' => [['degree_type' => 'licence', 'diploma_name' => 'Informatique', 'school' => 'ISI']],
+            'skills' => 'Laravel, Gestion de projet',
+            'languages' => [['name' => 'Français', 'level' => 'Natif'], ['name' => '', 'level' => 'A1']],
+        ])->assertRedirect(route('integration.show'))->assertSessionHasNoErrors();
+
+        $profile = $user->fresh()->profile;
+        $this->assertSame('female', $profile->gender);
+        $this->assertSame('2001-03-04', $profile->birth_date->toDateString());
+        $this->assertSame(['Laravel', 'Gestion de projet'], $profile->privacy_settings['skill_keywords']);
+        $this->assertCount(1, $profile->privacy_settings['languages']);
+        $this->assertNotNull($profile->photo_path);
+        $this->assertSame([], \App\Support\ProfileCompleteness::missing($user->fresh()));
+    }
+
+    public function test_the_inline_profile_requires_every_mandatory_field(): void
+    {
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now(), 'member_origin' => 'new']);
+
+        $this->actingAs($user)->post('/integration/profil', ['facebook_url' => 'https://example.com/moi', 'skills' => ''])
+            ->assertSessionHasErrors(['avatar', 'gender', 'birth_date', 'address', 'facebook_url', 'skills']);
+    }
+
+    public function test_a_new_member_joins_a_club_only_while_an_alumnus_may_target_entities_and_positions(): void
+    {
+        $this->currentMandate();
+        $club = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'direction', 'title' => 'Club Robotique', 'scope' => 'university', 'status' => 'active', 'sort_order' => 0]);
+        $position = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'access_level' => 'none', 'category' => 'direction', 'title' => 'Membre actif', 'scope' => 'university', 'sort_order' => 0]);
+
+        $new = $this->readyForPlacement('new');
+        $page = $this->actingAs($new)->get('/integration')->assertOk();
+        $page->assertSee('Adhésion à un club')->assertSee('club:'.$club->id, false)->assertDontSee('scope:university', false)->assertDontSee('name="position_id"', false);
+
+        $this->actingAs($new)->post('/adhesions', ['target' => 'scope:university', 'motivation_letter' => self::LETTER])->assertSessionHasErrors('target');
+        $this->actingAs($new)->post('/adhesions', ['target' => 'club:'.$club->id, 'position_id' => $position->id, 'motivation_letter' => self::LETTER])->assertSessionHasErrors('position_id');
+        $this->assertSame(0, Membership::query()->count());
+        $this->actingAs($new)->post('/adhesions', ['target' => 'club:'.$club->id, 'motivation_letter' => self::LETTER])->assertSessionHasNoErrors();
+        $this->assertSame(1, Membership::query()->count());
+
+        $alumnus = $this->readyForPlacement('alumni');
+        $this->actingAs($alumnus)->get('/integration')->assertOk()->assertSee('Adhésion ou poste')->assertSee('scope:university', false)->assertSee('name="position_id"', false);
+        $this->actingAs($alumnus)->post('/adhesions', ['target' => 'scope:university', 'position_id' => $position->id, 'motivation_letter' => self::LETTER])->assertSessionHasNoErrors();
+        $this->assertSame($position->id, Membership::query()->where('user_id', $alumnus->id)->value('position_id'));
     }
 
     public function test_the_placement_request_blocks_until_a_superior_approves_it(): void

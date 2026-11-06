@@ -252,7 +252,7 @@ class ProfileController extends Controller
      * @param array<int, string> $keys
      * @return array<int, array<string, mixed>>
      */
-    private function cleanRows(array $rows, array $keys): array
+    public static function cleanRows(array $rows, array $keys): array
     {
         return collect($rows)
             ->map(function (array $row) use ($keys): array {
