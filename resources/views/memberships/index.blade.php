@@ -27,14 +27,12 @@
 
         <div>
             <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
-                <h2 class="font-display text-lg font-semibold text-slate-900">Mes demandes et adhésions</h2>
-
-                <ul class="mt-4 space-y-3">
+                <ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     @forelse($memberships as $membership)
                         @php
                             [$statusLabel, $statusClass] = $statuses[$membership->status] ?? [$membership->status, 'bg-slate-100 text-slate-600'];
                         @endphp
-                        <li class="rounded-2xl border border-slate-200 px-4 py-3">
+                        <li class="flex flex-col rounded-2xl border border-slate-200 px-4 py-3">
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <p class="text-sm font-semibold text-slate-800">{{ $membership->node?->title ?? (\App\Support\OrgScopes::label($membership->scope) ?: 'Fondation') }}</p>
                                 <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusClass }}">{{ $statusLabel }}</span>
@@ -48,7 +46,7 @@
                                 <p class="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-800">Motif : {{ $membership->rejection_reason }}</p>
                             @endif
                             @if($membership->status === 'pending')
-                                <form method="post" action="{{ route('memberships.destroy', $membership) }}" class="mt-2" onsubmit="return confirm('Retirer cette demande d\u2019adhésion ?');">
+                                <form method="post" action="{{ route('memberships.destroy', $membership) }}" class="mt-auto pt-2" onsubmit="return confirm('Retirer cette demande d\u2019adhésion ?');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Retirer ma demande</button>
@@ -56,7 +54,7 @@
                             @endif
                         </li>
                     @empty
-                        <li class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">Vous n’avez encore aucune adhésion. <button type="button" data-open-request class="font-semibold text-tlink-blue underline">Faites votre première demande</button>.</li>
+                        <li class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 sm:col-span-2 xl:col-span-3">Vous n’avez encore aucune adhésion. <button type="button" data-open-request class="font-semibold text-tlink-blue underline">Faites votre première demande</button>.</li>
                     @endforelse
                 </ul>
 
