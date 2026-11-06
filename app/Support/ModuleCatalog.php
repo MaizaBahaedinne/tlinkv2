@@ -123,6 +123,7 @@ final class ModuleCatalog
                     ['key' => 'website.news', 'name' => 'Actualités du site', 'description' => 'Articles affichés sur le site vitrine, indépendants des publications du fil T.Link.', 'actions' => self::CRUD],
                     ['key' => 'website.newsletter', 'name' => 'Newsletter', 'description' => 'Abonnés à la newsletter du site : liste, export et suppression.', 'actions' => ['read', 'delete']],
                     ['key' => 'website.launch', 'name' => 'Lancement du site', 'description' => 'Compte à rebours et ouverture du site.', 'actions' => ['read', 'update']],
+                    ['key' => 'website.mail', 'name' => 'Messagerie (e-mails)', 'description' => 'Adresse et serveur d’envoi des e-mails de chaque application, avec message de test.', 'actions' => ['read', 'update']],
                 ],
             ],
             [

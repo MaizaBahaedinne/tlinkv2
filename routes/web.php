@@ -318,6 +318,9 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('modules/{module}', [Admin\AppModuleController::class, 'update'])->name('modules.update');
             Route::delete('modules/{module}', [Admin\AppModuleController::class, 'destroy'])->name('modules.destroy');
             Route::put('lancement', [Admin\LaunchController::class, 'update'])->name('launch.update');
+            Route::get('messagerie', [Admin\MailController::class, 'edit'])->name('mail.edit');
+            Route::put('messagerie/{profile}', [Admin\MailController::class, 'update'])->name('mail.update');
+            Route::post('messagerie/{profile}/test', [Admin\MailController::class, 'test'])->middleware('throttle:6,1')->name('mail.test');
             Route::post('mandats', [Admin\MandateController::class, 'store'])->name('mandates.store');
             Route::put('mandats/{mandate}', [Admin\MandateController::class, 'update'])->name('mandates.update');
             Route::patch('mandats/{mandate}/statut', [Admin\MandateController::class, 'updateStatus'])->name('mandates.status');

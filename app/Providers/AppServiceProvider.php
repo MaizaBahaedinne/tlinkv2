@@ -25,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Boîtes d'envoi enregistrées en administration (Messagerie) : elles priment sur le .env quand elles sont actives.
+        \App\Support\MailSettings::apply();
+
         // Badges : le recalcul se déclenche à l'enregistrement des modèles listés dans le catalogue d'activités.
         \App\Support\Gamification\ActivityCatalog::listen();
 
