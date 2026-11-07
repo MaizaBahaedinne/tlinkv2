@@ -417,7 +417,8 @@ class OnboardingFlowTest extends TestCase
         $this->assertSame(1, Membership::query()->count());
 
         $alumnus = $this->readyForPlacement('alumni');
-        $this->actingAs($alumnus)->get('/integration')->assertOk()->assertSee('Adhésion ou poste')->assertSee('scope:university', false)->assertSee('name="position_id"', false);
+        $this->actingAs($alumnus)->get('/integration')->assertOk()->assertSee('Adhésion ou poste')->assertSee('scope:university', false)->assertSee('name="position_id"', false)
+            ->assertSee('Choisissez d’abord un club ou une entité');
         $this->actingAs($alumnus)->post('/adhesions', ['target' => 'scope:university', 'position_id' => $position->id, 'motivation_letter' => self::LETTER])->assertSessionHasNoErrors();
         $this->assertSame($position->id, Membership::query()->where('user_id', $alumnus->id)->value('position_id'));
     }

@@ -401,8 +401,8 @@
                         @if($isAlumni)
                         <div>
                             <label for="position_id" class="text-sm font-semibold text-slate-700">Poste visé <span class="font-normal text-slate-400">(facultatif : sans poste, simple adhésion)</span></label>
-                            <select id="position_id" name="position_id" class="{{ $fieldClass }}">
-                                <option value="">Simple adhésion (sans poste)</option>
+                            <select id="position_id" name="position_id" disabled data-old="{{ old('position_id') }}" class="{{ $fieldClass }} disabled:bg-slate-50 disabled:text-slate-400">
+                                <option value="">Choisissez d’abord un club ou une entité</option>
                             </select>
                             <p id="position-hint" class="mt-1 hidden text-xs text-amber-700">Ce poste accorde des droits : seul un administrateur global peut l’attribuer.</p>
                             @error('position_id')<p class="mt-1 text-sm font-semibold text-rose-700">{{ $message }}</p>@enderror
@@ -476,25 +476,50 @@
         var hint = document.getElementById('position-hint');
         var rights = {};
 
-        target.addEventListener('change', function () {
-            select.innerHTML = '<option value="">Simple adhésion (sans poste)</option>';
+        var wanted = select.dataset.old || '';
+
+        function reload() {
             hint.classList.add('hidden');
             rights = {};
+            select.disabled = true;
 
-            if (!target.value) { return; }
+            if (!target.value) {
+                select.innerHTML = '<option value="">Choisissez d’abord un club ou une entité</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="">Chargement des postes…</option>';
 
             fetch(form.dataset.positionsUrl + '?target=' + encodeURIComponent(target.value), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
                 .then(function (response) { return response.json(); })
                 .then(function (payload) {
-                    (payload.positions || []).forEach(function (position) {
+                    var positions = payload.positions || [];
+
+                    if (positions.length === 0) {
+                        select.innerHTML = '<option value="">Aucun poste disponible : simple adhésion</option>';
+                        return;
+                    }
+
+                    select.innerHTML = '<option value="">Simple adhésion (sans poste)</option>';
+                    positions.forEach(function (position) {
                         var option = document.createElement('option');
                         option.value = position.id;
                         option.textContent = position.title + (position.rights ? ' (droits d’administration)' : '');
+                        option.selected = String(position.id) === wanted;
                         rights[position.id] = position.rights;
                         select.appendChild(option);
                     });
+                    wanted = '';
+                    select.disabled = false;
+                    hint.classList.toggle('hidden', !rights[select.value]);
+                })
+                .catch(function () {
+                    select.innerHTML = '<option value="">Simple adhésion (sans poste)</option>';
                 });
-        });
+        }
+
+        target.addEventListener('change', function () { wanted = ''; reload(); });
+        reload();
 
         select.addEventListener('change', function () {
             hint.classList.toggle('hidden', !rights[select.value]);
