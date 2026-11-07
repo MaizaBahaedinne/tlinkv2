@@ -22,6 +22,11 @@ class OnboardingFlowTest extends TestCase
 
     private const LETTER = 'Je souhaite rejoindre la Fondation pour contribuer activement à ses projets et à ses équipes.';
 
+    private function governorate(): \App\Models\Governorate
+    {
+        return \App\Models\Governorate::query()->firstOrCreate(['slug' => 'tunis'], ['name' => 'Tunis', 'is_active' => true]);
+    }
+
     private function completeProfile(User $user, bool $photo = true): void
     {
         Profile::query()->updateOrCreate(['user_id' => $user->id], [
@@ -29,6 +34,8 @@ class OnboardingFlowTest extends TestCase
             'gender' => 'female',
             'birth_date' => '2000-05-17',
             'address' => '12 rue de la Liberté, Tunis',
+            'governorate_id' => $this->governorate()->id,
+            'delegation' => 'La Marsa',
             'facebook_url' => 'https://www.facebook.com/test.membre',
             'privacy_settings' => [
                 'educations' => [['school' => 'ISI']],
@@ -232,9 +239,9 @@ class OnboardingFlowTest extends TestCase
         ]]);
 
         $missing = \App\Support\ProfileCompleteness::missing($user->fresh());
-        $this->assertSame(['votre genre', 'votre date de naissance', 'votre adresse', 'votre page Facebook', 'vos compétences', 'vos langues'], $missing);
+        $this->assertSame(['votre genre', 'votre date de naissance', 'votre adresse', 'votre gouvernorat', 'votre délégation', 'votre page Facebook', 'vos compétences', 'vos langues'], $missing);
 
-        $user->profile->update(['gender' => 'male', 'birth_date' => '1999-01-02', 'address' => 'Sfax', 'facebook_url' => 'https://facebook.com/x', 'privacy_settings' => [
+        $user->profile->update(['gender' => 'male', 'birth_date' => '1999-01-02', 'address' => 'Sfax', 'governorate_id' => $this->governorate()->id, 'delegation' => 'Sfax Ville', 'facebook_url' => 'https://facebook.com/x', 'privacy_settings' => [
             'educations' => [['school' => 'ISI']],
             'skill_keywords' => ['PHP'],
             'languages' => [['name' => 'Français', 'level' => 'natif']],
@@ -246,16 +253,20 @@ class OnboardingFlowTest extends TestCase
     public function test_the_profile_is_filled_directly_on_the_integration_page(): void
     {
         \Illuminate\Support\Facades\Storage::fake('public');
+        $governorate = $this->governorate();
         $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now(), 'member_origin' => 'new']);
 
         $this->actingAs($user)->get('/integration')->assertOk()
-            ->assertSee('name="facebook_url"', false)->assertSee('name="birth_date"', false)->assertSee('name="skills"', false)->assertSee('Enregistrer mon profil');
+            ->assertSee('name="facebook_url"', false)->assertSee('name="birth_date"', false)->assertSee('name="skills"', false)->assertSee('Enregistrer mon profil')
+            ->assertSee('name="governorate_id"', false)->assertSee('name="delegation"', false)->assertSee('<option value="'.$governorate->id.'"', false);
 
         $this->actingAs($user)->post('/integration/profil', [
             'avatar' => \Illuminate\Http\UploadedFile::fake()->image('moi.jpg'),
             'gender' => 'female',
             'birth_date' => '2001-03-04',
             'address' => '5 avenue Habib Bourguiba, Tunis',
+            'governorate_id' => $governorate->id,
+            'delegation' => 'Tunis Ville',
             'facebook_url' => 'https://www.facebook.com/moi',
             'educations' => [['degree_type' => 'licence', 'diploma_name' => 'Informatique', 'school' => 'ISI']],
             'skills' => 'Laravel, Gestion de projet',
@@ -265,6 +276,8 @@ class OnboardingFlowTest extends TestCase
         $profile = $user->fresh()->profile;
         $this->assertSame('female', $profile->gender);
         $this->assertSame('2001-03-04', $profile->birth_date->toDateString());
+        $this->assertSame($governorate->id, $profile->governorate_id);
+        $this->assertSame('Tunis Ville', $profile->delegation);
         $this->assertSame(['Laravel', 'Gestion de projet'], $profile->privacy_settings['skill_keywords']);
         $this->assertCount(1, $profile->privacy_settings['languages']);
         $this->assertNotNull($profile->photo_path);
@@ -275,8 +288,8 @@ class OnboardingFlowTest extends TestCase
     {
         $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now(), 'member_origin' => 'new']);
 
-        $this->actingAs($user)->post('/integration/profil', ['facebook_url' => 'https://example.com/moi', 'skills' => ''])
-            ->assertSessionHasErrors(['avatar', 'gender', 'birth_date', 'address', 'facebook_url', 'skills']);
+        $this->actingAs($user)->post('/integration/profil', ['facebook_url' => 'https://example.com/moi', 'skills' => '', 'governorate_id' => 99999])
+            ->assertSessionHasErrors(['avatar', 'gender', 'birth_date', 'address', 'governorate_id', 'delegation', 'facebook_url', 'skills']);
     }
 
     public function test_a_new_member_joins_a_club_only_while_an_alumnus_may_target_entities_and_positions(): void

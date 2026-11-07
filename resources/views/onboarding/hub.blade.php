@@ -147,6 +147,23 @@
                             <input id="address" name="address" type="text" required maxlength="255" value="{{ old('address', $profile?->address) }}" autocomplete="street-address" class="{{ $inputClass }}">
                             @if($errors->has('address'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('address') }}</p>@endif
                         </div>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="governorate_id" class="text-xs font-semibold text-slate-600">Gouvernorat *</label>
+                                <select id="governorate_id" name="governorate_id" required class="{{ $inputClass }}">
+                                    <option value="">Choisir…</option>
+                                    @foreach($governorates as $governorate)
+                                        <option value="{{ $governorate->id }}" @selected((string) old('governorate_id', $profile?->governorate_id) === (string) $governorate->id)>{{ $governorate->name }}</option>
+                                    @endforeach
+                                </select>
+                                @if($errors->has('governorate_id'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('governorate_id') }}</p>@endif
+                            </div>
+                            <div>
+                                <label for="delegation" class="text-xs font-semibold text-slate-600">Délégation *</label>
+                                <input id="delegation" name="delegation" type="text" required maxlength="120" value="{{ old('delegation', $profile?->delegation) }}" class="{{ $inputClass }}">
+                                @if($errors->has('delegation'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('delegation') }}</p>@endif
+                            </div>
+                        </div>
                         <div>
                             <label for="facebook_url" class="text-xs font-semibold text-slate-600">Page Facebook *</label>
                             <input id="facebook_url" name="facebook_url" type="url" required maxlength="255" placeholder="https://www.facebook.com/votre.nom" value="{{ old('facebook_url', $profile?->facebook_url) }}" class="{{ $inputClass }}">

@@ -34,6 +34,14 @@ final class ProfileCompleteness
             $missing[] = 'votre adresse';
         }
 
+        if (blank($profile?->governorate_id)) {
+            $missing[] = 'votre gouvernorat';
+        }
+
+        if (blank($profile?->delegation)) {
+            $missing[] = 'votre délégation';
+        }
+
         if (blank($profile?->facebook_url)) {
             $missing[] = 'votre page Facebook';
         }
