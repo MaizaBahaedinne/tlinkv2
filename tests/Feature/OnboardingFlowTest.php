@@ -394,10 +394,30 @@ class OnboardingFlowTest extends TestCase
         $user = $this->readyForPlacement('alumni');
         $html = $this->actingAs($user)->get('/integration')->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('/<option value="scope:alumni"[^>]*disabled/', $html);
-        $this->assertMatchesRegularExpression('/<option value="scope:foundation"[^>]*disabled/', $html);
-        $this->assertDoesNotMatchRegularExpression('/<option value="scope:university"[^>]*disabled/', $html);
-        $this->assertDoesNotMatchRegularExpression('/<option value="scope:high-school"[^>]*disabled/', $html);
+        $this->assertMatchesRegularExpression('/<option value="alumni"[^>]*disabled/', $html);
+        $this->assertMatchesRegularExpression('/<option value="foundation"[^>]*disabled/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<option value="university"[^>]*disabled/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<option value="high-school"[^>]*disabled/', $html);
+    }
+
+    public function test_the_placement_form_cascades_entity_then_club_then_position_with_a_claim_link(): void
+    {
+        $this->currentMandate();
+        $club = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'direction', 'title' => 'Club Robotique', 'scope' => 'university', 'status' => 'active', 'sort_order' => 0]);
+
+        foreach (['alumni' => true, 'new' => false] as $origin => $hasPosition) {
+            $user = $this->readyForPlacement($origin);
+            $html = $this->actingAs($user)->get('/integration')->assertOk()
+                ->assertSee('1. Entité')->assertSee('2. Club')->assertSee('Choisissez d’abord une entité')
+                ->assertSee('Une demande ou une réclamation ?')->assertSee('formulaire de demande / réclamation')
+                ->assertSee(route('site.contact', ['locale' => 'fr']), false)->getContent();
+
+            $this->assertStringContainsString('id="entity"', $html);
+            $this->assertStringContainsString('&quot;title&quot;:&quot;Club Robotique&quot;', $html);
+            $this->assertSame($hasPosition, str_contains($html, '3. Poste visé'));
+        }
+
+        $this->get(route('site.contact', ['locale' => 'fr', 'subject' => 'Demande / réclamation']))->assertOk()->assertSee('value="Demande / réclamation"', false);
     }
 
     public function test_a_new_member_joins_a_club_only_while_an_alumnus_may_target_entities_and_positions(): void
@@ -408,7 +428,7 @@ class OnboardingFlowTest extends TestCase
 
         $new = $this->readyForPlacement('new');
         $page = $this->actingAs($new)->get('/integration')->assertOk();
-        $page->assertSee('Adhésion à un club')->assertSee('club:'.$club->id, false)->assertDontSee('scope:university', false)->assertDontSee('name="position_id"', false);
+        $page->assertSee('Adhésion à un club')->assertSee('id="club"', false)->assertDontSee('name="position_id"', false);
 
         $this->actingAs($new)->post('/adhesions', ['target' => 'scope:university', 'motivation_letter' => self::LETTER])->assertSessionHasErrors('target');
         $this->actingAs($new)->post('/adhesions', ['target' => 'club:'.$club->id, 'position_id' => $position->id, 'motivation_letter' => self::LETTER])->assertSessionHasErrors('position_id');
@@ -417,8 +437,8 @@ class OnboardingFlowTest extends TestCase
         $this->assertSame(1, Membership::query()->count());
 
         $alumnus = $this->readyForPlacement('alumni');
-        $this->actingAs($alumnus)->get('/integration')->assertOk()->assertSee('Adhésion ou poste')->assertSee('scope:university', false)->assertSee('name="position_id"', false)
-            ->assertSee('Choisissez d’abord un club ou une entité');
+        $this->actingAs($alumnus)->get('/integration')->assertOk()->assertSee('Adhésion ou poste')->assertSee('id="entity"', false)->assertSee('name="position_id"', false)
+            ->assertSee('Choisissez d’abord une entité');
         $this->actingAs($alumnus)->post('/adhesions', ['target' => 'scope:university', 'position_id' => $position->id, 'motivation_letter' => self::LETTER])->assertSessionHasNoErrors();
         $this->assertSame($position->id, Membership::query()->where('user_id', $alumnus->id)->value('position_id'));
     }

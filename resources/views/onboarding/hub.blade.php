@@ -375,34 +375,42 @@
                         <p class="mt-2 text-sm text-slate-600">En tant que nouveau membre, vous rejoignez un club pour ce mandat. Votre demande sera examinée par l’un de vos supérieurs ; les postes dans les entités sont réservés aux anciens membres.</p>
                     @endif
 
-                    <form id="placement-form" method="post" action="{{ route('memberships.store') }}" data-positions-url="{{ route('memberships.positions') }}" class="mt-5 space-y-4">
+                    @php
+                        $oldTarget = (string) old('target');
+                        $oldClubId = str_starts_with($oldTarget, 'club:') ? (int) substr($oldTarget, 5) : 0;
+                        $oldEntity = str_starts_with($oldTarget, 'scope:')
+                            ? substr($oldTarget, 6)
+                            : (string) ($clubs->flatten(1)->firstWhere('id', $oldClubId)?->scope ?? '');
+                        $clubMap = $clubs->map(fn ($group) => $group->map(fn ($club) => ['id' => $club->id, 'title' => $club->title.(filled($club->subtitle) ? ' — '.$club->subtitle : '')])->values())->all();
+                    @endphp
+                    <form id="placement-form" method="post" action="{{ route('memberships.store') }}" data-positions-url="{{ route('memberships.positions') }}" data-clubs="{{ json_encode($clubMap) }}" data-alumni="{{ $isAlumni ? '1' : '0' }}" data-old-club="{{ $oldClubId ?: '' }}" class="mt-5 space-y-4">
                         @csrf
+                        <input type="hidden" id="target" name="target" value="{{ $oldTarget }}">
+
                         <div>
-                            <label for="target" class="text-sm font-semibold text-slate-700">{{ $isAlumni ? 'Entité ou club' : 'Club' }}</label>
-                            <select id="target" name="target" required class="{{ $fieldClass }}">
+                            <label for="entity" class="text-sm font-semibold text-slate-700">1. Entité</label>
+                            <select id="entity" required class="{{ $fieldClass }}">
                                 <option value="">Choisir…</option>
-                                @if($isAlumni)
-                                    @foreach($scopes as $slug => $label)
-                                        @php $open = \App\Support\OrgScopes::openForMembership($slug); @endphp
-                                        <option value="scope:{{ $slug }}" @selected(old('target') === 'scope:'.$slug) @disabled(! $open)>{{ $label }}{{ $open ? '' : ' (indisponible)' }}</option>
-                                    @endforeach
-                                @endif
-                                @foreach($clubs as $slug => $group)
-                                    <optgroup label="Clubs — {{ $scopes[$slug] ?? $slug }}">
-                                        @foreach($group as $club)
-                                            <option value="club:{{ $club->id }}" @selected(old('target') === 'club:'.$club->id)>{{ $club->title }}{{ filled($club->subtitle) ? ' — '.$club->subtitle : '' }}</option>
-                                        @endforeach
-                                    </optgroup>
+                                @foreach($scopes as $slug => $label)
+                                    @php $open = \App\Support\OrgScopes::openForMembership($slug); @endphp
+                                    <option value="{{ $slug }}" @selected($oldEntity === $slug) @disabled(! $open)>{{ $label }}{{ $open ? '' : ' (indisponible)' }}</option>
                                 @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="club" class="text-sm font-semibold text-slate-700">2. Club @if($isAlumni)<span class="font-normal text-slate-400">(facultatif : sans club, vous rejoignez l’entité)</span>@endif</label>
+                            <select id="club" disabled class="{{ $fieldClass }} disabled:bg-slate-50 disabled:text-slate-400">
+                                <option value="">Choisissez d’abord une entité</option>
                             </select>
                             @error('target')<p class="mt-1 text-sm font-semibold text-rose-700">{{ $message }}</p>@enderror
                         </div>
 
                         @if($isAlumni)
                         <div>
-                            <label for="position_id" class="text-sm font-semibold text-slate-700">Poste visé <span class="font-normal text-slate-400">(facultatif : sans poste, simple adhésion)</span></label>
+                            <label for="position_id" class="text-sm font-semibold text-slate-700">3. Poste visé <span class="font-normal text-slate-400">(facultatif : sans poste, simple adhésion)</span></label>
                             <select id="position_id" name="position_id" disabled data-old="{{ old('position_id') }}" class="{{ $fieldClass }} disabled:bg-slate-50 disabled:text-slate-400">
-                                <option value="">Choisissez d’abord un club ou une entité</option>
+                                <option value="">Choisissez d’abord une entité</option>
                             </select>
                             <p id="position-hint" class="mt-1 hidden text-xs text-amber-700">Ce poste accorde des droits : seul un administrateur global peut l’attribuer.</p>
                             @error('position_id')<p class="mt-1 text-sm font-semibold text-rose-700">{{ $message }}</p>@enderror
@@ -425,7 +433,13 @@
             @endif
         </section>
 
-        <p class="mt-4 text-xs text-slate-500">Un souci ? Contactez l’équipe de la Fondation depuis le site officiel.</p>
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700" data-claim-box>
+            <p>
+                <span class="font-semibold">Une demande ou une réclamation ?</span>
+                Poste ou club introuvable, information erronée, blocage dans votre intégration… merci de remplir le formulaire de demande / réclamation.
+            </p>
+            <a href="{{ route('site.contact', ['locale' => 'fr', 'subject' => 'Demande / réclamation — intégration']) }}" target="_blank" rel="noopener" class="mt-2 inline-block font-semibold text-tlink-blue hover:underline">Ouvrir le formulaire de demande / réclamation</a>
+        </div>
     </main>
 </div>
 
@@ -467,24 +481,50 @@
 </script>
 @endif
 
-@if($step === 'placement' && $placement['state'] !== 'pending' && $isAlumni)
+@if($step === 'placement' && $placement['state'] !== 'pending')
 <script>
     (function () {
         var form = document.getElementById('placement-form');
+        var isAlumni = form.dataset.alumni === '1';
+        var clubs = JSON.parse(form.dataset.clubs || '{}');
+        var entity = document.getElementById('entity');
+        var club = document.getElementById('club');
         var target = document.getElementById('target');
         var select = document.getElementById('position_id');
         var hint = document.getElementById('position-hint');
         var rights = {};
+        var wantedClub = form.dataset.oldClub || '';
+        var wanted = select ? (select.dataset.old || '') : '';
 
-        var wanted = select.dataset.old || '';
+        function fillClubs() {
+            var list = clubs[entity.value] || [];
+            var label = !entity.value ? 'Choisissez d’abord une entité'
+                : (list.length === 0 ? 'Aucun club disponible dans cette entité'
+                : (isAlumni ? 'Sans club (toute l’entité)' : 'Choisir un club…'));
+
+            club.innerHTML = '';
+            club.appendChild(new Option(label, ''));
+            list.forEach(function (item) {
+                club.appendChild(new Option(item.title, item.id, false, String(item.id) === wantedClub));
+            });
+            club.disabled = list.length === 0;
+            club.required = !isAlumni && list.length > 0;
+            wantedClub = '';
+        }
+
+        function setTarget() {
+            target.value = club.value ? 'club:' + club.value : (entity.value ? 'scope:' + entity.value : '');
+        }
 
         function reload() {
+            if (!select) { return; }
+
             hint.classList.add('hidden');
             rights = {};
             select.disabled = true;
 
             if (!target.value) {
-                select.innerHTML = '<option value="">Choisissez d’abord un club ou une entité</option>';
+                select.innerHTML = '<option value="">Choisissez d’abord une entité</option>';
                 return;
             }
 
@@ -518,12 +558,18 @@
                 });
         }
 
-        target.addEventListener('change', function () { wanted = ''; reload(); });
-        reload();
+        entity.addEventListener('change', function () { wantedClub = ''; wanted = ''; fillClubs(); setTarget(); reload(); });
+        club.addEventListener('change', function () { wanted = ''; setTarget(); reload(); });
 
-        select.addEventListener('change', function () {
-            hint.classList.toggle('hidden', !rights[select.value]);
-        });
+        if (select) {
+            select.addEventListener('change', function () {
+                hint.classList.toggle('hidden', !rights[select.value]);
+            });
+        }
+
+        fillClubs();
+        setTarget();
+        reload();
     })();
 </script>
 @endif

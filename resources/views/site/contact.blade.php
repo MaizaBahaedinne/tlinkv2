@@ -20,7 +20,7 @@
                 @foreach(['name' => 'text', 'email' => 'email', 'subject' => 'text'] as $field => $type)
                     <div>
                         <label for="f-{{ $field }}" class="text-sm font-bold text-slate-700">{{ __('site.contact.'.$field) }}</label>
-                        <input id="f-{{ $field }}" type="{{ $type }}" name="{{ $field }}" value="{{ old($field) }}" required maxlength="{{ $field === 'subject' ? 160 : ($field === 'email' ? 190 : 120) }}"
+                        <input id="f-{{ $field }}" type="{{ $type }}" name="{{ $field }}" value="{{ old($field, $field === 'subject' ? request()->query('subject') : null) }}" required maxlength="{{ $field === 'subject' ? 160 : ($field === 'email' ? 190 : 120) }}"
                                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
                         @error($field)<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
