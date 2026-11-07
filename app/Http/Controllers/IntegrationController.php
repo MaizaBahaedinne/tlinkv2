@@ -52,7 +52,7 @@ class IntegrationController extends Controller
             'companyOptions' => $step === Onboarding::STATUS ? (new ProfileOrganizations())->companyOptions() : [],
             'governorates' => $step === Onboarding::PROFILE ? \App\Models\Governorate::query()->orderBy('name')->get(['id', 'name']) : [],
             'step' => $step,
-            'steps' => Onboarding::STEPS,
+            'steps' => [...Onboarding::STEPS, Onboarding::PLACEMENT => $user->member_origin === 'alumni' ? 'Rejoindre une entité, un club ou un poste' : 'Rejoindre un club'],
             'done' => collect(array_keys(Onboarding::STEPS))->mapWithKeys(fn (string $key) => [$key => Onboarding::done($user, $key)])->all(),
             'missingProfile' => $step === Onboarding::PROFILE ? ProfileCompleteness::missing($user) : [],
             'placement' => $placement,

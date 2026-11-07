@@ -13,7 +13,7 @@
     <main class="app-container max-w-3xl py-6">
         <div>
             <h1 class="font-display text-2xl font-semibold text-tlink-blue">Bienvenue {{ $user->first_name }}, finalisons votre intégration</h1>
-            <p class="mt-1 text-sm text-slate-600">Ces étapes se suivent dans l’ordre. L’application s’ouvre dès que votre adhésion ou votre poste du mandat en cours est approuvé par l’un de vos supérieurs.</p>
+            <p class="mt-1 text-sm text-slate-600">Ces étapes se suivent dans l’ordre. Dernière étape : vous demandez à rejoindre {{ $user->member_origin === 'alumni' ? 'une entité, un club ou un poste' : 'un club' }} pour le mandat en cours, et l’application s’ouvre dès que l’un de vos supérieurs valide votre demande.</p>
         </div>
 
         <ol class="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Étapes">
