@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # Production : toute requête HTTP est renvoyée en HTTPS (hôtes de la Fondation uniquement : le développement local et dev. restent intacts).
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+    RewriteCond %{HTTP_HOST} ^(www\.|link\.|store\.|academy\.)?tunivisionsfoundation\.org$ [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
