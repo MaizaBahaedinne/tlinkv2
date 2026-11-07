@@ -33,6 +33,10 @@ class Profile extends Model
         'skills',
         'languages',
         'privacy_settings',
+        'status_kind',
+        'status_level',
+        'status_country',
+        'status_company_id',
     ];
 
     /** Le CIN ne doit jamais fuiter dans une reponse JSON. */

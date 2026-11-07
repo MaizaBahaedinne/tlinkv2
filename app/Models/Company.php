@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Storage;
  */
 class Company extends Model
 {
-    protected $fillable = ['name', 'slug', 'logo_path', 'website_url', 'created_by'];
+    protected $fillable = ['name', 'slug', 'logo_path', 'website_url', 'created_by', 'tunivisions_member'];
+
+    protected $casts = ['tunivisions_member' => 'boolean'];
 
     public function creator(): BelongsTo
     {

@@ -21,6 +21,14 @@ final class OrgScopes
 
     public const CORE = ['foundation', 'university', 'high-school', 'alumni'];
 
+    /** Seules entités ouvertes aux adhésions et aux postes pour l'instant ; les autres sont grisées dans les formulaires. */
+    public const OPEN_FOR_MEMBERSHIP = ['university', 'high-school', 'we-are-carthage'];
+
+    public static function openForMembership(string $slug): bool
+    {
+        return in_array($slug, self::OPEN_FOR_MEMBERSHIP, true);
+    }
+
     /** Types de périmètre : clé => libellé. */
     public const TYPES = [
         'management' => 'Management',

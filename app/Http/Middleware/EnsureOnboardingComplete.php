@@ -22,6 +22,7 @@ class EnsureOnboardingComplete
         Onboarding::INFO_SESSION => ['info-session.*'],
         Onboarding::HISTORY => ['onboarding.*', 'memberships.positions', 'memberships.past', 'memberships.past.destroy'],
         Onboarding::PROFILE => ['profile.*'],
+        Onboarding::STATUS => [],
         Onboarding::PLACEMENT => ['memberships.*'],
     ];
 

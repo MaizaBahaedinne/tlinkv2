@@ -27,7 +27,7 @@ class OnboardingFlowTest extends TestCase
         return \App\Models\Governorate::query()->firstOrCreate(['slug' => 'tunis'], ['name' => 'Tunis', 'is_active' => true]);
     }
 
-    private function completeProfile(User $user, bool $photo = true): void
+    private function completeProfile(User $user, bool $photo = true, bool $status = true): void
     {
         Profile::query()->updateOrCreate(['user_id' => $user->id], [
             'photo_path' => $photo ? 'profiles/avatars/test.jpg' : null,
@@ -37,6 +37,7 @@ class OnboardingFlowTest extends TestCase
             'governorate_id' => $this->governorate()->id,
             'delegation' => 'La Marsa',
             'facebook_url' => 'https://www.facebook.com/test.membre',
+            'status_kind' => $status ? 'employee' : null,
             'privacy_settings' => [
                 'educations' => [['school' => 'ISI']],
                 'skill_keywords' => ['PHP'],
@@ -290,6 +291,113 @@ class OnboardingFlowTest extends TestCase
 
         $this->actingAs($user)->post('/integration/profil', ['facebook_url' => 'https://example.com/moi', 'skills' => '', 'governorate_id' => 99999])
             ->assertSessionHasErrors(['avatar', 'gender', 'birth_date', 'address', 'governorate_id', 'delegation', 'facebook_url', 'skills']);
+    }
+
+    public function test_the_status_step_comes_after_the_profile_and_blocks_the_placement(): void
+    {
+        $this->currentMandate();
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now(), 'member_origin' => 'new']);
+        $this->completeProfile($user, status: false);
+
+        $this->assertSame('status', \App\Support\Onboarding::current($user->fresh()));
+        $this->actingAs($user)->get('/adhesions')->assertRedirect(route('integration.show'));
+
+        $html = $this->actingAs($user)->get('/integration')->assertOk()
+            ->assertSee('name="status_kind"', false)->assertSee('Enregistrer mon statut')->getContent();
+        $this->assertStringContainsString('data-step="profile" data-state="done"', $html);
+        $this->assertStringContainsString('data-step="status" data-state="current"', $html);
+        $this->assertStringContainsString('data-step="placement" data-state="pending"', $html);
+
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'job_seeker'])->assertRedirect(route('integration.show'))->assertSessionHasNoErrors();
+        $this->assertSame('placement', \App\Support\Onboarding::current($user->fresh()));
+    }
+
+    public function test_each_status_asks_for_its_own_details(): void
+    {
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now()]);
+        $this->completeProfile($user, status: false);
+
+        $this->actingAs($user)->post('/integration/statut', [])->assertSessionHasErrors('status_kind');
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'astronaute'])->assertSessionHasErrors('status_kind');
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'pupil'])->assertSessionHasErrors('status_level');
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'pupil', 'status_level' => 'master-1'])->assertSessionHasErrors('status_level');
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'student', 'status_level' => 'eleve-1'])->assertSessionHasErrors('status_level');
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'diaspora'])->assertSessionHasErrors('status_country');
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'diaspora', 'status_country' => 'Tunisie'])->assertSessionHasErrors('status_country');
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'entrepreneur'])->assertSessionHasErrors(['company_name', 'started_on', 'logo']);
+        $this->assertNull($user->fresh()->profile->status_kind);
+
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'student', 'status_level' => 'ingenieur-2'])->assertSessionHasNoErrors();
+        $this->assertSame('ingenieur-2', $user->fresh()->profile->status_level);
+
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'diaspora', 'status_country' => 'Canada'])->assertSessionHasNoErrors();
+        $profile = $user->fresh()->profile;
+        $this->assertSame('Canada', $profile->status_country);
+        $this->assertNull($profile->status_level);
+
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'employee'])->assertSessionHasNoErrors();
+        $profile = $user->fresh()->profile;
+        $this->assertNull($profile->status_country);
+        $this->assertSame('employee', $profile->status_kind);
+    }
+
+    public function test_countries_are_listed_alphabetically_without_tunisia(): void
+    {
+        $countries = \App\Support\CurrentStatus::countries();
+
+        $this->assertNotContains('Tunisie', $countries);
+        $this->assertContains('France', $countries);
+        $this->assertSame('Afghanistan', $countries[0]);
+        $this->assertLessThan(array_search('Brésil', $countries), array_search('Belgique', $countries));
+        $this->assertLessThan(array_search('Espagne', $countries), array_search('Égypte', $countries));
+    }
+
+    public function test_an_entrepreneur_adds_a_tagged_company_with_logo_and_an_experience(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $user = User::factory()->inOnboarding()->create(['onboarding_completed_at' => now(), 'history_onboarding_at' => now()]);
+        $this->completeProfile($user, status: false);
+
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'entrepreneur', 'company_name' => 'Acme Tunisie', 'started_on' => '2021-09-01'])
+            ->assertSessionHasErrors('logo');
+
+        $this->actingAs($user)->post('/integration/statut', [
+            'status_kind' => 'entrepreneur', 'company_name' => 'Acme Tunisie', 'started_on' => '2021-09-01',
+            'logo' => \Illuminate\Http\UploadedFile::fake()->image('logo.png'),
+        ])->assertRedirect(route('integration.show'))->assertSessionHasNoErrors();
+
+        $company = \App\Models\Company::query()->where('name', 'Acme Tunisie')->firstOrFail();
+        $this->assertTrue($company->tunivisions_member);
+        $this->assertNotNull($company->logo_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($company->logo_path);
+
+        $profile = $user->fresh()->profile;
+        $this->assertSame($company->id, $profile->status_company_id);
+        $experiences = $profile->privacy_settings['professional_experiences'];
+        $this->assertCount(1, $experiences);
+        $this->assertSame('Acme Tunisie', $experiences[0]['company']);
+        $this->assertSame('Chef d’entreprise', $experiences[0]['role']);
+        $this->assertSame('2021-09-01', $experiences[0]['start_date']);
+
+        // Société déjà dotée d'un logo : plus obligatoire, et pas de doublon d'expérience.
+        $this->actingAs($user)->post('/integration/statut', ['status_kind' => 'entrepreneur', 'company_name' => 'Acme Tunisie', 'started_on' => '2022-01-15'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(1, \App\Models\Company::query()->count());
+        $experiences = $user->fresh()->profile->privacy_settings['professional_experiences'];
+        $this->assertCount(1, $experiences);
+        $this->assertSame('2022-01-15', $experiences[0]['start_date']);
+    }
+
+    public function test_only_university_high_school_and_we_are_carthage_are_selectable(): void
+    {
+        $this->currentMandate();
+        $user = $this->readyForPlacement('alumni');
+        $html = $this->actingAs($user)->get('/integration')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<option value="scope:alumni"[^>]*disabled/', $html);
+        $this->assertMatchesRegularExpression('/<option value="scope:foundation"[^>]*disabled/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<option value="scope:university"[^>]*disabled/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<option value="scope:high-school"[^>]*disabled/', $html);
     }
 
     public function test_a_new_member_joins_a_club_only_while_an_alumnus_may_target_entities_and_positions(): void

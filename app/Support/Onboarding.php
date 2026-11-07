@@ -12,7 +12,7 @@ use App\Models\User;
 /**
  * Parcours d'intégration d'un nouveau compte. Chaque étape bloque les suivantes, et tout le parcours
  * bloque l'application tant que le membre n'a pas été accepté (adhésion ou poste) pour le mandat en cours :
- * e-mail vérifié → info session → ancien/nouveau membre → profil complet → adhésion ou candidature approuvée.
+ * e-mail vérifié → info session → ancien/nouveau membre → profil complet → statut actuel → adhésion ou candidature approuvée.
  *
  * Les comptes existants et les administrateurs créés en ligne de commande sont dispensés (`onboarding_done_at`).
  */
@@ -26,6 +26,8 @@ final class Onboarding
 
     public const PROFILE = 'profile';
 
+    public const STATUS = 'status';
+
     public const PLACEMENT = 'placement';
 
     /** Étapes dans l'ordre, avec leur libellé. */
@@ -34,6 +36,7 @@ final class Onboarding
         self::INFO_SESSION => 'Valider la session d’information',
         self::HISTORY => 'Ancien ou nouveau membre',
         self::PROFILE => 'Compléter mon profil',
+        self::STATUS => 'Mon statut actuel',
         self::PLACEMENT => 'Adhésion ou poste du mandat en cours',
     ];
 
@@ -116,6 +119,7 @@ final class Onboarding
             self::INFO_SESSION => $user->onboarding_completed_at !== null,
             self::HISTORY => $user->history_onboarding_at !== null,
             self::PROFILE => ProfileCompleteness::missing($user) === [],
+            self::STATUS => CurrentStatus::complete($user->profile),
             self::PLACEMENT => self::placementDone($user),
             default => false,
         };

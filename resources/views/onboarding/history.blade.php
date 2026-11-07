@@ -70,7 +70,8 @@
                             <select id="past-scope" name="past_scope" required class="{{ $fieldClass }}">
                                 <option value="">Choisir…</option>
                                 @foreach($scopes as $slug => $label)
-                                    <option value="{{ $slug }}" @selected(old('past_scope') === $slug)>{{ $label }}</option>
+                                    @php $open = \App\Support\OrgScopes::openForMembership($slug); @endphp
+                                    <option value="{{ $slug }}" @selected(old('past_scope') === $slug) @disabled(! $open)>{{ $label }}{{ $open ? '' : ' (indisponible)' }}</option>
                                 @endforeach
                             </select>
                             @error('past_target')<p class="mt-1 text-xs font-semibold text-rose-700">{{ $message }}</p>@enderror

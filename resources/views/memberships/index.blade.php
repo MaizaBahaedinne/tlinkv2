@@ -188,7 +188,8 @@
                             <option value="">Choisir…</option>
                             <optgroup label="Entités de la Fondation">
                                 @foreach($scopes as $slug => $label)
-                                    <option value="scope:{{ $slug }}" @selected(old('target') === 'scope:'.$slug)>{{ $label }}</option>
+                                    @php $open = \App\Support\OrgScopes::openForMembership($slug); @endphp
+                                    <option value="scope:{{ $slug }}" @selected(old('target') === 'scope:'.$slug) @disabled(! $open)>{{ $label }}{{ $open ? '' : ' (indisponible)' }}</option>
                                 @endforeach
                             </optgroup>
                             @foreach($clubs as $slug => $list)
@@ -258,7 +259,8 @@
                 <option value="">Choisir…</option>
                 <optgroup label="Entités de la Fondation">
                     @foreach($scopes as $slug => $label)
-                        <option value="scope:{{ $slug }}">{{ $label }}</option>
+                        @php $open = \App\Support\OrgScopes::openForMembership($slug); @endphp
+                        <option value="scope:{{ $slug }}" @disabled(! $open)>{{ $label }}{{ $open ? '' : ' (indisponible)' }}</option>
                     @endforeach
                 </optgroup>
                 @foreach($pastClubs as $slug => $list)

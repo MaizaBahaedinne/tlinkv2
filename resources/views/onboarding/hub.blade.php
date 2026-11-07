@@ -16,7 +16,7 @@
             <p class="mt-1 text-sm text-slate-600">Ces étapes se suivent dans l’ordre. L’application s’ouvre dès que votre adhésion ou votre poste du mandat en cours est approuvé par l’un de vos supérieurs.</p>
         </div>
 
-        <ol class="mt-5 grid gap-2 sm:grid-cols-5" aria-label="Étapes">
+        <ol class="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Étapes">
             @foreach($steps as $key => $label)
                 @php
                     $index = array_search($key, $stepKeys, true) + 1;
@@ -245,6 +245,98 @@
                     </div>
                 </form>
 
+            @elseif($step === 'status')
+                @php
+                    $inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-tlink-blue';
+                    $kind = old('status_kind', $profile?->status_kind);
+                    $level = old('status_level', $profile?->status_level);
+                    $country = old('status_country', $profile?->status_country);
+                    $companyName = old('company_name', $statusCompany?->name);
+                @endphp
+                <h2 class="font-display text-lg font-semibold text-slate-900">Votre statut actuel</h2>
+                <p class="mt-1 text-sm text-slate-600">Une information essentielle pour mieux connaître nos membres. Vous pourrez la mettre à jour plus tard.</p>
+
+                <form id="status-form" method="post" action="{{ route('integration.status') }}" enctype="multipart/form-data" class="mt-5 space-y-4">
+                    @csrf
+
+                    <div>
+                        <label for="status_kind" class="text-sm font-semibold text-slate-700">Statut actuel *</label>
+                        <select id="status_kind" name="status_kind" required class="{{ $inputClass }} mt-1">
+                            <option value="">Choisir…</option>
+                            @foreach($statusKinds as $key => $label)
+                                <option value="{{ $key }}" @selected($kind === $key)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @if($errors->has('status_kind'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('status_kind') }}</p>@endif
+                    </div>
+
+                    <div data-kind="pupil" class="hidden">
+                        <label for="level_pupil" class="text-sm font-semibold text-slate-700">Niveau *</label>
+                        <select id="level_pupil" name="status_level" class="{{ $inputClass }} mt-1">
+                            <option value="">Choisir…</option>
+                            @foreach($pupilLevels as $key => $label)
+                                <option value="{{ $key }}" @selected($level === $key)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div data-kind="student" class="hidden">
+                        <label for="level_student" class="text-sm font-semibold text-slate-700">Niveau *</label>
+                        <select id="level_student" name="status_level" class="{{ $inputClass }} mt-1">
+                            <option value="">Choisir…</option>
+                            @foreach($studentLevels as $group => $options)
+                                <optgroup label="{{ $group }}">
+                                    @foreach($options as $key => $label)
+                                        <option value="{{ $key }}" @selected($level === $key)>{{ $label }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div data-kind="diaspora" class="hidden">
+                        <label for="status_country" class="text-sm font-semibold text-slate-700">Dans quel pays vivez-vous ? *</label>
+                        <select id="status_country" name="status_country" class="{{ $inputClass }} mt-1">
+                            <option value="">Choisir…</option>
+                            @foreach($countries as $name)
+                                <option value="{{ $name }}" @selected($country === $name)>{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div data-kind="entrepreneur" class="hidden space-y-3 rounded-xl border border-slate-200 p-4">
+                        <p class="text-sm text-slate-600">Votre société est ajoutée à notre base avec l’étiquette « membre Tunivisions » et à votre profil comme expérience.</p>
+                        <div>
+                            <label for="company_name" class="text-sm font-semibold text-slate-700">Nom de la société *</label>
+                            <input id="company_name" name="company_name" value="{{ $companyName }}" maxlength="160" list="company-options" autocomplete="off" class="{{ $inputClass }} mt-1">
+                            <datalist id="company-options">
+                                @foreach($companyOptions as $option)<option value="{{ $option }}"></option>@endforeach
+                            </datalist>
+                            @if($errors->has('company_name'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('company_name') }}</p>@endif
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="started_on" class="text-sm font-semibold text-slate-700">Date de début *</label>
+                                <input id="started_on" type="date" name="started_on" value="{{ old('started_on') }}" class="{{ $inputClass }} mt-1">
+                                @if($errors->has('started_on'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('started_on') }}</p>@endif
+                            </div>
+                            <div>
+                                <label for="logo" class="text-sm font-semibold text-slate-700">Logo de la société *</label>
+                                <input id="logo" type="file" name="logo" accept="image/png,image/jpeg,image/webp" class="mt-1 text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold">
+                                @if($errors->has('logo'))<p class="mt-1 text-sm font-semibold text-rose-700">{{ $errors->first('logo') }}</p>@endif
+                            </div>
+                        </div>
+                    </div>
+
+                    @foreach(['status_level', 'status_country'] as $field)
+                        @if($errors->has($field))<p class="text-sm font-semibold text-rose-700">{{ $errors->first($field) }}</p>@endif
+                    @endforeach
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="{{ $buttonClass }}">Enregistrer mon statut</button>
+                    </div>
+                </form>
+
             @else
                 <h2 class="font-display text-lg font-semibold text-slate-900">
                     {{ $isAlumni ? 'Adhésion ou poste' : 'Adhésion à un club' }} pour le mandat {{ $mandate?->label }}
@@ -291,7 +383,8 @@
                                 <option value="">Choisir…</option>
                                 @if($isAlumni)
                                     @foreach($scopes as $slug => $label)
-                                        <option value="scope:{{ $slug }}" @selected(old('target') === 'scope:'.$slug)>{{ $label }}</option>
+                                        @php $open = \App\Support\OrgScopes::openForMembership($slug); @endphp
+                                        <option value="scope:{{ $slug }}" @selected(old('target') === 'scope:'.$slug) @disabled(! $open)>{{ $label }}{{ $open ? '' : ' (indisponible)' }}</option>
                                     @endforeach
                                 @endif
                                 @foreach($clubs as $slug => $group)
@@ -350,6 +443,26 @@
                 list.insertAdjacentHTML('beforeend', template.innerHTML.replace(/__INDEX__/g, String(counter++)));
             });
         });
+    })();
+</script>
+@endif
+
+@if($step === 'status')
+<script>
+    (function () {
+        var select = document.getElementById('status_kind');
+        var groups = document.querySelectorAll('#status-form [data-kind]');
+
+        function refresh() {
+            groups.forEach(function (group) {
+                var active = group.dataset.kind === select.value;
+                group.classList.toggle('hidden', !active);
+                group.querySelectorAll('input, select').forEach(function (field) { field.disabled = !active; });
+            });
+        }
+
+        select.addEventListener('change', refresh);
+        refresh();
     })();
 </script>
 @endif

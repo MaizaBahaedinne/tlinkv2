@@ -58,6 +58,7 @@
                         @endif
                         <div class="grow" style="min-width:220px">
                             <strong style="display:inline">{{ $company->name }}</strong>
+                            @if($company->tunivisions_member)<span class="badge" style="margin-left:6px">Membre Tunivisions</span>@endif
                             <div class="text-sm text-muted">
                                 @if($company->creator)Ajoutée par {{ $company->creator->name }} · @endif{{ $company->created_at?->format('d/m/Y') }}
                             </div>
