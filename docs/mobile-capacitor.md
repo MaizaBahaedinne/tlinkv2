@@ -31,6 +31,13 @@ CAP_APP=store npx cap open ios
 
 Raccourcis : `npm run cap:sync:link`, `cap:sync:store`, `cap:sync:academy`.
 
+Les projets iOS des trois applications sont déjà générés (`mobile/<app>/ios`). Sur un Mac avec Xcode installé et sélectionné (`sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`), finaliser chacun avec :
+
+```bash
+cd mobile/link/ios/App && pod install    # idem pour store et academy
+CAP_APP=link npx cap open ios
+```
+
 Pour viser un autre domaine (préproduction) : `CAP_DOMAIN=staging.example.org CAP_APP=link npx cap sync`.
 
 ## Reste à faire avant publication
