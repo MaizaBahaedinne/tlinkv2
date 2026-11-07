@@ -1,12 +1,42 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+/**
+ * Plusieurs applications mobiles à partir d'un seul dépôt : une par sous-domaine (voir docs/subdomains.md).
+ * L'application à construire se choisit avec la variable CAP_APP (link par défaut) :
+ *   CAP_APP=store npx cap sync
+ * Chaque application a ses propres projets natifs dans mobile/<app>/android et mobile/<app>/ios.
+ * CAP_DOMAIN permet de viser un autre domaine (préproduction par exemple).
+ */
+const domain = process.env.CAP_DOMAIN ?? 'tunivisionsfoundation.org';
+
+const apps = {
+  link: { appId: 'com.tunivisions.tlink', appName: 'T.Link', url: `https://link.${domain}` },
+  store: { appId: 'com.tunivisions.stores', appName: 'Tunivisions Stores', url: `https://store.${domain}/boutique` },
+  academy: { appId: 'com.tunivisions.academy', appName: 'Tunivisions Academy', url: `https://academy.${domain}/academy` },
+} as const;
+
+type AppKey = keyof typeof apps;
+
+const key = (process.env.CAP_APP ?? 'link') as AppKey;
+const app = apps[key];
+
+if (!app) {
+  throw new Error(`CAP_APP inconnu « ${key} » : utilisez ${Object.keys(apps).join(', ')}.`);
+}
+
 const config: CapacitorConfig = {
-  appId: 'com.tunivisions.tlink',
-  appName: 'T.Link',
-  webDir: 'public/build',
+  appId: app.appId,
+  appName: app.appName,
+  // Page de secours (hors connexion) : l'application elle-même est servie par le site en HTTPS.
+  webDir: 'mobile/www',
   server: {
+    url: app.url,
     cleartext: false,
+    // La session est partagée entre les sous-domaines : les liens de l'un à l'autre restent dans l'application.
+    allowNavigation: [`*.${domain}`],
   },
+  android: { path: `mobile/${key}/android` },
+  ios: { path: `mobile/${key}/ios` },
 };
 
 export default config;

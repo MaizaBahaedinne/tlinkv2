@@ -1,53 +1,48 @@
-# T.Link Mobile (Capacitor)
+# Applications mobiles (Capacitor)
 
-Ce projet est prepare pour une enveloppe mobile Android/iOS via Capacitor.
+Un seul dépôt, **une application mobile par sous-domaine** (voir [subdomains.md](subdomains.md)). Chaque application est une enveloppe native qui charge le site en HTTPS : tout ce qui est publié sur le serveur est disponible sans republier l'application.
 
-## Strategie recommandee
+| Application | `CAP_APP` | Identifiant (`appId`) | Adresse chargée |
+| --- | --- | --- | --- |
+| T.Link | `link` (défaut) | `com.tunivisions.tlink` | `https://link.tunivisionsfoundation.org` |
+| Tunivisions Stores | `store` | `com.tunivisions.stores` | `https://store.tunivisionsfoundation.org/boutique` |
+| Tunivisions Academy | `academy` | `com.tunivisions.academy` | `https://academy.tunivisionsfoundation.org/academy` |
 
-Pour la production, privilegier une app qui embarque le frontend compile (`public/build`) et communique avec l'API distante Laravel.
+La configuration est dans `capacitor.config.ts`. Chaque application a ses projets natifs dans `mobile/<app>/android` et `mobile/<app>/ios` ; `mobile/www` est une page de secours commune (« Connexion impossible », bouton Réessayer).
 
-Avantages:
-- meilleur controle des versions app
-- meilleure conformite store
-- comportement plus stable hors reseau variable
+La session est partagée entre les sous-domaines (`SESSION_DOMAIN=.tunivisionsfoundation.org`) : se connecter dans T.Link suffit, et les liens d'une application à l'autre restent dans l'application (`allowNavigation: *.tunivisionsfoundation.org`).
 
-## Prerequis
+## Prérequis
 
-- Node.js et npm
-- Android Studio pour Android
-- Xcode pour iOS (macOS)
+- Node.js et npm, puis `npm install`
+- Android Studio (Android) et Xcode (iOS, macOS uniquement)
 
-## Commandes
+## Créer et ouvrir une application
 
-```bash
-npm install
-npm run build
-npm run cap:sync
-npm run cap:android
-npm run cap:ios
-```
-
-Ouvrir projets natifs:
+Exemple pour Stores ; remplacer `store` par `link` ou `academy` :
 
 ```bash
-npm run cap:open:android
-npm run cap:open:ios
+CAP_APP=store npx cap add android      # une seule fois
+CAP_APP=store npx cap add ios          # une seule fois
+CAP_APP=store npx cap sync             # après chaque changement de configuration ou de plugin
+CAP_APP=store npx cap open android
+CAP_APP=store npx cap open ios
 ```
 
-## Variables et API
+Raccourcis : `npm run cap:sync:link`, `cap:sync:store`, `cap:sync:academy`.
 
-- Le shell mobile doit cibler l'API HTTPS de production.
-- Configurer CORS Laravel pour les origines necessaires.
-- Ne jamais stocker de secret applicatif en clair dans le bundle.
+Pour viser un autre domaine (préproduction) : `CAP_DOMAIN=staging.example.org CAP_APP=link npx cap sync`.
 
-## Securite mobile
+## Reste à faire avant publication
 
-- Forcer HTTPS
-- Gerer expiration session/tokens
-- Prevoir ecrans d'erreur reseau
-- Restreindre deep links a des domaines de confiance
+- Icônes et écrans de démarrage de chaque application (`mobile/<app>/android` et `ios`).
+- Plugins natifs selon les besoins (caméra pour le scan, notifications push, barre d'état…).
+- Comptes développeur, certificats de signature et fiches stores (un jeu par `appId`).
+- Les builds ne sont pas exécutés ici : ils se font dans Android Studio et Xcode.
 
-## Build Android/iOS
+## Sécurité mobile
 
-Les builds stores n'ont pas ete executes automatiquement ici.
-Ils doivent etre realises dans les outils natifs avec SDK/signing valides.
+- HTTPS uniquement (`cleartext: false`) ; navigation limitée aux sous-domaines de la Fondation.
+- Aucun secret applicatif dans l'application : elle ne contient que la page de secours.
+- Prévoir l'expiration de session et vérifier que les liens profonds ne visent que des domaines de confiance.
+- Les stores (Apple en particulier) refusent parfois une simple enveloppe de site web : prévoir des fonctions natives (notifications, scan) pour justifier l'application.
