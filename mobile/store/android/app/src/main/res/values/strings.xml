@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tunivisions Stores</string>
+    <string name="title_activity_main">Tunivisions Stores</string>
+    <string name="package_name">com.tunivisions.stores</string>
+    <string name="custom_url_scheme">com.tunivisions.stores</string>
+</resources>
