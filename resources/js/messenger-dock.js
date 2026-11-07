@@ -110,14 +110,14 @@
     function saveState() {
         try {
             localStorage.setItem(storeKey, JSON.stringify({ list: listOpen, wins: wins.map(function (win) { return { id: win.id, min: win.minimized }; }) }));
-        } catch (error) { /* stockage indisponible */ }
+        } catch { /* stockage indisponible */ }
     }
 
     function loadState() {
         try {
             var saved = JSON.parse(localStorage.getItem(storeKey));
             if (saved && Array.isArray(saved.wins)) { return saved; }
-        } catch (error) { /* état ignoré */ }
+        } catch { /* état ignoré */ }
         return { list: false, wins: [] };
     }
 
@@ -201,7 +201,6 @@
     // ───────────── Liste des conversations ─────────────
 
     var conversations = [];
-    var unreadTotal = 0;
     var listTimer = null;
     var listFails = 0;
 
@@ -212,7 +211,6 @@
     }
 
     function setBadge(count) {
-        unreadTotal = count;
         barBadge.textContent = '';
         if (count > 0) { barBadge.appendChild(countBadge(count)); }
         if (typeof window.tlinkMessengerBadge === 'function') { window.tlinkMessengerBadge(count); }

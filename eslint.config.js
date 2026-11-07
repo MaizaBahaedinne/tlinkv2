@@ -4,10 +4,18 @@ import tsParser from '@typescript-eslint/parser';
 import vue from 'eslint-plugin-vue';
 import vueParser from 'vue-eslint-parser';
 import prettier from 'eslint-config-prettier';
+import globals from 'globals';
 
 export default [
   js.configs.recommended,
   ...vue.configs['flat/recommended'],
+  {
+    // Code exécuté dans le navigateur (document, window, fetch…).
+    files: ['resources/js/**/*.{js,ts,vue}'],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
   {
     files: ['resources/js/**/*.{ts,vue}'],
     languageOptions: {

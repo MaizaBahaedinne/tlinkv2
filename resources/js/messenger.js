@@ -8,7 +8,6 @@
 
     var cfg = root.dataset;
     var activeId = cfg.active ? parseInt(cfg.active, 10) : null;
-    var me = parseInt(cfg.me, 10);
     var timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
     var dayFmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     var shortDayFmt = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit' });
