@@ -116,6 +116,24 @@ class HistoryOnboardingTest extends TestCase
         $this->assertDatabaseHas('mandate_participations', ['user_id' => $user->id, 'mandate_id' => $joined->id, 'node_id' => $club->id, 'scope' => 'university']);
     }
 
+    public function test_inactive_clubs_are_listed_and_selectable_for_past_mandates(): void
+    {
+        $joined = $this->mandate(2023);
+        $inactive = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'Club Dormant', 'scope' => 'university', 'status' => 'inactive', 'sort_order' => 0]);
+        $position = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'access_level' => 'none', 'category' => 'direction', 'parent_id' => $inactive->id, 'title' => 'Membre actif', 'scope' => 'university', 'sort_order' => 0]);
+        $user = $this->validated();
+        $this->actingAs($user)->post('/bienvenue/origine', ['origin' => 'alumni']);
+
+        $page = $this->actingAs($user)->get('/bienvenue')->assertOk()->getContent();
+        $this->assertStringContainsString('Club Dormant (inactif)', $page);
+        // Le poste reste grisé (disabled) tant que le club n'est pas choisi.
+        $this->assertMatchesRegularExpression('/id="past-position"[^>]*\\sdisabled/', $page);
+
+        $this->actingAs($user)->getJson('/adhesions/postes?target=club:'.$inactive->id)->assertOk();
+        $this->actingAs($user)->post('/bienvenue/arrivee', ['mandate_id' => $joined->id, 'past_scope' => 'university', 'past_club' => $inactive->id, 'position_id' => $position->id])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('mandate_participations', ['user_id' => $user->id, 'node_id' => $inactive->id]);
+    }
+
     public function test_a_scope_without_clubs_needs_no_club(): void
     {
         $joined = $this->mandate(2023);

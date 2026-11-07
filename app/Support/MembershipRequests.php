@@ -25,18 +25,19 @@ final class MembershipRequests
     public const MOTIVATION_MAX = 3000;
 
     /**
-     * Clubs actifs ouverts aux demandes, groupés par périmètre.
+     * Clubs ouverts aux demandes, groupés par périmètre : seuls les clubs actifs pour le mandat en cours,
+     * tous (même inactifs) quand on reconstitue un mandat passé ($withInactive).
      *
      * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, OrgNode>>
      */
-    public static function clubsByScope()
+    public static function clubsByScope(bool $withInactive = false)
     {
         return OrgNode::query()
             ->where('kind', 'club')
-            ->where('status', 'active')
+            ->when(! $withInactive, fn ($query) => $query->where('status', 'active'))
             ->whereNotNull('scope')
             ->orderBy('title')
-            ->get(['id', 'title', 'subtitle', 'scope'])
+            ->get(['id', 'title', 'subtitle', 'scope', 'status'])
             ->filter(fn (OrgNode $club) => OrgScopes::valid($club->scope))
             ->groupBy('scope');
     }

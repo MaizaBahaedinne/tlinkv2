@@ -52,7 +52,7 @@ class HistoryOnboardingController extends Controller
             'followingMandates' => $joined === null ? collect() : $closed->filter(fn (Mandate $mandate) => ! $mandate->precedes($joined))->sortBy('start_year')->values(),
             'declared' => $declared,
             'scopes' => OrgScopes::all(),
-            'clubs' => MembershipRequests::clubsByScope(),
+            'clubs' => MembershipRequests::clubsByScope(true),
         ]);
     }
 
@@ -112,7 +112,7 @@ class HistoryOnboardingController extends Controller
 
         [$scope, $clubId] = $this->parseTarget($data['past_target']);
 
-        if ($clubId === null && MembershipRequests::clubsByScope()->has($scope)) {
+        if ($clubId === null && MembershipRequests::clubsByScope(true)->has($scope)) {
             throw ValidationException::withMessages(['past_club' => 'Choisissez le club que vous avez rejoint dans cette partie.']);
         }
 
@@ -155,7 +155,7 @@ class HistoryOnboardingController extends Controller
         }
 
         if (preg_match('/^club:(\d+)$/', $target, $match) === 1) {
-            $club = MembershipRequests::clubsByScope()->flatten()->firstWhere('id', (int) $match[1]);
+            $club = MembershipRequests::clubsByScope(true)->flatten()->firstWhere('id', (int) $match[1]);
 
             if ($club !== null) {
                 return [(string) $club->scope, (int) $club->id];

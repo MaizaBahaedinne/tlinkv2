@@ -261,10 +261,10 @@
                         <option value="scope:{{ $slug }}">{{ $label }}</option>
                     @endforeach
                 </optgroup>
-                @foreach($clubs as $slug => $list)
+                @foreach($pastClubs as $slug => $list)
                     <optgroup label="Clubs · {{ $scopes[$slug] ?? $slug }}">
                         @foreach($list as $club)
-                            <option value="club:{{ $club->id }}">{{ $club->title }}{{ filled($club->subtitle) ? ' — '.$club->subtitle : '' }}</option>
+                            <option value="club:{{ $club->id }}">{{ $club->title }}{{ filled($club->subtitle) ? ' — '.$club->subtitle : '' }}{{ $club->status !== 'active' ? ' (inactif)' : '' }}</option>
                         @endforeach
                     </optgroup>
                 @endforeach

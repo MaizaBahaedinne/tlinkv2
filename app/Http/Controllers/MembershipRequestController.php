@@ -37,6 +37,7 @@ class MembershipRequestController extends Controller
             'memberships' => Membership::query()->where('user_id', $user->id)->with('node:id,title')->latest('id')->get(),
             'scopes' => OrgScopes::all(),
             'clubs' => MembershipRequests::clubsByScope(),
+            'pastClubs' => MembershipRequests::clubsByScope(true),
             'statuses' => self::STATUSES,
             'positionsByMandate' => $this->mandateRows($user),
             'joinedMandate' => $user->joined_mandate_id ? Mandate::query()->find($user->joined_mandate_id) : null,
@@ -123,7 +124,8 @@ class MembershipRequestController extends Controller
     {
         $data = $request->validate(['target' => ['required', 'string', 'max:80']]);
 
-        [$scope, $clubId] = $this->parseTarget($data['target']);
+        // Lecture seule : sert aussi aux mandats passés, dont les clubs peuvent être inactifs aujourd'hui.
+        [$scope, $clubId] = $this->parseTarget($data['target'], 'target', true);
 
         return response()->json(['positions' => MembershipRequests::memberPositions($scope, $clubId)
             ->map(fn ($node) => ['id' => $node->id, 'title' => $node->title, 'subtitle' => $node->subtitle, 'leader' => MembershipRequests::isLeaderPosition($node), 'rights' => MembershipRequests::grantsRights($node)])
@@ -144,7 +146,7 @@ class MembershipRequestController extends Controller
         ]);
 
         try {
-            [$scope, $clubId] = $this->parseTarget($data['past_target'], 'past_target');
+            [$scope, $clubId] = $this->parseTarget($data['past_target'], 'past_target', true);
 
             $participation = MembershipRequests::declarePast(
                 $request->user(),
@@ -177,14 +179,14 @@ class MembershipRequestController extends Controller
      *
      * @throws ValidationException
      */
-    private function parseTarget(string $target, string $errorKey = 'target'): array
+    private function parseTarget(string $target, string $errorKey = 'target', bool $withInactive = false): array
     {
         if (preg_match('/^scope:([a-z0-9\-]+)$/', $target, $match) === 1 && OrgScopes::valid($match[1])) {
             return [$match[1], null];
         }
 
         if (preg_match('/^club:(\d+)$/', $target, $match) === 1) {
-            $club = MembershipRequests::clubsByScope()->flatten()->firstWhere('id', (int) $match[1]);
+            $club = MembershipRequests::clubsByScope($withInactive)->flatten()->firstWhere('id', (int) $match[1]);
 
             if ($club !== null) {
                 return [(string) $club->scope, (int) $club->id];

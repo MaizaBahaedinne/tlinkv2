@@ -150,7 +150,7 @@
         var scope = document.getElementById('past-scope');
         var club = document.getElementById('past-club');
         var position = document.getElementById('past-position');
-        var clubsByScope = @json($clubs->map(fn ($list) => $list->map(fn ($c) => ['id' => $c->id, 'title' => $c->title.(filled($c->subtitle) ? ' — '.$c->subtitle : '')])->values()));
+        var clubsByScope = @json($clubs->map(fn ($list) => $list->map(fn ($c) => ['id' => $c->id, 'title' => $c->title.(filled($c->subtitle) ? ' — '.$c->subtitle : '').($c->status !== 'active' ? ' (inactif)' : '')])->values()));
         var selectedClub = @json((string) old('past_club'));
         var selectedPosition = @json((string) old('position_id'));
 
