@@ -40,6 +40,16 @@ CAP_APP=link npx cap open ios
 
 Pour viser un autre domaine (préproduction) : `CAP_DOMAIN=staging.example.org CAP_APP=link npx cap sync`.
 
+## Tester sur Android sans installer Android Studio
+
+Le workflow GitHub « Mobile Android » (`.github/workflows/mobile-android.yml`) compile les APK de test sur les serveurs GitHub :
+
+1. GitHub > Actions > « Mobile Android » > Run workflow (choisir `all`, `link`, `store` ou `academy`).
+2. Quand le run est vert, télécharger l'artefact `tunivisions-<app>-debug-apk` (un zip contenant `app-debug.apk`), depuis le Mac ou directement depuis le téléphone.
+3. Sur le téléphone, ouvrir l'APK et autoriser l'installation depuis cette source (Paramètres > Applications > Accès spécial > Installer des applications inconnues).
+
+Ces APK sont signés avec la clé de débogage : ils servent uniquement aux tests, pas à la publication. iOS exige Xcode et un compte Apple, sans équivalent gratuit simple dans le cloud.
+
 ## Reste à faire avant publication
 
 - Icônes et écrans de démarrage de chaque application (`mobile/<app>/android` et `ios`).

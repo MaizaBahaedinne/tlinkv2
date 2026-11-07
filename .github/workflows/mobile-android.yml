@@ -1,0 +1,69 @@
+name: Mobile Android
+
+# Compile les applications Android (APK de test) sur les serveurs GitHub : aucun outil à installer sur le Mac.
+# Lancement : GitHub > Actions > « Mobile Android » > Run workflow. Les APK sont à télécharger dans les artefacts du run.
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Application à compiler"
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - link
+          - store
+          - academy
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [link, store, academy]
+    steps:
+      - name: Application demandée ?
+        id: wanted
+        run: echo "build=${{ (inputs.app == 'all' || inputs.app == matrix.app) && 'yes' || 'no' }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.wanted.outputs.build == 'yes'
+
+      - uses: actions/setup-node@v4
+        if: steps.wanted.outputs.build == 'yes'
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        if: steps.wanted.outputs.build == 'yes'
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Dépendances JavaScript
+        if: steps.wanted.outputs.build == 'yes'
+        run: npm ci
+
+      - name: Synchroniser Capacitor
+        if: steps.wanted.outputs.build == 'yes'
+        run: CAP_APP=${{ matrix.app }} npx cap sync android
+
+      - name: Compiler l'APK de test
+        if: steps.wanted.outputs.build == 'yes'
+        working-directory: mobile/${{ matrix.app }}/android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
+      - name: Publier l'APK
+        if: steps.wanted.outputs.build == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tunivisions-${{ matrix.app }}-debug-apk
+          path: mobile/${{ matrix.app }}/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
