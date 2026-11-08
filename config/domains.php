@@ -20,6 +20,8 @@ return [
         'store' => env('DOMAIN_STORE'),
         // Tunivisions Academy (et certificats publics).
         'academy' => env('DOMAIN_ACADEMY'),
+        // T.Link Messenger : application de messagerie (mêmes routes /messagerie, racine redirigée vers la messagerie).
+        'messenger' => env('DOMAIN_MESSENGER'),
     ],
 
     // Routes de T.Link restant utilisables depuis les sous-domaines Store et Academy (barre de navigation, messagerie…) :
@@ -30,6 +32,8 @@ return [
         'notifications.*',
         'search.*',
         'media.*',
+        'devices.*',
+        'broadcasting.auth',
         'logout',
     ],
 ];

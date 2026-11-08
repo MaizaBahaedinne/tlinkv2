@@ -26,6 +26,8 @@
 	<string>Vos photos servent à illustrer votre profil, vos publications et vos documents.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Votre position sert à vous proposer les événements et les clubs proches de vous.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Le micro sert à enregistrer vos messages vocaux dans la messagerie.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

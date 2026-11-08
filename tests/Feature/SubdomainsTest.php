@@ -21,6 +21,7 @@ class SubdomainsTest extends TestCase
         'DOMAIN_APP' => 'link.example.test',
         'DOMAIN_STORE' => 'store.example.test',
         'DOMAIN_ACADEMY' => 'academy.example.test',
+        'DOMAIN_MESSENGER' => 'messenger.example.test',
     ];
 
     protected function setUp(): void
@@ -79,6 +80,15 @@ class SubdomainsTest extends TestCase
 
         $this->actingAs($user)->getJson('http://store.example.test/messagerie/non-lus')->assertOk()->assertJson(['unread' => 0]);
         $this->actingAs($user)->getJson('http://academy.example.test/messagerie/non-lus')->assertOk();
+    }
+
+    public function test_messenger_host_opens_the_messenger_and_serves_its_routes(): void
+    {
+        $user = User::factory()->create();
+
+        $this->get('http://messenger.example.test/')->assertRedirect('http://messenger.example.test/messagerie');
+        $this->actingAs($user)->getJson('http://messenger.example.test/messagerie/non-lus')->assertOk()->assertJson(['unread' => 0]);
+        $this->assertSame('messenger.example.test', Domains::host('messenger'));
     }
 
     public function test_app_root_leads_to_the_feed_and_store_academy_roots_are_public_showcases(): void

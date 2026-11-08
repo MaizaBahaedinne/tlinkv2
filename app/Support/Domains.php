@@ -8,12 +8,12 @@ use Illuminate\Routing\RouteRegistrar;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Répartition du site entre sous-domaines (site vitrine, T.Link, Store, Academy). Tout est optionnel : sans hôte configuré,
+ * Répartition du site entre sous-domaines (site vitrine, T.Link, Store, Academy, Messenger). Tout est optionnel : sans hôte configuré,
  * l'application se comporte comme un site unique.
  */
 class Domains
 {
-    public const KEYS = ['site', 'app', 'store', 'academy'];
+    public const KEYS = ['site', 'app', 'store', 'academy', 'messenger'];
 
     /** Hôte configuré pour une section, ou null. */
     public static function host(string $key): ?string
@@ -26,7 +26,7 @@ class Domains
     /** Au moins un sous-domaine dédié est configuré. */
     public static function enabled(): bool
     {
-        foreach (['site', 'store', 'academy'] as $key) {
+        foreach (['site', 'store', 'academy', 'messenger'] as $key) {
             if (self::host($key) !== null) {
                 return true;
             }

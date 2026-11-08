@@ -232,6 +232,7 @@ values = {
     "DOMAIN_APP": "",
     "DOMAIN_STORE": "",
     "DOMAIN_ACADEMY": "",
+    "DOMAIN_MESSENGER": "",
 }
 
 with open(path, "r") as handle:

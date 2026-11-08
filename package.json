@@ -12,6 +12,7 @@
         "cap:sync:link": "CAP_APP=link npx cap sync",
         "cap:sync:store": "CAP_APP=store npx cap sync",
         "cap:sync:academy": "CAP_APP=academy npx cap sync",
+        "cap:sync:messenger": "CAP_APP=messenger npx cap sync",
         "cap:android": "npx cap add android",
         "cap:ios": "npx cap add ios",
         "cap:open:android": "npx cap open android",

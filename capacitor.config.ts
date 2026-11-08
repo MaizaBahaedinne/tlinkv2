@@ -13,6 +13,7 @@ const apps = {
   link: { appId: 'com.tunivisions.tlink', appName: 'T.Link', url: `https://link.${domain}` },
   store: { appId: 'com.tunivisions.stores', appName: 'Tunivisions Stores', url: `https://store.${domain}/boutique` },
   academy: { appId: 'com.tunivisions.academy', appName: 'Tunivisions Academy', url: `https://academy.${domain}/academy` },
+  messenger: { appId: 'com.tunivisions.messenger', appName: 'T.Link Messenger', url: `https://messenger.${domain}/messagerie` },
 } as const;
 
 type AppKey = keyof typeof apps;

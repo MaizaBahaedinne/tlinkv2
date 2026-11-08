@@ -15,6 +15,7 @@ on:
           - link
           - store
           - academy
+          - messenger
 
 permissions:
   contents: read
@@ -26,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [link, store, academy]
+        app: [link, store, academy, messenger]
     steps:
       - name: Application demandée ?
         id: wanted
