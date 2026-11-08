@@ -50,6 +50,24 @@ Le workflow GitHub « Mobile Android » (`.github/workflows/mobile-android.yml`)
 
 Ces APK sont signés avec la clé de débogage : ils servent uniquement aux tests, pas à la publication. iOS exige Xcode et un compte Apple, sans équivalent gratuit simple dans le cloud.
 
+## Autorisations natives
+
+Déclarées dans `mobile/<app>/android/app/src/main/AndroidManifest.xml` et `mobile/<app>/ios/App/App/Info.plist` (à garder identiques pour les trois applications) :
+
+| Usage | Android | iOS |
+| --- | --- | --- |
+| Caméra (scan QR, vérification d'identité, photos) | `CAMERA` | `NSCameraUsageDescription` |
+| Photos (import) | sélecteur système, aucune permission | `NSPhotoLibraryUsageDescription` |
+| Localisation | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` | `NSLocationWhenInUseUsageDescription` |
+
+Le site doit aussi les autoriser : l'en-tête `Permissions-Policy` ([SecurityHeaders](../app/Http/Middleware/SecurityHeaders.php)) accepte `camera=(self)` et `geolocation=(self)`. Le microphone reste bloqué tant qu'aucune fonction ne l'utilise.
+
+La fenêtre d'autorisation s'affiche au premier usage (la WebView Capacitor la demande à Android). Après un refus, il faut réactiver l'autorisation dans les réglages du téléphone.
+
+NFC (à ajouter avec la lecture des cartes) : Android `<uses-permission android:name="android.permission.NFC" />` et `<uses-feature android:name="android.hardware.nfc" android:required="false" />` ; iOS clé `NFCReaderUsageDescription`, capacité « Near Field Communication Tag Reading » et un plugin NFC Capacitor (la Web NFC n'existe ni sur iOS ni dans la WebView).
+
+Connexion Google : Google refuse l'authentification dans une WebView intégrée (erreur `disallowed_useragent`). Il faut passer par un plugin de connexion native (Google Sign-In avec identifiant client Android/iOS, jeton vérifié côté serveur) ou par le navigateur système avec retour par lien profond.
+
 ## Reste à faire avant publication
 
 - Icônes et écrans de démarrage de chaque application (`mobile/<app>/android` et `ios`).
