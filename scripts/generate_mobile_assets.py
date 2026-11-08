@@ -10,6 +10,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent / "mobile"
+WEB_ICONS = Path(__file__).resolve().parent.parent / "public" / "app-icons"
 SOURCES = {
     "link": "icon Tlink mobile.png",
     "store": "icon store mobile.png",
@@ -81,6 +82,16 @@ def build(app: str, source: str) -> None:
         big = splash(master, bg, 2732, 2732)
         for name in ("splash-2732x2732.png", "splash-2732x2732-1.png", "splash-2732x2732-2.png"):
             big.save(assets / "Splash.imageset" / name)
+
+    # Web : favicons par application (public/app-icons/<app>/)
+    web = WEB_ICONS / app
+    web.mkdir(parents=True, exist_ok=True)
+    for size in (16, 32):
+        resize(master, size).save(web / f"favicon-{size}x{size}.png")
+    resize(master, 180).save(web / "apple-touch-icon.png")
+    resize(master, 192).save(web / "icon-192.png")
+    resize(master, 512).save(web / "icon-512.png")
+    master.save(web / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)])
 
     print(f"{app}: fond {hex_bg}")
 

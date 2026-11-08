@@ -109,6 +109,16 @@ class SubdomainsTest extends TestCase
         $this->get('http://academy.example.test/')->assertSee(route('store.showcase'), false);
     }
 
+    public function test_each_application_uses_its_own_favicons(): void
+    {
+        $this->get('http://store.example.test/')->assertSee('app-icons/store/favicon.ico', false);
+        $this->get('http://academy.example.test/')->assertSee('app-icons/academy/favicon-32x32.png', false);
+        $this->get('http://link.example.test/connexion')->assertSee('app-icons/link/favicon.ico', false);
+        $this->actingAs(User::factory()->create())->get('http://messenger.example.test/messagerie')->assertSee('app-icons/messenger/apple-touch-icon.png', false);
+
+        $this->withHeader('Accept-Language', 'fr')->get('http://example.test/fr')->assertSee('favicon-white-32x32.png', false)->assertDontSee('app-icons/', false);
+    }
+
     public function test_launch_countdown_only_covers_the_site_host_root(): void
     {
         $this->assertTrue(LaunchGate::isSitePath(Request::create('http://example.test/fr')));

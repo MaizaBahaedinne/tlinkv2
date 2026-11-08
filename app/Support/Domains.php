@@ -96,6 +96,30 @@ class Domains
         return $key !== null && self::host($key) !== null ? $key : null;
     }
 
+    /**
+     * Jeu d'icônes (dossier public/app-icons/<jeu>) de l'application servie : link, store, academy ou messenger.
+     * Null pour le site vitrine ou un chemin neutre (icônes de la Fondation).
+     */
+    public static function iconSet(Request $request): ?string
+    {
+        $key = self::keyForHost($request->getHost());
+
+        if ($key === 'site') {
+            return null;
+        }
+
+        if ($key !== null) {
+            return $key === 'app' ? 'link' : $key;
+        }
+
+        return match (explode('/', trim($request->path(), '/'))[0]) {
+            'boutique' => 'store',
+            'academy', 'certificats' => 'academy',
+            'messagerie' => 'messenger',
+            default => null,
+        };
+    }
+
     /** Cette route de T.Link peut être servie depuis n'importe quel sous-domaine. */
     public static function isSharedRoute(?string $name): bool
     {
