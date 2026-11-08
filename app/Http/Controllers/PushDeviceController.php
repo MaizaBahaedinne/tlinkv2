@@ -49,7 +49,7 @@ class PushDeviceController extends Controller
             'platform' => ['nullable', 'string', 'max:20'],
         ]);
 
-        Log::info('Push appareil : '.$data['step'], ['user' => $request->user()->id, 'detail' => $data['detail'] ?? null, 'platform' => $data['platform'] ?? null, 'host' => $request->getHost()]);
+        Log::channel('push')->info('Push appareil : '.$data['step'], ['user' => $request->user()->id, 'detail' => $data['detail'] ?? null, 'platform' => $data['platform'] ?? null, 'host' => $request->getHost()]);
 
         return response()->json(['ok' => true]);
     }

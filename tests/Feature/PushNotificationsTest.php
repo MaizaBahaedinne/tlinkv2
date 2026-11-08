@@ -60,15 +60,15 @@ class PushNotificationsTest extends TestCase
     public function test_the_app_can_report_its_push_status_for_diagnosis(): void
     {
         $user = User::factory()->create();
-        \Illuminate\Support\Facades\Log::spy();
+        $logger = \Mockery::mock();
+        $logger->shouldReceive('info')->once()->withArgs(fn ($message, $context) => $message === 'Push appareil : plugin-indisponible' && $context['user'] === $user->id);
+        \Illuminate\Support\Facades\Log::shouldReceive('channel')->with('push')->andReturn($logger);
 
         $this->postJson(route('devices.diagnostic'), ['step' => 'demarrage'])->assertUnauthorized();
 
         $this->actingAs($user)->postJson(route('devices.diagnostic'), ['step' => 'plugin-indisponible', 'detail' => 'not implemented', 'platform' => 'android'])
             ->assertOk();
         $this->postJson(route('devices.diagnostic'), [])->assertUnprocessable();
-
-        \Illuminate\Support\Facades\Log::shouldHaveReceived('info')->withArgs(fn ($message, $context) => $message === 'Push appareil : plugin-indisponible' && $context['user'] === $user->id)->once();
     }
 
     public function test_devices_are_registered_moved_between_members_and_removed_by_their_owner(): void

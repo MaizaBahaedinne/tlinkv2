@@ -86,7 +86,7 @@ final class Fcm
 
         if ($token === null) {
             Cache::forget('fcm:access-token:'.md5($credentials['client_email']));
-            Log::warning('FCM : jeton d\'accès refusé (vérifier le fichier du compte de service et l\'API Firebase Cloud Messaging V1).');
+            Log::channel('push')->warning('FCM : jeton d\'accès refusé (vérifier le fichier du compte de service et l\'API Firebase Cloud Messaging V1).');
 
             return [];
         }
@@ -107,7 +107,7 @@ final class Fcm
             $status = (string) $response->json('error.status');
 
             if (! $response->successful()) {
-                Log::warning('FCM : envoi refusé (HTTP '.$response->status().' '.$status.') : '.(string) $response->json('error.message'));
+                Log::channel('push')->warning('FCM : envoi refusé (HTTP '.$response->status().' '.$status.') : '.(string) $response->json('error.message'));
             }
 
             $results[] = ['device' => (int) $device->id, 'ok' => $response->successful(), 'status' => $response->status(), 'error' => trim($status.' '.(string) $response->json('error.message'))];

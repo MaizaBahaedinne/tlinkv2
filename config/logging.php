@@ -65,6 +65,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Diagnostic des notifications push (comptes rendus des applications, refus Firebase) : toujours écrit, quel que soit LOG_LEVEL.
+        'push' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/push.log'),
+            'level' => 'debug',
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
