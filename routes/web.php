@@ -5,6 +5,7 @@ use App\Http\Controllers\AcademyQuizController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\NativeAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\BadgeController;
@@ -58,6 +59,10 @@ Domains::on('academy')->get('/certificats/{code}', [AcademyController::class, 'c
 // Lien d'inscription direct d'un poste de l'organigramme (public : jeton non devinable, candidature a valider).
 Route::get('/rejoindre/{token}', [PositionJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('position.join');
 Route::post('/rejoindre/{token}', [PositionJoinController::class, 'store'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:10,10')->name('position.join.store');
+
+// Connexion des applications mobiles par le navigateur du téléphone (voir NativeAuthController).
+Route::get('/auth/native/start', [NativeAuthController::class, 'start'])->middleware('throttle:30,1')->name('native.start');
+Route::get('/auth/native/{token}', [NativeAuthController::class, 'consume'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:30,1')->name('native.consume');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/connexion', [LoginController::class, 'show'])->name('login');

@@ -53,5 +53,16 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.tunivisions.tlink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.tunivisions.tlink</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

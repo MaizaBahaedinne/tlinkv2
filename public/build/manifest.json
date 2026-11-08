@@ -153,6 +153,12 @@
       "_messenger-realtime-CNy-OEXI.js"
     ]
   },
+  "resources/js/native-auth.js": {
+    "file": "assets/native-auth-DO0VS2vZ.js",
+    "name": "native-auth",
+    "src": "resources/js/native-auth.js",
+    "isEntry": true
+  },
   "resources/js/native-push.js": {
     "file": "assets/native-push-DxZn6N1C.js",
     "name": "native-push",

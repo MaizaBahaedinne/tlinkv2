@@ -4,6 +4,11 @@
 @endphp
 
 <div class="mt-6 space-y-3 sm:mt-7">
+            {{-- Applications mobiles uniquement (affiché par native-auth.js) : reprend la session du navigateur du téléphone, partagée entre les applications T.Link. --}}
+            <button type="button" data-native-sso hidden
+                    class="w-full items-center justify-center rounded-xl bg-tlink-blue px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-tlink-blue/25 transition hover:bg-tlink-blue-700">
+                Continuer avec mon compte T.Link
+            </button>
             @foreach ($socialProviders as $key => $label)
                 <a href="{{ route('social.redirect', ['provider' => $key]) }}" rel="nofollow"
                    class="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-md">

@@ -21,6 +21,14 @@
 
     @yield('content')
 
+    @guest
+        @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+            {{-- Connexion par le navigateur du téléphone : sans effet hors des applications mobiles. --}}
+            <meta name="native-auth" content="{{ \App\Support\Domains::url('app', route('native.start', [], false)) }}">
+            @vite(['resources/js/native-auth.js'])
+        @endif
+    @endguest
+
     @auth
         @include('partials.onboarding-banner')
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))

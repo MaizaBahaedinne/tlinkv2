@@ -33,6 +33,7 @@ return [
         'search.*',
         'media.*',
         'devices.*',
+        'native.*',
         'logout',
     ],
 ];

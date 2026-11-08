@@ -66,7 +66,19 @@ La fenêtre d'autorisation s'affiche au premier usage (la WebView Capacitor la d
 
 NFC (à ajouter avec la lecture des cartes) : Android `<uses-permission android:name="android.permission.NFC" />` et `<uses-feature android:name="android.hardware.nfc" android:required="false" />` ; iOS clé `NFCReaderUsageDescription`, capacité « Near Field Communication Tag Reading » et un plugin NFC Capacitor (la Web NFC n'existe ni sur iOS ni dans la WebView).
 
-Connexion Google : Google refuse l'authentification dans une WebView intégrée (erreur `disallowed_useragent`). Il faut passer par un plugin de connexion native (Google Sign-In avec identifiant client Android/iOS, jeton vérifié côté serveur) ou par le navigateur système avec retour par lien profond.
+## Connexion Google et session partagée
+
+Google refuse l'authentification dans une WebView (`disallowed_useragent`). Les boutons Google, Facebook et LinkedIn ouvrent donc le **navigateur du téléphone** (plugins `@capacitor/browser` et `@capacitor/app`), qui rend la main à l'application par son schéma d'adresse (`com.tunivisions.tlink://auth?token=…`, déclaré dans `AndroidManifest.xml` et `Info.plist`, identique à l'`appId`).
+
+1. L'application génère un secret (gardé dans l'application) et envoie son empreinte SHA-256 à `/auth/native/start`.
+2. Le navigateur connecte l'utilisateur, puis affiche une page qui ouvre l'application avec un jeton à usage unique (2 minutes).
+3. L'application présente le jeton et son secret à `/auth/native/{jeton}` : la session s'ouvre dans la WebView (connexion mémorisée). Sans le secret, le jeton est inutilisable, même si une autre application intercepte le lien.
+
+Le navigateur garde sa session : le bouton « Continuer avec mon compte T.Link » connecte donc automatiquement une autre application de l'écosystème (Store, Academy, Messenger) sans nouvelle saisie. Chaque application a son propre stockage de cookies, il n'y a pas d'autre moyen de partager une session entre elles. Sur iOS, `SFSafariViewController` ne partage pas les cookies de Safari : la connexion automatique entre applications y est limitée.
+
+Pour que la session soit commune à tous les sous-domaines (retour du Store vers la page de connexion de T.Link, par exemple), le `.env` de production doit contenir `SESSION_DOMAIN=.tunivisionsfoundation.org` et `SESSION_SECURE_COOKIE=true`.
+
+Après toute modification de ces éléments, régénérer les applications (`npm run cap:sync:<app>`) : le plugin et le schéma d'adresse sont natifs, une nouvelle version de l'APK est nécessaire.
 
 ## Reste à faire avant publication
 
