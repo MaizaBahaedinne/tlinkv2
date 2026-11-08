@@ -5,6 +5,7 @@ namespace App\Support\Push;
 use App\Models\PushDevice;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Envoi de notifications push via Firebase Cloud Messaging (API HTTP v1), sans dépendance supplémentaire.
@@ -71,25 +72,28 @@ final class Fcm
      * @param  iterable<PushDevice>  $devices
      * @param  array<string, scalar>  $data  valeurs transmises à l'application (adresse à ouvrir, conversation…)
      * @param  string  $channel  canal Android (et donc son) : « messenger » ou « tlink »
+     * @return list<array{device: int, ok: bool, status: int, error: string}> un résultat par appareil (vide si Firebase n'est pas configuré)
      */
-    public static function send(iterable $devices, string $title, string $body, array $data = [], ?string $tag = null, string $channel = 'messenger'): void
+    public static function send(iterable $devices, string $title, string $body, array $data = [], ?string $tag = null, string $channel = 'messenger'): array
     {
         $credentials = self::credentials();
 
         if ($credentials === null) {
-            return;
+            return [];
         }
 
         $token = self::accessToken($credentials);
 
         if ($token === null) {
             Cache::forget('fcm:access-token:'.md5($credentials['client_email']));
+            Log::warning('FCM : jeton d\'accès refusé (vérifier le fichier du compte de service et l\'API Firebase Cloud Messaging V1).');
 
-            return;
+            return [];
         }
 
         $url = 'https://fcm.googleapis.com/v1/projects/'.$credentials['project_id'].'/messages:send';
         $data = array_map('strval', $data);
+        $results = [];
 
         foreach ($devices as $device) {
             $response = Http::withToken($token)->timeout(8)->post($url, ['message' => [
@@ -102,9 +106,17 @@ final class Fcm
 
             $status = (string) $response->json('error.status');
 
+            if (! $response->successful()) {
+                Log::warning('FCM : envoi refusé (HTTP '.$response->status().' '.$status.') : '.(string) $response->json('error.message'));
+            }
+
+            $results[] = ['device' => (int) $device->id, 'ok' => $response->successful(), 'status' => $response->status(), 'error' => trim($status.' '.(string) $response->json('error.message'))];
+
             if ($response->status() === 404 || in_array($status, ['NOT_FOUND', 'UNREGISTERED'], true)) {
                 $device->delete();
             }
         }
+
+        return $results;
     }
 }
