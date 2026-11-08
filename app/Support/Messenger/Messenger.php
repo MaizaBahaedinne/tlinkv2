@@ -230,6 +230,7 @@ final class Messenger
 
         Cache::forget(self::typingKey($conversation->id, $sender->id));
         Realtime::notify($conversation, 'message');
+        MessengerPush::notify($conversation, $message, $sender);
 
         return $message;
     }

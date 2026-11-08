@@ -56,6 +56,18 @@ jobs:
         if: steps.wanted.outputs.build == 'yes'
         run: CAP_APP=${{ matrix.app }} npx cap sync android
 
+      - name: Firebase (notifications push)
+        if: steps.wanted.outputs.build == 'yes'
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > mobile/${{ matrix.app }}/android/app/google-services.json
+            echo "google-services.json installé : notifications push actives."
+          else
+            echo "Secret GOOGLE_SERVICES_JSON absent : APK sans notifications push."
+          fi
+
       - name: Compiler l'APK de test
         if: steps.wanted.outputs.build == 'yes'
         working-directory: mobile/${{ matrix.app }}/android

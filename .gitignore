@@ -28,3 +28,7 @@ TlinkDB.sql
 
 # Donnees legacy (contacts personnels) : ne jamais versionner
 /database/legacy/
+
+# Firebase : fourni par le secret GitHub GOOGLE_SERVICES_JSON, jamais versionne
+google-services.json
+GoogleService-Info.plist

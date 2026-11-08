@@ -55,4 +55,9 @@ return [
         'redirect' => env('LINKEDIN_REDIRECT_URI', '/auth/linkedin-openid/callback'),
     ],
 
+    // Notifications push des applications mobiles (Firebase Cloud Messaging, API HTTP v1) : chemin du fichier JSON du compte de service.
+    'fcm' => [
+        'credentials' => env('FCM_CREDENTIALS'),
+    ],
+
 ];

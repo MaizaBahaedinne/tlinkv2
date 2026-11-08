@@ -24,6 +24,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\IdentityVerificationController;
 use App\Http\Controllers\PrivateMediaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PushDeviceController;
 use App\Http\Controllers\ShowcaseController;
 use App\Http\Controllers\StoreCartController;
 use App\Http\Controllers\StoreReviewController;
@@ -162,6 +163,10 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/clubs/{club}/onglets/{tab}', [ClubController::class, 'tab'])->whereNumber('club')->whereIn('tab', array_keys(\App\Support\ClubPage::TABS))->name('club.tab');
     Route::post('/clubs/{club}/actualites', [ClubController::class, 'storeNews'])->whereNumber('club')->middleware('throttle:10,10')->name('club.news.store');
     Route::delete('/clubs/{club}/actualites/{news}', [ClubController::class, 'destroyNews'])->whereNumber(['club', 'news'])->name('club.news.destroy');
+
+    // Applications mobiles : enregistrement de l'appareil pour les notifications push.
+    Route::post('/appareils', [PushDeviceController::class, 'store'])->middleware('throttle:20,1')->name('devices.store');
+    Route::delete('/appareils', [PushDeviceController::class, 'destroy'])->middleware('throttle:20,1')->name('devices.destroy');
 
     // T.Link Messenger : messagerie instantanée (pages + JSON interrogé par le navigateur).
     Route::prefix('messagerie')->name('messenger.')->group(function (): void {

@@ -153,6 +153,12 @@
       "_messenger-realtime-CNy-OEXI.js"
     ]
   },
+  "resources/js/native-push.js": {
+    "file": "assets/native-push-DxZn6N1C.js",
+    "name": "native-push",
+    "src": "resources/js/native-push.js",
+    "isEntry": true
+  },
   "resources/js/qr.js": {
     "file": "assets/qr-CxXcOrPi.js",
     "name": "qr",

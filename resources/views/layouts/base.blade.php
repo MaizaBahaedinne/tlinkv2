@@ -28,6 +28,11 @@
 
     @auth
         @include('partials.onboarding-banner')
+        @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+            {{-- Notifications push : sans effet hors des applications mobiles. --}}
+            <meta name="push-devices" content="{{ route('devices.store', [], false) }}" data-logout="{{ route('logout', [], false) }}">
+            @vite(['resources/js/native-push.js'])
+        @endif
     @endauth
 
 @include('partials.impersonation-banner')
