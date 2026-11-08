@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -33,6 +34,24 @@ final class Messenger
     public const MAX_GROUP_MEMBERS = 50;
 
     public const PAGE = 50;
+
+    /** Durée maximale d'un message vocal, en secondes. */
+    public const MAX_AUDIO_SECONDS = 300;
+
+    /** Types audio acceptés (MediaRecorder : webm/ogg sur Chrome et Firefox, mp4/m4a sur Safari et iOS) et extension de stockage. */
+    public const AUDIO_TYPES = [
+        'audio/webm' => 'webm',
+        'video/webm' => 'webm',
+        'audio/ogg' => 'ogg',
+        'application/ogg' => 'ogg',
+        'audio/mp4' => 'm4a',
+        'audio/x-m4a' => 'm4a',
+        'video/mp4' => 'm4a',
+        'audio/aac' => 'aac',
+        'audio/mpeg' => 'mp3',
+        'audio/wav' => 'wav',
+        'audio/x-wav' => 'wav',
+    ];
 
     private const TYPING_TTL = 6;
 
@@ -181,22 +200,26 @@ final class Messenger
 
     // ───────────────────────── Messages ─────────────────────────
 
-    public static function send(MessengerConversation $conversation, User $sender, ?string $body, ?UploadedFile $image = null): MessengerMessage
+    public static function send(MessengerConversation $conversation, User $sender, ?string $body, ?UploadedFile $image = null, ?UploadedFile $audio = null, ?int $audioSeconds = null): MessengerMessage
     {
         $body = trim((string) $body);
 
-        if ($body === '' && $image === null) {
-            throw ValidationException::withMessages(['body' => 'Écrivez un message ou joignez une image.']);
+        if ($body === '' && $image === null && $audio === null) {
+            throw ValidationException::withMessages(['body' => 'Écrivez un message, joignez une image ou enregistrez un message vocal.']);
         }
 
         $path = $image?->store('messenger/'.$conversation->id, 'local');
+        $audioPath = $audio?->storeAs('messenger/'.$conversation->id, Str::uuid()->toString().'.'.self::audioExtension($audio), 'local');
+        $audioSeconds = $audio !== null ? max(1, min(self::MAX_AUDIO_SECONDS, (int) $audioSeconds)) : null;
 
-        $message = DB::transaction(function () use ($conversation, $sender, $body, $image, $path): MessengerMessage {
+        $message = DB::transaction(function () use ($conversation, $sender, $body, $image, $path, $audioPath, $audioSeconds): MessengerMessage {
             $message = $conversation->messages()->create([
                 'user_id' => $sender->id,
                 'body' => $body === '' ? null : $body,
                 'attachment_path' => $path ?: null,
                 'attachment_name' => $image !== null ? mb_substr(preg_replace('/[^\pL\pN._ -]/u', '', $image->getClientOriginalName()) ?: 'image', 0, 120) : null,
+                'audio_path' => $audioPath ?: null,
+                'audio_seconds' => $audioPath ? $audioSeconds : null,
             ]);
 
             $conversation->forceFill(['last_message_id' => $message->id, 'last_message_at' => $message->created_at])->save();
@@ -212,11 +235,34 @@ final class Messenger
 
     public static function deleteMessage(MessengerMessage $message): void
     {
-        if ($message->attachment_path) {
-            Storage::disk('local')->delete($message->attachment_path);
+        foreach ([$message->attachment_path, $message->audio_path] as $file) {
+            if ($file) {
+                Storage::disk('local')->delete($file);
+            }
         }
 
-        $message->update(['body' => null, 'attachment_path' => null, 'attachment_name' => null, 'deleted_at' => now()]);
+        $message->update(['body' => null, 'attachment_path' => null, 'attachment_name' => null, 'audio_path' => null, 'audio_seconds' => null, 'deleted_at' => now()]);
+    }
+
+    /** Extension de stockage d'après le type réel du fichier (jamais d'après le nom envoyé par le client). */
+    private static function audioExtension(UploadedFile $audio): string
+    {
+        $mime = strtolower(trim(explode(';', (string) $audio->getMimeType())[0]));
+
+        return self::AUDIO_TYPES[$mime] ?? 'webm';
+    }
+
+    /** Type de contenu servi au lecteur audio, d'après l'extension stockée. */
+    public static function audioContentType(string $path): string
+    {
+        return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'ogg' => 'audio/ogg',
+            'm4a' => 'audio/mp4',
+            'aac' => 'audio/aac',
+            'mp3' => 'audio/mpeg',
+            'wav' => 'audio/wav',
+            default => 'audio/webm',
+        };
     }
 
     public static function markRead(MessengerConversation $conversation, User $user, int $upTo): void
@@ -318,6 +364,8 @@ final class Messenger
             'deleted' => $deleted,
             'image' => ! $deleted && $message->attachment_path ? route('messenger.image', $message) : null,
             'image_name' => $deleted ? null : $message->attachment_name,
+            'audio' => ! $deleted && $message->audio_path ? route('messenger.audio', $message) : null,
+            'audio_seconds' => ! $deleted && $message->audio_path ? (int) $message->audio_seconds : null,
             'created_at' => $message->created_at->toIso8601String(),
         ];
     }
@@ -366,6 +414,7 @@ final class Messenger
                 $message === null => 'Aucun message',
                 $message->deleted_at !== null => 'Message supprimé',
                 $message->body !== null && $message->body !== '' => mb_strimwidth($message->body, 0, 90, '…'),
+                $message->audio_path !== null => 'Message vocal',
                 default => 'Photo',
             };
 

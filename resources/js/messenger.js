@@ -2,6 +2,8 @@
 // par interrogation adaptative (plus fréquente quand l'onglet est visible et actif). Aucun HTML n'est
 // injecté depuis le serveur : tout le contenu passe par textContent.
 
+import { audioPlayer, voiceRecorder } from './messenger-voice.js';
+
 (function () {
     var root = document.getElementById('messenger');
     if (!root) { return; }
@@ -372,6 +374,7 @@
                 link.appendChild(img);
                 bubble.appendChild(link);
             }
+            if (message.audio) { bubble.appendChild(audioPlayer(message.audio, message.audio_seconds, message.mine)); }
             if (message.body) { bubble.appendChild(el('p', 'whitespace-pre-wrap break-words', message.body)); }
         }
         column.appendChild(bubble);
@@ -521,7 +524,7 @@
 
         (data.deleted_ids || []).forEach(function (id) {
             messages.forEach(function (message) {
-                if (message.id === id && !message.deleted) { message.deleted = true; message.body = null; message.image = null; changed = true; }
+                if (message.id === id && !message.deleted) { message.deleted = true; message.body = null; message.image = null; message.audio = null; changed = true; }
             });
         });
 
@@ -592,6 +595,7 @@
                 message.deleted = true;
                 message.body = null;
                 message.image = null;
+                message.audio = null;
                 render();
                 refreshSoon();
             }
@@ -653,16 +657,8 @@
         }
     });
 
-    composer.addEventListener('submit', function (event) {
-        event.preventDefault();
-        var body = input.value.trim();
-        var file = fileInput.files[0];
-        if (!body && !file) { return; }
-
-        var data = new FormData();
-        if (body) { data.append('body', body); }
-        if (file) { data.append('image', file); }
-
+    // Envoie le formulaire préparé ; `done` s'exécute après un envoi réussi.
+    function sendData(data, done) {
         sendButton.disabled = true;
         showError('');
 
@@ -670,13 +666,11 @@
             sendButton.disabled = false;
             if (!result.ok) {
                 var errors = result.data && result.data.errors;
-                var first = errors ? (errors.body || errors.image || [])[0] : null;
+                var first = errors ? (errors.body || errors.image || errors.audio || errors.audio_seconds || [])[0] : null;
                 showError(first || (result.data && result.data.message) || 'Envoi impossible, réessayez.');
                 return;
             }
-            input.value = '';
-            autoGrow();
-            clearFile();
+            if (done) { done(); }
             addMessages([result.data.message]);
             stick = true;
             render({ toBottom: true });
@@ -687,7 +681,39 @@
             sendButton.disabled = false;
             showError('Connexion indisponible, réessayez.');
         });
+    }
+
+    composer.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var body = input.value.trim();
+        var file = fileInput.files[0];
+        if (!body && !file) { return; }
+
+        var data = new FormData();
+        if (body) { data.append('body', body); }
+        if (file) { data.append('image', file); }
+
+        sendData(data, function () {
+            input.value = '';
+            autoGrow();
+            clearFile();
+        });
     });
+
+    // Messages vocaux : bouton micro à côté de l'envoi, barre d'enregistrement qui remplace la saisie.
+    var composerRow = sendButton.parentNode;
+    var voice = voiceRecorder({
+        onToggle: function (recording) { composerRow.hidden = recording; },
+        onError: showError,
+        onSend: function (file, seconds) {
+            var data = new FormData();
+            data.append('audio', file);
+            data.append('audio_seconds', String(seconds));
+            sendData(data);
+        },
+    });
+    composerRow.insertBefore(voice.mic, sendButton);
+    composer.appendChild(voice.bar);
 
     // ───────────── Démarrage ─────────────
 

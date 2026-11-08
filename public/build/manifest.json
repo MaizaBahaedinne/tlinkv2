@@ -27,6 +27,10 @@
     "file": "assets/instrument-sans-600-normal-B9e8oLYv.woff",
     "src": "_instrument-sans-600-normal-B9e8oLYv.woff"
   },
+  "_messenger-voice-DJaFZT8i.js": {
+    "file": "assets/messenger-voice-DJaFZT8i.js",
+    "name": "messenger-voice"
+  },
   "_rolldown-runtime-WkwZ5CU-.js": {
     "file": "assets/rolldown-runtime-WkwZ5CU-.js",
     "name": "rolldown-runtime"
@@ -76,7 +80,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-DaGG6q85.css",
+    "file": "assets/app-Dt9_ASGe.css",
     "name": "app",
     "names": [
       "app.css"
@@ -85,7 +89,7 @@
     "isEntry": true
   },
   "resources/css/site.css": {
-    "file": "assets/site-BZwIHQNo.css",
+    "file": "assets/site-CIcHFrO7.css",
     "name": "site",
     "names": [
       "site.css"
@@ -94,13 +98,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-27r3bIim.js",
+    "file": "assets/main-CBL_CZNK.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-DaGG6q85.css"
+      "assets/app-Dt9_ASGe.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",
@@ -110,16 +114,22 @@
     ]
   },
   "resources/js/messenger-dock.js": {
-    "file": "assets/messenger-dock-B7j63xf5.js",
+    "file": "assets/messenger-dock-Ci5g3mmX.js",
     "name": "messenger-dock",
     "src": "resources/js/messenger-dock.js",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_messenger-voice-DJaFZT8i.js"
+    ]
   },
   "resources/js/messenger.js": {
-    "file": "assets/messenger-DPs5RqUb.js",
+    "file": "assets/messenger-rZzhr-mb.js",
     "name": "messenger",
     "src": "resources/js/messenger.js",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_messenger-voice-DJaFZT8i.js"
+    ]
   },
   "resources/js/qr.js": {
     "file": "assets/qr-CxXcOrPi.js",

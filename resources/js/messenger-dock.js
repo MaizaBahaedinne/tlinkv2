@@ -2,6 +2,8 @@
 // toutes les pages. Même API JSON que la page /messagerie ; temps réel par interrogation adaptative.
 // Aucun HTML n'est injecté depuis le serveur : tout le contenu passe par textContent.
 
+import { audioPlayer, voiceRecorder } from './messenger-voice.js';
+
 (function () {
     var root = document.getElementById('mg-dock');
     if (!root) { return; }
@@ -521,6 +523,7 @@
                     link.appendChild(img);
                     bubble.appendChild(link);
                 }
+                if (message.audio) { bubble.appendChild(audioPlayer(message.audio, message.audio_seconds, message.mine)); }
                 if (message.body) { bubble.appendChild(el('p', 'whitespace-pre-wrap break-words', message.body)); }
             }
             column.appendChild(bubble);
@@ -649,7 +652,7 @@
 
             (data.deleted_ids || []).forEach(function (deletedId) {
                 messages.forEach(function (message) {
-                    if (message.id === deletedId && !message.deleted) { message.deleted = true; message.body = null; message.image = null; changed = true; }
+                    if (message.id === deletedId && !message.deleted) { message.deleted = true; message.body = null; message.image = null; message.audio = null; changed = true; }
                 });
             });
 
@@ -722,6 +725,7 @@
                     message.deleted = true;
                     message.body = null;
                     message.image = null;
+                    message.audio = null;
                     render();
                     refreshSoon();
                 }
@@ -782,6 +786,15 @@
             if (text) { data.append('body', text); }
             if (file) { data.append('image', file); }
 
+            sendData(data, function () {
+                input.value = '';
+                autoGrow();
+                clearFile();
+            });
+        });
+
+        // Envoie le formulaire préparé ; `done` s'exécute après un envoi réussi.
+        function sendData(data, done) {
             sendButton.disabled = true;
             showError('');
 
@@ -789,13 +802,11 @@
                 sendButton.disabled = false;
                 if (!result.ok) {
                     var errors = result.data && result.data.errors;
-                    var first = errors ? (errors.body || errors.image || [])[0] : null;
+                    var first = errors ? (errors.body || errors.image || errors.audio || errors.audio_seconds || [])[0] : null;
                     showError(first || (result.data && result.data.message) || 'Envoi impossible, réessayez.');
                     return;
                 }
-                input.value = '';
-                autoGrow();
-                clearFile();
+                if (done) { done(); }
                 addMessages([result.data.message]);
                 stick = true;
                 render({ toBottom: true });
@@ -806,7 +817,21 @@
                 sendButton.disabled = false;
                 showError('Connexion indisponible, réessayez.');
             });
+        }
+
+        var voice = voiceRecorder({
+            compact: true,
+            onToggle: function (recording) { row.hidden = recording; },
+            onError: showError,
+            onSend: function (voiceFile, seconds) {
+                var voiceData = new FormData();
+                voiceData.append('audio', voiceFile);
+                voiceData.append('audio_seconds', String(seconds));
+                sendData(voiceData);
+            },
         });
+        row.insertBefore(voice.mic, sendButton);
+        composer.appendChild(voice.bar);
 
         // Interface publique de la fenêtre
         function applyMinimized() {

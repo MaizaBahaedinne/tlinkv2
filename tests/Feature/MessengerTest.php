@@ -133,6 +133,61 @@ class MessengerTest extends TestCase
         $this->assertNotNull($response->json('message.image'));
     }
 
+    public function test_voice_messages_work_in_direct_conversations_and_groups(): void
+    {
+        Storage::fake('local');
+        [$alice, $bob, $carol, $eve] = User::factory()->count(4)->create();
+        $direct = $this->directBetween($alice, $bob);
+        $this->actingAs($alice)->post(route('messenger.groups.store'), ['title' => 'Équipe', 'members' => [$bob->id, $carol->id]])->assertRedirect();
+        $group = MessengerConversation::query()->where('title', 'Équipe')->firstOrFail();
+
+        foreach ([$direct, $group] as $conversation) {
+            $response = $this->actingAs($alice)->postJson(route('messenger.send', $conversation), [
+                'audio' => UploadedFile::fake()->create('voice.webm', 20, 'audio/webm'),
+                'audio_seconds' => 12,
+            ])->assertCreated();
+
+            $this->assertNotNull($response->json('message.audio'));
+            $this->assertSame(12, $response->json('message.audio_seconds'));
+            $this->assertNull($response->json('message.body'));
+
+            $message = MessengerMessage::query()->findOrFail($response->json('message.id'));
+            Storage::disk('local')->assertExists($message->audio_path);
+            $this->assertStringStartsWith('messenger/'.$conversation->id.'/', $message->audio_path);
+            $this->assertStringEndsWith('.webm', $message->audio_path);
+
+            $this->actingAs($bob)->get(route('messenger.audio', $message))
+                ->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff')->assertHeader('Content-Type', 'audio/webm');
+            $this->actingAs($eve)->get(route('messenger.audio', $message))->assertForbidden();
+        }
+
+        $this->assertSame('Vous : Message vocal', collect(Messenger::conversations($alice))->firstWhere('id', $group->id)['preview']);
+        $this->assertSame(2, Messenger::unreadCount($bob));
+    }
+
+    public function test_voice_message_validation_and_deletion(): void
+    {
+        Storage::fake('local');
+        [$alice, $bob] = User::factory()->count(2)->create();
+        $conversation = $this->directBetween($alice, $bob);
+        $url = route('messenger.send', $conversation);
+
+        $this->actingAs($alice)->postJson($url, ['audio' => UploadedFile::fake()->create('virus.pdf', 10, 'application/pdf')])->assertStatus(422)->assertJsonValidationErrors('audio');
+        $this->actingAs($alice)->postJson($url, ['audio' => UploadedFile::fake()->create('voice.webm', 11000, 'audio/webm')])->assertStatus(422)->assertJsonValidationErrors('audio');
+        $this->actingAs($alice)->postJson($url, ['audio' => UploadedFile::fake()->create('voice.webm', 20, 'audio/webm'), 'audio_seconds' => 9999])->assertStatus(422)->assertJsonValidationErrors('audio_seconds');
+        $this->assertSame(0, MessengerMessage::query()->count());
+
+        $this->actingAs($alice)->postJson($url, ['audio' => UploadedFile::fake()->create('voice.m4a', 20, 'audio/mp4')])->assertCreated()->assertJsonPath('message.audio_seconds', 1);
+        $message = MessengerMessage::query()->firstOrFail();
+        $this->assertStringEndsWith('.m4a', $message->audio_path);
+        $path = $message->audio_path;
+
+        $this->actingAs($bob)->deleteJson(route('messenger.messages.destroy', $message))->assertForbidden();
+        $this->actingAs($alice)->deleteJson(route('messenger.messages.destroy', $message))->assertOk();
+        Storage::disk('local')->assertMissing($path);
+        $this->actingAs($bob)->get(route('messenger.audio', $message))->assertNotFound();
+    }
+
     public function test_author_deletes_own_message_and_peers_see_the_deletion(): void
     {
         Storage::fake('local');

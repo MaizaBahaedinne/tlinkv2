@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -101,8 +102,13 @@ class MessengerController extends Controller
         $data = $request->validate([
             'body' => ['nullable', 'string', 'max:'.Messenger::MAX_BODY],
             'image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'audio' => ['nullable', 'file', 'mimetypes:'.implode(',', array_keys(Messenger::AUDIO_TYPES)), 'max:10240'],
+            'audio_seconds' => ['nullable', 'integer', 'min:0', 'max:'.Messenger::MAX_AUDIO_SECONDS],
         ], [
             'body.max' => 'Message trop long ('.Messenger::MAX_BODY.' caractères maximum).',
+            'audio.max' => 'Message vocal trop lourd (10 Mo maximum).',
+            'audio.mimetypes' => 'Format audio non pris en charge.',
+            'audio_seconds.max' => 'Message vocal trop long (5 minutes maximum).',
             'image.max' => 'Image trop lourde (5 Mo maximum).',
             'image.image' => 'Le fichier joint doit être une image (jpg, png ou webp).',
             'image.mimes' => 'Le fichier joint doit être une image (jpg, png ou webp).',
@@ -112,7 +118,7 @@ class MessengerController extends Controller
             return response()->json(['message' => $reason, 'errors' => ['body' => [$reason]]], 422);
         }
 
-        $message = Messenger::send($conversation, $request->user(), $data['body'] ?? null, $request->file('image'));
+        $message = Messenger::send($conversation, $request->user(), $data['body'] ?? null, $request->file('image'), $request->file('audio'), isset($data['audio_seconds']) ? (int) $data['audio_seconds'] : null);
         $message->load('author.profile');
 
         return response()->json(['message' => Messenger::present($message, $request->user())], 201);
@@ -158,6 +164,21 @@ class MessengerController extends Controller
         abort_unless($message->attachment_path && Storage::disk('local')->exists($message->attachment_path), 404);
 
         return Storage::disk('local')->response($message->attachment_path, $message->attachment_name, [
+            'Content-Disposition' => 'inline',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
+    /** Message vocal : réservé aux participants ; fichier servi avec prise en charge des plages d'octets (lecture sur Safari et iOS). */
+    public function audio(Request $request, MessengerMessage $message): BinaryFileResponse
+    {
+        $this->open();
+        $this->authorizeParticipant($request, $message->conversation);
+        abort_unless($message->audio_path && Storage::disk('local')->exists($message->audio_path), 404);
+
+        return response()->file(Storage::disk('local')->path($message->audio_path), [
+            'Content-Type' => Messenger::audioContentType($message->audio_path),
             'Content-Disposition' => 'inline',
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=3600',

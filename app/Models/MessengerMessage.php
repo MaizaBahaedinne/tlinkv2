@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MessengerMessage extends Model
 {
-    protected $fillable = ['conversation_id', 'user_id', 'body', 'attachment_path', 'attachment_name', 'deleted_at'];
+    protected $fillable = ['conversation_id', 'user_id', 'body', 'attachment_path', 'attachment_name', 'audio_path', 'audio_seconds', 'deleted_at'];
 
     protected $casts = ['deleted_at' => 'datetime'];
 

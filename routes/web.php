@@ -41,6 +41,11 @@ require base_path('routes/site.php');
 Domains::on('store')->get(Domains::host('store') !== null ? '/' : '/boutique/presentation', [ShowcaseController::class, 'store'])->name('store.showcase');
 Domains::on('academy')->get(Domains::host('academy') !== null ? '/' : '/academy/presentation', [ShowcaseController::class, 'academy'])->name('academy.showcase');
 
+// Racine de l'hôte Messenger : directement la messagerie (déclarée avant la racine de T.Link).
+if (Domains::host('messenger') !== null) {
+    Route::domain(Domains::host('messenger'))->get('/', fn () => redirect()->route('messenger.index'))->name('messenger.root');
+}
+
 if (Domains::enabled()) {
     // Racine de l'hôte T.Link : on renvoie vers le fil d'actualité.
     Route::get('/', fn () => redirect()->route('home'))->name('app.root');
@@ -170,6 +175,7 @@ Route::middleware('auth')->group(function (): void {
         Route::delete('/bloquer/{user}', [MessengerController::class, 'unblock'])->whereNumber('user')->name('unblock');
         Route::delete('/messages/{message}', [MessengerController::class, 'destroyMessage'])->whereNumber('message')->name('messages.destroy');
         Route::get('/messages/{message}/image', [MessengerController::class, 'image'])->whereNumber('message')->name('image');
+        Route::get('/messages/{message}/audio', [MessengerController::class, 'audio'])->whereNumber('message')->name('audio');
         Route::get('/{conversation}', [MessengerController::class, 'index'])->whereNumber('conversation')->name('show');
         Route::get('/{conversation}/messages', [MessengerController::class, 'messages'])->whereNumber('conversation')->middleware('throttle:messenger-poll')->name('messages');
         Route::post('/{conversation}/messages', [MessengerController::class, 'send'])->whereNumber('conversation')->middleware('throttle:messenger-action')->name('send');
