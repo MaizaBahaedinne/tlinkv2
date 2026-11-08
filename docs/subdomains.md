@@ -65,7 +65,7 @@ Les cookies d'un domaine parent sont partagés avec tous ses sous-domaines. Pour
 
 ## À mettre à jour hors de l'application
 
-- Connexion via les réseaux sociaux : adresses de rappel (`https://link.tunivisionsfoundation.org/auth/{google|facebook|linkedin-openid}/callback`) chez Google, Facebook et LinkedIn.
+- Connexion Google : adresse de rappel (`https://link.tunivisionsfoundation.org/auth/google/callback`) à déclarer chez Google.
 - Application mobile (Capacitor) : `server.url` et `allowNavigation` vers les nouveaux hôtes.
 - Google Analytics / Tag Manager : activer le suivi inter-domaines si les parcours doivent être unifiés.
 - Search Console : déclarer chaque hôte et mettre en place les redirections de l'ancien domaine si besoin.

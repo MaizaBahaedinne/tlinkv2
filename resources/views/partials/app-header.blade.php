@@ -89,15 +89,15 @@
                 <a href="{{ route('messenger.index') }}" title="Messages" aria-label="Messages" @if(request()->routeIs('messenger.*')) aria-current="page" @endif id="nav-messages" data-unread-url="{{ route('messenger.unread') }}"
                    class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('messenger.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
                     <i class="fa-regular fa-comments" aria-hidden="true"></i>
-                    <span id="nav-messages-badge" @if($unreadMessages < 1) hidden @endif class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white">{{ $unreadMessages > 99 ? '99+' : $unreadMessages }}</span>
+                    <span id="nav-messages-badge" data-count="{{ $unreadMessages }}" @if($unreadMessages < 1) hidden @endif class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white">{{ $unreadMessages > 99 ? '99+' : $unreadMessages }}</span>
                 </a>
             @endif
 
-            <a href="{{ route('notifications.index') }}" title="Notifications" aria-label="Notifications{{ $unread > 0 ? ' ('.$unread.' non lues)' : '' }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif
+            <a href="{{ route('notifications.index') }}" title="Notifications" id="nav-notifications" data-unread="{{ $unread }}" data-unread-url="{{ route('notifications.unread') }}" aria-label="Notifications{{ $unread > 0 ? ' ('.$unread.' non lues)' : '' }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif
                class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('notifications.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
                 <i class="fa-regular fa-bell" aria-hidden="true"></i>
                 @if($unread > 0)
-                    <span class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white" aria-label="{{ $unread }} non lues">{{ $unread > 99 ? '99+' : $unread }}</span>
+                    <span data-notif-badge class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white" aria-label="{{ $unread }} non lues">{{ $unread > 99 ? '99+' : $unread }}</span>
                 @endif
             </a>
 
@@ -139,13 +139,77 @@
 @endif
 
 <script>
+    // Sons : un son pour les nouveaux messages (Messenger) et un autre pour les notifications T.Link. Fichiers dans public/sounds,
+    // remplacables par vos propres sons. Le navigateur n'autorise la lecture qu'après un premier geste de l'utilisateur.
+    (function () {
+        var base = @json(asset('sounds'));
+        var files = { message: 'message.wav', notification: 'notification.wav' };
+        var players = {};
+        var lastPlayed = 0;
+
+        window.tlinkSound = function (name) {
+            var now = Date.now();
+            if (!files[name] || now - lastPlayed < 1200) { return; }
+            lastPlayed = now;
+            try {
+                var audio = players[name] || (players[name] = new Audio(base + '/' + files[name]));
+                audio.currentTime = 0;
+                var played = audio.play();
+                if (played && played.catch) { played.catch(function () { /* lecture bloquée : pas encore de geste de l'utilisateur */ }); }
+            } catch (e) { /* audio indisponible */ }
+        };
+    })();
+</script>
+
+<script>
+    // Pastille des notifications : contrôlée toutes les 30 s, avec le son des notifications lorsqu'une nouvelle arrive.
+    (function () {
+        var link = document.getElementById('nav-notifications');
+        if (!link) { return; }
+        var known = parseInt(link.getAttribute('data-unread'), 10) || 0;
+
+        function show(count) {
+            var badge = link.querySelector('[data-notif-badge]');
+            if (count < 1) { if (badge) { badge.remove(); } return; }
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.setAttribute('data-notif-badge', '');
+                badge.className = 'absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white';
+                link.appendChild(badge);
+            }
+            badge.textContent = count > 99 ? '99+' : String(count);
+        }
+
+        function refresh() {
+            if (document.hidden) { return; }
+            fetch(link.getAttribute('data-unread-url'), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                .then(function (response) { return response.ok ? response.json() : null; })
+                .then(function (data) {
+                    if (!data) { return; }
+                    var count = data.unread || 0;
+                    if (count > known && window.tlinkSound) { window.tlinkSound('notification'); }
+                    known = count;
+                    show(count);
+                })
+                .catch(function () { /* pastille conservée */ });
+        }
+
+        setInterval(refresh, 30000);
+        document.addEventListener('visibilitychange', refresh);
+    })();
+</script>
+
+<script>
     // Pastille des messages non lus : mise à jour par T.Link Messenger, ou toutes les 30 s ailleurs dans l'application.
     (function () {
         var link = document.getElementById('nav-messages');
         if (!link) { return; }
         var badge = document.getElementById('nav-messages-badge');
+        var known = parseInt(badge.getAttribute('data-count'), 10) || 0;
 
         window.tlinkMessengerBadge = function (count) {
+            if (count > known && window.tlinkSound) { window.tlinkSound('message'); }
+            known = count;
             badge.textContent = count > 99 ? '99+' : String(count);
             badge.hidden = count < 1;
         };

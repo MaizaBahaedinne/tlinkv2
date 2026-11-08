@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,6 +19,13 @@ class NotificationPageController extends Controller
 
         return view('notifications.index', [
             'notifications' => $notifications,
+        ]);
+    }
+
+    public function unread(Request $request): JsonResponse
+    {
+        return response()->json([
+            'unread' => AppNotification::query()->where('user_id', $request->user()->id)->whereNull('read_at')->count(),
         ]);
     }
 

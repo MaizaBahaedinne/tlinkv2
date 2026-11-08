@@ -71,7 +71,7 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/inscription', [RegisterController::class, 'show'])->name('register');
     Route::post('/inscription', [RegisterController::class, 'store'])->name('register.store');
 
-    // Connexion / inscription via un reseau social (Google, Facebook, LinkedIn).
+    // Connexion / inscription via un compte Google.
     Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])->name('social.redirect');
     Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])->name('social.callback');
 });
@@ -270,6 +270,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/stories/{story}/vue', [\App\Http\Controllers\StoryController::class, 'view'])->whereNumber('story')->middleware('throttle:240,1')->name('stories.view');
     Route::delete('/stories/{story}', [\App\Http\Controllers\StoryController::class, 'destroy'])->whereNumber('story')->name('stories.destroy');
     Route::get('/notifications', [NotificationPageController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/non-lues', [NotificationPageController::class, 'unread'])->middleware('throttle:60,1')->name('notifications.unread');
     Route::post('/notifications/{notification}/read', [NotificationPageController::class, 'markRead'])->name('notifications.mark-read');
     Route::post('/notifications/read-all', [NotificationPageController::class, 'markAllRead'])->name('notifications.mark-all-read');
     Route::get('/media/{mediaFile}/download', [PrivateMediaController::class, 'download'])

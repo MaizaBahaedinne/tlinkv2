@@ -44,11 +44,11 @@ class SocialAuthTest extends TestCase
     {
         $this->get('/connexion')->assertOk()
             ->assertSee('Se connecter avec Google')
-            ->assertSee('Se connecter avec Facebook')
-            ->assertSee('Se connecter avec LinkedIn')
-            ->assertSee('/auth/linkedin-openid/redirect', false);
+            ->assertDontSee('Facebook')
+            ->assertDontSee('LinkedIn');
 
-        $this->get('/inscription')->assertOk()->assertSee("avec Facebook");
+        $this->get('/inscription')->assertOk()->assertSee('avec Google')->assertDontSee('avec Facebook');
+        $this->get('/auth/facebook/redirect')->assertNotFound();
     }
 
     public function test_unconfigured_provider_returns_to_login_with_a_message(): void
@@ -120,10 +120,10 @@ class SocialAuthTest extends TestCase
 
     public function test_callback_refuses_when_no_email_is_provided(): void
     {
-        $this->enable('facebook');
-        $this->fakeProvider('facebook', ['name' => 'Jean Dupont'], email: null);
+        $this->enable('google');
+        $this->fakeProvider('google', ['name' => 'Jean Dupont'], email: null);
 
-        $this->get('/auth/facebook/callback')->assertRedirect('/connexion');
+        $this->get('/auth/google/callback')->assertRedirect('/connexion');
 
         $this->assertGuest();
     }

@@ -6,11 +6,14 @@ Chaque icone source est un carre plein (idealement 1024x1024, sans transparence)
 la couleur de fond est lue dans le coin de l'image.
 """
 from pathlib import Path
+import shutil
 
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent / "mobile"
 WEB_ICONS = Path(__file__).resolve().parent.parent / "public" / "app-icons"
+SOUNDS = ROOT / "sounds"
+WEB_SOUNDS = Path(__file__).resolve().parent.parent / "public" / "sounds"
 SOURCES = {
     "link": "icon Tlink mobile.png",
     "store": "icon store mobile.png",
@@ -75,6 +78,11 @@ def build(app: str, source: str) -> None:
             splash(master, bg, h, w).save(res / f"drawable-land-{density}/splash.png")
         splash(master, bg, 480, 320).save(res / "drawable/splash.png")
 
+        # Sons des notifications push (canaux Android : res/raw)
+        (res / "raw").mkdir(exist_ok=True)
+        for sound in SOUNDS.glob("*.*"):
+            shutil.copy(sound, res / "raw" / sound.name)
+
     # iOS
     assets = ROOT / app / "ios/App/App/Assets.xcassets"
     if assets.exists():
@@ -97,5 +105,8 @@ def build(app: str, source: str) -> None:
 
 
 if __name__ == "__main__":
+    WEB_SOUNDS.mkdir(parents=True, exist_ok=True)
+    for sound in SOUNDS.glob("*.*"):
+        shutil.copy(sound, WEB_SOUNDS / sound.name)
     for app, source in SOURCES.items():
         build(app, source)

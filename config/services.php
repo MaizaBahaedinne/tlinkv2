@@ -43,18 +43,6 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
     ],
 
-    'facebook' => [
-        'client_id' => env('FACEBOOK_CLIENT_ID'),
-        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-        'redirect' => env('FACEBOOK_REDIRECT_URI', '/auth/facebook/callback'),
-    ],
-
-    'linkedin-openid' => [
-        'client_id' => env('LINKEDIN_CLIENT_ID'),
-        'client_secret' => env('LINKEDIN_CLIENT_SECRET'),
-        'redirect' => env('LINKEDIN_REDIRECT_URI', '/auth/linkedin-openid/callback'),
-    ],
-
     // Notifications push des applications mobiles (Firebase Cloud Messaging, API HTTP v1) : chemin du fichier JSON du compte de service.
     'fcm' => [
         'credentials' => env('FCM_CREDENTIALS'),

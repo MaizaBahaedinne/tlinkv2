@@ -68,7 +68,7 @@ NFC (à ajouter avec la lecture des cartes) : Android `<uses-permission android:
 
 ## Connexion Google et session partagée
 
-Google refuse l'authentification dans une WebView (`disallowed_useragent`). Les boutons Google, Facebook et LinkedIn ouvrent donc le **navigateur du téléphone** (plugins `@capacitor/browser` et `@capacitor/app`), qui rend la main à l'application par son schéma d'adresse (`com.tunivisions.tlink://auth?token=…`, déclaré dans `AndroidManifest.xml` et `Info.plist`, identique à l'`appId`).
+Google refuse l'authentification dans une WebView (`disallowed_useragent`). Le bouton Google ouvre donc le **navigateur du téléphone** (plugins `@capacitor/browser` et `@capacitor/app`), qui rend la main à l'application par son schéma d'adresse (`com.tunivisions.tlink://auth?token=…`, déclaré dans `AndroidManifest.xml` et `Info.plist`, identique à l'`appId`).
 
 1. L'application génère un secret (gardé dans l'application) et envoie son empreinte SHA-256 à `/auth/native/start`.
 2. Le navigateur connecte l'utilisateur, puis affiche une page qui ouvre l'application avec un jeton à usage unique (2 minutes).

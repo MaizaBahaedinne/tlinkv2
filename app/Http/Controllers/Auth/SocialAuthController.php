@@ -18,15 +18,13 @@ use Laravel\Socialite\Contracts\User as SocialUser;
 use Throwable;
 
 /**
- * Connexion et inscription via Google, Facebook ou LinkedIn.
+ * Connexion et inscription via Google.
  */
 class SocialAuthController extends Controller
 {
     /** Reseaux supportes : cle de route => libelle. */
     public const PROVIDERS = [
         'google' => 'Google',
-        'facebook' => 'Facebook',
-        'linkedin-openid' => 'LinkedIn',
     ];
 
     /**
@@ -149,11 +147,6 @@ class SocialAuthController extends Controller
 
     private function emailIsVerified(string $provider, SocialUser $socialUser): bool
     {
-        // Facebook ne renvoie que des emails confirmes ; Google et LinkedIn l'indiquent explicitement.
-        if ($provider === 'facebook') {
-            return true;
-        }
-
         $raw = (array) ($socialUser->user ?? []);
 
         return filter_var($raw['email_verified'] ?? $raw['verified_email'] ?? false, FILTER_VALIDATE_BOOLEAN);

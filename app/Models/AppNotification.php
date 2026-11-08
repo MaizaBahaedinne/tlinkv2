@@ -24,4 +24,10 @@ class AppNotification extends Model
         'data' => 'array',
         'read_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // Notification push (applications mobiles) : sans effet tant que Firebase n'est pas configuré.
+        static::created(fn (AppNotification $notification) => \App\Support\Push\NotificationPush::notify($notification));
+    }
 }

@@ -78,6 +78,12 @@ Les salons sont privés (`messenger.conversation.{id}` réservé aux participant
 
 Fonctionnement : au lancement, l'application demande l'autorisation, obtient un jeton FCM et l'envoie à `/appareils` ; chaque nouveau message (texte, photo ou vocal) est notifié aux autres participants (directs et groupes) ; un appui ouvre la conversation. Les jetons périmés sont supprimés automatiquement, et l'appareil est désenregistré à la déconnexion.
 
+### Sons
+
+Deux sons : `message.wav` (nouveaux messages Messenger) et `notification.wav` (notifications T.Link, également envoyées en push). Ils sont lus dans le navigateur et les applications quand le nombre de messages ou de notifications non lus augmente (contrôle toutes les 30 s, ou en temps réel dans Messenger), et jouent aussi sur les notifications push Android grâce à deux canaux (`messenger` et `tlink`, créés au premier lancement). Le navigateur n'autorise la lecture qu'après un premier geste de l'utilisateur sur la page ; iOS utilise le son par défaut du système.
+
+Pour changer les sons : remplacer les fichiers de `mobile/sounds/` (mêmes noms, WAV ou OGG), lancer `npm run cap:assets` (copie vers `public/sounds` et `res/raw` d'Android), puis reconstruire les APK. Android mémorise le son d'un canal à sa création : après un changement, désinstaller l'application ou renommer l'identifiant du canal dans `resources/js/native-push.js` et dans `app/Support/Push/Fcm.php`. `python3 scripts/generate_default_sounds.py` régénère les sons par défaut.
+
 ### iOS (à faire sur un Mac avec Xcode)
 
 Le plugin et le relais de jeton (`AppDelegate.swift`) sont en place. Restent : activer la capacité *Push Notifications* (et *Background Modes > Remote notifications*) dans Xcode, ajouter le SDK Firebase Messaging (`pod 'FirebaseMessaging'`, `GoogleService-Info.plist`, initialisation `FirebaseApp.configure()` et transmission du jeton APNs à Firebase) pour que le jeton remis au serveur soit un jeton FCM, et importer la clé APNs dans Firebase.

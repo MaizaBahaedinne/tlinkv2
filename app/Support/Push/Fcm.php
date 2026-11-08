@@ -15,6 +15,9 @@ final class Fcm
 {
     private const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
 
+    /** Canal Android => son (fichier de res/raw, sans extension). Les canaux sont créés par resources/js/native-push.js. */
+    private const SOUNDS = ['messenger' => 'message', 'tlink' => 'notification'];
+
     /** @return array{project_id: string, client_email: string, private_key: string, token_uri?: string}|null */
     private static function credentials(): ?array
     {
@@ -67,8 +70,9 @@ final class Fcm
      *
      * @param  iterable<PushDevice>  $devices
      * @param  array<string, scalar>  $data  valeurs transmises à l'application (adresse à ouvrir, conversation…)
+     * @param  string  $channel  canal Android (et donc son) : « messenger » ou « tlink »
      */
-    public static function send(iterable $devices, string $title, string $body, array $data = [], ?string $tag = null): void
+    public static function send(iterable $devices, string $title, string $body, array $data = [], ?string $tag = null, string $channel = 'messenger'): void
     {
         $credentials = self::credentials();
 
@@ -92,7 +96,7 @@ final class Fcm
                 'token' => $device->token,
                 'notification' => ['title' => mb_strimwidth($title, 0, 80, '…'), 'body' => mb_strimwidth($body, 0, 160, '…')],
                 'data' => $data,
-                'android' => ['priority' => 'HIGH', 'notification' => array_filter(['channel_id' => 'messages', 'tag' => $tag])],
+                'android' => ['priority' => 'HIGH', 'notification' => array_filter(['channel_id' => $channel, 'sound' => self::SOUNDS[$channel] ?? null, 'tag' => $tag])],
                 'apns' => ['payload' => ['aps' => ['sound' => 'default']]],
             ]]);
 

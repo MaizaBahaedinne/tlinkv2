@@ -56,7 +56,10 @@
 
     function start() {
         var ready = platform === 'android' && Push.createChannel
-            ? Push.createChannel({ id: 'messages', name: 'Messages', description: 'Nouveaux messages', importance: 4, visibility: 0 }).catch(function () { /* canal déjà créé */ })
+            ? Promise.all([
+                Push.createChannel({ id: 'messenger', name: 'Messages', description: 'Nouveaux messages', importance: 4, visibility: 0, sound: 'message.wav', vibration: true }),
+                Push.createChannel({ id: 'tlink', name: 'Notifications T.Link', description: 'Notifications de la Fondation', importance: 4, visibility: 0, sound: 'notification.wav', vibration: true }),
+            ]).catch(function () { /* canaux déjà créés */ })
             : Promise.resolve();
 
         ready.then(function () { return Push.checkPermissions(); }).then(function (state) {
