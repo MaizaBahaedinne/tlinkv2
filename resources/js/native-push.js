@@ -3,16 +3,32 @@
 // notification ouvre la conversation. Le plugin natif est atteint via le pont Capacitor injecté dans l'application.
 
 (function () {
-    var cap = window.Capacitor;
-    if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) { return; }
-
     var meta = document.querySelector('meta[name="push-devices"]');
     var csrf = document.querySelector('meta[name="csrf-token"]');
     if (!meta || !csrf) { return; }
 
     var url = meta.getAttribute('content');
+    var cap = window.Capacitor;
+    var native = !!cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform();
+    var platform = native ? cap.getPlatform() : 'web';
+
+    // Compte rendu au serveur (storage/logs/push.log) : permet de savoir pourquoi un appareil ne s'enregistre pas.
+    function report(step, detail) {
+        fetch(url + '/diagnostic', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf.getAttribute('content'), 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ step: step, detail: detail ? String(detail).slice(0, 300) : null, platform: platform }),
+        }).catch(function () { /* sans conséquence */ });
+    }
+
+    if (!native) {
+        // Une WebView Android (« wv » dans l'agent utilisateur) sans pont Capacitor : l'application n'est pas un APK Capacitor à jour.
+        if (/; wv\)/.test(navigator.userAgent)) { report('pont-capacitor-absent', navigator.userAgent); }
+        return;
+    }
+
     var logoutPath = meta.dataset.logout;
-    var platform = cap.getPlatform();
     var Push = cap.registerPlugin('PushNotifications');
     var storeKey = 'tlink.push.token';
 
@@ -31,15 +47,7 @@
         call('POST', event.value).then(function () { report('enregistre'); }).catch(function () { /* nouvelle tentative au prochain lancement */ });
     });
 
-    // Compte rendu au serveur (storage/logs/laravel.log) : permet de savoir pourquoi un appareil ne s'enregistre pas.
-    function report(step, detail) {
-        fetch(url + '/diagnostic', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf.getAttribute('content'), 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ step: step, detail: detail ? String(detail).slice(0, 300) : null, platform: platform }),
-        }).catch(function () { /* sans conséquence */ });
-    }
+    // (le compte rendu `report` est défini en haut du fichier)
 
     function message(error) { return error && (error.message || error.errorMessage || error.error) ? (error.message || error.errorMessage || error.error) : error; }
 
