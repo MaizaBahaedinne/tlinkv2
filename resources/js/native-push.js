@@ -29,8 +29,26 @@
     }
 
     var logoutPath = meta.dataset.logout;
-    var Push = cap.registerPlugin('PushNotifications');
     var storeKey = 'tlink.push.token';
+
+    function message(error) { return error && (error.message || error.errorMessage || error.error) ? (error.message || error.errorMessage || error.error) : error; }
+
+    // Premier compte rendu avant tout appel au plugin : sans lui, un APK dont le plugin manque échouerait en silence.
+    report('demarrage');
+
+    if (typeof cap.isPluginAvailable === 'function' && !cap.isPluginAvailable('PushNotifications')) {
+        report('plugin-absent', 'PushNotifications non disponible dans cet APK');
+        return;
+    }
+
+    try {
+        setup();
+    } catch (error) {
+        report('plugin-indisponible', message(error));
+    }
+
+    function setup() {
+    var Push = cap.registerPlugin('PushNotifications');
 
     function call(method, token) {
         return fetch(url, {
@@ -48,8 +66,6 @@
     });
 
     // (le compte rendu `report` est défini en haut du fichier)
-
-    function message(error) { return error && (error.message || error.errorMessage || error.error) ? (error.message || error.errorMessage || error.error) : error; }
 
     Push.addListener('registrationError', function (error) { report('erreur-firebase', message(error)); });
 
@@ -90,6 +106,6 @@
         }).catch(function (error) { report('plugin-indisponible', message(error)); });
     }
 
-    report('demarrage');
     start();
+    }
 })();
