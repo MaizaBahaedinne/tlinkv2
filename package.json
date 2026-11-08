@@ -15,6 +15,7 @@
         "cap:sync:messenger": "CAP_APP=messenger npx cap sync",
         "cap:android": "npx cap add android",
         "cap:ios": "npx cap add ios",
+        "cap:assets": "python3 scripts/generate_mobile_assets.py",
         "cap:open:android": "npx cap open android",
         "cap:open:ios": "npx cap open ios"
     },
