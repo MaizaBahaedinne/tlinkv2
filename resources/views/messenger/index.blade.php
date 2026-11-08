@@ -17,6 +17,7 @@
              data-url-block="{{ route('messenger.block', 0) }}"
              data-url-profile="{{ route('member.show', 0) }}"
              data-url-delete="{{ route('messenger.messages.destroy', 0) }}"
+             @if($realtime = \App\Support\Messenger\Realtime::clientConfig()) data-realtime="{{ json_encode($realtime) }}" @endif
              @if($activeId)
                  data-url-messages="{{ route('messenger.messages', $activeId) }}"
                  data-url-send="{{ route('messenger.send', $activeId) }}"

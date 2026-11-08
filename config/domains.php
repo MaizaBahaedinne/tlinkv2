@@ -33,7 +33,6 @@ return [
         'search.*',
         'media.*',
         'devices.*',
-        'broadcasting.auth',
         'logout',
     ],
 ];

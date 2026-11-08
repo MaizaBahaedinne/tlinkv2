@@ -18,5 +18,6 @@
      data-url-send="{{ route('messenger.send', 0) }}"
      data-url-read="{{ route('messenger.read', 0) }}"
      data-url-typing="{{ route('messenger.typing', 0) }}"
-     data-url-delete="{{ route('messenger.messages.destroy', 0) }}"></div>
+     data-url-delete="{{ route('messenger.messages.destroy', 0) }}"
+     @if($realtime = \App\Support\Messenger\Realtime::clientConfig()) data-realtime="{{ json_encode($realtime) }}" @endif></div>
 @vite(['resources/js/messenger-dock.js'])

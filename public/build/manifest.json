@@ -27,9 +27,16 @@
     "file": "assets/instrument-sans-600-normal-B9e8oLYv.woff",
     "src": "_instrument-sans-600-normal-B9e8oLYv.woff"
   },
-  "_messenger-voice-DJaFZT8i.js": {
-    "file": "assets/messenger-voice-DJaFZT8i.js",
-    "name": "messenger-voice"
+  "_messenger-realtime-CNy-OEXI.js": {
+    "file": "assets/messenger-realtime-CNy-OEXI.js",
+    "name": "messenger-realtime",
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js"
+    ],
+    "dynamicImports": [
+      "node_modules/laravel-echo/dist/echo.js",
+      "node_modules/pusher-js/dist/web/pusher.js"
+    ]
   },
   "_rolldown-runtime-WkwZ5CU-.js": {
     "file": "assets/rolldown-runtime-WkwZ5CU-.js",
@@ -51,6 +58,12 @@
     "file": "assets/fa-v4compatibility-CErXDOsT.woff2",
     "src": "node_modules/@fortawesome/fontawesome-free/webfonts/fa-v4compatibility.woff2"
   },
+  "node_modules/laravel-echo/dist/echo.js": {
+    "file": "assets/echo-pVs5u8hc.js",
+    "name": "echo",
+    "src": "node_modules/laravel-echo/dist/echo.js",
+    "isDynamicEntry": true
+  },
   "node_modules/leaflet/dist/images/layers-2x.png": {
     "file": "assets/layers-2x-Bpkbi35X.png",
     "src": "node_modules/leaflet/dist/images/layers-2x.png"
@@ -62,6 +75,15 @@
   "node_modules/leaflet/dist/images/marker-icon.png": {
     "file": "assets/marker-icon-hN30_KVU.png",
     "src": "node_modules/leaflet/dist/images/marker-icon.png"
+  },
+  "node_modules/pusher-js/dist/web/pusher.js": {
+    "file": "assets/pusher-CI_fNYxW.js",
+    "name": "pusher",
+    "src": "node_modules/pusher-js/dist/web/pusher.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js"
+    ]
   },
   "resources/css/admin-icons.css": {
     "file": "assets/admin-icons-zXd8mtO7.css",
@@ -114,21 +136,21 @@
     ]
   },
   "resources/js/messenger-dock.js": {
-    "file": "assets/messenger-dock-Ci5g3mmX.js",
+    "file": "assets/messenger-dock-CzBtip8f.js",
     "name": "messenger-dock",
     "src": "resources/js/messenger-dock.js",
     "isEntry": true,
     "imports": [
-      "_messenger-voice-DJaFZT8i.js"
+      "_messenger-realtime-CNy-OEXI.js"
     ]
   },
   "resources/js/messenger.js": {
-    "file": "assets/messenger-rZzhr-mb.js",
+    "file": "assets/messenger-CWVGJmXy.js",
     "name": "messenger",
     "src": "resources/js/messenger.js",
     "isEntry": true,
     "imports": [
-      "_messenger-voice-DJaFZT8i.js"
+      "_messenger-realtime-CNy-OEXI.js"
     ]
   },
   "resources/js/qr.js": {

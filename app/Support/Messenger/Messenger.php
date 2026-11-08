@@ -229,6 +229,7 @@ final class Messenger
         });
 
         Cache::forget(self::typingKey($conversation->id, $sender->id));
+        Realtime::notify($conversation, 'message');
 
         return $message;
     }
@@ -242,6 +243,7 @@ final class Messenger
         }
 
         $message->update(['body' => null, 'attachment_path' => null, 'attachment_name' => null, 'audio_path' => null, 'audio_seconds' => null, 'deleted_at' => now()]);
+        Realtime::notify($message->conversation, 'deleted');
     }
 
     /** Extension de stockage d'après le type réel du fichier (jamais d'après le nom envoyé par le client). */
@@ -278,6 +280,7 @@ final class Messenger
     public static function typing(MessengerConversation $conversation, User $user): void
     {
         Cache::put(self::typingKey($conversation->id, $user->id), true, self::TYPING_TTL);
+        Realtime::notify($conversation, 'typing', $user->id);
     }
 
     private static function typingKey(int $conversationId, int $userId): string

@@ -3,6 +3,7 @@
 // Aucun HTML n'est injecté depuis le serveur : tout le contenu passe par textContent.
 
 import { audioPlayer, voiceRecorder } from './messenger-voice.js';
+import { connectRealtime } from './messenger-realtime.js';
 
 (function () {
     var root = document.getElementById('mg-dock');
@@ -93,10 +94,14 @@ import { audioPlayer, voiceRecorder } from './messenger-voice.js';
         window.addEventListener(name, function () { lastActivity = Date.now(); }, { passive: true });
     });
 
+    // Connexion temps réel (Reverb) éventuelle : tant qu'elle est établie, l'interrogation ne sert plus que de filet de sécurité.
+    var rt = null;
+
     function interval(fast, idle, hidden) {
-        if (document.hidden) { return hidden; }
+        if (document.hidden) { return rt && rt.live() ? Math.max(hidden, 30000) : hidden; }
         if (!desktop.matches) { return Math.max(idle, 30000); }
-        return Date.now() - lastActivity < 60000 ? fast : idle;
+        var base = Date.now() - lastActivity < 60000 ? fast : idle;
+        return rt && rt.live() ? Math.max(base, 30000) : base;
     }
 
     // ───────────── État persistant (liste ouverte, fenêtres ouvertes) ─────────────
@@ -365,6 +370,7 @@ import { audioPlayer, voiceRecorder } from './messenger-voice.js';
 
         var win = createWindow(id, !!options.minimized);
         wins.push(win);
+        if (rt) { rt.follow(id); }
         winsBox.appendChild(win.node);
         saveState();
         if (options.focus) { win.focus(); }
@@ -699,7 +705,7 @@ import { audioPlayer, voiceRecorder } from './messenger-voice.js';
             clearTimeout(timer);
             if (destroyed) { return; }
             // Fenêtre réduite : on s'appuie sur la liste (compteur de non-lus) et on n'interroge que rarement.
-            var base = api.minimized ? 30000 : interval(2000, 5000, 20000);
+            var base = api.minimized ? 30000 : (typingNames.length ? 2000 : interval(2000, 5000, 20000));
             timer = setTimeout(poll, Math.min(60000, base * Math.pow(2, Math.min(fails, 4))));
         }
 
@@ -869,10 +875,12 @@ import { audioPlayer, voiceRecorder } from './messenger-voice.js';
         };
 
         api.focus = function () { if (!api.minimized) { input.focus({ preventScroll: true }); } };
+        api.poll = function () { if (!destroyed) { poll(); } };
 
         api.destroy = function () {
             destroyed = true;
             clearTimeout(timer);
+            if (rt) { rt.unfollow(id); }
             node.remove();
             var index = wins.indexOf(api);
             if (index !== -1) { wins.splice(index, 1); }
@@ -904,6 +912,13 @@ import { audioPlayer, voiceRecorder } from './messenger-voice.js';
     // ───────────── Démarrage ─────────────
 
     var saved = loadState();
+    rt = connectRealtime(cfg.realtime, cfg.csrf, { user: parseInt(cfg.me, 10) }, function (signal) {
+        if (signal.type === 'typing' && String(signal.by) === String(cfg.me)) { return; }
+        refreshSoon();
+        wins.forEach(function (win) {
+            if (signal.type === 'resync' || win.id === signal.conversation) { win.poll(); }
+        });
+    });
     saved.wins.slice(-maxWindows()).forEach(function (entry) {
         if (entry && Number.isInteger(entry.id)) { openWindow(entry.id, { minimized: !!entry.min }); }
     });

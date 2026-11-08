@@ -3,6 +3,7 @@
 // injecté depuis le serveur : tout le contenu passe par textContent.
 
 import { audioPlayer, voiceRecorder } from './messenger-voice.js';
+import { connectRealtime } from './messenger-realtime.js';
 
 (function () {
     var root = document.getElementById('messenger');
@@ -97,9 +98,12 @@ import { audioPlayer, voiceRecorder } from './messenger-voice.js';
         window.addEventListener(name, function () { lastActivity = Date.now(); }, { passive: true });
     });
 
+    // Connexion temps réel (Reverb) éventuelle : tant qu'elle est établie, l'interrogation ne sert plus que de filet de sécurité.
+    var rt = null;
+
     function interval(fast, idle, hidden) {
-        if (document.hidden) { return hidden; }
-        return Date.now() - lastActivity < 60000 ? fast : idle;
+        var base = document.hidden ? hidden : (Date.now() - lastActivity < 60000 ? fast : idle);
+        return rt && rt.live() ? Math.max(base, 30000) : base;
     }
 
     // ───────────── Liste des conversations ─────────────
@@ -179,6 +183,12 @@ import { audioPlayer, voiceRecorder } from './messenger-voice.js';
     })();
 
     loadList();
+
+    rt = connectRealtime(cfg.realtime, cfg.csrf, { user: parseInt(cfg.me, 10), conversation: activeId }, function (signal) {
+        if (signal.type === 'typing' && String(signal.by) === String(cfg.me)) { return; }
+        refreshSoon();
+        if (activeId && (signal.type === 'resync' || signal.conversation === activeId)) { poll(); }
+    });
 
     // ───────────── Nouvelle conversation ─────────────
 
@@ -569,7 +579,7 @@ import { audioPlayer, voiceRecorder } from './messenger-voice.js';
 
     function schedule() {
         clearTimeout(threadTimer);
-        var base = interval(2000, 5000, 20000);
+        var base = typingNames.length ? 2000 : interval(2000, 5000, 20000);
         threadTimer = setTimeout(poll, Math.min(30000, base * Math.pow(2, Math.min(threadFails, 4))));
     }
 
