@@ -28,10 +28,22 @@
 
     Push.addListener('registration', function (event) {
         try { localStorage.setItem(storeKey, event.value); } catch { /* stockage indisponible */ }
-        call('POST', event.value).catch(function () { /* nouvelle tentative au prochain lancement */ });
+        call('POST', event.value).then(function () { report('enregistre'); }).catch(function () { /* nouvelle tentative au prochain lancement */ });
     });
 
-    Push.addListener('registrationError', function () { /* Firebase non configuré dans cette version de l'application */ });
+    // Compte rendu au serveur (storage/logs/laravel.log) : permet de savoir pourquoi un appareil ne s'enregistre pas.
+    function report(step, detail) {
+        fetch(url + '/diagnostic', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf.getAttribute('content'), 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ step: step, detail: detail ? String(detail).slice(0, 300) : null, platform: platform }),
+        }).catch(function () { /* sans conséquence */ });
+    }
+
+    function message(error) { return error && (error.message || error.errorMessage || error.error) ? (error.message || error.errorMessage || error.error) : error; }
+
+    Push.addListener('registrationError', function (error) { report('erreur-firebase', message(error)); });
 
     // Un appui sur la notification ouvre la page indiquée, à condition qu'elle reste dans l'application.
     Push.addListener('pushNotificationActionPerformed', function (action) {
@@ -65,9 +77,11 @@
         ready.then(function () { return Push.checkPermissions(); }).then(function (state) {
             return state.receive === 'prompt' || state.receive === 'prompt-with-rationale' ? Push.requestPermissions() : state;
         }).then(function (state) {
+            report('permission-' + state.receive);
             if (state.receive === 'granted') { return Push.register(); }
-        }).catch(function () { /* notifications indisponibles */ });
+        }).catch(function (error) { report('plugin-indisponible', message(error)); });
     }
 
+    report('demarrage');
     start();
 })();

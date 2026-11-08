@@ -172,6 +172,7 @@ Route::middleware('auth')->group(function (): void {
     // Applications mobiles : enregistrement de l'appareil pour les notifications push.
     Route::post('/appareils', [PushDeviceController::class, 'store'])->middleware('throttle:20,1')->name('devices.store');
     Route::delete('/appareils', [PushDeviceController::class, 'destroy'])->middleware('throttle:20,1')->name('devices.destroy');
+    Route::post('/appareils/diagnostic', [PushDeviceController::class, 'diagnostic'])->middleware('throttle:20,1')->name('devices.diagnostic');
 
     // T.Link Messenger : messagerie instantanée (pages + JSON interrogé par le navigateur).
     Route::prefix('messagerie')->name('messenger.')->group(function (): void {
