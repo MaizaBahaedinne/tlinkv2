@@ -213,15 +213,9 @@ class WebPushTest extends TestCase
         $this->assertSame(self::ENDPOINT, $client->queued[0]['endpoint']);
     }
 
-    public function test_the_app_declares_a_web_manifest_so_phones_can_install_it(): void
+    public function test_the_app_links_to_its_web_manifest_so_phones_can_install_it(): void
     {
-        $manifest = json_decode((string) file_get_contents(public_path('manifest.webmanifest')), true);
-
-        $this->assertSame('standalone', $manifest['display']);
-        $this->assertSame('/feed', $manifest['start_url']);
-        foreach ($manifest['icons'] as $icon) {
-            $this->assertFileExists(public_path(ltrim($icon['src'], '/')));
-        }
+        $this->get(route('manifest'))->assertOk()->assertJsonPath('display', 'standalone')->assertJsonPath('start_url', '/feed');
 
         $this->actingAs(User::factory()->create())->get(route('home'))->assertOk()->assertSee('rel="manifest"', false);
     }

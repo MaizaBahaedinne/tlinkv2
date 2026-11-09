@@ -86,7 +86,7 @@
 
             @if($messengerEnabled ?? false)
                 @php $unreadMessages = (int) ($unreadMessages ?? 0); @endphp
-                <a href="{{ route('messenger.index') }}" title="Messages" aria-label="Messages" @if(request()->routeIs('messenger.*')) aria-current="page" @endif id="nav-messages" data-unread-url="{{ route('messenger.unread') }}"
+                <a href="{{ \App\Support\Domains::url('messenger', route('messenger.index', [], false)) }}" title="Messages" aria-label="Messages" @if(request()->routeIs('messenger.*')) aria-current="page" @endif id="nav-messages" data-unread-url="{{ route('messenger.unread') }}"
                    class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('messenger.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
                     <i class="fa-regular fa-comments" aria-hidden="true"></i>
                     <span id="nav-messages-badge" data-count="{{ $unreadMessages }}" @if($unreadMessages < 1) hidden @endif class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white">{{ $unreadMessages > 99 ? '99+' : $unreadMessages }}</span>

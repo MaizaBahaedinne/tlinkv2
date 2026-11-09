@@ -60,6 +60,10 @@ Domains::on('academy')->get('/certificats/{code}', [AcademyController::class, 'c
 Route::get('/rejoindre/{token}', [PositionJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('position.join');
 Route::post('/rejoindre/{token}', [PositionJoinController::class, 'store'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:10,10')->name('position.join.store');
 
+// Identité installable de chaque sous-domaine (nom, logo) et liens vérifiés Android (ouvrir l'application installée).
+Route::get('/manifest.webmanifest', [\App\Http\Controllers\AppManifestController::class, 'manifest'])->name('manifest');
+Route::get('/.well-known/assetlinks.json', [\App\Http\Controllers\AppManifestController::class, 'assetLinks'])->name('well-known.assetlinks');
+
 // Connexion des applications mobiles par le navigateur du téléphone (voir NativeAuthController).
 Route::get('/auth/native/start', [NativeAuthController::class, 'start'])->middleware('throttle:30,1')->name('native.start');
 Route::get('/auth/native/{token}', [NativeAuthController::class, 'consume'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:30,1')->name('native.consume');

@@ -119,6 +119,12 @@
     "src": "resources/css/site.css",
     "isEntry": true
   },
+  "resources/js/app-links.js": {
+    "file": "assets/app-links-Dd3laMn5.js",
+    "name": "app-links",
+    "src": "resources/js/app-links.js",
+    "isEntry": true
+  },
   "resources/js/main.ts": {
     "file": "assets/main-D_i7Z76U.js",
     "name": "main",

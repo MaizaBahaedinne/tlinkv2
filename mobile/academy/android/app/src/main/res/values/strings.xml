@@ -4,4 +4,5 @@
     <string name="title_activity_main">Tunivisions Academy</string>
     <string name="package_name">com.tunivisions.academy</string>
     <string name="custom_url_scheme">com.tunivisions.academy</string>
+    <string name="asset_statements" translatable="false">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://academy.tunivisionsfoundation.org\"}}]</string>
 </resources>

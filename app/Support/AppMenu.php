@@ -47,7 +47,7 @@ final class AppMenu
         $items[] = $item('clubs', 'Clubs', route('club.index'), 'fa-solid fa-people-roof');
 
         if (Messenger::enabled()) {
-            $items[] = $item('messenger', 'T.Link Messenger', route('messenger.index'), 'fa-regular fa-comments', false, Messenger::unreadCount($user));
+            $items[] = $item('messenger', 'T.Link Messenger', \App\Support\Domains::url('messenger', route('messenger.index', [], false)), 'fa-regular fa-comments', false, Messenger::unreadCount($user));
         }
 
         if (StoreSettings::enabled()) {

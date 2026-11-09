@@ -24,6 +24,26 @@ android {
     }
 }
 
+// Signature partagee (variables d'environnement du workflow « Mobile Android ») : une empreinte stable est indispensable aux App Links.
+def sharedKeystore = System.getenv('TLINK_KEYSTORE_FILE')
+if (sharedKeystore) {
+    android {
+        signingConfigs {
+            shared {
+                storeFile file(sharedKeystore)
+                storePassword System.getenv('TLINK_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('TLINK_KEY_ALIAS')
+                keyPassword System.getenv('TLINK_KEY_PASSWORD')
+            }
+        }
+        buildTypes {
+            debug {
+                signingConfig signingConfigs.shared
+            }
+        }
+    }
+}
+
 repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'

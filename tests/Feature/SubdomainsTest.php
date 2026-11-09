@@ -82,6 +82,58 @@ class SubdomainsTest extends TestCase
         $this->actingAs($user)->getJson('http://academy.example.test/messagerie/non-lus')->assertOk();
     }
 
+    public function test_each_subdomain_publishes_its_own_manifest_with_its_logo(): void
+    {
+        $expected = [
+            'link' => ['T.Link', '/feed', 'com.tunivisions.tlink', 'link'],
+            'store' => ['Tunivisions Stores', '/boutique', 'com.tunivisions.stores', 'store'],
+            'academy' => ['Tunivisions Academy', '/academy', 'com.tunivisions.academy', 'academy'],
+            'messenger' => ['T.Link Messenger', '/messagerie', 'com.tunivisions.messenger', 'messenger'],
+        ];
+
+        foreach ($expected as $sub => [$name, $start, $package, $icons]) {
+            $response = $this->get("http://{$sub}.example.test/manifest.webmanifest")->assertOk();
+            $response->assertHeader('Content-Type', 'application/manifest+json');
+            $response->assertJsonPath('name', $name)->assertJsonPath('start_url', $start)->assertJsonPath('related_applications.0.id', $package);
+
+            foreach ($response->json('icons') as $icon) {
+                $this->assertStringContainsString("/app-icons/{$icons}/icon-", $icon['src']);
+                $this->assertFileExists(public_path(parse_url($icon['src'], PHP_URL_PATH)));
+            }
+        }
+    }
+
+    public function test_android_app_links_are_declared_per_host_with_valid_fingerprints_only(): void
+    {
+        $fingerprint = implode(':', array_fill(0, 32, 'AB'));
+
+        $this->get('http://messenger.example.test/.well-known/assetlinks.json')->assertOk()->assertExactJson([]);
+
+        config(['mobile.android_fingerprints' => [$fingerprint, 'pas-une-empreinte']]);
+
+        $this->get('http://messenger.example.test/.well-known/assetlinks.json')->assertOk()->assertExactJson([[
+            'relation' => ['delegate_permission/common.handle_all_urls'],
+            'target' => ['namespace' => 'android_app', 'package_name' => 'com.tunivisions.messenger', 'sha256_cert_fingerprints' => [$fingerprint]],
+        ]]);
+        $this->get('http://store.example.test/.well-known/assetlinks.json')->assertJsonPath('0.target.package_name', 'com.tunivisions.stores');
+    }
+
+    public function test_the_messenger_pages_move_to_the_messenger_host_but_json_calls_stay_put(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('http://link.example.test/messagerie')->assertRedirect(Domains::url('messenger', '/messagerie'));
+        $this->get('http://store.example.test/messagerie/12')->assertRedirect(Domains::url('messenger', '/messagerie/12'));
+        $this->get('http://messenger.example.test/messagerie')->assertOk();
+
+        // Le tiroir de messages des autres pages interroge la messagerie sur place.
+        $this->getJson('http://link.example.test/messagerie/non-lus')->assertOk();
+        $this->getJson('http://link.example.test/messagerie')->assertOk();
+
+        // Le lien « Messages » de la barre de navigation pointe déjà vers l'hôte Messenger.
+        $this->get('http://link.example.test/feed')->assertOk()->assertSee('href="'.Domains::url('messenger', '/messagerie').'"', false);
+    }
+
     public function test_messenger_host_opens_the_messenger_and_serves_its_routes(): void
     {
         $user = User::factory()->create();

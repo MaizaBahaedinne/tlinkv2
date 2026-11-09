@@ -15,8 +15,17 @@ class RedirectToAppHost
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $appHost = Domains::host('app');
         $route = $request->route();
+        $messengerHost = Domains::host('messenger');
+
+        // Les pages de la messagerie appartiennent à l'hôte Messenger : l'adresse change quand on y arrive depuis T.Link, le Store ou l'Academy.
+        // Les appels JSON (liste, messages, état de lecture…) restent servis sur place, car le tiroir de messages est intégré aux autres pages.
+        if ($messengerHost !== null && $route !== null && in_array($route->getName(), ['messenger.index', 'messenger.show'], true)
+            && $request->isMethod('GET') && ! $request->expectsJson() && ! $request->ajax() && strtolower($request->getHost()) !== $messengerHost) {
+            return redirect()->to(Domains::url('messenger', $request->getRequestUri()));
+        }
+
+        $appHost = Domains::host('app');
 
         if ($appHost === null || ! Domains::enabled() || $route === null || $route->isFallback || $route->getDomain() !== null) {
             return $next($request);

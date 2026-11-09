@@ -30,7 +30,18 @@
                 <data android:scheme="com.tunivisions.tlink" />
             </intent-filter>
 
+            <!-- Liens https du sous-domaine : Android ouvre l'application installee a la place du navigateur (App Links verifies par /.well-known/assetlinks.json) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="link.tunivisionsfoundation.org" />
+            </intent-filter>
+
         </activity>
+
+        <!-- Lie l'application au site : permet au navigateur de savoir qu'elle est installee (navigator.getInstalledRelatedApps) -->
+        <meta-data android:name="asset_statements" android:resource="@string/asset_statements" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -4,4 +4,5 @@
     <string name="title_activity_main">Tunivisions Stores</string>
     <string name="package_name">com.tunivisions.stores</string>
     <string name="custom_url_scheme">com.tunivisions.stores</string>
+    <string name="asset_statements" translatable="false">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://store.tunivisionsfoundation.org\"}}]</string>
 </resources>

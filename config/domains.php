@@ -34,6 +34,8 @@ return [
         'media.*',
         'devices.*',
         'native.*',
+        'manifest',
+        'well-known.*',
         'logout',
     ],
 ];

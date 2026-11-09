@@ -23,7 +23,7 @@ class LaunchGate
     public const DEFAULT_MESSAGE = 'Le nouveau site de la Fondation Tunivisions ouvre bientôt ses portes. Laissez-nous votre e-mail pour être prévenu(e) dès l’ouverture.';
 
     /** Chemins restant accessibles pendant la fermeture : connexion, liens de candidature aux postes et santé du serveur. */
-    private const OPEN_PATHS = ['up', 'connexion', 'deconnexion', 'auth/*', 'rejoindre/*', 'impersonation/quitter', 'api/v1/auth/login', 'api/v1/auth/logout', 'api/v1/auth/me'];
+    private const OPEN_PATHS = ['up', 'connexion', 'deconnexion', 'auth/*', 'rejoindre/*', 'impersonation/quitter', 'api/v1/auth/login', 'api/v1/auth/logout', 'api/v1/auth/me', 'manifest.webmanifest', '.well-known/*'];
 
     /**
      * @return array{enabled: bool, include_app: bool, launch_at: string, title: string, message: string, allowed_user_ids: array<int, int>}

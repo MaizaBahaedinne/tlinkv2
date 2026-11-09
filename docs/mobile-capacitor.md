@@ -80,6 +80,22 @@ Pour que la session soit commune à tous les sous-domaines (retour du Store vers
 
 Après toute modification de ces éléments, régénérer les applications (`npm run cap:sync:<app>`) : le plugin et le schéma d'adresse sont natifs, une nouvelle version de l'APK est nécessaire.
 
+## Manifeste par application et ouverture de l'application installée
+
+Chaque sous-domaine publie son manifeste installable (`/manifest.webmanifest`, nom et logo de son application, défini dans `config/mobile.php`). Sur Android, « Ajouter à l'écran d'accueil » installe donc T.Link, Stores, Academy ou Messenger avec la bonne icône.
+
+Les pages de la messagerie appartiennent à l'hôte Messenger : un lien vers `/messagerie` depuis T.Link, le Store ou l'Academy est redirigé vers `messenger.<domaine>` (les appels JSON du tiroir de messages restent servis sur place).
+
+**Ouvrir l'application installée plutôt que le navigateur (Android).** Chaque APK déclare les liens https de son sous-domaine (`android:autoVerify`). Android les vérifie avec `/.well-known/assetlinks.json`, publié par le site avec l'empreinte du certificat de signature. Il faut une signature **stable** :
+
+1. Créer une clé une seule fois : `keytool -genkeypair -v -keystore tlink.jks -alias tlink -keyalg RSA -keysize 2048 -validity 10000` (même mot de passe pour le magasin et la clé). La conserver précieusement, hors du dépôt.
+2. Secrets GitHub (Settings > Secrets > Actions) : `ANDROID_KEYSTORE_BASE64` (`base64 -i tlink.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`tlink`).
+3. Lancer « Mobile Android » : la fin du run affiche l'empreinte `SHA256` de chaque APK (la même pour les quatre).
+4. Sur le serveur, dans `.env` : `ANDROID_CERT_FINGERPRINTS=AA:BB:…` (plusieurs empreintes séparées par des virgules), puis `php artisan config:cache`. Vérifier `https://link.<domaine>/.well-known/assetlinks.json`.
+5. Réinstaller les APK (désinstaller l'ancien, signé avec une autre clé).
+
+Limite d'Android : un lien **touché** dans une autre application (WhatsApp, SMS, e-mail) s'ouvre directement dans l'application ; une adresse **tapée dans la barre de Chrome** reste dans le navigateur. Dans ce cas, si l'application est installée, une bannière « Ouvrir dans l'application ? » (`resources/js/app-links.js`, `navigator.getInstalledRelatedApps`) propose de l'ouvrir en un geste. Sur iPhone, il faudrait des Universal Links (fichier `apple-app-site-association`, identifiant d'équipe Apple et capacité « Associated Domains ») : à faire avec la publication iOS.
+
 ## Reste à faire avant publication
 
 - Icônes et écrans de démarrage de chaque application (`mobile/<app>/android` et `ios`).
