@@ -27,7 +27,7 @@ class AdvertController extends AdminController
             'link_url' => ['nullable', 'url:http,https', 'max:255'],
             'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'is_active' => ['nullable', 'boolean'],
-        ], ['image.required' => 'L’image ou le GIF est obligatoire.']);
+        ], self::imageMessages() + ['image.required' => 'L’image ou le GIF est obligatoire.']);
 
         $advert = Advert::query()->create([
             'title' => trim($data['title']),
@@ -50,7 +50,7 @@ class AdvertController extends AdminController
             'image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ], self::imageMessages());
 
         $values = [
             'title' => trim($data['title']),
@@ -83,6 +83,17 @@ class AdvertController extends AdminController
         $this->deleteImage($image);
 
         return back()->with('status', 'Publicité supprimée.');
+    }
+
+    /** @return array<string, string> */
+    private static function imageMessages(): array
+    {
+        return [
+            'image.uploaded' => 'Le fichier n’a pas pu être envoyé : il dépasse la taille autorisée par le serveur (10 Mo max). Réduisez le poids du GIF.',
+            'image.max' => 'Le fichier est trop lourd (5 Mo max). Réduisez le poids du GIF.',
+            'image.image' => 'Le fichier doit être une image ou un GIF.',
+            'image.mimes' => 'Formats acceptés : jpg, png, webp ou gif.',
+        ];
     }
 
     private function deleteImage(?string $path): void

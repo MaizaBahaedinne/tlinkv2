@@ -85,6 +85,18 @@ class AdvertsTest extends TestCase
         $this->assertDatabaseCount('adverts', 0);
     }
 
+    public function test_an_oversized_gif_gets_a_clear_message(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $this->grantPlatformAdmin($admin);
+
+        $this->actingAs($admin)->from('/admin/publicites')->post('/admin/publicites', [
+            'title' => 'Lourde',
+            'image' => UploadedFile::fake()->image('lourde.gif', 600, 200)->size(6000),
+        ])->assertSessionHasErrors(['image' => 'Le fichier est trop lourd (5 Mo max). Réduisez le poids du GIF.']);
+    }
+
     public function test_a_regular_member_cannot_manage_adverts(): void
     {
         $this->actingAs(User::factory()->create())->get('/admin/publicites')->assertForbidden();

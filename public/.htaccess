@@ -1,3 +1,9 @@
+# Envoi d'images et de GIF : le défaut de PHP (2 Mo) est trop bas (voir aussi .user.ini).
+<IfModule LiteSpeed>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 20M
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
