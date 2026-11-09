@@ -38,7 +38,7 @@
             @php($webPushKey = in_array(\App\Support\Domains::keyForHost(request()->getHost()), [null, 'app'], true) ? \App\Support\Push\WebPush::publicKey() : null)
             @if ($webPushKey)
                 {{-- Notifications push du navigateur (une seule origine, celle de T.Link, pour éviter les doublons) ; sans effet dans les applications mobiles. --}}
-                <meta name="web-push" content="{{ route('devices.web.store', [], false) }}" data-key="{{ $webPushKey }}" data-logout="{{ route('logout', [], false) }}" data-required="{{ request()->routeIs('home') ? '1' : '0' }}">
+                <meta name="web-push" content="{{ route('devices.web.store', [], false) }}" data-key="{{ $webPushKey }}" data-logout="{{ route('logout', [], false) }}" data-test="{{ route('devices.web.test', [], false) }}" data-required="{{ request()->routeIs('home') ? '1' : '0' }}">
                 @vite(['resources/js/web-push.js'])
             @endif
         @endif

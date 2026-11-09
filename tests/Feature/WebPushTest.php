@@ -197,6 +197,22 @@ class WebPushTest extends TestCase
         $this->get(route('notifications.index'))->assertOk()->assertSee('data-required="0"', false);
     }
 
+    public function test_a_test_notification_is_sent_to_the_members_browsers_even_in_the_foreground(): void
+    {
+        $client = $this->fakeClient();
+        [$alice, $bob] = User::factory()->count(2)->create();
+        $this->subscription($alice);
+        $this->subscription($bob, 'https://updates.push.services.mozilla.com/wpush/v2/bob');
+
+        $this->postJson(route('devices.web.test'))->assertUnauthorized();
+
+        $this->actingAs($alice)->postJson(route('devices.web.test'))->assertOk()->assertJson(['ok' => true, 'sent' => 1]);
+
+        $this->assertCount(1, $client->queued);
+        $this->assertSame(self::ENDPOINT, $client->queued[0]['endpoint']);
+        $this->assertTrue($client->queued[0]['payload']['force']);
+    }
+
     public function test_the_test_command_reaches_browsers(): void
     {
         $client = $this->fakeClient();

@@ -26,7 +26,7 @@ self.addEventListener('push', function (event) {
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (windows) {
             // Une fenêtre de T.Link est déjà au premier plan : l'application prévient elle-même (pastille, son).
-            if (windows.some(function (client) { return client.focused; })) { return undefined; }
+            if (!data.force && windows.some(function (client) { return client.focused; })) { return undefined; }
 
             return self.registration.showNotification(title, options);
         })

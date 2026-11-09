@@ -17,6 +17,8 @@
     var box = document.querySelector('[data-web-push]');
     var status = box ? box.querySelector('[data-web-push-status]') : null;
     var toggle = box ? box.querySelector('[data-web-push-toggle]') : null;
+    var testButton = box ? box.querySelector('[data-web-push-test]') : null;
+    var testUrl = meta.dataset.test;
 
     function render(state) {
         if (!box) { return; }
@@ -35,12 +37,13 @@
             toggle.textContent = state === 'on' ? 'Désactiver' : 'Activer les notifications';
             toggle.dataset.state = state;
         }
+        if (testButton) { testButton.hidden = state !== 'on'; }
     }
 
     if (!supported) { render('unsupported'); return; }
 
-    function request(method, payload) {
-        return fetch(url, {
+    function request(method, payload, target) {
+        return fetch(target || url, {
             method: method,
             credentials: 'same-origin',
             keepalive: true,
@@ -60,6 +63,11 @@
     function send(subscription) {
         var json = subscription.toJSON();
         return request('POST', { endpoint: json.endpoint, keys: json.keys, contentEncoding: (PushManager.supportedContentEncodings || ['aes128gcm'])[0] });
+    }
+
+    // Notification de test affichée tout de suite : confirme à l'utilisateur que tout fonctionne.
+    function welcome() {
+        return request('POST', {}, testUrl).catch(function () { /* sans conséquence */ });
     }
 
     function subscribe(registration) {
@@ -127,7 +135,7 @@
                     Notification.requestPermission().then(function (permission) {
                         if (permission !== 'granted') { blocked(); return null; }
 
-                        return subscribe(registration).then(function () { overlay.remove(); });
+                        return subscribe(registration).then(function () { overlay.remove(); welcome(); });
                     }).catch(function () {
                         text.textContent = 'Activation impossible pour le moment. Vérifie ta connexion et réessaie.';
                         accept.textContent = 'Réessayer';
@@ -152,6 +160,13 @@
             }
         }).catch(function () { /* sans conséquence */ }).then(refresh).then(function () { invite(registration); });
 
+        if (testButton) {
+            testButton.addEventListener('click', function () {
+                testButton.disabled = true;
+                welcome().then(function () { setTimeout(function () { testButton.disabled = false; }, 4000); });
+            });
+        }
+
         if (toggle) {
             toggle.addEventListener('click', function () {
                 toggle.disabled = true;
@@ -162,7 +177,7 @@
                     }
 
                     return Notification.requestPermission().then(function (permission) {
-                        if (permission === 'granted') { return subscribe(registration); }
+                        if (permission === 'granted') { return subscribe(registration).then(welcome); }
                     });
                 }).then(refresh).catch(function () { render('error'); });
             });

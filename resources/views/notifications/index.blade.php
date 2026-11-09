@@ -21,7 +21,10 @@
 
         <div class="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4" data-web-push hidden>
             <p class="text-sm text-slate-600" data-web-push-status></p>
-            <button type="button" class="rounded-xl bg-tlink-blue px-3 py-2 text-sm font-medium text-white hover:bg-tlink-blue-700 disabled:opacity-60" data-web-push-toggle hidden>Activer les notifications</button>
+            <div class="flex gap-2">
+                <button type="button" class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-60" data-web-push-test hidden>Envoyer une notification de test</button>
+                <button type="button" class="rounded-xl bg-tlink-blue px-3 py-2 text-sm font-medium text-white hover:bg-tlink-blue-700 disabled:opacity-60" data-web-push-toggle hidden>Activer les notifications</button>
+            </div>
         </div>
 
         <div class="card overflow-hidden">

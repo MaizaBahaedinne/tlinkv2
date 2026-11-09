@@ -176,6 +176,7 @@ Route::middleware('auth')->group(function (): void {
     // Notifications push dans le navigateur (Web Push).
     Route::post('/appareils/navigateur', [\App\Http\Controllers\WebPushController::class, 'store'])->middleware('throttle:20,1')->name('devices.web.store');
     Route::delete('/appareils/navigateur', [\App\Http\Controllers\WebPushController::class, 'destroy'])->middleware('throttle:20,1')->name('devices.web.destroy');
+    Route::post('/appareils/navigateur/test', [\App\Http\Controllers\WebPushController::class, 'test'])->middleware('throttle:6,1')->name('devices.web.test');
 
     // T.Link Messenger : messagerie instantanée (pages + JSON interrogé par le navigateur).
     Route::prefix('messagerie')->name('messenger.')->group(function (): void {
