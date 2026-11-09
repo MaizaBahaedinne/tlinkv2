@@ -72,6 +72,36 @@
     }
 
     navigator.serviceWorker.register('/sw.js').then(function () { return navigator.serviceWorker.ready; }).then(function (registration) {
+        // Invitation affichée une fois connecté (le navigateur n'accepte de demander l'autorisation qu'après un clic) ; refus mémorisé 14 jours.
+        function invite(registration) {
+            var dismissedAt = parseInt(localStorage.getItem('tlink.webpush.dismissed') || '0', 10);
+
+            if (box || Notification.permission !== 'default' || Date.now() - dismissedAt < 14 * 24 * 3600 * 1000) { return; }
+
+            registration.pushManager.getSubscription().then(function (subscription) {
+                if (subscription) { return; }
+
+                var banner = document.createElement('div');
+                banner.setAttribute('role', 'dialog');
+                banner.setAttribute('aria-label', 'Notifications');
+                banner.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:60;max-width:340px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(15,23,42,.18);font:14px/1.45 system-ui,sans-serif;color:#334155';
+                banner.innerHTML = '<p style="margin:0 0 12px"><strong style="color:#0f172a">Activer les notifications ?</strong><br>Reçois les nouveaux messages et alertes de T.Link, même lorsque le site est fermé.</p>'
+                    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" data-later style="border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer">Plus tard</button>'
+                    + '<button type="button" data-accept style="border:0;background:#d00031;color:#fff;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer">Activer</button></div>';
+                document.body.appendChild(banner);
+
+                banner.querySelector('[data-later]').addEventListener('click', function () {
+                    localStorage.setItem('tlink.webpush.dismissed', String(Date.now()));
+                    banner.remove();
+                });
+                banner.querySelector('[data-accept]').addEventListener('click', function () {
+                    Notification.requestPermission().then(function (permission) {
+                        if (permission === 'granted') { return subscribe(registration); }
+                    }).catch(function () { /* sans conséquence */ }).then(function () { banner.remove(); });
+                });
+            });
+        }
+
         function refresh() {
             return registration.pushManager.getSubscription().then(function (subscription) {
                 if (Notification.permission === 'denied') { render('denied'); return; }
@@ -86,7 +116,7 @@
                 sessionStorage.setItem('tlink.webpush.synced', '1');
                 return send(subscription);
             }
-        }).catch(function () { /* sans conséquence */ }).then(refresh);
+        }).catch(function () { /* sans conséquence */ }).then(refresh).then(function () { invite(registration); });
 
         if (toggle) {
             toggle.addEventListener('click', function () {
