@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Domains;
 use App\Support\Onboarding;
 use Closure;
 use Illuminate\Http\Request;
@@ -64,7 +65,8 @@ class EnsureOnboardingComplete
             ], 403);
         }
 
-        return redirect()->route('integration.show')
+        // L'intégration se fait dans T.Link : depuis le Store, l'Academy ou la messagerie, on y renvoie le membre.
+        return redirect()->to(Domains::url('app', route('integration.show', [], false)))
             ->with('status', 'Terminez d’abord votre intégration : cette page sera accessible une fois votre adhésion ou votre poste approuvé.');
     }
 }

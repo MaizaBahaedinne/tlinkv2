@@ -17,6 +17,21 @@
         'academy.showcase' => __('site.nav.academy'),
         'site.contact' => __('site.nav.contact'),
     ];
+    // Vitrine d'une application cloisonnée (Store, Academy) : ni le site de la Fondation ni les autres applications dans la navigation.
+    $section = \App\Support\Domains::sectionOf(request());
+    $isolated = in_array($section, ['store', 'academy'], true);
+
+    if ($isolated) {
+        $nav = [$section.'.showcase' => $nav[$section.'.showcase']];
+    }
+
+    $homeUrl = $isolated ? route($section.'.showcase') : route('site.home');
+    $joinUrl = match (true) {
+        $isolated && auth()->check() => \App\Support\Domains::homeUrl(request()),
+        $isolated => \App\Support\Domains::url('app', route('register', [], false)),
+        auth()->check() => route('home'),
+        default => route('register'),
+    };
     $title = trim($__env->yieldContent('title'));
     $description = trim($__env->yieldContent('description'));
     $pageTitle = $title !== '' ? $title.' · '.__('site.name') : __('site.name').' · '.__('site.tagline');
@@ -85,7 +100,7 @@
 
     <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div class="w-full flex items-center justify-between gap-4 px-4 py-3 lg:px-8">
-            <a href="{{ route('site.home') }}" class="flex items-center gap-3" aria-label="{{ __('site.name') }}">
+            <a href="{{ $homeUrl }}" class="flex items-center gap-3" aria-label="{{ __('site.name') }}">
                 <picture>
                     <source srcset="{{ asset('logoFondation.webp') }}" type="image/webp">
                     <img src="{{ asset('logoFondation.png') }}" alt="{{ __('site.name') }}" class="h-11 w-auto sm:h-12" loading="eager" decoding="async">
@@ -101,6 +116,7 @@
             </nav>
 
             <div class="flex items-center gap-2">
+                @unless($isolated)
                 <details class="relative" id="lang-switcher">
                     <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" aria-label="{{ __('site.language') }}">
                         <span>{{ strtoupper($locale) }}</span>
@@ -120,7 +136,8 @@
                         @endforeach
                     </ul>
                 </details>
-                <a href="{{ auth()->check() ? route('home') : route('register') }}" class="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 sm:inline-block">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
+                @endunless
+                <a href="{{ $joinUrl }}" class="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 sm:inline-block">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
             </div>
         </div>
 
@@ -130,7 +147,7 @@
                 @foreach($nav as $name => $label)
                     <a href="{{ route($name) }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">{{ $label }}</a>
                 @endforeach
-                <a href="{{ auth()->check() ? route('home') : route('register') }}" class="rounded-lg px-3 py-2 text-sm font-bold text-brand-600">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
+                <a href="{{ $joinUrl }}" class="rounded-lg px-3 py-2 text-sm font-bold text-brand-600">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
             </nav>
         </details>
     </header>

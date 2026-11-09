@@ -111,7 +111,7 @@
                             @endif
                         @endforeach
                         @if($block['items']->isEmpty() && $block['auto']->isEmpty())
-                            <p class="text-sm text-slate-500">{{ $block['empty'] }}@if($editable && $block['kind'] === 'asso') Vos adhésions validées apparaîtront ici automatiquement : <a href="{{ route('memberships.index') }}" class="font-semibold text-sky-700 hover:underline">demander une adhésion</a>.@elseif($editable && $block['kind'] === 'cert') Vos certificats Tunivisions Academy apparaîtront ici automatiquement : <a href="{{ route('academy.index') }}" class="font-semibold text-sky-700 hover:underline">voir les cours</a>.@endif</p>
+                            <p class="text-sm text-slate-500">{{ $block['empty'] }}@if($editable && $block['kind'] === 'asso') Vos adhésions validées apparaîtront ici automatiquement : <a href="{{ route('memberships.index') }}" class="font-semibold text-sky-700 hover:underline">demander une adhésion</a>.@elseif($editable && $block['kind'] === 'cert') Vos certificats Tunivisions Academy apparaîtront ici automatiquement{!! \App\Support\Domains::reachableFrom(\App\Support\Domains::sectionOf(request()), 'academy') ? ' : <a href="'.e(route('academy.index')).'" class="font-semibold text-sky-700 hover:underline">voir les cours</a>' : '' !!}.@endif</p>
                         @endif
                     </div>
                 </div>

@@ -40,13 +40,13 @@ final class MessengerPush
                 $userIds = MessengerParticipant::query()->where('conversation_id', $conversationId)->whereNull('left_at')
                     ->where('user_id', '!=', $senderId)->pluck('user_id')->all();
 
-                $devices = PushDevice::query()->whereIn('user_id', $userIds)->get();
+                $devices = PushDevice::query()->whereIn('user_id', $userIds)->forSection('messenger')->get();
 
                 if ($devices->isNotEmpty()) {
                     Fcm::send($devices, $title, $body, ['url' => Domains::url('messenger', $path), 'conversation' => $conversationId], 'conversation-'.$conversationId);
                 }
 
-                WebPush::sendToUsers($userIds, $title, $body, Domains::url('messenger', $path), 'conversation-'.$conversationId, '/app-icons/messenger/icon-192.png');
+                WebPush::sendToUsers($userIds, $title, $body, Domains::url('messenger', $path), 'conversation-'.$conversationId, '/app-icons/messenger/icon-192.png', 'messenger');
             } catch (\Throwable $e) {
                 report($e);
             }

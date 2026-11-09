@@ -42,9 +42,9 @@
             {{-- Notifications push : sans effet hors des applications mobiles. --}}
             <meta name="push-devices" content="{{ route('devices.store', [], false) }}" data-logout="{{ route('logout', [], false) }}">
             @vite(['resources/js/native-push.js'])
-            @php($webPushKey = in_array(\App\Support\Domains::keyForHost(request()->getHost()), [null, 'app'], true) ? \App\Support\Push\WebPush::publicKey() : null)
+            @php($webPushKey = in_array(\App\Support\Domains::keyForHost(request()->getHost()), [null, 'app', 'messenger'], true) ? \App\Support\Push\WebPush::publicKey() : null)
             @if ($webPushKey)
-                {{-- Notifications push du navigateur (une seule origine, celle de T.Link, pour éviter les doublons) ; sans effet dans les applications mobiles. --}}
+                {{-- Notifications push du navigateur (T.Link et Messenger, chacun sur son origine et ses propres abonnements) ; sans effet dans les applications mobiles. --}}
                 <meta name="web-push" content="{{ route('devices.web.store', [], false) }}" data-key="{{ $webPushKey }}" data-logout="{{ route('logout', [], false) }}" data-test="{{ route('devices.web.test', [], false) }}" data-required="{{ request()->routeIs('home') ? '1' : '0' }}">
                 @vite(['resources/js/web-push.js'])
             @endif

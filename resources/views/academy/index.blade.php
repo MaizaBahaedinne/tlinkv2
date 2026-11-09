@@ -17,7 +17,9 @@
                         <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Points Academy</p>
                     </div>
                     <a href="{{ route('academy.calendar') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-calendar-days mr-1" aria-hidden="true"></i> Calendrier</a>
-                    <a href="{{ route('badges.index') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-medal mr-1" aria-hidden="true"></i> Mes badges</a>
+                    @if(\App\Support\Domains::reachableFrom('academy', 'app'))
+                        <a href="{{ route('badges.index') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-medal mr-1" aria-hidden="true"></i> Mes badges</a>
+                    @endif
                 </div>
             </div>
             @if($subscription)

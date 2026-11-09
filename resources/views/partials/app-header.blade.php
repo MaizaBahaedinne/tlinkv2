@@ -4,14 +4,17 @@
     $avatar = $me->profile?->photoUrl();
     $initials = mb_strtoupper(collect(preg_split('/\s+/u', trim($me->name)))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''));
     $unread = (int) ($unreadNotifications ?? 0);
+    // Applications cloisonnées : un lien vers une autre application n'existe que si elle n'a pas son propre sous-domaine.
+    $section = \App\Support\Domains::sectionOf(request());
+    $canMessenger = ($messengerEnabled ?? false) && \App\Support\Domains::reachableFrom($section, 'messenger');
 
     $allNav = array_values(array_filter([
         ['key' => 'home', 'label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
-        ['key' => 'academy', 'label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')],
+        \App\Support\Domains::reachableFrom($section, 'academy') ? ['key' => 'academy', 'label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')] : null,
         ($hasOffice ?? false) ? ['key' => 'office', 'label' => \App\Support\AppMenu::officeLabel($me), 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
         ($challengesEnabled ?? false) ? ['key' => 'challenges', 'label' => 'Défis', 'href' => route('challenges.index'), 'icon' => 'fa-solid fa-trophy', 'active' => request()->routeIs('challenges.*', 'activities.*')] : null,
         ($mentoringEnabled ?? false) ? ['key' => 'mentoring', 'label' => 'Mentorat', 'href' => route('mentoring.index'), 'icon' => 'fa-solid fa-life-ring', 'active' => request()->routeIs('mentoring.*')] : null,
-        ($storeEnabled ?? false) ? ['key' => 'store', 'label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0)] : null,
+        (($storeEnabled ?? false) && \App\Support\Domains::reachableFrom($section, 'store')) ? ['key' => 'store', 'label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0)] : null,
         ($canAdmin ?? false) ? ['key' => 'admin', 'label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
         ($canSimulate ?? false) ? ['key' => 'simulator', 'label' => 'Simulateur de rôles', 'href' => route('admin.simulator.index'), 'icon' => 'fa-solid fa-user-secret', 'active' => false] : null,
     ]));
@@ -24,7 +27,9 @@
     $moreBadge = (int) collect($moreItems)->sum(fn (array $item): int => (int) ($item['badge'] ?? 0));
     $inIntegration = \App\Support\Onboarding::inProgress($me);
 @endphp
-@if($inIntegration)
+@if(in_array($section, ['store', 'academy', 'messenger'], true))
+    @include('partials.section-header')
+@elseif($inIntegration)
     @include('partials.integration-header')
 @else
 <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 lg:backdrop-blur">
@@ -84,7 +89,7 @@
                 <div id="nav-search-results" role="listbox" hidden class="absolute right-0 top-full z-40 mt-2 max-h-[70vh] w-80 max-w-[90vw] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-soft"></div>
             </form>
 
-            @if($messengerEnabled ?? false)
+            @if($canMessenger)
                 @php $unreadMessages = (int) ($unreadMessages ?? 0); @endphp
                 <a href="{{ \App\Support\Domains::url('messenger', route('messenger.index', [], false)) }}" title="Messages" aria-label="Messages" @if(request()->routeIs('messenger.*')) aria-current="page" @endif id="nav-messages" data-unread-url="{{ route('messenger.unread') }}"
                    class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('messenger.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
@@ -134,7 +139,7 @@
 </header>
 @endif
 
-@if(! $inIntegration && ($messengerEnabled ?? false) && ! request()->routeIs('messenger.*'))
+@if(! $inIntegration && $canMessenger && ! request()->routeIs('messenger.*'))
     @include('messenger.dock')
 @endif
 

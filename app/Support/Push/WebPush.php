@@ -155,10 +155,10 @@ final class WebPush
         return $results;
     }
 
-    /** Notifie les navigateurs abonnés des comptes donnés. */
-    public static function sendToUsers(array $userIds, string $title, string $body, string $url, ?string $tag = null, string $icon = '/app-icons/link/icon-192.png'): array
+    /** Notifie les navigateurs abonnés des comptes donnés, dans l'application $section (T.Link, Messenger…). */
+    public static function sendToUsers(array $userIds, string $title, string $body, string $url, ?string $tag = null, string $icon = '/app-icons/link/icon-192.png', string $section = 'app'): array
     {
-        $subscriptions = WebPushSubscription::query()->whereIn('user_id', $userIds)->get();
+        $subscriptions = WebPushSubscription::query()->whereIn('user_id', $userIds)->forSection($section)->get();
 
         return $subscriptions->isEmpty() ? [] : self::send($subscriptions, $title, $body, $url, $tag, $icon);
     }

@@ -46,15 +46,19 @@ final class AppMenu
 
         $items[] = $item('clubs', 'Clubs', route('club.index'), 'fa-solid fa-people-roof');
 
-        if (Messenger::enabled()) {
-            $items[] = $item('messenger', 'T.Link Messenger', \App\Support\Domains::url('messenger', route('messenger.index', [], false)), 'fa-regular fa-comments', false, Messenger::unreadCount($user));
+        $section = Domains::sectionOf($request);
+
+        if (Messenger::enabled() && Domains::reachableFrom($section, 'messenger')) {
+            $items[] = $item('messenger', 'T.Link Messenger', Domains::url('messenger', route('messenger.index', [], false)), 'fa-regular fa-comments', false, Messenger::unreadCount($user));
         }
 
-        if (StoreSettings::enabled()) {
+        if (StoreSettings::enabled() && Domains::reachableFrom($section, 'store')) {
             $items[] = $item('store', 'Tunistore', route('store.index'), 'fa-solid fa-bag-shopping', false, StoreCart::count($user));
         }
 
-        $items[] = $item('academy', 'Tunivisions Academy', route('academy.index'), 'fa-solid fa-graduation-cap');
+        if (Domains::reachableFrom($section, 'academy')) {
+            $items[] = $item('academy', 'Tunivisions Academy', route('academy.index'), 'fa-solid fa-graduation-cap');
+        }
 
         if (AdminMenu::hasAccess(AdminContext::of($request))) {
             $items[] = $item('admin', 'Administration', route('admin.dashboard'), 'fa-solid fa-list-check');

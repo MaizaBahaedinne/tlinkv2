@@ -10,7 +10,7 @@ Un seul dépôt, **une application mobile par sous-domaine** (voir [subdomains.m
 
 La configuration est dans `capacitor.config.ts`. Chaque application a ses projets natifs dans `mobile/<app>/android` et `mobile/<app>/ios` ; `mobile/www` est une page de secours commune (« Connexion impossible », bouton Réessayer).
 
-La session est partagée entre les sous-domaines (`SESSION_DOMAIN=.tunivisionsfoundation.org`) : se connecter dans T.Link suffit, et les liens d'une application à l'autre restent dans l'application (`allowNavigation: *.tunivisionsfoundation.org`).
+La session est partagée entre les sous-domaines (`SESSION_DOMAIN=.tunivisionsfoundation.org`) : se connecter dans T.Link suffit. Les applications sont cloisonnées : chacune ne navigue que sur son propre sous-domaine, plus l'hôte T.Link pour la connexion (`allowNavigation: link.tunivisionsfoundation.org`) ; tout autre lien s'ouvre dans le navigateur du téléphone. Après modification, relancer `npx cap sync` (ou le workflow « Mobile Android ») et réinstaller les applications.
 
 ## Prérequis
 

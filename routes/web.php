@@ -623,7 +623,8 @@ if (Domains::enabled()) {
     Route::fallback(function (Request $request) {
         $owner = Domains::ownerOfPath($request);
 
-        if ($owner !== null && strtolower($request->getHost()) !== Domains::host($owner)) {
+        // Ancienne adresse ouverte depuis le site vitrine, un h\u00f4te inconnu ou pour le site lui-m\u00eame : on suit l'application. Depuis une autre application, c'est un 404.
+        if ($owner !== null && ($owner === 'site' || Domains::sectionOf($request) === null) && strtolower($request->getHost()) !== Domains::host($owner)) {
             return redirect()->to(Domains::url($owner, $request->getRequestUri()), 301);
         }
 

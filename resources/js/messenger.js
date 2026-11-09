@@ -488,7 +488,7 @@ import { connectRealtime } from './messenger-realtime.js';
         }
 
         if (meta.type === 'direct' && meta.other_id) {
-            menuItem('Voir le profil', 'fa-regular fa-id-card', function () { window.location.href = withId(cfg.urlProfile, meta.other_id); });
+            if (cfg.urlProfile) { menuItem('Voir le profil', 'fa-regular fa-id-card', function () { window.location.href = withId(cfg.urlProfile, meta.other_id); }); }
             if (meta.blocked_by_me) {
                 menuItem('Débloquer ce membre', 'fa-solid fa-lock-open', function () { submitForm(withId(cfg.urlBlock, meta.other_id), 'DELETE'); });
             } else {

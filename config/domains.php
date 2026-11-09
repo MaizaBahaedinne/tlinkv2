@@ -24,18 +24,20 @@ return [
         'messenger' => env('DOMAIN_MESSENGER'),
     ],
 
-    // Routes de T.Link restant utilisables depuis les sous-domaines Store et Academy (barre de navigation, messagerie…) :
-    // elles s'exécutent sur l'hôte courant, la session étant partagée. Les autres adresses de T.Link sont redirigées vers l'hôte « app ».
+    // Routes techniques communes à toutes les applications (médias, appareils, manifeste, déconnexion…) : elles s'exécutent sur l'hôte courant,
+    // la session étant partagée. Toutes les autres routes appartiennent à UNE application (T.Link, Store, Academy ou Messenger) et sont
+    // introuvables (404) depuis les autres hôtes : voir App\Http\Middleware\IsolateSections.
     'shared_routes' => [
         'app.root',
-        'messenger.*',
-        'notifications.*',
-        'search.*',
         'media.*',
         'devices.*',
         'native.*',
         'manifest',
         'well-known.*',
+        'storage.*',
+        'impersonation.stop',
+        'simulation.stop',
+        'boost.*',
         'logout',
     ],
 ];

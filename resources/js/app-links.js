@@ -10,10 +10,9 @@
     var cap = window.Capacitor;
     var native = !!cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform();
 
-    // Domaine commun des applications (link.exemple.org, messenger.exemple.org… => exemple.org).
+    // Une application ne suit que les liens de son propre sous-domaine : les applications sont cloisonnées.
     function sameFamily(host) {
-        var mine = window.location.hostname.split('.').slice(1).join('.');
-        return !!mine && (host === mine || host.slice(-(mine.length + 1)) === '.' + mine);
+        return host === window.location.hostname;
     }
 
     if (native) {
@@ -22,7 +21,7 @@
         var open = function (value) {
             var link;
             try { link = new URL(value); } catch { return; }
-            // Seuls les liens https vers les sous-domaines de la Fondation sont suivis (jamais le schéma de connexion, géré par native-auth.js).
+            // Seuls les liens https vers l'hôte de l'application sont suivis (jamais le schéma de connexion, géré par native-auth.js).
             if (link.protocol !== 'https:' || !sameFamily(link.hostname)) { return; }
             if (link.href !== window.location.href) { window.location.href = link.href; }
         };

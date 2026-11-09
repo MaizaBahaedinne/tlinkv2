@@ -15,7 +15,7 @@
              data-url-groups="{{ route('messenger.groups.store') }}"
              data-url-show="{{ route('messenger.show', 0) }}"
              data-url-block="{{ route('messenger.block', 0) }}"
-             data-url-profile="{{ route('member.show', 0) }}"
+             @if(\App\Support\Domains::reachableFrom(\App\Support\Domains::sectionOf(request()), 'app')) data-url-profile="{{ route('member.show', 0) }}" @endif
              data-url-delete="{{ route('messenger.messages.destroy', 0) }}"
              @if($realtime = \App\Support\Messenger\Realtime::clientConfig()) data-realtime="{{ json_encode($realtime) }}" @endif
              @if($activeId)

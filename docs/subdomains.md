@@ -55,9 +55,9 @@ Les cookies d'un domaine parent sont partagés avec tous ses sous-domaines. Pour
 
 ## Comportement
 
-- Les anciennes adresses (`/boutique`, `/academy`, `/certificats/…`, `/fr`…) demandées sur un autre hôte sont redirigées (301) vers l'hôte de leur section.
-- Une page de T.Link demandée depuis le site, le Store ou l'Academy est redirigée vers l'hôte T.Link (301, ou 308 pour les requêtes non GET).
-- La racine de `messenger.` mène directement à la messagerie ; les autres pages de T.Link y sont redirigées vers l'hôte T.Link.
+- **Cloisonnement : T.Link, Store, Academy et Messenger sont quatre applications étanches.** Une page d'une autre application demandée depuis l'hôte courant est introuvable (404) : `store.` ne sert ni le fil, ni la messagerie, ni l'Academy, etc. Aucun lien ne relie les applications (en-têtes, menus, notifications, profil) et les barres de navigation de Store, Academy et Messenger ne contiennent que leurs propres pages et le compte (déconnexion). Seules exceptions : les routes techniques communes (`shared_routes` dans `config/domains.php` : médias, appareils, manifeste, déconnexion…) et la connexion/inscription, qui reste sur l'hôte T.Link (retour de Google) : les autres hôtes y renvoient (301/308). L'intégration d'un nouveau membre se termine dans T.Link.
+- Notifications et recherche sont propres à T.Link ; les notifications push (appareils et navigateurs) sont envoyées uniquement à l'application concernée (colonne `app`).
+- Depuis le site vitrine, les anciennes adresses (`/boutique`, `/academy`, `/certificats/…`) sont redirigées (301) vers l'hôte de leur application ; depuis une autre application, elles sont introuvables.
 - La racine de `link.` mène au fil. Celles de `store.` et `academy.` sont des vitrines publiques qui reprennent la mise en page du site de la Fondation (barre de navigation, pied de page, langue du navigateur) ; la barre de navigation et la page « Projets » du site renvoient vers elles. La boutique et les cours restent sous `/boutique` et `/academy`, réservés aux membres. Sans sous-domaine, ces vitrines sont à `/boutique/presentation` et `/academy/presentation`.
 - Le compte à rebours de lancement ne couvre la racine que sur l'hôte du site vitrine.
 - Un visiteur non connecté qui ouvre une page protégée du Store ou de l'Academy est renvoyé vers la connexion de T.Link, puis revient sur la page demandée grâce à la session partagée.

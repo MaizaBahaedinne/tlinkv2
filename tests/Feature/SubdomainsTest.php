@@ -58,28 +58,64 @@ class SubdomainsTest extends TestCase
         $this->get('http://link.example.test/de')->assertNotFound();
     }
 
-    public function test_legacy_store_and_academy_paths_redirect_to_their_host(): void
+    public function test_legacy_paths_redirect_from_the_site_host_but_are_not_found_from_another_application(): void
     {
-        $this->get('http://link.example.test/boutique/panier?x=1')->assertStatus(301)->assertRedirect(Domains::url('store', '/boutique/panier?x=1'));
+        $this->get('http://example.test/boutique/panier?x=1')->assertStatus(301)->assertRedirect(Domains::url('store', '/boutique/panier?x=1'));
         $this->get('http://example.test/academy')->assertStatus(301)->assertRedirect(Domains::url('academy', '/academy'));
-        $this->get('http://link.example.test/certificats/TA-ABCDEFGHIJ')->assertStatus(301)->assertRedirect(Domains::url('academy', '/certificats/TA-ABCDEFGHIJ'));
+        $this->get('http://example.test/certificats/TA-ABCDEFGHIJ')->assertStatus(301)->assertRedirect(Domains::url('academy', '/certificats/TA-ABCDEFGHIJ'));
         $this->get('http://link.example.test/n-importe-quoi')->assertNotFound();
+
+        // Chaque application est cloisonnée : l'ancien chemin d'une autre application n'y existe plus.
+        $this->get('http://link.example.test/boutique/panier')->assertNotFound();
+        $this->get('http://link.example.test/certificats/TA-ABCDEFGHIJ')->assertNotFound();
+        $this->get('http://store.example.test/academy')->assertNotFound();
+        $this->get('http://messenger.example.test/boutique')->assertNotFound();
     }
 
-    public function test_app_pages_requested_on_other_hosts_redirect_to_the_app_host(): void
+    public function test_sign_in_pages_requested_on_other_hosts_redirect_to_the_app_host(): void
     {
-        $this->get('http://store.example.test/feed')->assertStatus(301)->assertRedirect(Domains::url('app', '/feed'));
         $this->get('http://example.test/connexion')->assertStatus(301)->assertRedirect(Domains::url('app', '/connexion'));
-        $this->post('http://store.example.test/posts', [])->assertStatus(308)->assertRedirect(Domains::url('app', '/posts'));
+        $this->get('http://store.example.test/connexion')->assertStatus(301)->assertRedirect(Domains::url('app', '/connexion'));
+        $this->post('http://academy.example.test/connexion', [])->assertStatus(308)->assertRedirect(Domains::url('app', '/connexion'));
         $this->get('http://link.example.test/connexion')->assertOk();
     }
 
-    public function test_shared_routes_stay_on_the_current_host(): void
+    public function test_each_application_cannot_reach_the_pages_of_the_others(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->getJson('http://store.example.test/messagerie/non-lus')->assertOk()->assertJson(['unread' => 0]);
-        $this->actingAs($user)->getJson('http://academy.example.test/messagerie/non-lus')->assertOk();
+        foreach (['store', 'academy', 'messenger'] as $host) {
+            $this->actingAs($user)->get("http://{$host}.example.test/feed")->assertNotFound();
+            $this->actingAs($user)->get("http://{$host}.example.test/notifications")->assertNotFound();
+            $this->actingAs($user)->get("http://{$host}.example.test/recherche")->assertNotFound();
+            $this->actingAs($user)->post("http://{$host}.example.test/posts", [])->assertNotFound();
+        }
+
+        foreach (['link', 'store', 'academy'] as $host) {
+            $this->actingAs($user)->get("http://{$host}.example.test/messagerie")->assertNotFound();
+            $this->actingAs($user)->getJson("http://{$host}.example.test/messagerie/non-lus")->assertNotFound();
+        }
+
+        $this->actingAs($user)->get('http://link.example.test/feed')->assertOk();
+        $this->actingAs($user)->get('http://messenger.example.test/messagerie')->assertOk();
+    }
+
+    public function test_technical_routes_stay_available_on_every_host(): void
+    {
+        foreach (['link', 'store', 'academy', 'messenger'] as $host) {
+            $this->get("http://{$host}.example.test/manifest.webmanifest")->assertOk();
+        }
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('http://store.example.test/deconnexion')->assertRedirect();
+    }
+
+    public function test_logged_in_members_opening_the_sign_in_page_return_to_their_own_application(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('http://link.example.test/connexion')->assertRedirect(route('home'));
     }
 
     public function test_each_subdomain_publishes_its_own_manifest_with_its_logo(): void
@@ -118,20 +154,35 @@ class SubdomainsTest extends TestCase
         $this->get('http://store.example.test/.well-known/assetlinks.json')->assertJsonPath('0.target.package_name', 'com.tunivisions.stores');
     }
 
-    public function test_the_messenger_pages_move_to_the_messenger_host_but_json_calls_stay_put(): void
+    public function test_the_messenger_is_only_served_on_its_own_host_and_not_linked_from_the_others(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->get('http://link.example.test/messagerie')->assertRedirect(Domains::url('messenger', '/messagerie'));
-        $this->get('http://store.example.test/messagerie/12')->assertRedirect(Domains::url('messenger', '/messagerie/12'));
-        $this->get('http://messenger.example.test/messagerie')->assertOk();
+        $this->actingAs($user)->get('http://messenger.example.test/messagerie')->assertOk();
+        $this->actingAs($user)->get('http://link.example.test/messagerie')->assertNotFound();
+        $this->actingAs($user)->get('http://store.example.test/messagerie/12')->assertNotFound();
 
-        // Le tiroir de messages des autres pages interroge la messagerie sur place.
-        $this->getJson('http://link.example.test/messagerie/non-lus')->assertOk();
-        $this->getJson('http://link.example.test/messagerie')->assertOk();
+        // Aucun lien (ni tiroir de messages) vers la messagerie depuis T.Link.
+        $this->actingAs($user)->get('http://link.example.test/feed')->assertOk()
+            ->assertDontSee(Domains::url('messenger', '/messagerie'), false)
+            ->assertDontSee('id="nav-messages"', false);
+    }
 
-        // Le lien « Messages » de la barre de navigation pointe déjà vers l'hôte Messenger.
-        $this->get('http://link.example.test/feed')->assertOk()->assertSee('href="'.Domains::url('messenger', '/messagerie').'"', false);
+    public function test_section_headers_only_contain_their_own_pages(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('http://messenger.example.test/messagerie')->assertOk()
+            ->assertSee('T.Link Messenger')
+            ->assertDontSee(route('home'), false)
+            ->assertDontSee(route('notifications.index'), false)
+            ->assertDontSee(route('academy.index'), false)
+            ->assertDontSee(route('store.index'), false)
+            ->assertDontSee('id="nav-search"', false);
+
+        $this->actingAs($user)->get('http://link.example.test/feed')->assertOk()
+            ->assertDontSee(route('academy.index'), false)
+            ->assertDontSee(route('store.index'), false);
     }
 
     public function test_messenger_host_opens_the_messenger_and_serves_its_routes(): void
@@ -151,14 +202,36 @@ class SubdomainsTest extends TestCase
         $this->withHeader('Accept-Language', 'fr')->get('http://academy.example.test/')->assertOk()->assertSee('Tunivisions Academy');
     }
 
-    public function test_showcases_link_to_the_app_host_for_login_and_to_each_other(): void
+    public function test_showcases_link_to_the_app_host_for_login_only(): void
     {
         $this->get('http://store.example.test/')
             ->assertSee(Domains::url('app', '/connexion'), false)
-            ->assertSee(route('site.about'), false)
-            ->assertSee(route('academy.showcase'), false);
+            ->assertDontSee(route('site.about'), false)
+            ->assertDontSee(route('academy.showcase'), false);
 
-        $this->get('http://academy.example.test/')->assertSee(route('store.showcase'), false);
+        $this->get('http://academy.example.test/')
+            ->assertDontSee(route('store.showcase'), false)
+            ->assertDontSee(route('site.about'), false);
+    }
+
+    public function test_push_devices_and_browsers_are_scoped_to_their_application(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (['app', 'messenger', 'store'] as $app) {
+            \App\Models\PushDevice::query()->create(['user_id' => $user->id, 'token' => 'jeton-'.$app, 'platform' => 'android', 'app' => $app]);
+            \App\Models\WebPushSubscription::query()->create([
+                'user_id' => $user->id, 'app' => $app, 'endpoint_hash' => \App\Models\WebPushSubscription::hashEndpoint('https://fcm.googleapis.com/'.$app),
+                'endpoint' => 'https://fcm.googleapis.com/'.$app, 'public_key' => 'k', 'auth_token' => 'a',
+            ]);
+        }
+
+        $this->assertSame(['jeton-messenger'], \App\Models\PushDevice::query()->forSection('messenger')->pluck('token')->all());
+        $this->assertSame(['jeton-app'], \App\Models\PushDevice::query()->forSection('app')->pluck('token')->all());
+        $this->assertSame(['https://fcm.googleapis.com/store'], \App\Models\WebPushSubscription::query()->forSection('store')->pluck('endpoint')->all());
+        // Pas de sous-domaine propre pour Academy : aucun filtrage.
+        config(['domains.hosts.academy' => null]);
+        $this->assertCount(3, \App\Models\PushDevice::query()->forSection('academy')->get());
     }
 
     public function test_each_application_uses_its_own_favicons(): void

@@ -58,7 +58,7 @@
                     <button type="button" class="inline-flex items-center gap-2 rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90" onclick="openProfileModal('modal-about')">
                         <i class="fa-solid fa-pen text-xs"></i> Modifier le profil
                     </button>
-                @elseif(\App\Support\Messenger\Messenger::enabled())
+                @elseif(\App\Support\Messenger\Messenger::enabled() && \App\Support\Domains::reachableFrom(\App\Support\Domains::sectionOf(request()), 'messenger'))
                     <form method="post" action="{{ route('messenger.direct', $person) }}">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-tlink-blue px-4 py-2 text-sm font-semibold text-white hover:opacity-90"><i class="fa-regular fa-comment-dots" aria-hidden="true"></i> Envoyer un message</button>

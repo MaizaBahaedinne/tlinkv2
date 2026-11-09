@@ -35,7 +35,7 @@
                             @php
                                 $target = $notification->data['url'] ?? null;
                             @endphp
-                            @if(is_string($target) && str_starts_with($target, '/') && ! str_starts_with($target, '//'))
+                            @if(is_string($target) && str_starts_with($target, '/') && ! str_starts_with($target, '//') && \App\Support\Domains::reachableFrom(\App\Support\Domains::sectionOf(request()), \App\Support\Domains::sectionOfPath($target)))
                                 <a href="{{ $target }}" class="font-semibold text-slate-800 hover:text-tlink-blue hover:underline">{{ $notification->title }}</a>
                             @else
                                 <p class="font-semibold text-slate-800">{{ $notification->title }}</p>

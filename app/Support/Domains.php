@@ -15,6 +15,9 @@ class Domains
 {
     public const KEYS = ['site', 'app', 'store', 'academy', 'messenger'];
 
+    /** Les applications (une par sous-domaine), cloisonnées entre elles. */
+    public const APPS = ['app', 'store', 'academy', 'messenger'];
+
     /** Hôte configuré pour une section, ou null. */
     public static function host(string $key): ?string
     {
@@ -124,5 +127,63 @@ class Domains
     public static function isSharedRoute(?string $name): bool
     {
         return $name === null || \Illuminate\Support\Str::is((array) config('domains.shared_routes'), $name);
+    }
+
+    /**
+     * Application servie par l'hôte de la requête (app, store, academy ou messenger). Null pour le site vitrine, un hôte inconnu
+     * ou une installation sans sous-domaines : rien n'y est cloisonné.
+     */
+    public static function sectionOf(Request $request): ?string
+    {
+        $key = self::keyForHost($request->getHost());
+
+        return in_array($key, self::APPS, true) ? $key : null;
+    }
+
+    /** Application propriétaire d'une route ; null pour une route technique commune (déconnexion, manifeste, appareils…). */
+    public static function sectionOfRoute(?string $name): ?string
+    {
+        if ($name === null || $name === '' || self::isSharedRoute($name)) {
+            return null;
+        }
+
+        foreach (['store', 'academy', 'messenger'] as $key) {
+            if (\Illuminate\Support\Str::is($key.'.*', $name)) {
+                return $key;
+            }
+        }
+
+        return 'app';
+    }
+
+    /** Application propriétaire d'un chemin de page (/boutique, /academy, /messagerie…). */
+    public static function sectionOfPath(string $path): string
+    {
+        return match (explode('/', trim($path, '/'))[0]) {
+            'boutique' => 'store',
+            'academy', 'certificats' => 'academy',
+            'messagerie' => 'messenger',
+            default => 'app',
+        };
+    }
+
+    /**
+     * Une page de l'application $from peut-elle renvoyer vers l'application $target ? Jamais lorsque chacune a son propre hôte :
+     * Store, Academy, Messenger et T.Link sont cloisonnés. Sans hôte dédié (ou hors application), tout reste accessible.
+     */
+    public static function reachableFrom(?string $from, string $target): bool
+    {
+        return $from === null || $from === $target || self::host($target) === null;
+    }
+
+    /** Page d'accueil de l'application servie par l'hôte courant : là où un membre déjà connecté est renvoyé. */
+    public static function homeUrl(Request $request): string
+    {
+        return match (self::sectionOf($request)) {
+            'store' => route('store.index'),
+            'academy' => route('academy.index'),
+            'messenger' => route('messenger.index'),
+            default => route('home'),
+        };
     }
 }

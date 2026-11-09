@@ -33,8 +33,9 @@ const config: CapacitorConfig = {
   server: {
     url: app.url,
     cleartext: false,
-    // La session est partagée entre les sous-domaines : les liens de l'un à l'autre restent dans l'application.
-    allowNavigation: [`*.${domain}`],
+    // Applications cloisonnées : chacune ne navigue que sur son propre hôte (donné par server.url). Seule exception, l'hôte T.Link, où vit la connexion
+    // (retour de Google) ; tout autre lien s'ouvre dans le navigateur du téléphone.
+    allowNavigation: [`link.${domain}`],
   },
   android: { path: `mobile/${key}/android` },
   ios: { path: `mobile/${key}/ios` },
