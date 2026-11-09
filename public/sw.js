@@ -23,14 +23,7 @@ self.addEventListener('push', function (event) {
         data: { url: data.url || '/notifications' },
     };
 
-    event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (windows) {
-            // Une fenêtre de T.Link est déjà au premier plan : l'application prévient elle-même (pastille, son).
-            if (!data.force && windows.some(function (client) { return client.focused; })) { return undefined; }
-
-            return self.registration.showNotification(title, options);
-        })
-    );
+    event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', function (event) {

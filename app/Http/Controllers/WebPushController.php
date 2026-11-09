@@ -52,7 +52,7 @@ class WebPushController extends Controller
     /** Notification de test envoyée aux navigateurs du membre connecté (affichée même si T.Link est au premier plan). */
     public function test(Request $request): JsonResponse
     {
-        $results = WebPush::sendToUsers([$request->user()->id], 'T.Link', 'Les notifications sont activées sur ce navigateur.', url(route('notifications.index', [], false)), 'push-test', force: true);
+        $results = WebPush::sendToUsers([$request->user()->id], 'T.Link', 'Les notifications sont activées sur ce navigateur.', url(route('notifications.index', [], false)), 'push-test');
 
         return response()->json(['ok' => $results !== [] && collect($results)->contains('ok', true), 'sent' => count($results)]);
     }

@@ -109,7 +109,7 @@ final class WebPush
      * @param  iterable<WebPushSubscription>  $subscriptions
      * @return list<array{subscription: int, ok: bool, error: string}>
      */
-    public static function send(iterable $subscriptions, string $title, string $body, string $url, ?string $tag = null, string $icon = '/app-icons/link/icon-192.png', bool $force = false): array
+    public static function send(iterable $subscriptions, string $title, string $body, string $url, ?string $tag = null, string $icon = '/app-icons/link/icon-192.png'): array
     {
         $keys = self::keys();
         $subscriptions = collect($subscriptions)->keyBy(fn (WebPushSubscription $s): string => $s->endpoint);
@@ -124,7 +124,6 @@ final class WebPush
             'url' => $url,
             'tag' => $tag,
             'icon' => $icon,
-            'force' => $force,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $client = self::client($keys);
@@ -157,10 +156,10 @@ final class WebPush
     }
 
     /** Notifie les navigateurs abonnés des comptes donnés. */
-    public static function sendToUsers(array $userIds, string $title, string $body, string $url, ?string $tag = null, string $icon = '/app-icons/link/icon-192.png', bool $force = false): array
+    public static function sendToUsers(array $userIds, string $title, string $body, string $url, ?string $tag = null, string $icon = '/app-icons/link/icon-192.png'): array
     {
         $subscriptions = WebPushSubscription::query()->whereIn('user_id', $userIds)->get();
 
-        return $subscriptions->isEmpty() ? [] : self::send($subscriptions, $title, $body, $url, $tag, $icon, $force);
+        return $subscriptions->isEmpty() ? [] : self::send($subscriptions, $title, $body, $url, $tag, $icon);
     }
 }

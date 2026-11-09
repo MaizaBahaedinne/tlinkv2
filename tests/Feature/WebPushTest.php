@@ -183,6 +183,7 @@ class WebPushTest extends TestCase
     {
         $this->assertFileExists(public_path('sw.js'));
         $this->assertStringContainsString("addEventListener('push'", (string) file_get_contents(public_path('sw.js')));
+        $this->assertStringNotContainsString('focused', (string) file_get_contents(public_path('sw.js')));
 
         $user = User::factory()->create();
 
@@ -197,7 +198,7 @@ class WebPushTest extends TestCase
         $this->get(route('notifications.index'))->assertOk()->assertSee('data-required="0"', false);
     }
 
-    public function test_a_test_notification_is_sent_to_the_members_browsers_even_in_the_foreground(): void
+    public function test_a_test_notification_is_sent_to_the_members_browsers(): void
     {
         $client = $this->fakeClient();
         [$alice, $bob] = User::factory()->count(2)->create();
@@ -210,7 +211,6 @@ class WebPushTest extends TestCase
 
         $this->assertCount(1, $client->queued);
         $this->assertSame(self::ENDPOINT, $client->queued[0]['endpoint']);
-        $this->assertTrue($client->queued[0]['payload']['force']);
     }
 
     public function test_the_test_command_reaches_browsers(): void
