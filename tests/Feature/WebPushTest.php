@@ -189,6 +189,14 @@ class WebPushTest extends TestCase
         $this->actingAs($user)->get(route('notifications.index'))->assertOk()->assertSee('data-web-push', false);
     }
 
+    public function test_the_feed_requires_enabling_notifications_while_other_pages_only_invite(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('home'))->assertOk()->assertSee('name="web-push"', false)->assertSee('data-required="1"', false);
+        $this->get(route('notifications.index'))->assertOk()->assertSee('data-required="0"', false);
+    }
+
     public function test_the_test_command_reaches_browsers(): void
     {
         $client = $this->fakeClient();

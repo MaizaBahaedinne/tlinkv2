@@ -72,32 +72,66 @@
     }
 
     navigator.serviceWorker.register('/sw.js').then(function () { return navigator.serviceWorker.ready; }).then(function (registration) {
-        // Invitation affichée une fois connecté (le navigateur n'accepte de demander l'autorisation qu'après un clic) ; refus mémorisé 14 jours.
+        // Sur le feed, l'activation est obligatoire : popup bloquante tant que ce navigateur n'est pas abonné (le navigateur n'accepte
+        // de demander l'autorisation qu'après un clic). Ailleurs, simple invitation, refus mémorisé 14 jours.
         function invite(registration) {
+            var required = meta.dataset.required === '1';
             var dismissedAt = parseInt(localStorage.getItem('tlink.webpush.dismissed') || '0', 10);
 
-            if (box || Notification.permission !== 'default' || Date.now() - dismissedAt < 14 * 24 * 3600 * 1000) { return; }
+            if (box || document.querySelector('[data-web-push-popup]')) { return; }
+            if (!required && (Notification.permission !== 'default' || Date.now() - dismissedAt < 14 * 24 * 3600 * 1000)) { return; }
 
             registration.pushManager.getSubscription().then(function (subscription) {
                 if (subscription) { return; }
 
-                var banner = document.createElement('div');
-                banner.setAttribute('role', 'dialog');
-                banner.setAttribute('aria-label', 'Notifications');
-                banner.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:60;max-width:340px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(15,23,42,.18);font:14px/1.45 system-ui,sans-serif;color:#334155';
-                banner.innerHTML = '<p style="margin:0 0 12px"><strong style="color:#0f172a">Activer les notifications ?</strong><br>Reçois les nouveaux messages et alertes de T.Link, même lorsque le site est fermé.</p>'
-                    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" data-later style="border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer">Plus tard</button>'
-                    + '<button type="button" data-accept style="border:0;background:#d00031;color:#fff;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer">Activer</button></div>';
-                document.body.appendChild(banner);
+                var overlay = document.createElement('div');
+                overlay.setAttribute('data-web-push-popup', '');
+                overlay.setAttribute('role', 'dialog');
+                overlay.setAttribute('aria-modal', 'true');
+                overlay.setAttribute('aria-label', 'Notifications');
+                overlay.style.cssText = required
+                    ? 'position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.7)'
+                    : 'position:fixed;right:16px;bottom:16px;z-index:60;max-width:340px';
 
-                banner.querySelector('[data-later]').addEventListener('click', function () {
-                    localStorage.setItem('tlink.webpush.dismissed', String(Date.now()));
-                    banner.remove();
-                });
-                banner.querySelector('[data-accept]').addEventListener('click', function () {
+                var card = document.createElement('div');
+                card.style.cssText = 'width:100%;max-width:400px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(15,23,42,.25);font:14px/1.5 system-ui,sans-serif;color:#334155';
+                card.innerHTML = '<p style="margin:0 0 6px;font-size:17px;font-weight:700;color:#0f172a">Activer les notifications</p>'
+                    + '<p data-text style="margin:0 0 16px">Pour utiliser T.Link, autorise les notifications : tu seras prévenu(e) des nouveaux messages et des alertes, même lorsque le site est fermé.</p>'
+                    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+                    + (required ? '' : '<button type="button" data-later style="border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:9px 14px;cursor:pointer">Plus tard</button>')
+                    + '<button type="button" data-accept style="border:0;background:#d00031;color:#fff;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer">Activer les notifications</button></div>';
+                overlay.appendChild(card);
+                document.body.appendChild(overlay);
+
+                var text = card.querySelector('[data-text]');
+                var accept = card.querySelector('[data-accept]');
+                var later = card.querySelector('[data-later]');
+
+                function blocked() {
+                    text.textContent = 'Les notifications sont bloquées pour ce site. Clique sur le cadenas à gauche de l\'adresse, autorise les notifications, puis réessaie.';
+                    accept.textContent = 'Réessayer';
+                }
+
+                if (Notification.permission === 'denied') { blocked(); }
+
+                if (later) {
+                    later.addEventListener('click', function () {
+                        localStorage.setItem('tlink.webpush.dismissed', String(Date.now()));
+                        overlay.remove();
+                    });
+                }
+
+                accept.addEventListener('click', function () {
+                    accept.disabled = true;
+
                     Notification.requestPermission().then(function (permission) {
-                        if (permission === 'granted') { return subscribe(registration); }
-                    }).catch(function () { /* sans conséquence */ }).then(function () { banner.remove(); });
+                        if (permission !== 'granted') { blocked(); return null; }
+
+                        return subscribe(registration).then(function () { overlay.remove(); });
+                    }).catch(function () {
+                        text.textContent = 'Activation impossible pour le moment. Vérifie ta connexion et réessaie.';
+                        accept.textContent = 'Réessayer';
+                    }).then(function () { accept.disabled = false; });
                 });
             });
         }
