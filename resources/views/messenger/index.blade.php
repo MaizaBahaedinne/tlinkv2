@@ -1,10 +1,10 @@
 @extends('layouts.base', ['title' => 'T.Link Messenger'])
 
 @section('content')
-<div class="min-h-screen bg-tlink-sand text-slate-800">
+<div class="mg-shell bg-white text-slate-800">
     @include('partials.app-header')
 
-    <main class="w-full px-2 py-3 sm:px-4">
+    <main>
         <div id="messenger"
              data-active="{{ $activeId }}"
              data-csrf="{{ csrf_token() }}"
@@ -25,7 +25,7 @@
                  data-url-typing="{{ route('messenger.typing', $activeId) }}"
                  data-url-leave="{{ route('messenger.leave', $activeId) }}"
              @endif
-             class="grid h-[calc(100dvh-9rem)] min-h-[26rem] lg:h-[calc(100dvh-7rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]">
+             class="grid h-full w-full grid-rows-[minmax(0,1fr)] overflow-hidden bg-white lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]">
 
             {{-- Liste des conversations --}}
             <aside id="mg-list-pane" class="{{ $activeId ? 'hidden lg:flex' : 'flex' }} min-h-0 flex-col border-slate-200 lg:border-r">

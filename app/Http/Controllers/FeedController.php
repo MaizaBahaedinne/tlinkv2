@@ -6,6 +6,8 @@ use App\Models\Comment;
 use App\Models\Governorate;
 use App\Models\Partner;
 use App\Support\AccessScope;
+use App\Support\FeedPostPresenter;
+use Illuminate\Http\JsonResponse;
 use App\Models\Post;
 use App\Models\PostAttachment;
 use App\Models\PostReaction;
@@ -20,6 +22,8 @@ use Illuminate\View\View;
 
 class FeedController extends Controller
 {
+    private const PER_PAGE = 12;
+
     private const VISIBILITIES = ['public', 'authenticated', 'entity', 'department', 'club', 'restricted'];
 
     public function index(Request $request): View
@@ -30,103 +34,12 @@ class FeedController extends Controller
             ? self::VISIBILITIES
             : array_values(array_filter(self::VISIBILITIES, fn (string $v): bool => $v !== 'public'));
 
-        $posts = Post::query()
-            ->with([
-                'author:id,name',
-                'author.profile:id,user_id,headline,photo_path,identity_verified_at',
-                'attachments:id,post_id,disk,path,mime_type',
-                'comments' => fn ($query) => $query
-                    ->with(['author:id,name', 'author.profile:id,user_id,photo_path,identity_verified_at'])
-                    ->orderBy('created_at'),
-            ])
-            ->withCount(['comments', 'reactions', 'shares', 'views'])
+        $posts = FeedPostPresenter::load()
             ->latest('published_at')
             ->latest('id')
-            ->paginate(12);
+            ->paginate(self::PER_PAGE);
 
-        $feedPayload = $posts->getCollection()->map(function (Post $post) use ($currentUserId): array {
-            $reactionBreakdown = PostReaction::query()
-                ->selectRaw('reaction_type, COUNT(*) as aggregate_count')
-                ->where('post_id', $post->id)
-                ->groupBy('reaction_type')
-                ->pluck('aggregate_count', 'reaction_type')
-                ->toArray();
-
-            return [
-                'id' => $post->id,
-                'content' => $post->content,
-                'type' => $post->type,
-                'visibility' => $post->visibility,
-                'sentiment' => $post->sentiment,
-                'comments_enabled' => (bool) $post->comments_enabled,
-                'can_manage' => $currentUserId ? ((int) $currentUserId === (int) $post->user_id) : false,
-                'published_at' => optional($post->published_at)?->toIso8601String(),
-                'author' => $post->author
-                    ? [
-                        'id' => $post->author->id,
-                        'name' => $post->author->name,
-                        'headline' => $post->author->profile?->headline,
-                        'verified' => $post->author->profile?->identity_verified_at !== null,
-                        'avatar_url' => ($post->author->profile?->photo_path
-                            && Storage::disk('public')->exists($post->author->profile->photo_path))
-                            ? Storage::disk('public')->url($post->author->profile->photo_path)
-                            : null,
-                    ]
-                    : null,
-                'attachments' => $post->attachments
-                    ->filter(fn (PostAttachment $attachment) => Storage::disk($attachment->disk)->exists($attachment->path))
-                    ->map(function (PostAttachment $attachment): array {
-                        return [
-                            'url' => route('posts.attachments.show', ['attachment' => $attachment->id]),
-                            'mime_type' => $attachment->mime_type,
-                            'kind' => str_starts_with($attachment->mime_type, 'video/') ? 'video' : 'image',
-                        ];
-                    })->values(),
-                'counts' => [
-                    'comments' => (int) $post->comments_count,
-                    'reactions' => (int) $post->reactions_count,
-                    'shares' => (int) $post->shares_count,
-                    'views' => (int) $post->views_count,
-                ],
-                'reactions' => $reactionBreakdown,
-                'comments_preview' => $post->comments
-                    ->whereNull('parent_id')
-                    ->take(5)
-                    ->map(function (Comment $comment) use ($post): array {
-                        $authorPhotoPath = $comment->author?->profile?->photo_path;
-
-                        return [
-                            'id' => $comment->id,
-                            'content' => $comment->content,
-                            'author' => $comment->author ? $comment->author->name : 'Membre',
-                            'author_id' => $comment->user_id,
-                            'author_verified' => $comment->author?->profile?->identity_verified_at !== null,
-                            'author_avatar_url' => ($authorPhotoPath && Storage::disk('public')->exists($authorPhotoPath))
-                                ? Storage::disk('public')->url($authorPhotoPath)
-                                : null,
-                            'created_at' => optional($comment->created_at)?->toIso8601String(),
-                            'replies' => $post->comments
-                                ->where('parent_id', $comment->id)
-                                ->take(3)
-                                ->map(function (Comment $reply): array {
-                                    $replyPhotoPath = $reply->author?->profile?->photo_path;
-
-                                    return [
-                                        'id' => $reply->id,
-                                        'content' => $reply->content,
-                                        'author' => $reply->author ? $reply->author->name : 'Membre',
-                                        'author_id' => $reply->user_id,
-                                        'author_verified' => $reply->author?->profile?->identity_verified_at !== null,
-                                        'author_avatar_url' => ($replyPhotoPath && Storage::disk('public')->exists($replyPhotoPath))
-                                            ? Storage::disk('public')->url($replyPhotoPath)
-                                            : null,
-                                        'created_at' => optional($reply->created_at)?->toIso8601String(),
-                                    ];
-                                })->values(),
-                        ];
-                    })->values(),
-            ];
-        })->values();
+        $feedPayload = FeedPostPresenter::collection($posts->getCollection(), $currentUserId);
 
         $composerPhoto = $request->user()?->profile?->photo_path;
         $composerAvatar = $composerPhoto && Storage::disk('public')->exists($composerPhoto)
@@ -187,7 +100,25 @@ class FeedController extends Controller
         return array_key_exists($locale, config('site.locales')) ? $locale : config('site.default_locale');
     }
 
-    public function storePost(Request $request): RedirectResponse
+    /** Publications les plus récentes, pour l'actualisation en direct du fil (compteurs, réactions, commentaires, nouveautés). */
+    public function latest(Request $request): JsonResponse
+    {
+        $posts = FeedPostPresenter::load()->latest('published_at')->latest('id')->limit(self::PER_PAGE)->get();
+
+        return response()->json(['posts' => FeedPostPresenter::collection($posts, $request->user()->id)]);
+    }
+
+    /** Réponse commune des actions : la publication à jour pour les appels JSON, sinon retour à la page avec un message. */
+    private function done(Request $request, Post $post, string $message, int $status = 200): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message, 'post' => FeedPostPresenter::one($post, $request->user()->id)], $status);
+        }
+
+        return back()->with('status', $message);
+    }
+
+    public function storePost(Request $request): RedirectResponse|JsonResponse
     {
         $canPublishPublic = AccessScope::can($request->user(), 'post.publish_public');
         $allowedVisibilities = $canPublishPublic
@@ -245,14 +176,23 @@ class FeedController extends Controller
             ]);
         }
 
-        return back()->with('status', 'Publication partagee.');
+        return $this->done($request, $post, 'Publication partagee.', 201);
     }
 
-    public function react(Request $request, Post $post): RedirectResponse
+    public function react(Request $request, Post $post): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'reaction_type' => ['required', 'in:like,support,insightful,celebrate'],
         ]);
+
+        $existing = PostReaction::query()->where('post_id', $post->id)->where('user_id', $request->user()->id)->first();
+
+        // Toucher deux fois la même réaction la retire ; une autre réaction remplace la précédente.
+        if ($existing !== null && $existing->reaction_type === $data['reaction_type']) {
+            $existing->delete();
+
+            return $this->done($request, $post, 'Reaction retiree.');
+        }
 
         PostReaction::query()->updateOrCreate(
             [
@@ -264,13 +204,15 @@ class FeedController extends Controller
             ]
         );
 
-        return back()->with('status', 'Reaction enregistree.');
+        return $this->done($request, $post, 'Reaction enregistree.');
     }
 
-    public function comment(Request $request, Post $post): RedirectResponse
+    public function comment(Request $request, Post $post): RedirectResponse|JsonResponse
     {
         if (! $post->comments_enabled) {
-            return back()->with('status', 'Commentaires desactives pour ce post.');
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Commentaires desactives pour ce post.'], 422)
+                : back()->with('status', 'Commentaires desactives pour ce post.');
         }
 
         $data = $request->validate([
@@ -285,7 +227,9 @@ class FeedController extends Controller
                 ->exists();
 
             if (! $isParentInSamePost) {
-                return back()->with('status', 'Commentaire parent invalide.');
+                return $request->expectsJson()
+                    ? response()->json(['message' => 'Commentaire parent invalide.'], 422)
+                    : back()->with('status', 'Commentaire parent invalide.');
             }
         }
 
@@ -296,10 +240,10 @@ class FeedController extends Controller
             'content' => $data['content'],
         ]);
 
-        return back()->with('status', 'Commentaire publie.');
+        return $this->done($request, $post, 'Commentaire publie.', 201);
     }
 
-    public function updatePost(Request $request, Post $post): RedirectResponse
+    public function updatePost(Request $request, Post $post): RedirectResponse|JsonResponse
     {
         if ((int) $post->user_id !== (int) $request->user()->id) {
             abort(403);
@@ -312,10 +256,10 @@ class FeedController extends Controller
         $post->content = $data['content'];
         $post->save();
 
-        return back()->with('status', 'Post modifie.');
+        return $this->done($request, $post, 'Post modifie.');
     }
 
-    public function destroyPost(Request $request, Post $post): RedirectResponse
+    public function destroyPost(Request $request, Post $post): RedirectResponse|JsonResponse
     {
         if ((int) $post->user_id !== (int) $request->user()->id) {
             abort(403);
@@ -323,10 +267,12 @@ class FeedController extends Controller
 
         $post->delete();
 
-        return back()->with('status', 'Post supprime.');
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Post supprime.', 'deleted' => $post->id])
+            : back()->with('status', 'Post supprime.');
     }
 
-    public function toggleComments(Request $request, Post $post): RedirectResponse
+    public function toggleComments(Request $request, Post $post): RedirectResponse|JsonResponse
     {
         if ((int) $post->user_id !== (int) $request->user()->id) {
             abort(403);
@@ -335,10 +281,10 @@ class FeedController extends Controller
         $post->comments_enabled = ! $post->comments_enabled;
         $post->save();
 
-        return back()->with('status', $post->comments_enabled ? 'Commentaires actives.' : 'Commentaires desactives.');
+        return $this->done($request, $post, $post->comments_enabled ? 'Commentaires actives.' : 'Commentaires desactives.');
     }
 
-    public function share(Request $request, Post $post): RedirectResponse
+    public function share(Request $request, Post $post): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'channel' => ['nullable', 'in:internal,copy_link,external'],
@@ -350,10 +296,10 @@ class FeedController extends Controller
             'channel' => $data['channel'] ?? 'internal',
         ]);
 
-        return back()->with('status', 'Partage comptabilise.');
+        return $this->done($request, $post, 'Partage comptabilise.');
     }
 
-    public function view(Request $request, Post $post): RedirectResponse
+    public function view(Request $request, Post $post): RedirectResponse|JsonResponse
     {
         $user = $request->user();
 
@@ -377,7 +323,7 @@ class FeedController extends Controller
             ]);
         }
 
-        return back();
+        return $this->done($request, $post, 'Vue comptabilisee.');
     }
 
     public function showAttachment(PostAttachment $attachment): StreamedResponse

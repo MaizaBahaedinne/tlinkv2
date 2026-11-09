@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import ActivityCalendar from './ActivityCalendar.vue';
+import PartnersCarousel from './PartnersCarousel.vue';
 import StoriesBar from './StoriesBar.vue';
 
 type FeedPost = {
@@ -16,6 +17,7 @@ type FeedPost = {
   attachments: Array<{ url: string; mime_type: string; kind: 'image' | 'video' }>;
   counts: { comments: number; reactions: number; shares: number; views: number };
   reactions: Record<string, number>;
+  my_reaction?: string | null;
   comments_preview: Array<{
     id: number;
     content: string;
@@ -104,7 +106,159 @@ const uploadState = reactive({
   hasVideo: false,
 });
 
-const latestPosts = computed(() => data.feed.slice(0, 20));
+const posts = ref<FeedPost[]>(data.feed.map((post) => ({ ...post })));
+const latestPosts = computed(() => posts.value.slice(0, 20));
+
+// ---- Actions en temps réel : aucune page n'est rechargée, l'écran suit la réponse du serveur. ----
+const toast = ref<string | null>(null);
+let toastTimer: number | undefined;
+const publishing = ref(false);
+const drafts = reactive<Record<string, string>>({});
+const inFlight = new Set<number>();
+const incoming = ref<FeedPost[]>([]);
+
+function showError(message: string) {
+  toast.value = message;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (toast.value = null), 4500);
+}
+
+async function call(method: 'GET' | 'POST', url: string, body?: FormData | Record<string, unknown>): Promise<any> {
+  const headers: Record<string, string> = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': data.csrf };
+  let payload: FormData | string | undefined;
+  if (body instanceof FormData) {
+    payload = body;
+  } else if (body) {
+    headers['Content-Type'] = 'application/json';
+    payload = JSON.stringify(body);
+  }
+  const response = await fetch(url, { method, headers, body: payload, credentials: 'same-origin' });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const first = json?.errors ? (Object.values(json.errors)[0] as string[] | undefined)?.[0] : null;
+    throw new Error(first ?? json?.message ?? 'Action impossible pour le moment.');
+  }
+  return json;
+}
+
+function applyPost(updated: FeedPost, front = false) {
+  const at = posts.value.findIndex((post) => post.id === updated.id);
+  if (at >= 0) posts.value[at] = updated;
+  else if (front) posts.value.unshift(updated);
+}
+
+async function act(post: FeedPost, run: () => Promise<any>) {
+  inFlight.add(post.id);
+  try {
+    const json = await run();
+    if (json?.deleted) posts.value = posts.value.filter((item) => item.id !== post.id);
+    else if (json?.post) applyPost(json.post);
+  } catch (error) {
+    showError((error as Error).message);
+    await refreshLive();
+  } finally {
+    inFlight.delete(post.id);
+  }
+}
+
+function react(post: FeedPost, type: string) {
+  // Affichage immédiat, puis alignement sur la réponse du serveur.
+  const previous = post.my_reaction ?? null;
+  const counts = { ...post.reactions };
+  if (previous) {
+    counts[previous] = (counts[previous] ?? 1) - 1;
+    if (counts[previous] <= 0) delete counts[previous];
+  }
+  if (previous === type) {
+    post.my_reaction = null;
+    post.counts.reactions = Math.max(0, post.counts.reactions - 1);
+  } else {
+    counts[type] = (counts[type] ?? 0) + 1;
+    post.my_reaction = type;
+    if (!previous) post.counts.reactions += 1;
+  }
+  post.reactions = counts;
+  void act(post, () => call('POST', `/posts/${post.id}/react`, { reaction_type: type }));
+}
+
+async function sendComment(post: FeedPost, key: string, parentId: number | null = null) {
+  const content = (drafts[key] ?? '').trim();
+  if (!content) return;
+  drafts[key] = '';
+  await act(post, () => call('POST', `/posts/${post.id}/comment`, { content, parent_id: parentId }));
+}
+
+function share(post: FeedPost) {
+  void act(post, () => call('POST', `/posts/${post.id}/share`, { channel: 'internal' }));
+}
+
+function markViewed(post: FeedPost) {
+  void act(post, () => call('POST', `/posts/${post.id}/view`));
+}
+
+// Formulaires de gestion d'une publication (modifier, commentaires, supprimer) : envoyés sans recharger.
+function managePost(post: FeedPost, event: Event, confirmation?: string) {
+  if (confirmation && !window.confirm(confirmation)) return;
+  const form = event.target as HTMLFormElement;
+  form.closest('details')?.removeAttribute('open');
+  void act(post, () => call('POST', form.action, new FormData(form)));
+}
+
+async function publish(event: Event) {
+  if (publishing.value) return;
+  const formElement = event.target as HTMLFormElement;
+  publishing.value = true;
+  try {
+    const json = await call('POST', formElement.action, new FormData(formElement));
+    if (json?.post) applyPost(json.post, true);
+    form.content = '';
+    uploadState.photos = 0;
+    uploadState.hasVideo = false;
+    if (photoInput.value) photoInput.value.value = '';
+    if (videoInput.value) videoInput.value.value = '';
+  } catch (error) {
+    showError((error as Error).message);
+  } finally {
+    publishing.value = false;
+  }
+}
+
+// Actualisation en direct : réactions, commentaires et publications des autres membres apparaissent sans rien faire.
+async function refreshLive() {
+  if (!data.auth.isAuthenticated) return;
+  try {
+    const json = await call('GET', '/feed/posts');
+    const fresh: FeedPost[] = json.posts ?? [];
+    const known = new Set(posts.value.map((post) => post.id));
+    const freshIds = new Set(fresh.map((post) => post.id));
+    const oldest = fresh.length >= 12 ? Math.min(...fresh.map((post) => Date.parse(post.published_at ?? '') || 0)) : -Infinity;
+
+    for (const post of fresh) {
+      if (known.has(post.id)) {
+        if (!inFlight.has(post.id)) applyPost(post);
+      } else if (!incoming.value.some((item) => item.id === post.id)) {
+        incoming.value.push(post);
+      }
+    }
+    incoming.value = incoming.value.filter((post) => freshIds.has(post.id)).map((post) => fresh.find((item) => item.id === post.id) ?? post);
+    posts.value = posts.value.filter((post) => freshIds.has(post.id) || inFlight.has(post.id) || (Date.parse(post.published_at ?? '') || 0) < oldest);
+  } catch {
+    /* connexion momentanément indisponible : on réessaiera */
+  }
+}
+
+function showIncoming() {
+  const ordered = [...incoming.value].sort((a, b) => (Date.parse(b.published_at ?? '') || 0) - (Date.parse(a.published_at ?? '') || 0));
+  posts.value = [...ordered, ...posts.value];
+  incoming.value = [];
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+let liveTimer: number | undefined;
+
+function onVisible() {
+  if (!document.hidden) void refreshLive();
+}
 
 // Badges regroupés par type (du plus élevé au plus courant).
 const TIER_ORDER = ['platinum', 'gold', 'silver', 'bronze'];
@@ -195,11 +349,18 @@ function closeMenuOnEscape(event: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener('click', closeMenuOutside);
   document.addEventListener('keydown', closeMenuOnEscape);
+  document.addEventListener('visibilitychange', onVisible);
+  liveTimer = window.setInterval(() => {
+    if (!document.hidden) void refreshLive();
+  }, 12000);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeMenuOutside);
   document.removeEventListener('keydown', closeMenuOnEscape);
+  document.removeEventListener('visibilitychange', onVisible);
+  window.clearInterval(liveTimer);
+  window.clearTimeout(toastTimer);
 });
 
 function triggerPhotos() {
@@ -338,7 +499,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
         <div v-if="data.auth.isAuthenticated && data.calendarEnabled" class="lg:hidden">
           <ActivityCalendar :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
         </div>
-        <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4">
+        <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="3" class="lg:hidden" />
+        <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4" @submit.prevent="publish">
           <input type="hidden" name="_token" :value="data.csrf" />
           <div class="flex items-start gap-3">
             <img
@@ -435,11 +597,16 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
               </div>
             </div>
           </div>
-            <button class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tlink-cyan text-white shadow-soft hover:bg-tlink-blue-700" type="submit" title="Publier" aria-label="Publier">
-              <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+            <button class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tlink-cyan text-white shadow-soft hover:bg-tlink-blue-700 disabled:opacity-60" type="submit" title="Publier" aria-label="Publier" :disabled="publishing">
+              <i class="fa-solid" :class="publishing ? 'fa-spinner fa-spin' : 'fa-paper-plane'" aria-hidden="true"></i>
             </button>
           </div>
         </form>
+
+        <button v-if="incoming.length" type="button" class="flex w-full items-center justify-center gap-2 border-2 border-slate-900 bg-tlink-blue px-4 py-2.5 text-xs font-extrabold uppercase tracking-widest text-white hover:bg-tlink-blue-700" @click="showIncoming">
+          <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+          {{ incoming.length }} nouvelle{{ incoming.length > 1 ? 's' : '' }} publication{{ incoming.length > 1 ? 's' : '' }}
+        </button>
 
         <article v-for="post in latestPosts" :key="post.id" class="card p-4">
           <div class="mb-3 flex items-start justify-between gap-3">
@@ -481,7 +648,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                   <i class="fa-solid fa-ellipsis"></i>
                 </summary>
                 <div class="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-soft">
-                  <form :action="`/posts/${post.id}`" method="post" class="space-y-2">
+                  <form :action="`/posts/${post.id}`" method="post" class="space-y-2" @submit.prevent="managePost(post, $event)">
                     <input type="hidden" name="_token" :value="data.csrf" />
                     <input type="hidden" name="_method" value="PATCH" />
                     <textarea
@@ -496,7 +663,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                     </button>
                   </form>
 
-                  <form :action="`/posts/${post.id}/comments-state`" method="post" class="mt-2">
+                  <form :action="`/posts/${post.id}/comments-state`" method="post" class="mt-2" @submit.prevent="managePost(post, $event)">
                     <input type="hidden" name="_token" :value="data.csrf" />
                     <input type="hidden" name="_method" value="PATCH" />
                     <button type="submit" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs hover:bg-slate-50">
@@ -504,7 +671,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                     </button>
                   </form>
 
-                  <form :action="`/posts/${post.id}`" method="post" class="mt-2" onsubmit="return confirm('Supprimer ce post ?');">
+                  <form :action="`/posts/${post.id}`" method="post" class="mt-2" @submit.prevent="managePost(post, $event, 'Supprimer ce post ?')">
                     <input type="hidden" name="_token" :value="data.csrf" />
                     <input type="hidden" name="_method" value="DELETE" />
                     <button type="submit" class="w-full rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100">
@@ -544,29 +711,28 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
 
           <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
             <div v-if="data.auth.isAuthenticated" class="flex flex-wrap gap-2">
-              <form v-for="(label, reactionType) in reactionLabels" :key="reactionType" :action="`/posts/${post.id}/react`" method="post">
-                <input type="hidden" name="_token" :value="data.csrf" />
-                <input type="hidden" name="reaction_type" :value="reactionType" />
-                <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" :title="label">
-                  <i v-if="reactionType === 'like'" class="fa-regular fa-thumbs-up"></i>
-                  <i v-else-if="reactionType === 'support'" class="fa-regular fa-handshake"></i>
-                  <i v-else-if="reactionType === 'insightful'" class="fa-regular fa-lightbulb"></i>
-                  <i v-else class="fa-regular fa-star"></i>
-                </button>
-              </form>
-              <form :action="`/posts/${post.id}/share`" method="post">
-                <input type="hidden" name="_token" :value="data.csrf" />
-                <input type="hidden" name="channel" value="internal" />
-                <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Partager">
-                  <i class="fa-solid fa-share-nodes"></i>
-                </button>
-              </form>
-              <form :action="`/posts/${post.id}/view`" method="post">
-                <input type="hidden" name="_token" :value="data.csrf" />
-                <button type="submit" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Marquer vue">
-                  <i class="fa-regular fa-eye"></i>
-                </button>
-              </form>
+              <button
+                v-for="(label, reactionType) in reactionLabels"
+                :key="reactionType"
+                type="button"
+                class="border px-2 py-1 text-xs transition"
+                :class="post.my_reaction === reactionType ? 'border-tlink-blue bg-tlink-blue text-white' : 'border-slate-400 hover:bg-slate-100'"
+                :title="label"
+                :aria-label="label"
+                :aria-pressed="post.my_reaction === reactionType"
+                @click="react(post, reactionType)"
+              >
+                <i v-if="reactionType === 'like'" :class="post.my_reaction === reactionType ? 'fa-solid' : 'fa-regular'" class="fa-thumbs-up"></i>
+                <i v-else-if="reactionType === 'support'" :class="post.my_reaction === reactionType ? 'fa-solid' : 'fa-regular'" class="fa-handshake"></i>
+                <i v-else-if="reactionType === 'insightful'" :class="post.my_reaction === reactionType ? 'fa-solid' : 'fa-regular'" class="fa-lightbulb"></i>
+                <i v-else :class="post.my_reaction === reactionType ? 'fa-solid' : 'fa-regular'" class="fa-star"></i>
+              </button>
+              <button type="button" class="border border-slate-400 px-2 py-1 text-xs hover:bg-slate-100" title="Partager" aria-label="Partager" @click="share(post)">
+                <i class="fa-solid fa-share-nodes"></i>
+              </button>
+              <button type="button" class="border border-slate-400 px-2 py-1 text-xs hover:bg-slate-100" title="Marquer vue" aria-label="Marquer vue" @click="markViewed(post)">
+                <i class="fa-regular fa-eye"></i>
+              </button>
             </div>
             <div class="flex flex-wrap gap-2 text-xs text-slate-600">
               <span class="rounded-full bg-slate-100 px-2 py-1"><i class="fa-regular fa-thumbs-up mr-1"></i>{{ post.counts.reactions }}</span>
@@ -640,10 +806,9 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
 
                   <details v-if="data.auth.isAuthenticated && post.comments_enabled" class="mt-2">
                     <summary class="cursor-pointer select-none text-[11px] text-tlink-blue">Repondre</summary>
-                    <form :action="`/posts/${post.id}/comment`" method="post" class="mt-2 flex gap-2">
-                      <input type="hidden" name="_token" :value="data.csrf" />
-                      <input type="hidden" name="parent_id" :value="comment.id" />
+                    <form :action="`/posts/${post.id}/comment`" method="post" class="mt-2 flex gap-2" @submit.prevent="sendComment(post, `r-${comment.id}`, comment.id)">
                       <input
+                        v-model="drafts[`r-${comment.id}`]"
                         type="text"
                         name="content"
                         maxlength="1000"
@@ -661,9 +826,9 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
             </div>
           </div>
 
-          <form v-if="data.auth.isAuthenticated && post.comments_enabled" :action="`/posts/${post.id}/comment`" method="post" class="mt-3 flex gap-2">
-            <input type="hidden" name="_token" :value="data.csrf" />
+          <form v-if="data.auth.isAuthenticated && post.comments_enabled" :action="`/posts/${post.id}/comment`" method="post" class="mt-3 flex gap-2" @submit.prevent="sendComment(post, `c-${post.id}`)">
             <input
+              v-model="drafts[`c-${post.id}`]"
               type="text"
               name="content"
               maxlength="1000"
@@ -686,6 +851,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
           <div class="sticky top-24 space-y-4">
             <ActivityCalendar v-if="data.auth.isAuthenticated && data.calendarEnabled" :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
 
+            <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="2" />
+
             <section class="card overflow-hidden p-0">
               <div class="bg-gradient-to-r from-tlink-blue to-tlink-blue-700 px-4 py-3 text-white">
                 <p class="text-xs font-semibold uppercase tracking-wide">Publicite</p>
@@ -695,30 +862,11 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                 Boostez vos competences de pilotage projet en 4 semaines.
               </div>
             </section>
-
-            <section v-if="data.partners?.length" class="card p-4">
-              <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Partenaires</p>
-              <ul class="grid grid-cols-2 gap-3">
-                <li v-for="partner in data.partners" :key="partner.id">
-                  <a
-                    v-if="partner.url"
-                    :href="partner.url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    :title="partner.name"
-                    class="flex h-16 items-center justify-center rounded-xl border border-slate-200 bg-white p-2 hover:border-slate-300"
-                  >
-                    <img :src="partner.logo_url" :alt="partner.name" loading="lazy" class="max-h-full max-w-full object-contain" />
-                  </a>
-                  <span v-else :title="partner.name" class="flex h-16 items-center justify-center rounded-xl border border-slate-200 bg-white p-2">
-                    <img :src="partner.logo_url" :alt="partner.name" loading="lazy" class="max-h-full max-w-full object-contain" />
-                  </span>
-                </li>
-              </ul>
-            </section>
           </div>
         </aside>
       </div>
     </main>
+
+    <div v-if="toast" class="fixed inset-x-0 bottom-20 z-50 mx-auto w-[90%] max-w-md border-2 border-slate-900 bg-tlink-blue px-4 py-3 text-sm font-semibold text-white lg:bottom-6" role="alert">{{ toast }}</div>
   </div>
 </template>

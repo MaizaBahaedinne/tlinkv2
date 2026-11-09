@@ -115,6 +115,7 @@ Route::middleware('auth')->group(function (): void {
 
     // Fil d'actualite de l'application T.Link (reserve aux membres connectes).
     Route::get('/feed', [FeedController::class, 'index'])->name('home');
+    Route::get('/feed/posts', [FeedController::class, 'latest'])->middleware('throttle:60,1')->name('feed.posts');
     Route::post('/posts/{post}/view', [FeedController::class, 'view'])->name('posts.view');
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');

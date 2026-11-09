@@ -25,7 +25,8 @@ class AppShellTest extends TestCase
     {
         $css = (string) file_get_contents(resource_path('css/app.css'));
 
-        $this->assertStringContainsString('.app-full .app-container', $css);
+        $this->assertStringContainsString('width: 95%', $css);
+        $this->assertStringContainsString('.mg-shell', $css);
         $this->assertStringContainsString('overflow-x: clip', $css);
         $this->assertStringContainsString('border-radius: 0', $css);
     }

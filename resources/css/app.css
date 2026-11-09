@@ -31,13 +31,6 @@ body {
     font-family: var(--font-display);
 }
 
-.card {
-    border: 1px solid #e4e8f0;
-    border-radius: 1rem;
-    background: #ffffff;
-    box-shadow: var(--shadow-soft);
-}
-
 /* Organigramme de « Mon bureau » : arbre descendant relié par des traits. */
 .org-tree ul {
     position: relative;
@@ -118,55 +111,103 @@ body {
     padding-top: 0;
 }
 
-/* Pages T.Link (fil, profil, bureau…) : contenu centré sur 80 % de la largeur. L'admin reste pleine largeur. */
+/* Applications (T.Link, Store, Academy, Messenger) : contenu centré sur 95 % de la largeur, sur ordinateur, tablette et mobile. */
 .app-container {
-    width: 100%;
+    width: 95%;
+    max-width: none;
     margin-inline: auto;
-    padding-inline: 1rem;
+    padding-inline: 0;
 }
 
-@media (min-width: 1024px) {
-    .app-container {
-        width: 80%;
-        padding-inline: 0;
-    }
-}
-
-/* Mobile et tablette : la navigation T.Link est fixée en pied de page, on réserve sa place. */
+/* Mobile et tablette : la navigation est fixée en pied de page, on réserve sa place, sans espace de plus. */
 @media (max-width: 1023.98px) {
     body:has(.app-bottom-nav) {
         padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
     }
+
+    /* Aucun espace entre la barre de navigation (en-tête, pied de page) et le contenu de la page. */
+    .app-full main.app-container,
+    .app-full .app-container.py-6,
+    .app-full .app-container.mt-6 {
+        margin-top: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .app-full .pb-12,
+    .app-full .pb-10,
+    .app-full .pb-8 {
+        padding-bottom: 0;
+    }
 }
 
 /*
- * Applications (T.Link, Store, Academy, Messenger) : pleine largeur, du bord à bord, sur ordinateur, tablette et mobile.
- * Ni marge ni remplissage latéral autour du contenu, ni arrondis (hors pastilles et avatars circulaires), ni ombre portée.
- * L'en-tête garde un léger remplissage pour que le logo et les boutons ne touchent pas le bord de l'écran.
+ * Design des applications : angles vifs, aucun arrondi (avatars et pastilles compris), traits francs et ombre portée dure.
+ * Une encoche rouge marque l'angle de chaque carte.
  */
-.app-full .app-container {
-    width: 100%;
-    max-width: none;
-    margin-inline: 0;
-    padding-inline: 0;
-}
-
-.app-full header .app-container {
-    padding-inline: 0.75rem;
-}
-
-.app-full :where(*, *::before, *::after):not(.rounded-full) {
+.app-full :where(*, *::before, *::after) {
     border-radius: 0;
 }
 
-.app-full .card,
+.card {
+    position: relative;
+    border: 2px solid #0f172a;
+    border-radius: 0;
+    background: #ffffff;
+    box-shadow: 5px 5px 0 #0f172a;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-top: 20px solid var(--color-tlink-blue);
+    border-right: 20px solid transparent;
+    pointer-events: none;
+    z-index: 1;
+}
+
 .app-full .shadow-soft,
 .app-full [class*='shadow-'] {
     box-shadow: none;
 }
 
-.app-full .card {
-    border-inline-width: 0;
+/*
+ * Messenger : l'application occupe tout l'écran (largeur et hauteur). L'en-tête reste fixé en haut, la page ne défile jamais ;
+ * seules la liste des conversations et la conversation ouverte défilent.
+ */
+body:has(.mg-shell) {
+    height: 100dvh;
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+.mg-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.mg-shell > header {
+    flex: none;
+}
+
+.mg-shell > main {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+}
+
+/* Avec la barre de navigation fixée en pied de page (T.Link sans sous-domaine dédié), on lui laisse sa place. */
+@media (max-width: 1023.98px) {
+    .mg-shell:has(.app-bottom-nav) > main {
+        padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+    }
 }
 
 /*
