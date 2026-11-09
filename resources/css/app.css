@@ -141,38 +141,12 @@ body {
     }
 }
 
-/*
- * Design des applications : angles vifs, aucun arrondi (avatars et pastilles compris), traits francs et ombre portée dure.
- * Une encoche rouge marque l'angle de chaque carte.
- */
-.app-full :where(*, *::before, *::after) {
-    border-radius: 0;
-}
-
+/* Cartes : angles très arrondis, contour clair et ombre douce. */
 .card {
-    position: relative;
-    border: 2px solid #0f172a;
-    border-radius: 0;
+    border: 1px solid #e4e8f0;
+    border-radius: 1.5rem;
     background: #ffffff;
-    box-shadow: 5px 5px 0 #0f172a;
-}
-
-.card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    border-top: 20px solid var(--color-tlink-blue);
-    border-right: 20px solid transparent;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.app-full .shadow-soft,
-.app-full [class*='shadow-'] {
-    box-shadow: none;
+    box-shadow: var(--shadow-soft);
 }
 
 /*

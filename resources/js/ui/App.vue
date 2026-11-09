@@ -603,7 +603,7 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
           </div>
         </form>
 
-        <button v-if="incoming.length" type="button" class="flex w-full items-center justify-center gap-2 border-2 border-slate-900 bg-tlink-blue px-4 py-2.5 text-xs font-extrabold uppercase tracking-widest text-white hover:bg-tlink-blue-700" @click="showIncoming">
+        <button v-if="incoming.length" type="button" class="flex w-full items-center justify-center gap-2 rounded-full bg-tlink-blue px-4 py-2.5 text-sm font-semibold text-white shadow-soft hover:bg-tlink-blue-700" @click="showIncoming">
           <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
           {{ incoming.length }} nouvelle{{ incoming.length > 1 ? 's' : '' }} publication{{ incoming.length > 1 ? 's' : '' }}
         </button>
@@ -715,8 +715,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                 v-for="(label, reactionType) in reactionLabels"
                 :key="reactionType"
                 type="button"
-                class="border px-2 py-1 text-xs transition"
-                :class="post.my_reaction === reactionType ? 'border-tlink-blue bg-tlink-blue text-white' : 'border-slate-400 hover:bg-slate-100'"
+                class="rounded-lg border px-2 py-1 text-xs transition"
+                :class="post.my_reaction === reactionType ? 'border-tlink-blue bg-tlink-blue text-white' : 'border-slate-300 hover:bg-slate-50'"
                 :title="label"
                 :aria-label="label"
                 :aria-pressed="post.my_reaction === reactionType"
@@ -727,10 +727,10 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
                 <i v-else-if="reactionType === 'insightful'" :class="post.my_reaction === reactionType ? 'fa-solid' : 'fa-regular'" class="fa-lightbulb"></i>
                 <i v-else :class="post.my_reaction === reactionType ? 'fa-solid' : 'fa-regular'" class="fa-star"></i>
               </button>
-              <button type="button" class="border border-slate-400 px-2 py-1 text-xs hover:bg-slate-100" title="Partager" aria-label="Partager" @click="share(post)">
+              <button type="button" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Partager" aria-label="Partager" @click="share(post)">
                 <i class="fa-solid fa-share-nodes"></i>
               </button>
-              <button type="button" class="border border-slate-400 px-2 py-1 text-xs hover:bg-slate-100" title="Marquer vue" aria-label="Marquer vue" @click="markViewed(post)">
+              <button type="button" class="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50" title="Marquer vue" aria-label="Marquer vue" @click="markViewed(post)">
                 <i class="fa-regular fa-eye"></i>
               </button>
             </div>
@@ -867,6 +867,6 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
       </div>
     </main>
 
-    <div v-if="toast" class="fixed inset-x-0 bottom-20 z-50 mx-auto w-[90%] max-w-md border-2 border-slate-900 bg-tlink-blue px-4 py-3 text-sm font-semibold text-white lg:bottom-6" role="alert">{{ toast }}</div>
+    <div v-if="toast" class="fixed inset-x-0 bottom-20 z-50 mx-auto w-[90%] max-w-md rounded-2xl bg-tlink-blue px-4 py-3 text-sm font-semibold text-white shadow-soft lg:bottom-6" role="alert">{{ toast }}</div>
   </div>
 </template>

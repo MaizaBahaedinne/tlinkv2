@@ -51,11 +51,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-if="partners.length" class="card p-0" aria-roledescription="carrousel" aria-label="Partenaires" @mouseenter="paused = true" @mouseleave="paused = false" @focusin="paused = true" @focusout="paused = false">
-    <div class="flex items-center justify-between border-b-2 border-slate-900 bg-slate-900 px-4 py-2">
-      <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-white">Partenaires</p>
-      <span class="h-2 w-6 bg-tlink-blue" aria-hidden="true"></span>
-    </div>
+  <section v-if="partners.length" class="card overflow-hidden p-0" aria-roledescription="carrousel" aria-label="Partenaires" @mouseenter="paused = true" @mouseleave="paused = false" @focusin="paused = true" @focusout="paused = false">
+    <p class="px-4 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Partenaires</p>
 
     <div class="overflow-hidden">
       <div
@@ -78,11 +75,11 @@ onBeforeUnmount(() => {
               target="_blank"
               rel="noopener noreferrer"
               :title="partner.name"
-              class="flex h-20 items-center justify-center border border-slate-300 bg-white p-2 transition hover:border-tlink-blue"
+              class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white p-2 transition hover:border-slate-300"
             >
               <img :src="partner.logo_url" :alt="partner.name" loading="lazy" class="max-h-full max-w-full object-contain" />
             </a>
-            <span v-else :title="partner.name" class="flex h-20 items-center justify-center border border-slate-300 bg-white p-2">
+            <span v-else :title="partner.name" class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white p-2">
               <img :src="partner.logo_url" :alt="partner.name" loading="lazy" class="max-h-full max-w-full object-contain" />
             </span>
           </li>
@@ -95,7 +92,7 @@ onBeforeUnmount(() => {
         v-for="(_, dot) in pages"
         :key="dot"
         type="button"
-        class="h-1.5 transition-all"
+        class="h-1.5 rounded-full transition-all"
         :class="dot === activeDot ? 'w-6 bg-tlink-blue' : 'w-3 bg-slate-300 hover:bg-slate-400'"
         :aria-label="`Partenaires, page ${dot + 1}`"
         :aria-current="dot === activeDot ? 'true' : undefined"

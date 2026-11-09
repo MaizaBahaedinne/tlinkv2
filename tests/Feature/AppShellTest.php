@@ -28,6 +28,7 @@ class AppShellTest extends TestCase
         $this->assertStringContainsString('width: 95%', $css);
         $this->assertStringContainsString('.mg-shell', $css);
         $this->assertStringContainsString('overflow-x: clip', $css);
-        $this->assertStringContainsString('border-radius: 0', $css);
+        $this->assertStringContainsString('border-radius: 1.5rem', $css);
+        $this->assertStringNotContainsString('#0f172a', $css);
     }
 }
