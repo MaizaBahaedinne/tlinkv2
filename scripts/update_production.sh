@@ -103,6 +103,15 @@ chown "$USER_ACCOUNT:$USER_ACCOUNT" "$DEST/.release.json"
 echo "[8/8] Remise en ligne"
 artisan up
 DOWN=0
+
+# Limites d'envoi (GIF, images, pièces jointes) : le défaut de PHP (2 Mo) est trop bas. Fichier dédié dans le dossier conf.d de lsphp.
+PHP_SCAN_DIR="$("$PHP_BIN" --ini | sed -n 's/^Scan for additional .ini files in: *//p')"
+if [ -n "$PHP_SCAN_DIR" ] && [ -d "$PHP_SCAN_DIR" ]; then
+    printf 'upload_max_filesize = 10M\npost_max_size = 20M\n' > "$PHP_SCAN_DIR/99-tlink-uploads.ini"
+else
+    echo "Dossier conf.d de PHP introuvable : réglez upload_max_filesize=10M et post_max_size=20M dans CyberPanel > PHP."
+fi
+
 if [ -x "$LSWS_CTRL" ]; then "$LSWS_CTRL" restart >/dev/null; else systemctl restart lsws; fi
 
 echo "Mise à jour terminée : ${COMMIT:0:7}. Sauvegarde : $BACKUP"
