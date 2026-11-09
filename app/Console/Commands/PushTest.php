@@ -4,7 +4,9 @@ namespace App\Console\Commands;
 
 use App\Models\PushDevice;
 use App\Models\User;
+use App\Models\WebPushSubscription;
 use App\Support\Push\Fcm;
+use App\Support\Push\WebPush;
 use Illuminate\Console\Command;
 
 class PushTest extends Command
@@ -17,6 +19,7 @@ class PushTest extends Command
     {
         $this->line('Firebase configuré : '.(Fcm::enabled() ? 'oui' : 'NON (vérifier FCM_CREDENTIALS)'));
         $this->line('Appareils enregistrés : '.PushDevice::query()->count());
+        $this->line('Navigateurs abonnés (Web Push) : '.WebPushSubscription::query()->count());
 
         $email = $this->argument('email');
 
@@ -33,12 +36,28 @@ class PushTest extends Command
         }
 
         $devices = PushDevice::query()->where('user_id', $user->id)->get();
-        $this->line('Appareils de '.$user->name.' : '.$devices->count());
+        $browsers = WebPushSubscription::query()->where('user_id', $user->id)->get();
+        $this->line('Appareils de '.$user->name.' : '.$devices->count().' ; navigateurs : '.$browsers->count());
 
-        if ($devices->isEmpty()) {
-            $this->warn('Aucun appareil : ouvrir l\'application, se connecter et accepter les notifications.');
+        if ($devices->isEmpty() && $browsers->isEmpty()) {
+            $this->warn('Aucun appareil : ouvrir l\'application ou T.Link dans le navigateur, se connecter et accepter les notifications.');
 
             return self::FAILURE;
+        }
+
+        $ok = true;
+
+        if ($browsers->isNotEmpty()) {
+            foreach (WebPush::send($browsers, 'Test T.Link', 'Si tu lis ceci, les notifications push fonctionnent.', url('/notifications'), 'push-test') as $result) {
+                $result['ok']
+                    ? $this->info('Navigateur #'.$result['subscription'].' : envoyé')
+                    : $this->error('Navigateur #'.$result['subscription'].' : refusé '.$result['error']);
+                $ok = $ok && $result['ok'];
+            }
+        }
+
+        if ($devices->isEmpty()) {
+            return $ok ? self::SUCCESS : self::FAILURE;
         }
 
         $channel = in_array($this->option('channel'), ['tlink', 'messenger'], true) ? (string) $this->option('channel') : 'tlink';
@@ -56,6 +75,6 @@ class PushTest extends Command
                 : $this->error('Appareil #'.$result['device'].' : refusé (HTTP '.$result['status'].') '.$result['error']);
         }
 
-        return collect($results)->every(fn (array $r): bool => $r['ok']) ? self::SUCCESS : self::FAILURE;
+        return $ok && collect($results)->every(fn (array $r): bool => $r['ok']) ? self::SUCCESS : self::FAILURE;
     }
 }

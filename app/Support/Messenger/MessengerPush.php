@@ -9,6 +9,7 @@ use App\Models\PushDevice;
 use App\Models\User;
 use App\Support\Domains;
 use App\Support\Push\Fcm;
+use App\Support\Push\WebPush;
 
 /**
  * Notification push d'un nouveau message aux autres participants (conversation directe ou groupe), après l'envoi de la réponse.
@@ -17,7 +18,7 @@ final class MessengerPush
 {
     public static function notify(MessengerConversation $conversation, MessengerMessage $message, User $sender): void
     {
-        if (! Fcm::enabled()) {
+        if (! Fcm::enabled() && ! WebPush::enabled()) {
             return;
         }
 
@@ -44,6 +45,8 @@ final class MessengerPush
                 if ($devices->isNotEmpty()) {
                     Fcm::send($devices, $title, $body, ['url' => Domains::url('messenger', $path), 'conversation' => $conversationId], 'conversation-'.$conversationId);
                 }
+
+                WebPush::sendToUsers($userIds, $title, $body, Domains::url('messenger', $path), 'conversation-'.$conversationId, '/app-icons/messenger/icon-192.png');
             } catch (\Throwable $e) {
                 report($e);
             }

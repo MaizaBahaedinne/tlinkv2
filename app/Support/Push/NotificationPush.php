@@ -12,7 +12,7 @@ final class NotificationPush
 {
     public static function notify(AppNotification $notification): void
     {
-        if (! Fcm::enabled()) {
+        if (! Fcm::enabled() && ! WebPush::enabled()) {
             return;
         }
 
@@ -29,6 +29,8 @@ final class NotificationPush
                 if ($devices->isNotEmpty()) {
                     Fcm::send($devices, $title, $body, ['url' => $url], 'notification-'.$notificationId, 'tlink');
                 }
+
+                WebPush::sendToUsers([$userId], $title, $body, $url, 'notification-'.$notificationId);
             } catch (\Throwable $e) {
                 report($e);
             }

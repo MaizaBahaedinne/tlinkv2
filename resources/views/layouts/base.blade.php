@@ -35,6 +35,12 @@
             {{-- Notifications push : sans effet hors des applications mobiles. --}}
             <meta name="push-devices" content="{{ route('devices.store', [], false) }}" data-logout="{{ route('logout', [], false) }}">
             @vite(['resources/js/native-push.js'])
+            @php($webPushKey = in_array(\App\Support\Domains::keyForHost(request()->getHost()), [null, 'app'], true) ? \App\Support\Push\WebPush::publicKey() : null)
+            @if ($webPushKey)
+                {{-- Notifications push du navigateur (une seule origine, celle de T.Link, pour éviter les doublons) ; sans effet dans les applications mobiles. --}}
+                <meta name="web-push" content="{{ route('devices.web.store', [], false) }}" data-key="{{ $webPushKey }}" data-logout="{{ route('logout', [], false) }}">
+                @vite(['resources/js/web-push.js'])
+            @endif
         @endif
     @endauth
 
