@@ -102,7 +102,14 @@
                 @if($errors->any())
                     <div class="alert alert-error" role="alert">
                         <x-admin.icon name="x" />
-                        <span>Le formulaire contient {{ $errors->count() }} erreur{{ $errors->count() > 1 ? 's' : '' }}. Merci de les corriger.</span>
+                        <span>
+                            Le formulaire contient {{ $errors->count() }} erreur{{ $errors->count() > 1 ? 's' : '' }}. Merci de les corriger.
+                            <ul style="margin:6px 0 0 18px;padding:0;list-style:disc">
+                                @foreach($errors->all() as $message)
+                                    <li>{{ $message }}</li>
+                                @endforeach
+                            </ul>
+                        </span>
                     </div>
                 @endif
 
