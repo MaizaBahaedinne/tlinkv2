@@ -488,6 +488,10 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('partenaires', [Admin\PartnerController::class, 'store'])->name('partners.store');
             Route::put('partenaires/{partner}', [Admin\PartnerController::class, 'update'])->name('partners.update');
             Route::delete('partenaires/{partner}', [Admin\PartnerController::class, 'destroy'])->name('partners.destroy');
+            Route::get('publicites', [Admin\AdvertController::class, 'index'])->name('adverts.index');
+            Route::post('publicites', [Admin\AdvertController::class, 'store'])->name('adverts.store');
+            Route::put('publicites/{advert}', [Admin\AdvertController::class, 'update'])->name('adverts.update');
+            Route::delete('publicites/{advert}', [Admin\AdvertController::class, 'destroy'])->name('adverts.destroy');
             Route::get('projets', [Admin\ProjectController::class, 'index'])->name('projects.index');
             Route::get('projets/{scope}/modifier', [Admin\ProjectController::class, 'edit'])->name('projects.edit');
             Route::put('projets/{scope}', [Admin\ProjectController::class, 'update'])->name('projects.update');

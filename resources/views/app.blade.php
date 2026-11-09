@@ -34,6 +34,7 @@
             feed: @json($feedPayload),
             composer: @json($composer),
             partners: @json($partners),
+            advert: @json($advert ?? null),
             links: @json($links),
             myBadges: @json($myBadges ?? []),
             menu: @json($menu ?? []),

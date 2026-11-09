@@ -118,6 +118,7 @@ final class ModuleCatalog
                 'children' => [
                     ['key' => 'website.content', 'name' => 'Contenu et textes', 'description' => 'Textes, visuels et coordonnées du site.', 'actions' => ['read', 'update']],
                     ['key' => 'website.partners', 'name' => 'Partenaires', 'description' => 'Logos des partenaires.', 'actions' => self::CRUD],
+                    ['key' => 'website.adverts', 'name' => 'Publicités du fil', 'description' => 'Bannières (image ou GIF) affichées dans le fil T.Link.', 'actions' => self::CRUD],
                     ['key' => 'website.projects', 'name' => 'Projets', 'description' => 'Pages de présentation des projets de la Fondation et leurs chiffres clés.', 'actions' => self::CRUD],
                     ['key' => 'website.messages', 'name' => 'Messages de contact', 'description' => 'Messages reçus via le formulaire de contact.', 'actions' => ['read', 'update', 'delete']],
                     ['key' => 'website.news', 'name' => 'Actualités du site', 'description' => 'Articles affichés sur le site vitrine, indépendants des publications du fil T.Link.', 'actions' => self::CRUD],

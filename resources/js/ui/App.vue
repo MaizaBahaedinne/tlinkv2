@@ -51,6 +51,7 @@ type RootData = {
     allowed_visibilities: string[];
   };
   partners?: Array<{ id: number; name: string; logo_url: string; url: string | null }>;
+  advert?: { id: number; title: string; image_url: string; url: string | null } | null;
   links?: { mission?: string; badges?: string; academy?: string; challenges?: string };
   myBadges?: Array<{ id: number; name: string; tier: string; tier_key?: string; chip?: string; icon: string; gradient: string }>;
   menu?: Array<{ key: string; label: string; href: string; icon: string; active: boolean; badge: number }>;
@@ -496,10 +497,10 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
           :me-name="data.auth.user?.name ?? ''"
           :me-avatar="data.auth.user?.avatar_url"
         />
+        <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="3" class="lg:hidden" />
         <div v-if="data.auth.isAuthenticated && data.calendarEnabled" class="lg:hidden">
           <ActivityCalendar :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
         </div>
-        <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="3" class="lg:hidden" />
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4" @submit.prevent="publish">
           <input type="hidden" name="_token" :value="data.csrf" />
           <div class="flex items-start gap-3">
@@ -608,7 +609,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
           {{ incoming.length }} nouvelle{{ incoming.length > 1 ? 's' : '' }} publication{{ incoming.length > 1 ? 's' : '' }}
         </button>
 
-        <article v-for="post in latestPosts" :key="post.id" class="card p-4">
+        <template v-for="(post, postIndex) in latestPosts" :key="post.id">
+        <article class="card p-4">
           <div class="mb-3 flex items-start justify-between gap-3">
             <div class="flex items-start gap-3">
               <img
@@ -842,6 +844,15 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
           </form>
         </article>
 
+        <aside v-if="data.advert && (postIndex === 1 || (postIndex === 0 && latestPosts.length === 1))" class="card overflow-hidden p-0" aria-label="Publicité">
+          <a v-if="data.advert.url" :href="data.advert.url" target="_blank" rel="noopener noreferrer sponsored" class="block">
+            <img :src="data.advert.image_url" :alt="data.advert.title" class="w-full object-cover" loading="lazy" />
+          </a>
+          <img v-else :src="data.advert.image_url" :alt="data.advert.title" class="w-full object-cover" loading="lazy" />
+          <p class="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Publicité</p>
+        </aside>
+        </template>
+
         <div v-if="latestPosts.length === 0" class="card p-6 text-center text-sm text-slate-500">
           Aucun post pour le moment.
         </div>
@@ -849,19 +860,9 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
 
         <aside class="hidden lg:col-span-3 lg:block">
           <div class="sticky top-24 space-y-4">
-            <ActivityCalendar v-if="data.auth.isAuthenticated && data.calendarEnabled" :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
-
             <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="2" />
 
-            <section class="card overflow-hidden p-0">
-              <div class="bg-gradient-to-r from-tlink-blue to-tlink-blue-700 px-4 py-3 text-white">
-                <p class="text-xs font-semibold uppercase tracking-wide">Publicite</p>
-                <h3 class="mt-1 text-sm font-semibold">Formation Leadership</h3>
-              </div>
-              <div class="p-4 text-sm text-slate-700">
-                Boostez vos competences de pilotage projet en 4 semaines.
-              </div>
-            </section>
+            <ActivityCalendar v-if="data.auth.isAuthenticated && data.calendarEnabled" :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
           </div>
         </aside>
       </div>

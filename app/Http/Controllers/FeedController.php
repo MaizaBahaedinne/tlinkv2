@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Advert;
 use App\Models\Comment;
 use App\Models\Governorate;
 use App\Models\Partner;
@@ -60,6 +61,7 @@ class FeedController extends Controller
                 'can_publish_public' => $canPublishPublic,
                 'allowed_visibilities' => $allowedVisibilities,
             ],
+            'advert' => Advert::forFeed(),
             'partners' => Partner::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
                 ->map(fn (Partner $partner): array => [
                     'id' => $partner->id,
