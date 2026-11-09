@@ -20,17 +20,17 @@
     var testButton = box ? box.querySelector('[data-web-push-test]') : null;
     var testUrl = meta.dataset.test;
 
-    function render(state) {
+    function render(state, message) {
         if (!box) { return; }
         var texts = {
             unsupported: 'Ce navigateur ne gère pas les notifications push.',
-            denied: 'Les notifications sont bloquées : autorise-les dans les réglages du site de ton navigateur.',
+            denied: 'Les notifications sont bloquées pour ce site. Sur ordinateur : cadenas à gauche de l\'adresse. Sur Android : menu ⋮ de Chrome, Paramètres, Paramètres du site, Notifications. Sur iPhone : Réglages, Notifications, T.Link.',
             on: 'Les notifications sont activées sur ce navigateur.',
             off: 'Reçois les nouveaux messages et alertes même lorsque T.Link est fermé.',
             error: 'Activation impossible pour le moment, réessaie plus tard.',
         };
         box.hidden = false;
-        if (status) { status.textContent = texts[state]; }
+        if (status) { status.textContent = message || texts[state]; }
         if (toggle) {
             toggle.hidden = state === 'unsupported' || state === 'denied';
             toggle.disabled = false;
@@ -40,7 +40,47 @@
         if (testButton) { testButton.hidden = state !== 'on'; }
     }
 
-    if (!supported) { render('unsupported'); return; }
+    if (!supported) {
+        var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var installed = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+        // iPhone/iPad : les notifications web n'existent que pour un site ajouté à l'écran d'accueil (iOS 16.4 ou plus récent).
+        var help = ios && !installed
+            ? 'Sur iPhone, ajoute T.Link à l\'écran d\'accueil : touche le bouton Partager de Safari, puis « Sur l\'écran d\'accueil », puis ouvre T.Link depuis cette icône et active les notifications.'
+            : 'Ce navigateur ne gère pas les notifications. Ouvre T.Link dans Chrome, Firefox ou Safari (et non dans le navigateur intégré d\'une autre application).';
+
+        render('unsupported', help);
+
+        var shownAt = parseInt(localStorage.getItem('tlink.webpush.help') || '0', 10);
+
+        if (!box && meta.dataset.required === '1' && Date.now() - shownAt > 24 * 3600 * 1000) {
+            var overlay = document.createElement('div');
+            overlay.setAttribute('data-web-push-popup', '');
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.7)';
+            var card = document.createElement('div');
+            card.style.cssText = 'width:100%;max-width:400px;background:#fff;border-radius:16px;padding:20px;font:14px/1.5 system-ui,sans-serif;color:#334155';
+            var title = document.createElement('p');
+            title.style.cssText = 'margin:0 0 6px;font-size:17px;font-weight:700;color:#0f172a';
+            title.textContent = 'Activer les notifications';
+            var text = document.createElement('p');
+            text.style.cssText = 'margin:0 0 16px';
+            text.textContent = help;
+            var close = document.createElement('button');
+            close.type = 'button';
+            close.textContent = 'J\'ai compris';
+            close.style.cssText = 'border:0;background:#d00031;color:#fff;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer;float:right';
+            close.addEventListener('click', function () { localStorage.setItem('tlink.webpush.help', String(Date.now())); overlay.remove(); });
+            card.appendChild(title);
+            card.appendChild(text);
+            card.appendChild(close);
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+        }
+
+        return;
+    }
 
     function request(method, payload, target) {
         return fetch(target || url, {
@@ -116,7 +156,7 @@
                 var later = card.querySelector('[data-later]');
 
                 function blocked() {
-                    text.textContent = 'Les notifications sont bloquées pour ce site. Clique sur le cadenas à gauche de l\'adresse, autorise les notifications, puis réessaie.';
+                    text.textContent = 'Les notifications sont bloquées pour ce site. Sur ordinateur : clique sur le cadenas à gauche de l\'adresse. Sur Android : menu ⋮ de Chrome, Paramètres, Paramètres du site, Notifications, puis autorise T.Link. Sur iPhone : Réglages, Notifications, T.Link. Ensuite, réessaie.';
                     accept.textContent = 'Réessayer';
                 }
 
