@@ -3,7 +3,7 @@
 <head>
     @include('partials.google-tag')
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
     @include('partials.favicons', ['defaultIconSet' => 'link'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="manifest" href="{{ route('manifest', [], false) }}">
@@ -17,8 +17,13 @@
         {{-- Liens vers l'application installée : sans effet sur ordinateur. --}}
         @vite(['resources/js/app-links.js'])
     @endif
+    <script>
+        // Pas de zoom : ni pincement, ni double-tap (iPhone ignore user-scalable=no, d'où ces garde-fous).
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (name) { document.addEventListener(name, function (event) { event.preventDefault(); }); });
+        document.addEventListener('touchmove', function (event) { if (event.touches.length > 1) { event.preventDefault(); } }, { passive: false });
+    </script>
 </head>
-<body>
+<body class="app-full">
     @include('partials.google-tag-noscript')
     @if (session('status'))
         <div class="fixed inset-x-0 top-3 z-50 mx-auto w-full max-w-xl rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-soft">

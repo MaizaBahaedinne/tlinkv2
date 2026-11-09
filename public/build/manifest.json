@@ -102,7 +102,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-DoOntjjq.css",
+    "file": "assets/app-ajRCiEZM.css",
     "name": "app",
     "names": [
       "app.css"
@@ -126,13 +126,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-BuiItEWm.js",
+    "file": "assets/main-DKzFepr7.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-DoOntjjq.css"
+      "assets/app-ajRCiEZM.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",
