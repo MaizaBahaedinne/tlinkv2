@@ -122,7 +122,7 @@ for BIN in /usr/local/lsws/lsphp*/bin/php; do
             INI_DIR="$("$BIN" --ini | sed -n 's/^Configuration File (php.ini) Path: *//p' | tr -d '"')"
             if [ -n "$INI_DIR" ] && [ "${INI_DIR:0:1}" = "/" ]; then
                 mkdir -p "$INI_DIR"
-                printf 'upload_max_filesize = 10M\npost_max_size = 20M\n' >> "$INI_DIR/php.ini"
+                printf '\nupload_max_filesize = 10M\npost_max_size = 20M\n' >> "$INI_DIR/php.ini"
             fi
         fi
     fi
@@ -130,6 +130,8 @@ for BIN in /usr/local/lsws/lsphp*/bin/php; do
     echo "$BIN : upload_max_filesize=$("$BIN" -r 'echo ini_get("upload_max_filesize");') post_max_size=$("$BIN" -r 'echo ini_get("post_max_size");')"
 done
 
+# Les processus lsphp déjà lancés gardent l'ancienne configuration après un redémarrage « en douceur » : on les arrête pour qu'ils relisent php.ini.
+pkill -f '/usr/local/lsws/lsphp[0-9]*/bin/lsphp' || true
 if [ -x "$LSWS_CTRL" ]; then "$LSWS_CTRL" restart >/dev/null; else systemctl restart lsws; fi
 
 echo "Mise à jour terminée : ${COMMIT:0:7}. Sauvegarde : $BACKUP"
