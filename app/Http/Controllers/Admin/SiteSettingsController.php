@@ -53,6 +53,12 @@ class SiteSettingsController extends AdminController
             'hero_bg_main_remove' => ['nullable', 'boolean'],
             'hero_bg_mark_a_remove' => ['nullable', 'boolean'],
             'hero_bg_mark_b_remove' => ['nullable', 'boolean'],
+            'mission_1_photo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'mission_2_photo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'mission_3_photo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'mission_1_photo_remove' => ['nullable', 'boolean'],
+            'mission_2_photo_remove' => ['nullable', 'boolean'],
+            'mission_3_photo_remove' => ['nullable', 'boolean'],
         ];
 
         $data = $request->validate($rules);
@@ -103,7 +109,7 @@ class SiteSettingsController extends AdminController
     {
         $normalized = ltrim($path, '/');
 
-        if ($normalized !== '' && (str_starts_with($normalized, 'site/hero/') || str_starts_with($normalized, 'site/president/'))) {
+        if ($normalized !== '' && (str_starts_with($normalized, 'site/hero/') || str_starts_with($normalized, 'site/missions/') || str_starts_with($normalized, 'site/president/'))) {
             Storage::disk('public')->delete($normalized);
         }
     }

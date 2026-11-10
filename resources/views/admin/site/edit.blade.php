@@ -35,7 +35,7 @@
                         <label for="f-hero-bg-main">Image 1 du carrousel Hero</label>
                         <input id="f-hero-bg-main" type="file" name="hero_bg_main_file" accept="image/png,image/jpeg,image/webp">
                         <p class="hint">Actuelle :</p>
-                        <img src="{{ $site->heroImage('hero_bg_main', asset('logoFondation-white.webp')) }}" alt="Hero principal" style="margin-top:6px;max-width:100%;height:88px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
+                        <img src="{{ $site->heroImage('hero_bg_main', asset('hero/hero-main.webp')) }}" alt="Hero principal" style="margin-top:6px;max-width:100%;height:88px;object-fit:cover;border-radius:10px">
                         <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_main_remove" value="1"> Supprimer cette image et revenir au visuel par défaut</label>
                         @error('hero_bg_main_file')<p class="error">{{ $message }}</p>@enderror
                     </div>
@@ -43,7 +43,7 @@
                     <div class="field {{ $errors->has('hero_bg_mark_a_file') ? 'has-error' : '' }}">
                         <label for="f-hero-bg-mark-a">Image 2 du carrousel Hero</label>
                         <input id="f-hero-bg-mark-a" type="file" name="hero_bg_mark_a_file" accept="image/png,image/jpeg,image/webp">
-                        <img src="{{ $site->heroImage('hero_bg_mark_a', asset('favicon-white-180x180.png')) }}" alt="Hero motif A" style="margin-top:6px;max-width:100%;height:72px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
+                        <img src="{{ $site->heroImage('hero_bg_mark_a', asset('hero/hero-mark-a.webp')) }}" alt="Hero image 2" style="margin-top:6px;max-width:100%;height:72px;object-fit:cover;border-radius:10px">
                         <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_mark_a_remove" value="1"> Supprimer</label>
                         @error('hero_bg_mark_a_file')<p class="error">{{ $message }}</p>@enderror
                     </div>
@@ -51,10 +51,24 @@
                     <div class="field {{ $errors->has('hero_bg_mark_b_file') ? 'has-error' : '' }}">
                         <label for="f-hero-bg-mark-b">Image 3 du carrousel Hero</label>
                         <input id="f-hero-bg-mark-b" type="file" name="hero_bg_mark_b_file" accept="image/png,image/jpeg,image/webp">
-                        <img src="{{ $site->heroImage('hero_bg_mark_b', asset('favicon-white-180x180.png')) }}" alt="Hero motif B" style="margin-top:6px;max-width:100%;height:72px;object-fit:contain;background:#6e0019;border-radius:10px;padding:8px">
+                        <img src="{{ $site->heroImage('hero_bg_mark_b', asset('hero/hero-mark-b.webp')) }}" alt="Hero image 3" style="margin-top:6px;max-width:100%;height:72px;object-fit:cover;border-radius:10px">
                         <label class="check" style="margin-top:8px"><input type="checkbox" name="hero_bg_mark_b_remove" value="1"> Supprimer</label>
                         @error('hero_bg_mark_b_file')<p class="error">{{ $message }}</p>@enderror
                     </div>
+                </div>
+
+                <h3>Photographies des missions</h3>
+                <p class="text-sm text-muted">Les trois missions de l’accueil (titre et texte : « Piliers » ci-dessus) s’affichent chacune sur une photographie. Sans image, une photo de la Fondation est utilisée. Format portrait conseillé, jpg, png ou webp (max 6 Mo).</p>
+                <div class="form-grid">
+                    @foreach([1 => 'hero/hero-mark-b.webp', 2 => 'hero/hero-main.webp', 3 => 'hero/hero-mark-a.webp'] as $i => $fallback)
+                        <div class="field {{ $errors->has('mission_'.$i.'_photo_file') ? 'has-error' : '' }}">
+                            <label for="f-mission-{{ $i }}">Photo de la mission {{ $i }}</label>
+                            <input id="f-mission-{{ $i }}" type="file" name="mission_{{ $i }}_photo_file" accept="image/png,image/jpeg,image/webp">
+                            <img src="{{ $site->heroImage('mission_'.$i.'_photo', asset($fallback)) }}" alt="Mission {{ $i }}" style="margin-top:6px;max-width:100%;height:88px;object-fit:cover;border-radius:10px">
+                            <label class="check" style="margin-top:8px"><input type="checkbox" name="mission_{{ $i }}_photo_remove" value="1"> Supprimer et revenir à la photo par défaut</label>
+                            @error('mission_'.$i.'_photo_file')<p class="error">{{ $message }}</p>@enderror
+                        </div>
+                    @endforeach
                 </div>
             </section>
 

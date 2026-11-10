@@ -104,6 +104,9 @@ class SiteSettings
         'hero_bg_main' => 'site/hero',
         'hero_bg_mark_a' => 'site/hero',
         'hero_bg_mark_b' => 'site/hero',
+        'mission_1_photo' => 'site/missions',
+        'mission_2_photo' => 'site/missions',
+        'mission_3_photo' => 'site/missions',
         'president_photo' => 'site/president',
     ];
 

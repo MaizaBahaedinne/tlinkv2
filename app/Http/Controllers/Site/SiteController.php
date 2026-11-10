@@ -54,6 +54,7 @@ class SiteController extends Controller
             'news' => $news,
             'events' => $events,
             'pastEvents' => $pastEvents,
+            'markers' => $this->governorateMarkers(),
             'partners' => Partner::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(),
             ...$this->scopeTreeData(),
         ]);
@@ -451,6 +452,36 @@ class SiteController extends Controller
     private function activeClubs(): Builder
     {
         return OrgNode::query()->where('kind', 'club')->where('status', 'active');
+    }
+
+    /**
+     * Gouvernorats où un club est actif, pour la carte de l'accueil (même format que celle de la page Clubs).
+     *
+     * @return array<int, array{name: string, lat: mixed, lng: mixed, count: int, active: bool, url: string}>
+     */
+    private function governorateMarkers(): array
+    {
+        $perGovernorate = $this->activeClubs()
+            ->whereNotNull('governorate_id')
+            ->selectRaw('governorate_id, count(*) as total')
+            ->groupBy('governorate_id')
+            ->pluck('total', 'governorate_id');
+
+        return Governorate::query()
+            ->whereIn('id', $perGovernorate->keys())
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get(['id', 'name', 'latitude', 'longitude'])
+            ->map(fn (Governorate $governorate): array => [
+                'name' => $governorate->name,
+                'lat' => $governorate->latitude,
+                'lng' => $governorate->longitude,
+                'count' => (int) $perGovernorate[$governorate->id],
+                'active' => false,
+                'url' => route('site.clubs', ['gov' => $governorate->id]),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

@@ -156,26 +156,22 @@
         @yield('content')
     </main>
 
-    <footer class="mt-16 bg-brand-900 text-slate-300">
-        <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-3">
+    <footer class="@hasSection('flush_footer') @else mt-16 @endif bg-ink text-slate-300">
+        <div class="h-1 w-full bg-brand-600" aria-hidden="true"></div>
+        @php
+            $footerGroups = [
+                __('site.footer.foundation') => ['site.about', 'site.projects', 'site.news', 'site.events'],
+                __('site.footer.community') => ['site.clubs', 'store.showcase', 'academy.showcase', 'site.contact'],
+            ];
+        @endphp
+        <div class="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-2 lg:grid-cols-4">
             <div>
                 <picture>
                     <source srcset="{{ asset('logoFondation-white.webp') }}" type="image/webp">
-                    <img src="{{ asset('logoFondation-white.png') }}" alt="{{ __('site.name') }}" class="h-11 w-auto" loading="lazy" decoding="async">
+                    <img src="{{ asset('logoFondation-white.png') }}" alt="{{ __('site.name') }}" class="h-12 w-auto" loading="lazy" decoding="async">
                 </picture>
-                <p class="mt-2 text-sm">{{ __('site.tagline') }}</p>
-            </div>
-            <div>
-                <p class="text-sm font-bold uppercase tracking-wide text-white">{{ __('site.footer.navigation') }}</p>
-                <ul class="mt-3 grid gap-1 text-sm">
-                    @foreach($nav as $name => $label)
-                        <li><a href="{{ route($name) }}" class="hover:text-white">{{ $label }}</a></li>
-                    @endforeach
-                </ul>
-            </div>
-            <div>
-                <p class="text-sm font-bold uppercase tracking-wide text-white">{{ __('site.contact.follow') }}</p>
-                <ul class="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                <p class="mt-4 max-w-xs text-sm leading-relaxed">{{ __('site.tagline') }}</p>
+                <ul class="mt-5 flex flex-wrap items-center gap-3 text-sm">
                     @foreach([
                         'facebook_url' => ['label' => 'Facebook', 'svg' => 'M13.5 8H16V5h-2.5C11.6 5 10 6.6 10 8.5V11H8v3h2v6h3v-6h2.3l.7-3H13v-2.5c0-.3.2-.5.5-.5Z'],
                         'instagram_url' => ['label' => 'Instagram', 'svg' => 'M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 1 0 12 8.8Zm0 5.2A2 2 0 1 1 12 10A2 2 0 1 1 12 14Zm4.2-5.3a.75.75 0 1 0 0-1.5a.75.75 0 1 0 0 1.5ZM12 4.8c2.3 0 2.6 0 3.5.1.8 0 1.2.2 1.5.3.4.2.6.3.9.6.3.3.4.5.6.9.1.3.3.7.3 1.5.1.9.1 1.2.1 3.5s0 2.6-.1 3.5c0 .8-.2 1.2-.3 1.5-.2.4-.3.6-.6.9-.3.3-.5.4-.9.6-.3.1-.7.3-1.5.3-.9.1-1.2.1-3.5.1s-2.6 0-3.5-.1c-.8 0-1.2-.2-1.5-.3-.4-.2-.6-.3-.9-.6-.3-.3-.4-.5-.6-.9-.1-.3-.3-.7-.3-1.5-.1-.9-.1-1.2-.1-3.5s0-2.6.1-3.5c0-.8.2-1.2.3-1.5.2-.4.3-.6.6-.9.3-.3.5-.4.9-.6.3-.1.7-.3 1.5-.3.9-.1 1.2-.1 3.5-.1Zm0-1.8c-2.4 0-2.8 0-3.6.1-1 .1-1.7.2-2.3.4-.6.2-1.2.5-1.8 1.1-.6.6-.9 1.1-1.1 1.8-.2.6-.3 1.3-.4 2.3C3 9.2 3 9.6 3 12s0 2.8.1 3.6c.1 1 .2 1.7.4 2.3.2.6.5 1.2 1.1 1.8.6.6 1.1.9 1.8 1.1.6.2 1.3.3 2.3.4.8.1 1.2.1 3.6.1s2.8 0 3.6-.1c1-.1 1.7-.2 2.3-.4.6-.2 1.2-.5 1.8-1.1.6-.6.9-1.1 1.1-1.8.2-.6.3-1.3.4-2.3.1-.8.1-1.2.1-3.6s0-2.8-.1-3.6c-.1-1-.2-1.7-.4-2.3-.2-.6-.5-1.2-1.1-1.8-.6-.6-1.1-.9-1.8-1.1-.6-.2-1.3-.3-2.3-.4-.8-.1-1.2-.1-3.6-.1Z'],
@@ -184,15 +180,55 @@
                     ] as $key => $social)
                         @if($url = $site->link($key))
                             <li>
-                                <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 text-slate-300 transition hover:border-white hover:text-white" aria-label="{{ $social['label'] }}" title="{{ $social['label'] }}">
+                                <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-brand-600 hover:text-white" aria-label="{{ $social['label'] }}" title="{{ $social['label'] }}">
                                     <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="{{ $social['svg'] }}"/></svg>
                                 </a>
                             </li>
                         @endif
                     @endforeach
+                </ul>
+            </div>
+
+            @if($isolated)
+                <div>
+                    <p class="text-sm font-bold uppercase tracking-wide text-white">{{ __('site.footer.navigation') }}</p>
+                    <ul class="mt-4 grid gap-2 text-sm">
+                        @foreach($nav as $name => $label)
+                            <li><a href="{{ route($name) }}" class="hover:text-white">{{ $label }}</a></li>
+                        @endforeach
+                    </ul>
+                </div>
+            @else
+                @foreach($footerGroups as $groupTitle => $routes)
+                    <div>
+                        <p class="text-sm font-bold uppercase tracking-wide text-white">{{ $groupTitle }}</p>
+                        <ul class="mt-4 grid gap-2 text-sm">
+                            @foreach($routes as $name)
+                                @isset($nav[$name])
+                                    <li><a href="{{ route($name) }}" class="hover:text-white">{{ $nav[$name] }}</a></li>
+                                @endisset
+                            @endforeach
+                            @if($loop->last)
+                                <li><a href="{{ $joinUrl }}" class="font-semibold text-white hover:text-brand-100">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a></li>
+                            @endif
+                        </ul>
+                    </div>
+                @endforeach
+            @endif
+
+            <div>
+                <p class="text-sm font-bold uppercase tracking-wide text-white">{{ __('site.footer.contact') }}</p>
+                <ul class="mt-4 grid gap-2 text-sm">
                     @if($email = $site->get('contact_email'))
-                        <li><a href="mailto:{{ $email }}" class="text-xs hover:text-white">{{ $email }}</a></li>
+                        <li><a href="mailto:{{ $email }}" class="hover:text-white">{{ $email }}</a></li>
                     @endif
+                    @if($phone = $site->get('contact_phone'))
+                        <li><a href="tel:{{ preg_replace('/[^0-9+]/', '', $phone) }}" class="hover:text-white" dir="ltr">{{ $phone }}</a></li>
+                    @endif
+                    @if($address = $site->get('contact_address'))
+                        <li>{{ $address }}</li>
+                    @endif
+                    <li><a href="{{ route('site.contact') }}" class="font-semibold text-white hover:text-brand-100">{{ __('site.nav.contact') }} →</a></li>
                 </ul>
             </div>
         </div>
