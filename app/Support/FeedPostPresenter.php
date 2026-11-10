@@ -25,7 +25,7 @@ final class FeedPostPresenter
                 'attachments:id,post_id,disk,path,mime_type',
                 'comments' => fn ($query) => $query
                     ->with(['author:id,name', 'author.profile:id,user_id,photo_path,identity_verified_at'])
-                    ->orderBy('created_at')->orderBy('id'),
+                    ->reorder()->orderBy('created_at')->orderBy('id'),
             ])
             ->withCount(['comments', 'reactions', 'shares', 'views']);
     }
