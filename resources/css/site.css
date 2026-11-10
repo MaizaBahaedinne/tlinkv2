@@ -33,9 +33,41 @@ html {
 
 .site-card {
     border: 1px solid #e4e8f0;
-    border-radius: 1rem;
+    border-radius: 1.5rem;
     background: #fff;
-    box-shadow: 0 18px 35px rgba(80, 10, 25, 0.06);
+    box-shadow: 0 18px 35px rgba(11, 11, 13, 0.06);
+}
+
+/* En-tête immersif des pages intérieures : photographie, voile noir et rouge. */
+.page-hero {
+    background: #0b0b0d;
+}
+
+.page-hero-overlay {
+    background:
+        radial-gradient(circle at 8% 100%, rgba(208, 0, 49, 0.55), transparent 50%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.68) 55%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+[dir='rtl'] .page-hero-overlay {
+    transform: scaleX(-1);
+}
+
+/* Champs de formulaire du site : arrondis, focus rouge. */
+.site-input {
+    width: 100%;
+    margin-top: 0.4rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #d9dee8;
+    border-radius: 0.9rem;
+    background: #fff;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.site-input:focus {
+    outline: none;
+    border-color: #d00031;
+    box-shadow: 0 0 0 3px rgba(208, 0, 49, 0.15);
 }
 
 .hero-shell {
@@ -426,10 +458,10 @@ a.partner-tile:hover,
     gap: 2rem;
     align-items: center;
     padding: 2rem;
-    border-radius: 1.5rem;
-    background: linear-gradient(135deg, #fff 0%, #fff5f7 100%);
+    border-radius: 2rem;
+    background: #fff;
     border: 1px solid #f3c9d3;
-    box-shadow: 0 24px 50px rgba(110, 0, 25, 0.08);
+    box-shadow: 0 24px 50px rgba(11, 11, 13, 0.08);
 }
 
 @media (min-width: 768px) {
@@ -508,15 +540,15 @@ a.partner-tile:hover,
     position: relative;
     overflow: hidden;
     height: 100%;
-    padding: 2rem;
-    border-radius: 1.25rem;
+    padding: 2.5rem 2rem;
+    border-radius: 1.5rem;
     color: #fff;
-    background: linear-gradient(135deg, #6e0019 0%, #a30027 55%, #d00031 100%);
-    box-shadow: 0 20px 40px rgba(110, 0, 25, 0.2);
+    background: linear-gradient(135deg, #d00031 0%, #8f001f 100%);
+    box-shadow: 0 20px 40px rgba(11, 11, 13, 0.18);
 }
 
 .mv-card--vision {
-    background: linear-gradient(135deg, #1e293b 0%, #6e0019 100%);
+    background: linear-gradient(135deg, #0b0b0d 0%, #2a0a12 100%);
 }
 
 .mv-card::after {
@@ -547,7 +579,8 @@ a.partner-tile:hover,
     position: absolute;
     inset-inline-end: 1rem;
     top: 0.4rem;
-    color: #fde1e7;
+    color: #d00031;
+    opacity: 0.18;
     font-family: var(--font-display);
     font-size: 3.2rem;
     font-weight: 800;
@@ -562,9 +595,9 @@ a.partner-tile:hover,
     padding: 0;
     overflow: hidden;
     list-style: none;
-    border-radius: 1.25rem;
+    border-radius: 1.5rem;
     background: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 20px 40px rgba(110, 0, 25, 0.2);
+    box-shadow: 0 20px 40px rgba(11, 11, 13, 0.18);
 }
 
 .slogan-item {
@@ -575,16 +608,16 @@ a.partner-tile:hover,
     font-size: clamp(1.4rem, 3.4vw, 2.1rem);
     font-weight: 800;
     letter-spacing: -0.01em;
-    background: linear-gradient(135deg, #6e0019 0%, #a30027 100%);
+    background: linear-gradient(135deg, #d00031 0%, #8f001f 100%);
     transition: filter 0.25s ease;
 }
 
 .slogan-item:nth-child(2) {
-    background: linear-gradient(135deg, #a30027 0%, #d00031 100%);
+    background: linear-gradient(135deg, #8f001f 0%, #0b0b0d 100%);
 }
 
 .slogan-item:nth-child(3) {
-    background: linear-gradient(135deg, #1e293b 0%, #6e0019 100%);
+    background: linear-gradient(135deg, #0b0b0d 0%, #d00031 100%);
 }
 
 .slogan-item:hover {
@@ -722,8 +755,8 @@ a.partner-tile:hover,
     padding: 2.5rem 2rem;
     border-radius: 1.5rem;
     color: #fff;
-    background: linear-gradient(135deg, #6e0019 0%, #a30027 50%, #d00031 100%);
-    box-shadow: 0 24px 48px rgba(110, 0, 25, 0.22);
+    background: linear-gradient(135deg, #d00031 0%, #8f001f 55%, #0b0b0d 100%);
+    box-shadow: 0 24px 48px rgba(11, 11, 13, 0.25);
 }
 
 .newsletter-card::before,

@@ -1,8 +1,10 @@
 {{-- « Notre équipe » et « Nos espaces » fusionnés : un onglet par espace, avec sa description et ses responsables. --}}
-<section id="equipe" class="mx-auto mt-16 max-w-6xl scroll-mt-24 px-4" aria-labelledby="equipe-title">
+<section id="equipe" class="scroll-mt-24 bg-brand-50 py-16 md:py-24" aria-labelledby="equipe-title">
+    <div class="mx-auto max-w-6xl px-4">
     <div data-space-tabs data-reveal>
-        <h2 id="equipe-title" class="font-display text-2xl font-bold text-brand-900">{{ __('site.about.spaces_title') }}</h2>
-        <p class="mt-1 text-sm text-slate-600">{{ __('site.about.spaces_intro') }}</p>
+        <p class="text-xs font-extrabold uppercase tracking-[0.22em] text-brand-600">{{ __('site.about.kicker') }}</p>
+        <h2 id="equipe-title" class="mt-2 font-display text-3xl font-extrabold text-ink md:text-5xl">{{ __('site.about.spaces_title') }}</h2>
+        <p class="mt-3 max-w-2xl text-slate-600">{{ __('site.about.spaces_intro') }}</p>
 
         <div class="space-tablist" role="tablist" aria-label="{{ __('site.about.spaces_label') }}">
             @foreach($spaces as $i => $space)
@@ -70,6 +72,7 @@
                 @endif
             </div>
         @endforeach
+    </div>
     </div>
 </section>
 

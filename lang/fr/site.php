@@ -136,6 +136,7 @@ return [
     ],
 
     'about' => [
+        'kicker' => 'La Fondation',
         'title' => 'À propos de la Fondation',
         'president_title' => 'Le mot du président',
         'mission_title' => 'Notre mission',
@@ -172,6 +173,7 @@ return [
     ],
 
     'projects' => [
+        'kicker' => 'Nos réalisations',
         'title' => 'Nos projets',
         'intro' => 'Les projets portés par la Fondation, avec leurs chiffres clés.',
         'figures' => 'Le projet en chiffres',
@@ -191,6 +193,7 @@ return [
     ],
 
     'events' => [
+        'kicker' => 'Agenda',
         'title' => 'Événements',
         'intro' => 'Rencontres, formations et rendez-vous de la Fondation.',
         'upcoming' => 'À venir',
@@ -243,6 +246,7 @@ return [
     ],
 
     'contact' => [
+        'kicker' => 'Parlons-nous',
         'title' => 'Contact',
         'intro' => 'Une question, une proposition de partenariat ? Écrivez-nous.',
         'name' => 'Nom complet',

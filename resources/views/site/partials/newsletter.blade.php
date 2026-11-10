@@ -1,4 +1,4 @@
-<section id="newsletter" class="mx-auto mt-16 max-w-6xl scroll-mt-24 px-4" aria-labelledby="newsletter-title">
+<section id="newsletter" class="mx-auto max-w-6xl scroll-mt-24 px-4 py-16 md:py-24" aria-labelledby="newsletter-title">
     <div class="newsletter-card" data-reveal>
         <div class="relative grid gap-6 lg:grid-cols-2 lg:items-center">
             <div>
@@ -21,7 +21,7 @@
                                    placeholder="{{ __('site.newsletter.placeholder') }}"
                                    class="w-full rounded-xl border border-white/30 bg-white px-4 py-3 text-slate-800 placeholder-slate-400">
                         </div>
-                        <button type="submit" class="rounded-xl bg-white px-6 py-3 font-bold text-brand-800 transition hover:bg-brand-100">{{ __('site.newsletter.subscribe') }}</button>
+                        <button type="submit" class="rounded-full bg-white px-6 py-3 font-bold text-brand-800 transition hover:bg-brand-100">{{ __('site.newsletter.subscribe') }}</button>
                     </form>
                     @error('email')
                         <p data-newsletter-error class="mt-2 text-sm font-semibold text-white" role="alert">{{ $message }}</p>

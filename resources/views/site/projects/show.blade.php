@@ -11,11 +11,14 @@
 @endphp
 
 @section('content')
-    <section class="relative overflow-hidden bg-gradient-to-br from-brand-900 to-brand-800 text-white">
+    <section class="page-hero relative isolate overflow-hidden text-white">
         @if($cover)
-            <img src="{{ $cover }}" alt="" class="absolute inset-0 h-full w-full object-cover opacity-30" loading="eager" decoding="async">
+            <img src="{{ $cover }}" alt="" class="absolute inset-0 -z-20 h-full w-full object-cover" loading="eager" decoding="async">
+        @else
+            <img src="{{ $site->heroImage('hero_bg_mark_b', asset('hero/hero-mark-b.webp')) }}" alt="" class="absolute inset-0 -z-20 h-full w-full object-cover" loading="eager" decoding="async">
         @endif
-        <div class="relative mx-auto max-w-6xl px-4 py-14 md:py-20">
+        <div class="page-hero-overlay absolute inset-0 -z-10" aria-hidden="true"></div>
+        <div class="relative mx-auto max-w-6xl px-4 pb-20 pt-16 md:pb-28 md:pt-24">
             <a href="{{ route('site.projects') }}" class="text-sm font-bold text-white/80 hover:text-white">← {{ __('site.projects.title') }}</a>
             @if($logo)
                 <div class="mt-5 inline-flex rounded-2xl bg-white p-3 shadow-lg">
@@ -23,12 +26,12 @@
                 </div>
             @endif
             <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold">
-                <span class="rounded-full bg-white/15 px-3 py-1">{{ __('site.projects.status_'.$project->status) }}</span>
+                <span class="rounded-full bg-brand-600 px-3 py-1">{{ __('site.projects.status_'.$project->status) }}</span>
                 @if($project->started_year)
                     <span class="rounded-full bg-white/15 px-3 py-1">{{ __('site.projects.since', ['year' => $project->started_year]) }}</span>
                 @endif
             </div>
-            <h1 class="mt-4 max-w-3xl font-display text-3xl font-bold md:text-5xl">{{ $project->text('name') }}</h1>
+            <h1 class="mt-4 max-w-3xl font-display text-4xl font-extrabold leading-[1.05] md:text-6xl">{{ $project->text('name') }}</h1>
             @if($project->text('summary') !== '')
                 <p class="mt-4 max-w-2xl text-lg text-slate-200">{{ $project->text('summary') }}</p>
             @endif
@@ -41,7 +44,7 @@
             <dl class="site-card grid grid-cols-2 gap-6 p-6 text-center md:grid-cols-4">
                 @foreach($figures as $figure)
                     <div>
-                        <dd class="font-display text-3xl font-bold text-brand-800 md:text-4xl">{{ $figure['value'] }}</dd>
+                        <dd class="font-display text-3xl font-extrabold text-brand-600 md:text-4xl">{{ $figure['value'] }}</dd>
                         <dt class="mt-1 text-sm font-semibold text-slate-600">{{ $figure['label'] }}</dt>
                     </div>
                 @endforeach
@@ -51,7 +54,7 @@
 
     <article class="mx-auto mt-12 max-w-3xl px-4">
         @if($body !== '')
-            <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.projects.about') }}</h2>
+            <h2 class="font-display text-3xl font-extrabold text-ink">{{ __('site.projects.about') }}</h2>
             <div class="site-prose mt-4 text-slate-700">
                 @foreach(preg_split('/\R{2,}/u', $body) as $paragraph)
                     <p>{!! nl2br(e(trim($paragraph))) !!}</p>
@@ -61,14 +64,14 @@
 
         @if($url = $project->safeUrl())
             <p class="mt-8">
-                <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="inline-block rounded-xl bg-brand-800 px-6 py-3 font-bold text-white hover:bg-brand-900">{{ __('site.projects.visit') }} ↗</a>
+                <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="inline-block rounded-full bg-brand-600 px-7 py-3.5 font-bold text-white hover:bg-ink">{{ __('site.projects.visit') }} ↗</a>
             </p>
         @endif
     </article>
 
     @if($team->isNotEmpty())
         <section class="mx-auto mt-16 max-w-6xl px-4" aria-labelledby="project-team">
-            <h2 id="project-team" class="font-display text-2xl font-bold text-brand-900">{{ __('site.projects.team') }}</h2>
+            <h2 id="project-team" class="font-display text-3xl font-extrabold text-ink">{{ __('site.projects.team') }}</h2>
             <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach($team as $node)
                     @foreach($node->assignments as $assignment)
@@ -98,7 +101,7 @@
     @if($upcomingEvents->isNotEmpty() || $pastEvents->isNotEmpty())
         <section class="mx-auto mt-16 max-w-6xl px-4" aria-labelledby="project-events">
             <div class="flex flex-wrap items-end justify-between gap-2">
-                <h2 id="project-events" class="font-display text-2xl font-bold text-brand-900">{{ __('site.projects.events') }}</h2>
+                <h2 id="project-events" class="font-display text-3xl font-extrabold text-ink">{{ __('site.projects.events') }}</h2>
                 <a href="{{ route('site.events', ['scope' => $project->scope]) }}" class="text-sm font-bold text-brand-600 hover:text-brand-800">{{ __('site.projects.all_events') }} →</a>
             </div>
             @if($upcomingEvents->isNotEmpty())
@@ -123,7 +126,7 @@
     @if($news->isNotEmpty())
         <section class="mx-auto mt-16 max-w-6xl px-4" aria-labelledby="project-news">
             <div class="flex flex-wrap items-end justify-between gap-2">
-                <h2 id="project-news" class="font-display text-2xl font-bold text-brand-900">{{ __('site.projects.news') }}</h2>
+                <h2 id="project-news" class="font-display text-3xl font-extrabold text-ink">{{ __('site.projects.news') }}</h2>
                 <a href="{{ route('site.news', ['scope' => $project->scope]) }}" class="text-sm font-bold text-brand-600 hover:text-brand-800">{{ __('site.projects.all_news') }} →</a>
             </div>
             <div class="mt-5 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -136,7 +139,7 @@
 
     @if($others->isNotEmpty())
         <section class="mx-auto mt-16 max-w-6xl px-4">
-            <h2 class="font-display text-2xl font-bold text-brand-900">{{ __('site.projects.others') }}</h2>
+            <h2 class="font-display text-3xl font-extrabold text-ink">{{ __('site.projects.others') }}</h2>
             <div class="mt-5 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 @foreach($others as $other)
                     @include('site.partials.project-card', ['project' => $other])

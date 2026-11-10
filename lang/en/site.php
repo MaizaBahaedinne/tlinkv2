@@ -136,6 +136,7 @@ return [
     ],
 
     'about' => [
+        'kicker' => 'The Foundation',
         'title' => 'About the Foundation',
         'president_title' => 'A word from the president',
         'mission_title' => 'Our mission',
@@ -172,6 +173,7 @@ return [
     ],
 
     'projects' => [
+        'kicker' => 'Our work',
         'title' => 'Our projects',
         'intro' => 'The projects led by the Foundation, with their key figures.',
         'figures' => 'The project in figures',
@@ -191,6 +193,7 @@ return [
     ],
 
     'events' => [
+        'kicker' => 'Agenda',
         'title' => 'Events',
         'intro' => 'Meetings, trainings and Foundation gatherings.',
         'upcoming' => 'Upcoming',
@@ -243,6 +246,7 @@ return [
     ],
 
     'contact' => [
+        'kicker' => 'Let\'s talk',
         'title' => 'Contact',
         'intro' => 'A question or a partnership proposal? Write to us.',
         'name' => 'Full name',

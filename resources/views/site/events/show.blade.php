@@ -26,12 +26,12 @@
 
 @section('content')
     {{-- Hero : la couverture de l'événement en grand (ou un dégradé à défaut), date en vignette, titre et partage par-dessus --}}
-    <header class="relative isolate flex min-h-[380px] items-end overflow-hidden bg-brand-900 text-white md:min-h-[500px]">
+    <header class="relative isolate flex min-h-[380px] items-end overflow-hidden bg-ink text-white md:min-h-[500px]">
         @if($cover)
             <img src="{{ $cover }}" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover" loading="eager" decoding="async" fetchpriority="high">
-            <div class="absolute inset-0 -z-10 bg-linear-to-t from-brand-900/95 via-brand-900/60 to-black/10"></div>
+            <div class="absolute inset-0 -z-10 bg-linear-to-t from-black via-black/60 to-black/10"></div>
         @else
-            <div class="absolute inset-0 -z-10 bg-linear-to-br from-brand-900 via-brand-800 to-brand-600"></div>
+            <div class="absolute inset-0 -z-10 bg-linear-to-br from-ink via-brand-900 to-brand-600"></div>
             <div class="absolute -end-24 -top-24 -z-10 h-80 w-80 rounded-full bg-white/10 blur-2xl"></div>
             <div class="absolute -bottom-32 start-1/3 -z-10 h-72 w-72 rounded-full bg-white/10 blur-3xl"></div>
         @endif
@@ -49,7 +49,7 @@
                 <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
                         @if($isUpcoming)
-                            <span class="rounded-full bg-emerald-400 px-3 py-1 text-emerald-950">{{ __('site.events.upcoming') }}</span>
+                            <span class="rounded-full bg-brand-600 px-3 py-1 text-white">{{ __('site.events.upcoming') }}</span>
                         @elseif($isOver)
                             <span class="rounded-full bg-white/25 px-3 py-1 backdrop-blur">{{ __('site.events.status_completed') }}</span>
                         @endif
@@ -139,11 +139,11 @@
         @endif
 
         @if($isUpcoming)
-            <div class="mt-8 rounded-xl bg-brand-100 p-5 text-sm font-semibold text-brand-900">
+            <div class="mt-8 rounded-3xl bg-brand-50 p-6 text-sm font-semibold text-ink">
                 {{ __('site.events.register') }}
                 <span class="mt-3 flex flex-wrap gap-3">
-                    <a href="{{ route('login') }}" class="rounded-lg bg-brand-800 px-4 py-2 text-white hover:bg-brand-900">{{ __('site.nav.members') }}</a>
-                    <a href="{{ route('register') }}" class="rounded-lg border border-brand-800 px-4 py-2 text-brand-800 hover:bg-white">{{ __('site.nav.join') }}</a>
+                    <a href="{{ route('login') }}" class="rounded-full bg-brand-600 px-5 py-2.5 text-white hover:bg-ink">{{ __('site.nav.members') }}</a>
+                    <a href="{{ route('register') }}" class="rounded-full border border-brand-600 px-5 py-2.5 text-brand-600 hover:bg-white">{{ __('site.nav.join') }}</a>
                 </span>
             </div>
         @endif
