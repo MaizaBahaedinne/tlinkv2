@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\OrgNode;
+use App\Models\MailLog;
 use App\Models\PositionInvitation;
 use App\Models\User;
 use App\Notifications\PositionInvitationNotification;
@@ -69,6 +70,7 @@ final class PositionInvitations
                 ->notify(new PositionInvitationNotification($invitation, $token));
         } catch (\Throwable $exception) {
             report($exception);
+            MailLog::failInFlight($exception);
 
             return false;
         }

@@ -28,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
         // Boîtes d'envoi enregistrées en administration (Messagerie) : elles priment sur le .env quand elles sont actives.
         \App\Support\MailSettings::apply();
 
+        // Journal des e-mails (Admin > Messagerie > Journal) : une ligne par destinataire, confirmée à l'envoi.
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Mail\Events\MessageSending::class, [\App\Models\MailLog::class, 'recordSending']);
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Mail\Events\MessageSent::class, [\App\Models\MailLog::class, 'recordSent']);
+
         // Badges : le recalcul se déclenche à l'enregistrement des modèles listés dans le catalogue d'activités.
         \App\Support\Gamification\ActivityCatalog::listen();
 

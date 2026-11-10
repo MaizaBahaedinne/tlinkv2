@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\PositionInvitation;
+use App\Support\MailTemplates;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -22,16 +23,14 @@ class PositionInvitationNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $title = (string) $this->invitation->node?->title;
-        $scope = $this->invitation->node?->scopeLabel();
-        $position = $title.($scope ? ' ('.$scope.')' : '');
+        $scope = (string) $this->invitation->node?->scopeLabel();
 
-        return (new MailMessage())
-            ->subject('Invitation à candidater : '.$position.' | T.Link')
-            ->greeting('Bonjour '.$this->invitation->first_name.' !')
-            ->line('La Fondation Tunivisions vous invite à candidater au poste « '.$position.' ».')
-            ->line('Créez votre compte T.Link en quelques minutes, puis déposez votre candidature : elle sera examinée par l’équipe.')
-            ->action('Créer mon compte et candidater', route('position.invitation', $this->token))
-            ->line('Ce lien est personnel et valable '.PositionInvitation::VALID_DAYS.' jours. Si cette invitation ne vous concerne pas, ignorez ce message.')
-            ->salutation('L’équipe Tunivisions');
+        return MailTemplates::message('position_invitation', [
+            'prenom' => $this->invitation->first_name,
+            'nom' => $this->invitation->last_name,
+            'poste' => $title.($scope !== '' ? ' ('.$scope.')' : ''),
+            'perimetre' => $scope,
+            'jours' => (string) PositionInvitation::VALID_DAYS,
+        ], route('position.invitation', $this->token));
     }
 }

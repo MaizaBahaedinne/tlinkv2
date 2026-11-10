@@ -84,6 +84,8 @@ class AuditLabels
         'admin.onboarding.restarted' => 'Intégration relancée pour un membre',
         'admin.mail.updated' => 'Messagerie : boîte d’envoi modifiée',
         'admin.mail.tested' => 'Messagerie : message de test envoyé',
+        'admin.mail.template.updated' => 'Messagerie : modèle d’e-mail modifié',
+        'admin.mail.template.reset' => 'Messagerie : modèle d’e-mail rétabli',
         'orgchart.club_roles.updated' => 'Organigramme : droits des rôles de club modifiés',
         'orgchart.club.status_bulk' => 'Organigramme : statut de plusieurs clubs modifié',
         'orgchart.club.aligned' => 'Organigramme : clubs alignés sur l’équipe type',

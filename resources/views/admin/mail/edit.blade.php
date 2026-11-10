@@ -6,6 +6,8 @@
 @section('content')
     <x-admin.page-header title="Messagerie (e-mails envoyés)" subtitle="Adresse d’envoi de chaque application : confirmation d’e-mail, notifications, messages automatiques. Chaque application a sa propre boîte ; tant qu’une application n’en a pas, elle envoie avec celle de T.Link." />
 
+    @include('admin.mail._tabs')
+
     @if(! $profiles['tlink']['usable'])
         <div class="alert alert-error" role="status"><x-admin.icon name="flag" /> <span>T.Link n’a pas encore de boîte d’envoi active : les e-mails utilisent la configuration du serveur (mode « {{ $envMailer }} »). Avec « log », rien n’est envoyé et les membres ne reçoivent pas leur e-mail de confirmation.</span></div>
     @endif

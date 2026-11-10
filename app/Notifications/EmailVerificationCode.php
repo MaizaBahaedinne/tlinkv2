@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Support\EmailVerificationCodes;
+use App\Support\MailTemplates;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -21,12 +22,10 @@ class EmailVerificationCode extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage())
-            ->subject('Votre code de confirmation : '.$this->code.' | T.Link')
-            ->greeting('Bienvenue '.$notifiable->first_name.' !')
-            ->line('Pour poursuivre votre intégration à la Fondation Tunivisions, saisissez ce code de confirmation dans T.Link :')
-            ->line('**'.$this->code.'**')
-            ->line('Ce code est valable '.EmailVerificationCodes::VALID_MINUTES.' minutes. Si vous n’avez pas créé de compte, ignorez ce message.')
-            ->salutation('L’équipe Tunivisions');
+        return MailTemplates::message('verification_code', [
+            'prenom' => (string) ($notifiable->first_name ?? ''),
+            'code' => $this->code,
+            'minutes' => (string) EmailVerificationCodes::VALID_MINUTES,
+        ]);
     }
 }

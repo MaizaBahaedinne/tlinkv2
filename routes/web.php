@@ -356,6 +356,13 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('messagerie', [Admin\MailController::class, 'edit'])->name('mail.edit');
             Route::put('messagerie/{profile}', [Admin\MailController::class, 'update'])->name('mail.update');
             Route::post('messagerie/{profile}/test', [Admin\MailController::class, 'test'])->middleware('throttle:6,1')->name('mail.test');
+            Route::get('messagerie-journal', [Admin\MailLogController::class, 'index'])->name('mail.logs');
+            Route::get('messagerie-modeles', [Admin\MailTemplateController::class, 'index'])->name('mail.templates');
+            Route::get('messagerie-modeles/{template}', [Admin\MailTemplateController::class, 'edit'])->name('mail.templates.edit');
+            Route::put('messagerie-modeles/{template}', [Admin\MailTemplateController::class, 'update'])->name('mail.templates.update');
+            Route::delete('messagerie-modeles/{template}', [Admin\MailTemplateController::class, 'reset'])->name('mail.templates.reset');
+            Route::post('messagerie-modeles/{template}/apercu', [Admin\MailTemplateController::class, 'preview'])->name('mail.templates.preview');
+            Route::post('messagerie-modeles/{template}/test', [Admin\MailTemplateController::class, 'test'])->middleware('throttle:6,1')->name('mail.templates.test');
             Route::post('mandats', [Admin\MandateController::class, 'store'])->name('mandates.store');
             Route::put('mandats/{mandate}', [Admin\MandateController::class, 'update'])->name('mandates.update');
             Route::patch('mandats/{mandate}/statut', [Admin\MandateController::class, 'updateStatus'])->name('mandates.status');

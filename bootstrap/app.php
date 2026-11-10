@@ -36,6 +36,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         // Chaque erreur rapportée porte la référence affichée au membre : l'administrateur la retrouve dans les logs.
         $exceptions->context(fn () => ErrorReport::logContext());
+        // Un envoi d'e-mail qui échoue (serveur SMTP, identifiants…) est marqué en échec dans le journal de la messagerie.
+        $exceptions->report(function (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $exception): void {
+            \App\Models\MailLog::failInFlight($exception);
+        });
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
