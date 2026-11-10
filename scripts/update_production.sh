@@ -104,13 +104,18 @@ echo "[8/8] Remise en ligne"
 artisan up
 DOWN=0
 
-# Limites d'envoi (GIF, images, pièces jointes) : le défaut de PHP (2 Mo) est trop bas. Fichier dédié dans le dossier conf.d de lsphp.
-PHP_SCAN_DIR="$("$PHP_BIN" --ini | sed -n 's/^Scan for additional .ini files in: *//p')"
-if [ -n "$PHP_SCAN_DIR" ] && [ -d "$PHP_SCAN_DIR" ]; then
-    printf 'upload_max_filesize = 10M\npost_max_size = 20M\n' > "$PHP_SCAN_DIR/99-tlink-uploads.ini"
-else
-    echo "Dossier conf.d de PHP introuvable : réglez upload_max_filesize=10M et post_max_size=20M dans CyberPanel > PHP."
-fi
+# Limites d'envoi (GIF, images, pièces jointes) : le défaut de PHP (2 Mo) est trop bas. Fichier dédié dans le dossier conf.d de chaque lsphp installé
+# (le site de développement et la production peuvent tourner sur des versions de PHP différentes).
+UPLOAD_INI_DONE=0
+for BIN in /usr/local/lsws/lsphp*/bin/php; do
+    [ -x "$BIN" ] || continue
+    SCAN_DIR="$("$BIN" --ini | sed -n 's/^Scan for additional .ini files in: *//p')"
+    if [ -n "$SCAN_DIR" ] && [ -d "$SCAN_DIR" ]; then
+        printf 'upload_max_filesize = 10M\npost_max_size = 20M\n' > "$SCAN_DIR/99-tlink-uploads.ini"
+        UPLOAD_INI_DONE=1
+    fi
+done
+[ "$UPLOAD_INI_DONE" -eq 1 ] || echo "Dossier conf.d de PHP introuvable : réglez upload_max_filesize=10M et post_max_size=20M dans CyberPanel > PHP."
 
 if [ -x "$LSWS_CTRL" ]; then "$LSWS_CTRL" restart >/dev/null; else systemctl restart lsws; fi
 

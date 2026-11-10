@@ -89,7 +89,7 @@ class AdvertController extends AdminController
     private static function imageMessages(): array
     {
         return [
-            'image.uploaded' => 'Le fichier n’a pas pu être envoyé : il dépasse la taille autorisée par le serveur (10 Mo max). Réduisez le poids du GIF.',
+            'image.uploaded' => 'Le fichier n’a pas pu être envoyé : il dépasse la limite actuelle du serveur PHP ('.ini_get('upload_max_filesize').' par fichier, '.ini_get('post_max_size').' par envoi). Relevez upload_max_filesize et post_max_size dans la configuration PHP du serveur, ou réduisez le poids du GIF.',
             'image.max' => 'Le fichier est trop lourd (5 Mo max). Réduisez le poids du GIF.',
             'image.image' => 'Le fichier doit être une image ou un GIF.',
             'image.mimes' => 'Formats acceptés : jpg, png, webp ou gif.',
