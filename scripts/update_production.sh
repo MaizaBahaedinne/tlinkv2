@@ -108,19 +108,19 @@ DOWN=0
 # (le site de développement et la production peuvent tourner sur des versions de PHP différentes).
 for BIN in /usr/local/lsws/lsphp*/bin/php; do
     [ -x "$BIN" ] || continue
-    SCAN_DIR="$("$BIN" --ini | sed -n 's/^Scan for additional .ini files in: *//p')"
+    SCAN_DIR="$("$BIN" --ini | sed -n 's/^Scan for additional .ini files in: *//p' | tr -d '"')"
     if [ -n "$SCAN_DIR" ] && [ -d "$SCAN_DIR" ]; then
         printf 'upload_max_filesize = 10M\npost_max_size = 20M\n' > "$SCAN_DIR/99-tlink-uploads.ini"
     fi
 
     # Contrôle : si la valeur n'est pas prise en compte, on modifie le php.ini chargé, ou on le crée s'il n'existe pas (cas de lsphp85).
     if [ "$("$BIN" -r 'echo ini_get("upload_max_filesize");')" != "10M" ]; then
-        PHP_INI="$("$BIN" --ini | sed -n 's/^Loaded Configuration File: *//p')"
+        PHP_INI="$("$BIN" --ini | sed -n 's/^Loaded Configuration File: *//p' | tr -d '"')"
         if [ -n "$PHP_INI" ] && [ -f "$PHP_INI" ]; then
             sed -i -E 's/^;?[[:space:]]*upload_max_filesize[[:space:]]*=.*/upload_max_filesize = 10M/; s/^;?[[:space:]]*post_max_size[[:space:]]*=.*/post_max_size = 20M/' "$PHP_INI"
         else
-            INI_DIR="$("$BIN" --ini | sed -n 's/^Configuration File (php.ini) Path: *//p')"
-            if [ -n "$INI_DIR" ]; then
+            INI_DIR="$("$BIN" --ini | sed -n 's/^Configuration File (php.ini) Path: *//p' | tr -d '"')"
+            if [ -n "$INI_DIR" ] && [ "${INI_DIR:0:1}" = "/" ]; then
                 mkdir -p "$INI_DIR"
                 printf 'upload_max_filesize = 10M\npost_max_size = 20M\n' >> "$INI_DIR/php.ini"
             fi
