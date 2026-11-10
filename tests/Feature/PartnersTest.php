@@ -36,6 +36,26 @@ class PartnersTest extends TestCase
         $this->get('/fr')->assertOk()->assertSee('Nos partenaires')->assertSee('Partenaire Visible')->assertDontSee('Partenaire Masque');
     }
 
+    public function test_home_partners_scroll_automatically_in_a_loop(): void
+    {
+        Partner::query()->create(['name' => 'Partenaire Visible', 'logo_path' => 'partners/logos/a.png', 'is_active' => true]);
+
+        $this->get('/fr')->assertOk()->assertSee('partners-marquee', false)->assertSee('partners-track', false)->assertSee('aria-hidden="true"', false);
+    }
+
+    public function test_home_lists_upcoming_and_past_events(): void
+    {
+        \App\Models\FoundationEvent::query()->create(['title' => 'Forum à venir', 'starts_at' => now()->addDays(5), 'status' => 'published']);
+        \App\Models\FoundationEvent::query()->create(['title' => 'Atelier terminé', 'starts_at' => now()->subDays(10), 'status' => 'completed']);
+        \App\Models\FoundationEvent::query()->create(['title' => 'Brouillon passé', 'starts_at' => now()->subDays(10), 'status' => 'draft']);
+
+        $this->get('/fr')->assertOk()
+            ->assertSee('Forum à venir')
+            ->assertSee('Événements passés')
+            ->assertSee('Atelier terminé')
+            ->assertDontSee('Brouillon passé');
+    }
+
     public function test_dangerous_website_scheme_is_never_linked(): void
     {
         $partner = new Partner(['name' => 'X', 'logo_path' => 'partners/logos/x.png', 'website_url' => 'javascript:alert(1)']);

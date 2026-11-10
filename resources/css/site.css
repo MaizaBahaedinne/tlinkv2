@@ -135,6 +135,50 @@ html {
     }
 }
 
+/* Partenaires : défilement automatique en boucle, mis en pause au survol ou au focus. */
+.partners-marquee {
+    overflow: hidden;
+    padding: 4px 0 12px;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+
+.partners-track {
+    display: flex;
+    width: max-content;
+    animation: partners-scroll 40s linear infinite;
+}
+
+.partners-marquee:hover .partners-track,
+.partners-marquee:focus-within .partners-track {
+    animation-play-state: paused;
+}
+
+.partners-set {
+    display: flex;
+    flex-shrink: 0;
+    gap: 1rem;
+    padding-right: 1rem;
+    margin: 0;
+    list-style: none;
+}
+
+@keyframes partners-scroll {
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .partners-marquee {
+        overflow-x: auto;
+    }
+
+    .partners-track {
+        animation: none;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .hero-slide,
     .hero-kicker,

@@ -107,21 +107,37 @@
         @else
             <p class="mt-6 text-slate-500">{{ __('site.home.no_events') }}</p>
         @endif
+
+        @if($pastEvents->isNotEmpty())
+            <h3 class="mt-10 font-display text-xl font-bold text-brand-900">{{ __('site.events.past') }}</h3>
+            <div class="mt-4 grid gap-4 md:grid-cols-3">
+                @foreach($pastEvents as $event)
+                    @include('site.partials.event-card', ['event' => $event])
+                @endforeach
+            </div>
+        @endif
     </section>
 
     @if($partners->isNotEmpty())
+        @php($track = collect(range(1, (int) ceil(8 / $partners->count())))->flatMap(fn () => $partners))
         <section class="mx-auto mt-16 max-w-6xl px-4" aria-labelledby="partners-title">
             <h2 id="partners-title" class="font-display text-2xl font-bold text-brand-900">{{ __('site.home.partners_title') }}</h2>
-            <ul class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                @foreach($partners as $partner)
-                    <li>
-                        @php($url = $partner->safeUrl())
-                        @if($url)<a href="{{ $url }}" target="_blank" rel="noopener noreferrer" title="{{ $partner->name }}" class="site-card flex h-28 items-center justify-center p-4 transition hover:shadow-md">@else<div title="{{ $partner->name }}" class="site-card flex h-28 items-center justify-center p-4">@endif
-                            <img src="{{ $partner->logoUrl() }}" alt="{{ $partner->name }}" loading="lazy" class="max-h-full max-w-full object-contain">
-                        @if($url)</a>@else</div>@endif
-                    </li>
-                @endforeach
-            </ul>
+            <div class="partners-marquee mt-6" dir="ltr">
+                <div class="partners-track">
+                    @foreach([false, true] as $copy)
+                        <ul class="partners-set" @if($copy) aria-hidden="true" @endif>
+                            @foreach($track as $partner)
+                                <li>
+                                    @php($url = $partner->safeUrl())
+                                    @if($url)<a href="{{ $url }}" target="_blank" rel="noopener noreferrer" title="{{ $partner->name }}" @if($copy) tabindex="-1" @endif class="site-card flex h-28 w-44 items-center justify-center p-4 transition hover:shadow-md">@else<div title="{{ $partner->name }}" class="site-card flex h-28 w-44 items-center justify-center p-4">@endif
+                                        <img src="{{ $partner->logoUrl() }}" alt="{{ $copy ? '' : $partner->name }}" loading="lazy" class="max-h-full max-w-full object-contain">
+                                    @if($url)</a>@else</div>@endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endforeach
+                </div>
+            </div>
         </section>
     @endif
 

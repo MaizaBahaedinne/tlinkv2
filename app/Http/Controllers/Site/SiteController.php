@@ -43,11 +43,17 @@ class SiteController extends Controller
     {
         $news = SiteNews::query()->visible()->limit(3)->get();
         $events = $this->upcomingEvents()->limit(3)->get();
+        $pastEvents = $this->publicEvents()
+            ->where('starts_at', '<', now()->startOfDay())
+            ->orderByDesc('starts_at')
+            ->limit(3)
+            ->get();
 
         return $this->render('site.home', [
             'stats' => $this->stats(),
             'news' => $news,
             'events' => $events,
+            'pastEvents' => $pastEvents,
             'partners' => Partner::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(),
             ...$this->scopeTreeData(),
         ]);
