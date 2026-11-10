@@ -113,11 +113,17 @@ for BIN in /usr/local/lsws/lsphp*/bin/php; do
         printf 'upload_max_filesize = 10M\npost_max_size = 20M\n' > "$SCAN_DIR/99-tlink-uploads.ini"
     fi
 
-    # Contrôle : si la valeur n'est pas prise en compte (pas de conf.d), on modifie directement le php.ini chargé.
+    # Contrôle : si la valeur n'est pas prise en compte, on modifie le php.ini chargé, ou on le crée s'il n'existe pas (cas de lsphp85).
     if [ "$("$BIN" -r 'echo ini_get("upload_max_filesize");')" != "10M" ]; then
         PHP_INI="$("$BIN" --ini | sed -n 's/^Loaded Configuration File: *//p')"
         if [ -n "$PHP_INI" ] && [ -f "$PHP_INI" ]; then
             sed -i -E 's/^;?[[:space:]]*upload_max_filesize[[:space:]]*=.*/upload_max_filesize = 10M/; s/^;?[[:space:]]*post_max_size[[:space:]]*=.*/post_max_size = 20M/' "$PHP_INI"
+        else
+            INI_DIR="$("$BIN" --ini | sed -n 's/^Configuration File (php.ini) Path: *//p')"
+            if [ -n "$INI_DIR" ]; then
+                mkdir -p "$INI_DIR"
+                printf 'upload_max_filesize = 10M\npost_max_size = 20M\n' >> "$INI_DIR/php.ini"
+            fi
         fi
     fi
 
