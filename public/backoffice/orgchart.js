@@ -304,6 +304,10 @@
     }
 
     function subtitleLine(n, people) {
+        if (n.kind === 'position' && n.scope_name) {
+            var who = people.length ? people[0].full_name + (people.length > 1 ? ' +' + (people.length - 1) : '') : 'Poste vacant';
+            return who + ' · ' + n.scope_name;
+        }
         if (people.length) {
             return people[0].full_name + (people.length > 1 ? ' +' + (people.length - 1) : '');
         }
@@ -418,7 +422,7 @@
     }
 
     function tooltip(n, people) {
-        var lines = [n.title];
+        var lines = [n.title + (n.kind === 'position' && n.scope_name ? ' — ' + n.scope_name : '')];
         if (n.subtitle) { lines.push(n.subtitle); }
         lines.push(people.length ? people.map(function (p) { return p.full_name; }).join(', ') : (n.kind === 'position' ? 'Poste vacant' : ''));
         if (n.validation_status === 'to_validate') { lines.push('Relation à valider'); }
@@ -942,7 +946,7 @@
 
         body.appendChild(h('div', { class: 'oc-fiche-head', style: '--chip:' + color },
             chip(S.chart.meta.categories[n.category] || n.category, color, 'is-solid'),
-            h('h3', { class: 'oc-fiche-title', text: n.title }),
+            h('h3', { class: 'oc-fiche-title' }, n.title, n.kind === 'position' && n.scope_name ? h('span', { class: 'oc-scope-tag', text: n.scope_name }) : null),
             n.subtitle ? h('p', { class: 'oc-fiche-sub', text: n.subtitle }) : null,
             h('div', { class: 'oc-badges' },
                 chip(S.chart.meta.kinds[n.kind] || n.kind),
@@ -1125,7 +1129,7 @@
             var p = peopleOf(n)[0];
             box.appendChild(h('button', { type: 'button', class: 'oc-result', onclick: function () { focusNode(n.id); } },
                 h('i', { class: 'oc-dot', style: 'background:' + (COLORS[n.category] || COLORS.direction) }),
-                h('span', {}, h('strong', { text: n.title }), h('small', { text: [n.subtitle, p ? p.full_name : null].filter(Boolean).join(' · ') }))
+                h('span', {}, h('strong', { text: n.title }), h('small', { text: [n.kind === 'position' ? n.scope_name : null, n.subtitle, p ? p.full_name : null].filter(Boolean).join(' · ') }))
             ));
         });
         if (matches.length > 40) { box.appendChild(h('p', { class: 'oc-muted', text: 'Affinez la recherche pour voir les autres résultats.' })); }

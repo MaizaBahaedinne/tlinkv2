@@ -28,6 +28,9 @@
                             </div>
                             <div class="text-sm">
                                 Poste : <strong>{{ $application->node?->title ?? '—' }}</strong>
+                                @if($application->node?->scopeLabel())
+                                    <span class="text-muted">· {{ $application->node->scopeLabel() }}</span>
+                                @endif
                                 @if($application->node && $application->node->capacity !== 'multiple')
                                     <span class="text-muted">(titulaire unique)</span>
                                 @endif

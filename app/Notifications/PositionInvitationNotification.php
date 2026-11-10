@@ -22,11 +22,13 @@ class PositionInvitationNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $title = (string) $this->invitation->node?->title;
+        $scope = $this->invitation->node?->scopeLabel();
+        $position = $title.($scope ? ' ('.$scope.')' : '');
 
         return (new MailMessage())
-            ->subject('Invitation à candidater : '.$title.' | T.Link')
+            ->subject('Invitation à candidater : '.$position.' | T.Link')
             ->greeting('Bonjour '.$this->invitation->first_name.' !')
-            ->line('La Fondation Tunivisions vous invite à candidater au poste « '.$title.' ».')
+            ->line('La Fondation Tunivisions vous invite à candidater au poste « '.$position.' ».')
             ->line('Créez votre compte T.Link en quelques minutes, puis déposez votre candidature : elle sera examinée par l’équipe.')
             ->action('Créer mon compte et candidater', route('position.invitation', $this->token))
             ->line('Ce lien est personnel et valable '.PositionInvitation::VALID_DAYS.' jours. Si cette invitation ne vous concerne pas, ignorez ce message.')

@@ -354,6 +354,43 @@ class PositionInvitationTest extends TestCase
         $this->assertSame('accepted', PositionInvitation::query()->firstOrFail()->status());
     }
 
+    public function test_the_scope_is_shown_next_to_the_position_name(): void
+    {
+        Notification::fake();
+        $position = $this->position();
+        $position->forceFill(['scope' => 'university'])->save();
+
+        $this->actingAs($this->admin())->postJson('/organigramme/blocs/'.$position->id.'/invitations', ['invitees' => [$this->invitee()]])->assertOk();
+        $token = $this->sentToken('amel@example.com');
+        $invitation = PositionInvitation::query()->firstOrFail();
+        $mail = (new PositionInvitationNotification($invitation, $token))->toMail(new \stdClass());
+
+        $this->assertSame('University', $position->scopeLabel());
+        $this->assertStringContainsString('Responsable communication (University)', $mail->subject);
+
+        auth()->logout();
+        $this->get('/invitation/'.$token)->assertOk()->assertSee('University');
+    }
+
+    public function test_a_position_inherits_the_scope_of_its_closest_parent(): void
+    {
+        $parent = OrgNode::query()->create([
+            'parent_id' => null,
+            'relation_type' => 'hierarchy',
+            'kind' => 'unit',
+            'capacity' => 'single',
+            'access_level' => 'none',
+            'category' => 'national_office',
+            'title' => 'Bureau test',
+            'scope' => 'university',
+            'sort_order' => 5,
+        ]);
+        $position = $this->position();
+        $position->forceFill(['parent_id' => $parent->id])->save();
+
+        $this->assertSame('University', $position->fresh()->scopeLabel());
+    }
+
     public function test_unknown_invitation_token_is_a_404(): void
     {
         $this->get('/invitation/'.str_repeat('z', 40))->assertNotFound();

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OrgScopes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -211,5 +212,21 @@ class OrgNode extends Model
     public function joinUrl(): ?string
     {
         return $this->kind === 'position' && $this->join_token ? route('position.join', $this->join_token) : null;
+    }
+
+    /** Libellé du périmètre du bloc : le sien, sinon celui du plus proche bloc parent. */
+    public function scopeLabel(): ?string
+    {
+        $node = $this;
+
+        for ($guard = 0; $node !== null && $guard < 60; $guard++) {
+            if ($node->scope !== null && $node->scope !== '') {
+                return OrgScopes::label($node->scope);
+            }
+
+            $node = $node->parent;
+        }
+
+        return null;
     }
 }

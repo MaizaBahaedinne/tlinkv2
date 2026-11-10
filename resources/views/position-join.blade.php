@@ -13,7 +13,7 @@
 @endphp
 <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-10">
     <p class="{{ $legend }}">Candidature</p>
-    <h1 class="mt-1 font-display text-3xl font-semibold text-slate-900">{{ $node->title }}</h1>
+    <h1 class="mt-1 font-display text-3xl font-semibold text-slate-900">{{ $node->title }}@if ($node->scopeLabel()) <span class="ml-1 align-middle rounded-full bg-tlink-blue/10 px-3 py-1 text-sm font-semibold text-tlink-blue">{{ $node->scopeLabel() }}</span>@endif</h1>
     @if ($node->subtitle)
         <p class="mt-1 text-sm text-slate-500">{{ $node->subtitle }}</p>
     @endif
