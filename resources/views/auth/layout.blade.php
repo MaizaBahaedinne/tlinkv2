@@ -3,7 +3,7 @@
 @section('content')
 <div class="min-h-screen lg:grid lg:grid-cols-[1.1fr_1fr]">
     {{-- Hero --}}
-    <aside class="relative isolate overflow-hidden bg-gradient-to-br from-[#6e0019] via-[#a30027] to-[#d00031] px-5 pb-16 pt-5 text-white sm:px-10 lg:flex lg:min-h-screen lg:flex-col lg:justify-between lg:px-14 lg:py-14">
+    <aside class="relative isolate overflow-hidden bg-gradient-to-br from-[#6e0019] via-[#a30027] to-[#d00031] px-5 pb-16 pt-5 text-white sm:px-10 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:justify-between lg:self-start lg:px-14 lg:py-14">
         {{-- Motif en facettes derriere le contenu --}}
         <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
             <div class="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-2xl"></div>
