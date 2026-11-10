@@ -22,7 +22,9 @@
         <p class="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</p>
     @endif
 
-    @if ($closed)
+    @if ($invalid ?? null)
+        <p class="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{{ $invalid }}</p>
+    @elseif ($closed)
         <p class="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Ce poste est déjà pourvu : les candidatures sont fermées.</p>
     @elseif ($alreadyHolder)
         <p class="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">Vous occupez déjà ce poste.</p>
@@ -31,7 +33,7 @@
     @elseif (auth()->check())
         <p class="mt-4 text-sm text-slate-600">Vous êtes connecté(e) en tant que <strong>{{ auth()->user()->name }}</strong>. Votre profil actuel sera joint à la candidature.</p>
 
-        <form class="mt-6 space-y-5" method="post" action="{{ route('position.join.store', $node->join_token) }}">
+        <form class="mt-6 space-y-5" method="post" action="{{ $action ?? route('position.join.store', $node->join_token) }}">
             @csrf
             <div>
                 <label class="{{ $label }}" for="message">Pourquoi ce poste ?</label>
@@ -41,9 +43,13 @@
             <button type="submit" class="w-full rounded-xl bg-tlink-blue px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-tlink-blue/25 transition hover:bg-tlink-blue-700">Envoyer ma candidature</button>
         </form>
     @else
-        <p class="mt-4 text-sm text-slate-600">Remplissez ce formulaire : il crée votre compte et dépose votre candidature. Les champs marqués d’une étoile sont obligatoires.</p>
+        @if ($invitation ?? null)
+            <p class="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">Invitation personnelle pour <strong>{{ $invitation->fullName() }}</strong>. Créez votre compte avec l’adresse <strong>{{ $invitation->email }}</strong> : il sera validé automatiquement et votre candidature sera déposée.</p>
+        @else
+            <p class="mt-4 text-sm text-slate-600">Remplissez ce formulaire : il crée votre compte et dépose votre candidature. Les champs marqués d’une étoile sont obligatoires.</p>
+        @endif
 
-        <form class="mt-6 space-y-8" method="post" action="{{ route('position.join.store', $node->join_token) }}" enctype="multipart/form-data">
+        <form class="mt-6 space-y-8" method="post" action="{{ $action ?? route('position.join.store', $node->join_token) }}" enctype="multipart/form-data">
             @csrf
 
             <fieldset class="space-y-4">
@@ -67,12 +73,12 @@
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="{{ $label }}" for="first_name">Prénom *</label>
-                        <input id="first_name" name="first_name" type="text" value="{{ old('first_name') }}" required maxlength="120" autocomplete="given-name" class="{{ $input }}">
+                        <input id="first_name" name="first_name" type="text" value="{{ old('first_name', $invitation->first_name ?? '') }}" required maxlength="120" autocomplete="given-name" class="{{ $input }}">
                         @error('first_name') <p class="mt-1.5 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="{{ $label }}" for="last_name">Nom de famille *</label>
-                        <input id="last_name" name="last_name" type="text" value="{{ old('last_name') }}" required maxlength="120" autocomplete="family-name" class="{{ $input }}">
+                        <input id="last_name" name="last_name" type="text" value="{{ old('last_name', $invitation->last_name ?? '') }}" required maxlength="120" autocomplete="family-name" class="{{ $input }}">
                         @error('last_name') <p class="mt-1.5 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -163,7 +169,7 @@
                 <legend class="{{ $legend }}">Compte</legend>
                 <div>
                     <label class="{{ $label }}" for="email">Email *</label>
-                    <input id="email" name="email" type="email" value="{{ old('email') }}" required autocomplete="email" placeholder="toi@exemple.com" class="{{ $input }}">
+                    <input id="email" name="email" type="email" value="{{ old('email', $invitation->email ?? '') }}" required autocomplete="email" placeholder="toi@exemple.com" @readonly((bool) ($invitation ?? null)) class="{{ $input }} @if ($invitation ?? null) bg-slate-50 text-slate-500 @endif">
                     @error('email') <p class="mt-1.5 text-xs text-rose-600">{{ $message }}</p> @enderror
                 </div>
                 <div class="grid gap-4 sm:grid-cols-2">

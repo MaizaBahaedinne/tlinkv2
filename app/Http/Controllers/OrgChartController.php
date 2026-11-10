@@ -10,10 +10,12 @@ use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
 use App\Models\PositionApplication;
+use App\Models\PositionInvitation;
 use App\Models\User;
 use App\Support\AdminContext;
 use App\Support\AccessLevels;
 use App\Support\AuditLogger;
+use App\Support\PositionInvitations;
 use App\Support\OrgScopes;
 use App\Support\OrgChart\OrgChartInstaller;
 use App\Support\OrgChart\OrgChartLinker;
@@ -409,6 +411,87 @@ class OrgChartController extends Controller
         return $this->respond($request, $node->id);
     }
 
+    /**
+     * Invite par e-mail une ou plusieurs personnes à candidater à un poste vacant : chacune reçoit un lien personnel
+     * qui mène à la création de son compte puis au dépôt de sa candidature (validée ensuite par un administrateur).
+     * Un poste à titulaire unique n'invite qu'une personne à la fois.
+     */
+    public function invite(Request $request, OrgNode $node): JsonResponse
+    {
+        $this->requireEditor($request);
+        $this->assertNodeInMandate($node->id, $this->resolveMandate($request));
+
+        if ($node->kind !== 'position') {
+            throw ValidationException::withMessages(['node' => 'Seuls les postes peuvent recevoir des candidats.']);
+        }
+
+        if ($node->capacity !== 'multiple' && $this->rules->currentPeopleCount($node) >= 1) {
+            throw ValidationException::withMessages(['node' => 'Ce poste est déjà pourvu : retirez d’abord la personne en place pour inviter un candidat.']);
+        }
+
+        $max = $node->capacity === 'multiple' ? 20 : 1;
+
+        $data = $request->validate([
+            'invitees' => ['required', 'array', 'min:1', 'max:'.$max],
+            'invitees.*.first_name' => ['required', 'string', 'max:120'],
+            'invitees.*.last_name' => ['required', 'string', 'max:120'],
+            'invitees.*.email' => ['required', 'email', 'max:255', 'distinct:ignore_case'],
+        ], [
+            'invitees.required' => 'Indiquez au moins une personne à inviter.',
+            'invitees.max' => $max === 1 ? 'Ce poste à titulaire unique n’accepte qu’une invitation à la fois.' : 'Vingt invitations au maximum par envoi.',
+            'invitees.*.first_name.required' => 'Le prénom est obligatoire pour chaque personne.',
+            'invitees.*.last_name.required' => 'Le nom est obligatoire pour chaque personne.',
+            'invitees.*.email.required' => 'L’e-mail est obligatoire pour chaque personne.',
+            'invitees.*.email.email' => 'Une des adresses e-mail n’est pas valide.',
+            'invitees.*.email.distinct' => 'La même adresse e-mail est saisie plusieurs fois.',
+        ]);
+
+        $result = PositionInvitations::send($node, $data['invitees'], $request->user());
+
+        foreach ($result['sent'] as $sent) {
+            $this->audit($request, 'orgchart.invitation.sent', $node, ['title' => $node->title, 'email' => $sent['email']]);
+        }
+
+        return $this->respond($request, $node->id, 200, ['invitation_result' => $result]);
+    }
+
+    public function resendInvitation(Request $request, PositionInvitation $invitation): JsonResponse
+    {
+        $this->requireEditor($request);
+        $this->assertNodeInMandate($invitation->node_id, $this->resolveMandate($request));
+
+        if ($invitation->status() === 'accepted') {
+            throw ValidationException::withMessages(['invitation' => 'Cette personne a déjà candidaté.']);
+        }
+
+        $node = $invitation->node;
+
+        if ($node->capacity !== 'multiple' && $this->rules->currentPeopleCount($node) >= 1) {
+            throw ValidationException::withMessages(['invitation' => 'Ce poste est déjà pourvu.']);
+        }
+
+        if (! PositionInvitations::deliver($invitation)) {
+            throw ValidationException::withMessages(['invitation' => 'L’e-mail n’a pas pu être envoyé : vérifiez la messagerie (Administration, Messagerie).']);
+        }
+
+        $this->audit($request, 'orgchart.invitation.sent', $node, ['title' => $node->title, 'email' => $invitation->email]);
+
+        return $this->respond($request, $node->id);
+    }
+
+    public function revokeInvitation(Request $request, PositionInvitation $invitation): JsonResponse
+    {
+        $this->requireEditor($request);
+        $this->assertNodeInMandate($invitation->node_id, $this->resolveMandate($request));
+
+        if ($invitation->status() === 'pending') {
+            $invitation->forceFill(['revoked_at' => now()])->save();
+            $this->audit($request, 'orgchart.invitation.revoked', $invitation->node, ['title' => $invitation->node->title, 'email' => $invitation->email]);
+        }
+
+        return $this->respond($request, $invitation->node_id);
+    }
+
     public function syncAssignments(Request $request, OrgNode $node): JsonResponse
     {
         $this->requireEditor($request);
@@ -682,8 +765,17 @@ class OrgChartController extends Controller
         $clubMembers = collect();
         $scopeMembers = collect();
         $pendingApplications = collect();
+        $invitations = collect();
 
         if ($canEdit) {
+            $invitations = PositionInvitation::query()->latest('id')->get()->groupBy('node_id')->map(fn ($group) => $group->take(30)->map(fn (PositionInvitation $invitation): array => [
+                'id' => $invitation->id,
+                'name' => $invitation->fullName(),
+                'email' => $invitation->email,
+                'status' => $invitation->status(),
+                'status_label' => PositionInvitation::STATUSES[$invitation->status()],
+                'sent_at' => $invitation->last_sent_at?->format('d/m/Y H:i'),
+            ])->values()->all());
             $pendingApplications = PositionApplication::query()->where('status', 'pending')->groupBy('node_id')->selectRaw('node_id, count(*) as total')->pluck('total', 'node_id');
             $approved = fn () => Membership::query()->where('memberships.status', 'approved');
             $clubMembers = $approved()->whereNotNull('node_id')->groupBy('node_id')->selectRaw('node_id, count(distinct user_id) as total')->pluck('total', 'node_id');
@@ -707,7 +799,7 @@ class OrgChartController extends Controller
                 'institution_types' => OrgNode::INSTITUTION_TYPES,
                 'applications_url' => $canEdit ? route('admin.candidatures.index') : null,
             ],
-            'nodes' => $nodes->map(function (OrgNode $node) use ($assignments, $resolve, $clubMembers, $scopeMembers, $pendingApplications, $canEdit): array {
+            'nodes' => $nodes->map(function (OrgNode $node) use ($assignments, $resolve, $clubMembers, $scopeMembers, $pendingApplications, $invitations, $canEdit): array {
                 [$effScope, $scopeInherited] = $resolve($node);
 
                 return [
@@ -718,6 +810,7 @@ class OrgChartController extends Controller
                     'capacity' => $node->capacity ?? 'single',
                     'access_level' => $canEdit ? $node->access_level : null,
                     'join_url' => $canEdit ? $node->joinUrl() : null,
+                    'invitations' => $canEdit && $node->kind === 'position' ? ($invitations[$node->id] ?? []) : null,
                     'pending_applications' => $canEdit && $node->kind === 'position' ? (int) ($pendingApplications[$node->id] ?? 0) : null,
                     'category' => $node->category,
                     'title' => $node->title,

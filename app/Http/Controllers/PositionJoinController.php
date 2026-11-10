@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Governorate;
 use App\Models\OrgNode;
 use App\Models\PositionApplication;
+use App\Models\PositionInvitation;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\AuditLogger;
@@ -48,7 +49,70 @@ class PositionJoinController extends Controller
             'existing' => $user ? $this->existingApplication($node, $user) : null,
             'alreadyHolder' => $user ? $this->isHolder($node, $user) : false,
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name']),
+            'invitation' => null,
+            'invalid' => null,
+            'action' => route('position.join.store', $node->join_token),
         ]);
+    }
+
+    /**
+     * Lien personnel reçu par e-mail : l'e-mail est prérempli (et fait foi), la personne crée son compte puis candidate.
+     * Si un compte existe déjà avec cette adresse, elle se connecte puis revient ici.
+     */
+    public function showInvitation(Request $request, string $token): View|RedirectResponse
+    {
+        $invitation = $this->invitationFor($token);
+        $node = $invitation->node;
+        $user = $request->user();
+
+        $invalid = match ($invitation->status()) {
+            'revoked' => 'Cette invitation a été annulée. Contactez la Fondation pour en recevoir une nouvelle.',
+            'expired' => 'Cette invitation a expiré. Contactez la Fondation pour en recevoir une nouvelle.',
+            'accepted' => $user ? null : 'Cette invitation a déjà été utilisée. Connectez-vous pour suivre votre candidature.',
+            default => null,
+        };
+
+        if ($invalid === null && ! $user && User::query()->where('email', $invitation->email)->exists()) {
+            $request->session()->put('url.intended', $request->url());
+
+            return redirect()->route('login')->with('status', 'Un compte existe déjà avec l’adresse '.$invitation->email.' : connectez-vous pour candidater au poste « '.$node->title.' ».');
+        }
+
+        return view('position-join', [
+            'node' => $node,
+            'closed' => $invalid === null && $this->isTaken($node),
+            'existing' => $user ? $this->existingApplication($node, $user) : null,
+            'alreadyHolder' => $user ? $this->isHolder($node, $user) : false,
+            'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name']),
+            'invitation' => $invitation,
+            'invalid' => $invalid,
+            'action' => route('position.invitation.store', $token),
+        ]);
+    }
+
+    public function storeInvitation(Request $request, string $token): RedirectResponse
+    {
+        $invitation = $this->invitationFor($token);
+        $node = $invitation->node;
+
+        if (! $invitation->isOpen()) {
+            throw ValidationException::withMessages(['message' => 'Cette invitation n’est plus valide : demandez-en une nouvelle à la Fondation.']);
+        }
+
+        if ($this->isTaken($node)) {
+            throw ValidationException::withMessages(['message' => 'Ce poste est déjà pourvu : les candidatures sont fermées.']);
+        }
+
+        $user = $request->user();
+
+        if ($user) {
+            return $this->applyExisting($request, $node, $user, $invitation);
+        }
+
+        // L'adresse de l'invitation fait foi : elle ne peut pas être remplacée dans le formulaire.
+        $request->merge(['email' => $invitation->email]);
+
+        return $this->register($request, $node, $invitation);
     }
 
     public function store(Request $request, string $token): RedirectResponse
@@ -65,6 +129,12 @@ class PositionJoinController extends Controller
             return $this->applyExisting($request, $node, $user);
         }
 
+        return $this->register($request, $node);
+    }
+
+    /** Crée le compte, le profil et la candidature ; avec une invitation, l'adresse est déjà prouvée par la réception du lien. */
+    private function register(Request $request, OrgNode $node, ?PositionInvitation $invitation = null): RedirectResponse
+    {
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:120'],
             'last_name' => ['required', 'string', 'max:120'],
@@ -92,13 +162,17 @@ class PositionJoinController extends Controller
         $avatarPath = $request->file('avatar')->store('profiles/avatars', 'public');
 
         try {
-            $user = DB::transaction(function () use ($data, $node, $avatarPath): User {
+            $user = DB::transaction(function () use ($data, $node, $avatarPath, $invitation): User {
                 $user = User::query()->create([
                     'first_name' => $data['first_name'],
                     'last_name' => $data['last_name'],
                     'email' => $data['email'],
                     'password' => Hash::make($data['password']),
                 ]);
+
+                if ($invitation) {
+                    $user->forceFill(['email_verified_at' => now()])->save();
+                }
 
                 Profile::query()->create([
                     'user_id' => $user->id,
@@ -117,7 +191,7 @@ class PositionJoinController extends Controller
                     'photo_path' => $avatarPath,
                 ]);
 
-                $this->createApplication($node, $user, $data['message']);
+                $this->createApplication($node, $user, $data['message'], $invitation);
 
                 return $user;
             });
@@ -134,7 +208,7 @@ class PositionJoinController extends Controller
         return $this->afterApplication($node, 'Votre compte est créé et votre candidature au poste « '.$node->title.' » est enregistrée : elle sera examinée par l’équipe.');
     }
 
-    private function applyExisting(Request $request, OrgNode $node, User $user): RedirectResponse
+    private function applyExisting(Request $request, OrgNode $node, User $user, ?PositionInvitation $invitation = null): RedirectResponse
     {
         $data = $request->validate(['message' => ['required', 'string', 'max:2000']], [
             'message.required' => 'Expliquez brièvement votre motivation.',
@@ -148,7 +222,7 @@ class PositionJoinController extends Controller
             throw ValidationException::withMessages(['message' => 'Votre candidature à ce poste est déjà en cours d’examen.']);
         }
 
-        $this->createApplication($node, $user, $data['message']);
+        $this->createApplication($node, $user, $data['message'], $invitation);
 
         return $this->afterApplication($node, 'Votre candidature au poste « '.$node->title.' » est enregistrée : elle sera examinée par l’équipe.');
     }
@@ -163,7 +237,7 @@ class PositionJoinController extends Controller
         return redirect($target)->with('status', $status);
     }
 
-    private function createApplication(OrgNode $node, User $user, string $message): PositionApplication
+    private function createApplication(OrgNode $node, User $user, string $message, ?PositionInvitation $invitation = null): PositionApplication
     {
         $application = PositionApplication::query()->create([
             'node_id' => $node->id,
@@ -174,7 +248,17 @@ class PositionJoinController extends Controller
 
         AuditLogger::record($user->id, 'position.application.created', PositionApplication::class, $application->id, ['position' => $node->title], request()->ip());
 
+        if ($invitation && $invitation->isOpen() && mb_strtolower($user->email) === mb_strtolower($invitation->email)) {
+            $invitation->forceFill(['accepted_at' => now(), 'user_id' => $user->id])->save();
+            AuditLogger::record($user->id, 'position.invitation.accepted', PositionInvitation::class, $invitation->id, ['position' => $node->title], request()->ip());
+        }
+
         return $application;
+    }
+
+    private function invitationFor(string $token): PositionInvitation
+    {
+        return PositionInvitation::findByToken($token) ?? abort(404);
     }
 
     private function nodeFor(string $token): OrgNode

@@ -59,6 +59,9 @@ Domains::on('academy')->get('/certificats/{code}', [AcademyController::class, 'c
 // Lien d'inscription direct d'un poste de l'organigramme (public : jeton non devinable, candidature a valider).
 Route::get('/rejoindre/{token}', [PositionJoinController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('position.join');
 Route::post('/rejoindre/{token}', [PositionJoinController::class, 'store'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:10,10')->name('position.join.store');
+// Invitation personnelle envoyée par e-mail : création du compte puis candidature au poste.
+Route::get('/invitation/{token}', [PositionJoinController::class, 'showInvitation'])->where('token', '[A-Za-z0-9]{40}')->name('position.invitation');
+Route::post('/invitation/{token}', [PositionJoinController::class, 'storeInvitation'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:10,10')->name('position.invitation.store');
 
 // Identité installable de chaque sous-domaine (nom, logo) et liens vérifiés Android (ouvrir l'application installée).
 Route::get('/manifest.webmanifest', [\App\Http\Controllers\AppManifestController::class, 'manifest'])->name('manifest');
@@ -310,6 +313,9 @@ Route::middleware('auth')->prefix('organigramme')->name('orgchart.')->group(func
     Route::put('blocs/{node}/affectations', [OrgChartController::class, 'syncAssignments'])->name('nodes.assignments');
     Route::post('blocs/{node}/modele', [OrgChartController::class, 'applyTemplate'])->name('nodes.template');
     Route::post('blocs/{node}/lien-inscription', [OrgChartController::class, 'regenerateJoinLink'])->name('nodes.join-link');
+    Route::post('blocs/{node}/invitations', [OrgChartController::class, 'invite'])->middleware('throttle:20,10')->name('nodes.invitations');
+    Route::post('invitations/{invitation}/renvoyer', [OrgChartController::class, 'resendInvitation'])->middleware('throttle:20,10')->name('invitations.resend');
+    Route::delete('invitations/{invitation}', [OrgChartController::class, 'revokeInvitation'])->name('invitations.revoke');
     Route::post('disposition', [OrgChartController::class, 'saveLayout'])->name('layout.save');
     Route::post('clubs', [OrgChartController::class, 'storeClub'])->name('clubs.store');
 

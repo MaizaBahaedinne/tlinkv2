@@ -357,3 +357,10 @@ html, body { height: 100%; margin: 0; }
 .oc-join{display:grid;gap:8px}
 .oc-join .oc-assign{display:flex;flex-wrap:wrap;gap:8px}
 .oc-join input{width:100%;font-size:12px}
+.oc-invite-rows{display:grid;gap:10px}
+.oc-invite-row{display:grid;gap:6px;padding:10px;border-radius:12px;background:#f6f7fa}
+.oc-invite-list{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.oc-invite-item{display:grid;gap:6px;padding:10px;border-radius:12px;background:#f6f7fa}
+.oc-invite-item small{display:block;word-break:break-all}
+.oc-invite-actions{display:flex;flex-wrap:wrap;gap:6px}
+.oc-btn[hidden]{display:none}

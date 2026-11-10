@@ -829,6 +829,98 @@
             ));
     }
 
+    // Invitations par e-mail : nom, prenom et e-mail de la ou des personnes (une seule pour un poste a titulaire unique).
+    function inviteSection(n) {
+        var multiple = n.capacity === 'multiple';
+        var taken = !multiple && peopleOf(n).length >= 1;
+        var max = multiple ? 20 : 1;
+        var rows = h('div', { class: 'oc-invite-rows' });
+        var addBtn = null;
+        var sendBtn = null;
+
+        function refresh() {
+            var count = rows.children.length;
+            if (addBtn) { addBtn.hidden = count >= max; }
+            Array.prototype.forEach.call(rows.children, function (r) {
+                var rm = r.querySelector('.oc-invite-remove');
+                if (rm) { rm.hidden = count <= 1; }
+            });
+        }
+
+        function addRow() {
+            var row = h('div', { class: 'oc-invite-row' },
+                h('input', { type: 'text', class: 'oc-user-input', 'data-f': 'first_name', placeholder: 'Prénom', maxlength: 120, autocomplete: 'off', 'aria-label': 'Prénom' }),
+                h('input', { type: 'text', class: 'oc-user-input', 'data-f': 'last_name', placeholder: 'Nom', maxlength: 120, autocomplete: 'off', 'aria-label': 'Nom' }),
+                h('input', { type: 'email', class: 'oc-user-input', 'data-f': 'email', placeholder: 'E-mail', maxlength: 255, autocomplete: 'off', 'aria-label': 'E-mail' }),
+                h('button', { type: 'button', class: 'oc-btn oc-invite-remove', text: 'Retirer', onclick: function () { rows.removeChild(row); refresh(); } })
+            );
+            rows.appendChild(row);
+            refresh();
+        }
+
+        function collect() {
+            return Array.prototype.map.call(rows.children, function (r) {
+                var v = function (f) { return r.querySelector('[data-f="' + f + '"]').value.trim(); };
+                return { first_name: v('first_name'), last_name: v('last_name'), email: v('email') };
+            });
+        }
+
+        function send() {
+            sendBtn.disabled = true;
+            api('POST', '/blocs/' + n.id + '/invitations', { invitees: collect() }).then(function (res) {
+                var r = res.invitation_result || { sent: [], skipped: [], failed: [] };
+                applyResponse(res, null);
+                if (r.sent.length) { toast(r.sent.length === 1 ? 'Invitation envoyée à ' + r.sent[0].email + '.' : r.sent.length + ' invitations envoyées.', 'ok'); }
+                r.skipped.forEach(function (s) { toast(s.email + ' : ' + s.reason + '.', 'error'); });
+                r.failed.forEach(function (f) { toast(f.email + ' : ' + f.reason + '.', 'error'); });
+            }).catch(function (err) { sendBtn.disabled = false; toast(formatError(err), 'error'); });
+        }
+
+        var statusClass = { pending: 'is-warn', accepted: 'is-ok' };
+        var list = h('ul', { class: 'oc-invite-list' });
+        (n.invitations || []).forEach(function (inv) {
+            var actions = h('div', { class: 'oc-invite-actions' });
+            if (inv.status !== 'accepted') {
+                actions.appendChild(btn('Renvoyer', function () {
+                    api('POST', '/invitations/' + inv.id + '/renvoyer').then(function (res) { applyResponse(res, 'Invitation renvoyée à ' + inv.email + '.'); }).catch(function (err) { toast(formatError(err), 'error'); });
+                }));
+            }
+            if (inv.status === 'pending') {
+                actions.appendChild(btn('Révoquer', function () {
+                    api('DELETE', '/invitations/' + inv.id).then(function (res) { applyResponse(res, 'Invitation révoquée.'); }).catch(function (err) { toast(formatError(err), 'error'); });
+                }));
+            }
+            list.appendChild(h('li', { class: 'oc-invite-item' },
+                h('div', {},
+                    h('strong', { text: inv.name }),
+                    h('small', { class: 'oc-muted', text: inv.email + ' · ' + (inv.sent_at ? 'envoyée le ' + inv.sent_at : 'non envoyée') })
+                ),
+                chip(inv.status_label, null, statusClass[inv.status] || ''),
+                actions
+            ));
+        });
+
+        var content = h('div', { class: 'oc-join' });
+        content.appendChild(h('p', { class: 'oc-muted', text: multiple
+            ? 'Saisissez le nom, le prénom et l\'e-mail de chaque personne : elles reçoivent un lien personnel pour créer leur compte et candidater à ce poste (valable 14 jours).'
+            : 'Saisissez le nom, le prénom et l\'e-mail de la personne : elle reçoit un lien personnel pour créer son compte et candidater à ce poste (valable 14 jours).' }));
+
+        if (taken) {
+            content.appendChild(h('p', { class: 'oc-note', text: 'Poste pourvu : retirez la personne en place pour inviter un candidat.' }));
+        } else {
+            addRow();
+            content.appendChild(rows);
+            addBtn = multiple ? btn('+ Ajouter une personne', function () { addRow(); }) : null;
+            sendBtn = btn('Envoyer l\'invitation' + (multiple ? 's' : ''), send, 'oc-btn-primary');
+            content.appendChild(h('div', { class: 'oc-assign' }, sendBtn, addBtn));
+            refresh();
+        }
+
+        if ((n.invitations || []).length) { content.appendChild(list); }
+
+        return section('Inviter à candidater', content);
+    }
+
     function renderPanel() {
         var body = $('#oc-panel-body');
         body.textContent = '';
@@ -914,6 +1006,7 @@
         body.appendChild(section('Personnes', list));
 
         if (S.canEdit && isPos && n.join_url) { body.appendChild(joinLinkSection(n)); }
+        if (S.canEdit && isPos) { body.appendChild(inviteSection(n)); }
 
         if (n.description) { body.appendChild(section('Description', h('p', { class: 'oc-desc', text: n.description }))); }
 
