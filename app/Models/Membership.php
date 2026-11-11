@@ -52,8 +52,36 @@ class Membership extends Model
     }
 
     /**
-     * Adhésions liées à un mandat : celles dont la période recoupe la sienne (une adhésion approuvée sans fin
-     * reste active sur les mandats suivants). Les demandes en attente sont toujours conservées : elles restent à traiter.
+     * Adhésions d'un mandat : celles qui y entrent (date de début dans ses dates) ou, si elles ont une date de fin,
+     * celles dont la période le recoupe. Une adhésion sans fin n'appartient qu'à son mandat d'entrée.
+     * Les demandes en attente restent affichées ($withPending) : elles sont à traiter.
+     *
+     * @param Builder<Membership> $query
+     */
+    public function scopeInMandate(Builder $query, Mandate $mandate, bool $withPending = true): Builder
+    {
+        $begin = 'coalesce(memberships.starts_at, memberships.created_at)';
+        $from = $mandate->windowStart()->toDateString();
+        $before = $mandate->windowEnd()->addDay()->toDateString();
+
+        return $query->where(function (Builder $outer) use ($begin, $from, $before, $withPending): void {
+            if ($withPending) {
+                $outer->where('memberships.status', 'pending');
+            }
+
+            $outer->orWhere(function (Builder $window) use ($begin, $from, $before): void {
+                $window->whereRaw("{$begin} < ?", [$before])
+                    ->where(function (Builder $tail) use ($begin, $from): void {
+                        $tail->where('memberships.ends_at', '>=', $from)
+                            ->orWhere(fn (Builder $open) => $open->whereNull('memberships.ends_at')->whereRaw("{$begin} >= ?", [$from]));
+                    });
+            });
+        });
+    }
+
+    /**
+     * Adhésions actives pendant un mandat : celles dont la période recoupe la sienne (une adhésion approuvée sans fin
+     * reste active sur les mandats suivants : base du renouvellement des cartes). Les demandes en attente sont conservées.
      *
      * @param Builder<Membership> $query
      */

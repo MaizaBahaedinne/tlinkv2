@@ -92,6 +92,7 @@ chmod -R u+rwX,go+rX "$DEST/storage/app/public"
 
 echo "[7/8] Migrations et caches"
 artisan migrate --force
+artisan memberships:sync-positions || echo "Adhésions des postes : synchronisation ignorée (voir les journaux)."
 artisan cards:sync || echo "Cartes de membre : synchronisation ignorée (voir les journaux)."
 artisan optimize:clear
 artisan config:cache

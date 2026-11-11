@@ -38,8 +38,17 @@ class AppServiceProvider extends ServiceProvider
         // Cartes de membre : émises à la validation d'une adhésion, renouvelées ou expirées au changement de mandat.
         // Une erreur de synchronisation est journalisée mais ne doit jamais bloquer la validation d'une adhésion.
         \App\Models\Membership::saved(fn (\App\Models\Membership $membership) => rescue(fn () => \App\Support\Cards\MemberCards::sync($membership->user_id)));
+        // Titulaire d'un poste du mandat en cours = adhérent validé de ce mandat.
+        \App\Models\OrgAssignment::saved(function (\App\Models\OrgAssignment $assignment): void {
+            $userId = $assignment->person?->user_id;
+
+            if ($userId !== null) {
+                rescue(fn () => \App\Support\PositionMemberships::sync((int) $userId));
+            }
+        });
         \App\Models\Mandate::saved(function (\App\Models\Mandate $mandate): void {
             if ($mandate->wasRecentlyCreated || $mandate->wasChanged('status')) {
+                rescue(fn () => \App\Support\PositionMemberships::sync());
                 rescue(fn () => \App\Support\Cards\MemberCards::sync());
             }
         });

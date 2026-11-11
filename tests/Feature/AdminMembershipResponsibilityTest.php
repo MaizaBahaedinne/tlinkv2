@@ -140,7 +140,7 @@ class AdminMembershipResponsibilityTest extends TestCase
         $this->member('Waiting Request', 'university', null, 'pending', null);
 
         $current = $this->actingAs($manager->fresh())->get('/admin/adhesions')->assertOk();
-        $current->assertSee('Ongoing Old')->assertSee('Started Recent')->assertSee('Waiting Request')->assertDontSee('Ended Old');
+        $current->assertSee('Started Recent')->assertSee('Waiting Request')->assertDontSee('Ongoing Old')->assertDontSee('Ended Old');
 
         $oldId = Mandate::query()->where('label', 'Mandat 2023-2024')->value('id');
         $old = $this->actingAs($manager->fresh())->get("/admin/adhesions?mandate={$oldId}")->assertOk();

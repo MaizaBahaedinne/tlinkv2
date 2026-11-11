@@ -18,6 +18,12 @@ Artisan::command('stories:purge', function () {
 
 \Illuminate\Support\Facades\Schedule::command('stories:purge')->hourly();
 
+Artisan::command('memberships:sync-positions', function () {
+    $this->info(\App\Support\PositionMemberships::sync().' adhésion(s) créée(s) pour les titulaires de postes du mandat en cours.');
+})->purpose('Crée l\'adhésion validée du mandat en cours pour chaque titulaire d\'un poste de l\'organigramme');
+
+\Illuminate\Support\Facades\Schedule::command('memberships:sync-positions')->dailyAt('02:50');
+
 Artisan::command('cards:sync', function () {
     $result = \App\Support\Cards\MemberCards::sync();
 

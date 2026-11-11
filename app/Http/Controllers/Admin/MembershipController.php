@@ -50,17 +50,18 @@ class MembershipController extends AdminController
         // Uniquement ce qui est sous la responsabilité de l'utilisateur connecté (tout, un périmètre ou un club).
         $responsibility = MembershipResponsibility::of($request->user(), 'membership.manage');
         $base = $responsibility->apply($this->scoped(Membership::query(), $request, 'membership.manage'))
-            ->when($mandate, fn ($query, Mandate $selected) => $query->duringMandate($selected));
+            ->when($mandate, fn ($query, Mandate $selected) => $query->inMandate($selected));
 
         $counts = (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all();
 
         $memberships = (clone $base)
-            ->with(['user:id,name,email', 'node:id,title'])
+            ->with(['user:id,name,email', 'node:id,title', 'position:id,title'])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['scope'] ?? null, fn ($query, $scope) => $query->where('scope', $scope))
             ->when($filters['q'] ?? null, function ($query, $needle): void {
                 $query->whereHas('user', fn ($user) => $user->where('name', 'like', "%{$needle}%")->orWhere('email', 'like', "%{$needle}%"));
             })
+            ->orderByRaw("case when memberships.status = 'pending' then 0 else 1 end")
             ->latest('id')
             ->paginate(15)
             ->withQueryString();
