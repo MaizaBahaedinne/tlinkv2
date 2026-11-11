@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Models\Challenge;
 use App\Models\ClubActivity;
 use App\Models\FoundationEvent;
+use App\Models\IdentityVerification;
 use App\Models\Membership;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
+use App\Models\PositionApplication;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\GrantsAccess;
@@ -184,6 +186,47 @@ class AdminPerimeterTest extends TestCase
             ->assertOk()
             ->assertSee('Sortie Robotique')
             ->assertDontSee('Sortie Alumni');
+    }
+
+    public function test_applications_are_limited_to_the_positions_of_the_authorized_scope(): void
+    {
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'entity_admin', 'university');
+
+        foreach (['university' => 'Poste Campus', 'alumni' => 'Poste Alumni'] as $scope => $title) {
+            $position = OrgNode::query()->create([
+                'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'access_level' => 'none',
+                'category' => 'direction', 'title' => $title, 'scope' => $scope, 'sort_order' => 0,
+            ]);
+            PositionApplication::query()->create(['node_id' => $position->id, 'user_id' => User::factory()->create()->id, 'message' => 'Candidat']);
+        }
+
+        $this->actingAs($admin->fresh())->get('/admin/structure/candidatures')
+            ->assertOk()
+            ->assertSee('Poste Campus')
+            ->assertDontSee('Poste Alumni');
+    }
+
+    public function test_identity_verifications_are_limited_to_members_of_the_authorized_scope(): void
+    {
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'entity_admin', 'university');
+        $verifications = [];
+
+        foreach (['university' => 'Membre Campus', 'alumni' => 'Membre Alumni'] as $scope => $name) {
+            $user = User::factory()->create(['name' => $name]);
+            Membership::query()->create(['user_id' => $user->id, 'scope' => $scope, 'status' => 'approved', 'membership_type' => 'member', 'starts_at' => '2025-10-01']);
+            $verifications[$scope] = IdentityVerification::query()->create(['user_id' => $user->id, 'status' => 'pending']);
+        }
+
+        $this->actingAs($admin->fresh())->get('/admin/verifications')
+            ->assertOk()
+            ->assertSee('Membre Campus')
+            ->assertDontSee('Membre Alumni');
+
+        $this->actingAs($admin->fresh())->get("/admin/verifications/{$verifications['university']->id}")->assertOk();
+        $this->actingAs($admin->fresh())->get("/admin/verifications/{$verifications['alumni']->id}")->assertForbidden();
+        $this->actingAs($admin->fresh())->post("/admin/verifications/{$verifications['alumni']->id}/valider")->assertForbidden();
     }
 
     public function test_memberships_are_limited_to_the_authorized_scope(): void

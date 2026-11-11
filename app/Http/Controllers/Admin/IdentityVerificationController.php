@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\IdentityVerification;
+use App\Models\Membership;
 use App\Support\IdentityVerifications;
+use App\Support\MembershipResponsibility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -15,14 +17,36 @@ use Illuminate\View\View;
  */
 class IdentityVerificationController extends AdminController
 {
+    /**
+     * Demandes des membres de mon périmètre (adhésion dans un périmètre ou un club que je pilote) ; tout pour les droits globaux.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<IdentityVerification>
+     */
+    private function visible(Request $request)
+    {
+        $responsibility = MembershipResponsibility::of($request->user(), 'entity.manage');
+        $query = IdentityVerification::query();
+
+        if ($responsibility->all()) {
+            return $query;
+        }
+
+        return $query->whereIn('user_id', $responsibility->apply(Membership::query())->select('user_id'));
+    }
+
+    private function authorizeVerification(Request $request, IdentityVerification $verification): void
+    {
+        abort_unless($this->visible($request)->whereKey($verification->id)->exists(), 403, 'Cette demande est hors de votre périmètre.');
+    }
+
     public function index(Request $request): View
     {
         $status = $request->query('status', 'pending');
         $status = in_array($status, array_keys(IdentityVerification::STATUSES), true) ? $status : 'pending';
 
-        $counts = IdentityVerification::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all();
+        $counts = $this->visible($request)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all();
 
-        $verifications = IdentityVerification::query()
+        $verifications = $this->visible($request)
             ->with('user:id,name,email')
             ->where('status', $status)
             ->orderBy($status === 'pending' ? 'created_at' : 'reviewed_at', $status === 'pending' ? 'asc' : 'desc')
@@ -39,6 +63,8 @@ class IdentityVerificationController extends AdminController
 
     public function show(Request $request, IdentityVerification $verification): View
     {
+        $this->authorizeVerification($request, $verification);
+
         $verification->load(['user:id,name,email', 'reviewer:id,name']);
 
         if ($verification->isPending()) {
@@ -49,8 +75,10 @@ class IdentityVerificationController extends AdminController
     }
 
     /** Affiche une pièce déchiffrée : jamais mise en cache, jamais exposée par une URL publique. */
-    public function document(IdentityVerification $verification, string $document): Response
+    public function document(Request $request, IdentityVerification $verification, string $document): Response
     {
+        $this->authorizeVerification($request, $verification);
+
         $file = IdentityVerifications::read($verification, $document);
 
         abort_if($file === null, 404);
@@ -66,6 +94,8 @@ class IdentityVerificationController extends AdminController
 
     public function approve(Request $request, IdentityVerification $verification): RedirectResponse
     {
+        $this->authorizeVerification($request, $verification);
+
         if (! $verification->isPending()) {
             return redirect()->route('admin.verifications.index')->with('status', 'Cette demande a déjà été traitée.');
         }
@@ -78,6 +108,8 @@ class IdentityVerificationController extends AdminController
 
     public function reject(Request $request, IdentityVerification $verification): RedirectResponse
     {
+        $this->authorizeVerification($request, $verification);
+
         if (! $verification->isPending()) {
             return redirect()->route('admin.verifications.index')->with('status', 'Cette demande a déjà été traitée.');
         }

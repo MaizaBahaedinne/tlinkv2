@@ -195,6 +195,38 @@ class OrgAccess
     }
 
     /**
+     * Blocs de l'organigramme (postes compris) sur lesquels l'utilisateur agit pour cette permission :
+     * ceux de ses perimetres (explicites ou herites) et ceux situes dans son club. null = tous (droits globaux).
+     *
+     * @return array<int, int>|null
+     */
+    public static function nodeIdsInReach(User $user, string $permission): ?array
+    {
+        $responsibility = self::responsibility($user, $permission);
+
+        if ($responsibility['all']) {
+            return null;
+        }
+
+        $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
+        $kinds = OrgNode::query()->pluck('kind', 'id')->all();
+        $scopes = OrgNode::query()->whereNotNull('scope')->pluck('scope', 'id')->all();
+        $ids = [];
+
+        foreach (array_keys($parents) as $id) {
+            $club = self::clubOf((int) $id, $parents, $kinds);
+            $inClub = in_array($club ?? (int) $id, $responsibility['clubs'], true);
+            $inScope = in_array(self::resolveScope((int) $id, $parents, $scopes), $responsibility['scopes'], true);
+
+            if ($inClub || $inScope) {
+                $ids[] = (int) $id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * Titulaires d'un poste situe dans le club qui detiennent la permission, le president de club d'abord.
      *
      * @return array<int, int>

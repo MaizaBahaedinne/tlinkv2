@@ -7,6 +7,7 @@ use App\Models\OrgAssignment;
 use App\Models\OrgPerson;
 use App\Models\PositionApplication;
 use App\Support\AdminContext;
+use App\Support\OrgAccess;
 use App\Support\OrgChart\OrgChartRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,9 +31,12 @@ class PositionApplicationController extends AdminController
         $filters = $request->validate(['status' => ['nullable', Rule::in([...array_keys(PositionApplication::STATUSES), 'all'])]]);
         $status = $filters['status'] ?? 'pending';
 
-        $counts = PositionApplication::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $reach = OrgAccess::nodeIdsInReach($request->user(), 'entity.manage');
+        $visible = fn () => PositionApplication::query()->when($reach !== null, fn ($query) => $query->whereIn('node_id', $reach));
 
-        $applications = PositionApplication::query()
+        $counts = $visible()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+
+        $applications = $visible()
             ->with(['node:id,title,capacity', 'user.profile', 'decider:id,name'])
             ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             ->latest('id')
