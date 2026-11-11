@@ -127,6 +127,8 @@ class AuditLabels
         'admin.challenge.deleted' => 'Défi supprimé',
         'admin.activity.created' => 'Activité de club créée',
         'admin.card.suspended' => 'Carte de membre suspendue',
+        'admin.scope_validator.added' => 'Validateur d’entité ajouté',
+        'admin.scope_validator.removed' => 'Validateur d’entité retiré',
         'admin.card.reactivated' => 'Carte de membre réactivée',
         'admin.premises.created' => 'Local ajouté (pointage)',
         'admin.premises.updated' => 'Local modifié (pointage)',

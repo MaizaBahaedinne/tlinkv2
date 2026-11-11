@@ -30,11 +30,13 @@ class ApprovalDecisionService
             return new ApprovalDecisionException('Auto-approbation interdite.', 403);
         }
 
-        // Le validateur assigné est celui qu'on notifie : un administrateur global (périmètre « tout ») peut statuer à sa place.
+        // Le validateur assigné est celui qu'on notifie : un administrateur global (périmètre « tout ») et les validateurs
+        // désignés pour l'entité (Structure > Périmètres) peuvent statuer à sa place.
         if (
             $approvalRequest->assigned_reviewer_id !== null
             && (int) $approvalRequest->assigned_reviewer_id !== (int) $actor->id
             && ! OrgAccess::responsibility($actor, 'approval.review')['all']
+            && ! in_array((int) $actor->id, ScopeValidators::ids((string) $this->requestScope($approvalRequest)), true)
         ) {
             return new ApprovalDecisionException('Tu n\'es pas le validateur assigne.', 403);
         }
@@ -68,6 +70,18 @@ class ApprovalDecisionService
         }
 
         return null;
+    }
+
+    /**
+     * Entité (périmètre) de la demande : celle de l'adhésion ou de la participation concernée.
+     */
+    private function requestScope(ApprovalRequest $approvalRequest): ?string
+    {
+        return match ($approvalRequest->approvable_type) {
+            Membership::class => Membership::query()->whereKey($approvalRequest->approvable_id)->value('scope'),
+            MandateParticipation::class => MandateParticipation::query()->whereKey($approvalRequest->approvable_id)->value('scope'),
+            default => null,
+        };
     }
 
     /**

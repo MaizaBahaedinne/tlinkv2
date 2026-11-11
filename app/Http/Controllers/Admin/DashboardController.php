@@ -150,11 +150,7 @@ class DashboardController extends AdminController
 
     private function pendingApprovalsQuery(int $userId)
     {
-        return ApprovalRequest::query()
-            ->where('status', 'pending')
-            ->where(function ($query) use ($userId): void {
-                $query->whereNull('assigned_reviewer_id')->orWhere('assigned_reviewer_id', $userId);
-            });
+        return ApprovalRequest::query()->awaiting(User::query()->findOrFail($userId));
     }
 
     /**

@@ -550,6 +550,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('structure/roles', [Admin\StructureController::class, 'updateRoles'])->name('roles.update');
             Route::get('structure/perimetres', [Admin\ScopeSettingsController::class, 'edit'])->name('scopes.edit');
             Route::put('structure/perimetres', [Admin\ScopeSettingsController::class, 'update'])->name('scopes.update');
+            Route::post('structure/perimetres/{scope}/validateurs', [Admin\ScopeValidatorController::class, 'store'])->name('scopes.validators.store');
+            Route::delete('structure/perimetres/{scope}/validateurs/{user}', [Admin\ScopeValidatorController::class, 'destroy'])->whereNumber('user')->name('scopes.validators.destroy');
         });
 
         // Mentorat : tickets (manager mentor, selon la matrice du poste) et annuaire des mentors. Les actions sur un ticket

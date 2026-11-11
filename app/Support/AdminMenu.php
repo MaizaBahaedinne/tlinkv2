@@ -289,12 +289,7 @@ class AdminMenu
                 : MembershipResponsibility::of($context->user, 'membership.manage')
                     ->apply(Membership::query()->where('status', 'pending'))
                     ->count(),
-            'approvals' => ApprovalRequest::query()
-                ->where('status', 'pending')
-                ->where(function ($query) use ($context): void {
-                    $query->whereNull('assigned_reviewer_id')->orWhere('assigned_reviewer_id', $context->user->id);
-                })
-                ->count(),
+            'approvals' => ApprovalRequest::query()->awaiting($context->user)->count(),
             'reports' => ModerationReport::query()->where('status', 'pending')->count(),
             'messages' => ContactMessage::query()->where('status', 'new')->count(),
             'applications' => PositionApplication::query()->where('status', 'pending')->count(),

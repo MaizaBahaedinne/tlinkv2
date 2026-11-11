@@ -167,4 +167,63 @@
             </div>
         </form>
     </article>
+
+    <article class="card card-flush" style="margin-top:1rem">
+        <div class="card-head">
+            <div>
+                <h2>Validateurs par entité</h2>
+                <p class="sub">Les validateurs désignés reçoivent les demandes d’adhésion de leur entité et peuvent les accepter ou les refuser. Sans validateur désigné, la demande va au premier responsable disponible (club, entité, puis administrateur global). Seuls les comptes qui ont déjà le droit « Valider ou rejeter les demandes » pour l’entité peuvent être désignés.</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Entité</th>
+                        <th>Validateurs désignés</th>
+                        <th>Ajouter</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($scopes as $slug => $label)
+                        <tr>
+                            <td style="min-width:160px">
+                                <div class="cell-main">{{ $label }}</div>
+                                <div class="cell-sub"><code>{{ $slug }}</code></div>
+                            </td>
+                            <td>
+                                @forelse($validators[$slug] ?? [] as $row)
+                                    <form method="post" action="{{ route('admin.scopes.validators.destroy', [$slug, $row->user_id]) }}" style="display:inline-flex; align-items:center; gap:6px; margin:2px 8px 2px 0; padding:4px 6px 4px 12px; border:1px solid var(--line); border-radius:999px;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <span class="text-sm">{{ $row->user->name }}</span>
+                                        <button type="submit" class="btn btn-ghost btn-sm" title="Retirer {{ $row->user->name }}" aria-label="Retirer {{ $row->user->name }}">Retirer</button>
+                                    </form>
+                                @empty
+                                    <span class="text-muted text-sm">Aucun : choix automatique</span>
+                                @endforelse
+                            </td>
+                            <td style="min-width:260px">
+                                @if(! empty($candidates[$slug]))
+                                    <form method="post" action="{{ route('admin.scopes.validators.store', $slug) }}" class="inline-form">
+                                        @csrf
+                                        <select name="user_id" aria-label="Ajouter un validateur à {{ $label }}" required>
+                                            <option value="">Choisir un compte…</option>
+                                            @foreach($candidates[$slug] as $userId => $name)
+                                                <option value="{{ $userId }}">{{ $name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit" class="btn btn-secondary btn-sm">Ajouter</button>
+                                    </form>
+                                @else
+                                    <span class="text-muted text-sm">Aucun compte éligible</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </article>
 @endsection

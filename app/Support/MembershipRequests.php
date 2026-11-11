@@ -193,7 +193,8 @@ final class MembershipRequests
         $approvalId = null;
 
         if ($leadership) {
-            $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id, $clubId);
+            $reviewerIds = ApprovalResolver::reviewers($scope, $user->id, $clubId);
+            $reviewerId = $reviewerIds[0] ?? null;
 
             $approval = ApprovalRequest::query()->create([
                 'request_type' => 'mandate_leadership',
@@ -206,9 +207,9 @@ final class MembershipRequests
             ]);
             $approvalId = $approval->id;
 
-            if ($reviewerId !== null) {
+            foreach ($reviewerIds as $notifiedId) {
                 AppNotification::query()->create([
-                    'user_id' => $reviewerId,
+                    'user_id' => $notifiedId,
                     'type' => 'membership.leadership_submitted',
                     'title' => 'Poste de responsabilité à valider',
                     'body' => $user->name.' déclare le poste « '.$title.' » sur le mandat '.$mandate->label.'.',
@@ -364,7 +365,8 @@ final class MembershipRequests
             'starts_at' => $startsAt,
         ]);
 
-        $reviewerId = ApprovalResolver::resolveMembershipReviewer($scope, $user->id, $nodeId, $position !== null && self::grantsRights($position));
+        $reviewerIds = ApprovalResolver::reviewers($scope, $user->id, $nodeId, $position !== null && self::grantsRights($position));
+        $reviewerId = $reviewerIds[0] ?? null;
 
         $approval = ApprovalRequest::query()->create([
             'request_type' => 'membership',
@@ -385,9 +387,9 @@ final class MembershipRequests
             ip: $ip,
         );
 
-        if ($reviewerId !== null) {
+        foreach ($reviewerIds as $notifiedId) {
             AppNotification::query()->create([
-                'user_id' => $reviewerId,
+                'user_id' => $notifiedId,
                 'type' => 'membership.submitted',
                 'title' => $position !== null ? 'Nouvelle candidature à un poste' : 'Nouvelle demande d\'adhesion',
                 'body' => $position !== null

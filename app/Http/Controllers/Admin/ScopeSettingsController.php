@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\ScopeValidator;
 use App\Models\Setting;
+use App\Models\User;
 use App\Support\OrgScopes;
+use App\Support\ScopeValidators;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +27,23 @@ class ScopeSettingsController extends AdminController
 
     public function edit(): View
     {
+        $validators = [];
+        $candidates = [];
+
+        if (ScopeValidators::ready()) {
+            $designated = ScopeValidator::query()->with('user:id,name,email')->orderBy('id')->get()->groupBy('scope');
+
+            foreach (array_keys(OrgScopes::all()) as $slug) {
+                $validators[$slug] = $designated->get($slug, collect())->filter(fn ($row) => $row->user !== null)->values();
+                $taken = $validators[$slug]->pluck('user_id')->all();
+                $ids = array_values(array_diff(ScopeValidators::candidates($slug), $taken));
+                $candidates[$slug] = $ids === [] ? [] : User::query()->whereIn('id', $ids)->orderBy('name')->pluck('name', 'id')->all();
+            }
+        }
+
         return view('admin/structure/scopes', [
+            'validators' => $validators,
+            'candidates' => $candidates,
             'scopes' => OrgScopes::all(),
             'hierarchy' => OrgScopes::hierarchy(),
             'descriptions' => OrgScopes::descriptions(),
@@ -171,6 +190,10 @@ class ScopeSettingsController extends AdminController
         );
 
         OrgScopes::flushCache();
+
+        if ($deletes !== [] && ScopeValidators::ready()) {
+            ScopeValidator::query()->whereIn('scope', $deletes)->delete();
+        }
 
         $setting = Setting::query()->where('group', self::GROUP)->where('key', self::CATALOG_KEY)->first();
         $this->audit($request, 'admin.scopes.updated', $setting, ['catalog' => $catalog, 'hierarchy' => $hierarchy, 'descriptions' => $descriptions, 'types' => $types]);
