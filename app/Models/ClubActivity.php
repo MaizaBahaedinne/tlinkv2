@@ -107,7 +107,7 @@ class ClubActivity extends Model
      */
     public function tasksByTeam(): \Illuminate\Support\Collection
     {
-        $tasks = $this->relationLoaded('tasks') ? $this->tasks : $this->tasks()->with('assignee:id,name')->get();
+        $tasks = $this->relationLoaded('tasks') ? $this->tasks : $this->tasks()->with('assignees:id,name')->get();
         $grouped = $tasks->groupBy('team');
 
         return collect(ActivityTask::TEAMS)->map(fn (string $label, string $team) => $grouped->get($team, collect()))->filter(fn ($list) => $list->isNotEmpty());

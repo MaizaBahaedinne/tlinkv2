@@ -32,7 +32,7 @@ class ActivityReportController extends AdminController
             return redirect()->route('admin.activities.show', $activity)->with('error', 'Le compte rendu se rédige une fois l’activité terminée.');
         }
 
-        $activity->loadMissing(['club:id,title', 'challenge:id,title', 'tasks.assignee:id,name']);
+        $activity->loadMissing(['club:id,title', 'challenge:id,title', 'tasks.assignees:id,name']);
         $report?->load(['members.user:id,name', 'items', 'partners', 'submitter:id,name', 'validator:id,name']);
         $report ??= new ActivityReport(['status' => 'draft']);
         $report->setRelation('activity', $activity);

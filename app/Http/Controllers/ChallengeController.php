@@ -60,7 +60,7 @@ class ChallengeController extends Controller
         abort_unless($challenge->isPublished() && $challenge->isCommitteeMember($user), 403, 'Réservé au comité d’évaluation.');
 
         $challenge->load('criteria');
-        $activities = $challenge->activities()->where('status', 'published')->with(['club:id,title', 'organizers.club:id,title', 'report.members.user:id,name', 'report.items', 'report.partners', 'tasks.assignee:id,name', 'scores' => fn ($query) => $query->where('evaluator_id', $user->id)])->orderBy('starts_at')->get();
+        $activities = $challenge->activities()->where('status', 'published')->with(['club:id,title', 'organizers.club:id,title', 'report.members.user:id,name', 'report.items', 'report.partners', 'tasks.assignees:id,name', 'scores' => fn ($query) => $query->where('evaluator_id', $user->id)])->orderBy('starts_at')->get();
         $activities->each(fn (ClubActivity $activity) => $activity->report?->setRelation('activity', $activity->setRelation('challenge', $challenge)));
         $myNodes = ActivityAccess::nodeIds($user);
 

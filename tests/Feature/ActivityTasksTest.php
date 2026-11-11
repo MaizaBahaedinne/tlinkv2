@@ -156,23 +156,24 @@ class ActivityTasksTest extends TestCase
         $this->actingAs($this->president)->post($this->tasksUrl($activity, '/modele'));
         $this->assertSame(24, $activity->tasks()->count());
 
-        $this->actingAs($this->president)->get("/admin/activites/{$activity->id}")->assertOk()->assertSee('Liste type « Camping / Retreat »')->assertSee('Organiser le retour et établir le bilan du séjour.');
+        $this->actingAs($this->president)->get($this->tasksUrl($activity))->assertOk()->assertSee('Organiser le retour et établir le bilan du séjour.')->assertSee('À faire')->assertSee('En cours')->assertSee('Terminée');
+        $this->actingAs($this->president)->get("/admin/activites/{$activity->id}")->assertOk()->assertSee('Ouvrir le tableau des tâches')->assertSee('0 / 24');
     }
 
     public function test_tasks_are_adapted_added_assigned_and_followed(): void
     {
         $activity = $this->freeActivity();
 
-        $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => 'Réserver le traiteur', 'team' => 'event', 'assignee_id' => $this->member->id, 'due_at' => now()->addDays(10)->format('Y-m-d')])
+        $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => 'Réserver le traiteur', 'team' => 'event', 'assignee_ids' => [$this->member->id, $this->president->id], 'due_at' => now()->addDays(10)->format('Y-m-d')])
             ->assertSessionHasNoErrors();
 
         $task = $activity->tasks()->firstOrFail();
-        $this->assertSame($this->member->id, $task->assignee_id);
+        $this->assertEqualsCanonicalizing([$this->member->id, $this->president->id], $task->assignees()->pluck('users.id')->all());
         $this->assertFalse($task->from_template);
         $this->assertSame(1, AppNotification::query()->where('user_id', $this->member->id)->where('type', 'activity.task.assigned')->count());
 
         // Suivi : en cours, puis terminée ; l'intitulé s'adapte et la tâche change d'équipe.
-        $this->actingAs($this->president)->patch($this->tasksUrl($activity, "/{$task->id}"), ['label' => 'Réserver le traiteur halal', 'team' => 'sponsoring', 'assignee_id' => $this->member->id, 'status' => 'doing', 'notes' => 'Devis reçu'])
+        $this->actingAs($this->president)->patch($this->tasksUrl($activity, "/{$task->id}"), ['label' => 'Réserver le traiteur halal', 'team' => 'sponsoring', 'assignee_ids' => [$this->member->id, $this->president->id], 'status' => 'doing', 'notes' => 'Devis reçu'])
             ->assertSessionHasNoErrors();
         $task->refresh();
         $this->assertSame(['Réserver le traiteur halal', 'sponsoring', 'doing', 'Devis reçu'], [$task->label, $task->team, $task->status, $task->notes]);
@@ -183,7 +184,7 @@ class ActivityTasksTest extends TestCase
         $task->refresh();
         $this->assertTrue($task->isDone());
         $this->assertNotNull($task->completed_at);
-        $this->assertNull($task->assignee_id);
+        $this->assertSame(0, $task->assignees()->count(), 'Sans responsable envoyé, la tâche n’est plus affectée.');
 
         $this->actingAs($this->president)->delete($this->tasksUrl($activity, "/{$task->id}"))->assertSessionHas('status');
         $this->assertSame(0, $activity->tasks()->count());
@@ -194,7 +195,7 @@ class ActivityTasksTest extends TestCase
         $activity = $this->freeActivity();
         $stranger = User::factory()->create();
 
-        $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => 'Tâche', 'team' => 'hr', 'assignee_id' => $stranger->id])->assertSessionHasErrors('assignee_id');
+        $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => 'Tâche', 'team' => 'hr', 'assignee_ids' => [$this->member->id, $stranger->id]])->assertSessionHasErrors('assignee_ids');
         $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => '', 'team' => 'nimporte'])->assertSessionHasErrors(['label', 'team']);
         $this->assertSame(0, $activity->tasks()->count());
 
@@ -213,7 +214,7 @@ class ActivityTasksTest extends TestCase
     public function test_the_task_list_goes_with_the_report_and_is_frozen_once_submitted(): void
     {
         $activity = $this->freeActivity(['starts_at' => now()->subDays(2), 'ends_at' => now()->subDays(2)->addHours(3)]);
-        $activity->tasks()->create(['team' => 'marketing', 'label' => 'Publier le récapitulatif', 'status' => 'done', 'assignee_id' => $this->member->id]);
+        $activity->tasks()->create(['team' => 'marketing', 'label' => 'Publier le récapitulatif', 'status' => 'done'])->assignees()->attach([$this->member->id, $this->president->id]);
         $activity->tasks()->create(['team' => 'event', 'label' => 'Remercier les intervenants', 'status' => 'todo']);
 
         $url = "/admin/activites/{$activity->id}/compte-rendu";
@@ -242,5 +243,42 @@ class ActivityTasksTest extends TestCase
         $this->assertTrue($report->fresh()->isValidated());
 
         $this->actingAs($this->president)->get("/admin/activites/{$activity->id}")->assertOk()->assertSee('Les tâches sont figées');
+    }
+
+    public function test_the_board_shows_the_tasks_in_three_columns_and_cards_move_by_drag_and_drop(): void
+    {
+        $activity = $this->freeActivity();
+        $todo = $activity->tasks()->create(['team' => 'event', 'label' => 'Réserver la salle', 'due_at' => now()->subDay()]);
+        $todo->assignees()->attach([$this->member->id, $this->president->id]);
+        $activity->tasks()->create(['team' => 'hr', 'label' => 'Briefer les bénévoles', 'status' => 'doing']);
+
+        $this->actingAs($this->president)->get($this->tasksUrl($activity))->assertOk()
+            ->assertSee('Réserver la salle')->assertSee('Briefer les bénévoles')->assertSee('En retard')->assertSee('+ Ajouter une carte');
+        $this->actingAs($this->member)->get($this->tasksUrl($activity))->assertForbidden();
+
+        $this->actingAs($this->president)->patchJson($this->tasksUrl($activity, "/{$todo->id}/statut"), ['status' => 'done'])
+            ->assertOk()->assertJson(['status' => 'done', 'label' => 'Terminée', 'done' => 1, 'total' => 2]);
+        $this->assertNotNull($todo->fresh()->completed_at);
+        $this->assertSame(2, $todo->fresh()->assignees()->count());
+
+        $this->actingAs($this->president)->patchJson($this->tasksUrl($activity, "/{$todo->id}/statut"), ['status' => 'todo'])->assertOk();
+        $this->assertNull($todo->fresh()->completed_at);
+
+        $this->actingAs($this->president)->patchJson($this->tasksUrl($activity, "/{$todo->id}/statut"), ['status' => 'bizarre'])->assertUnprocessable();
+        $this->actingAs($this->member)->patchJson($this->tasksUrl($activity, "/{$todo->id}/statut"), ['status' => 'done'])->assertForbidden();
+
+        $other = $this->freeActivity(['title' => 'Autre']);
+        $this->actingAs($this->president)->patchJson($this->tasksUrl($other, "/{$todo->id}/statut"), ['status' => 'done'])->assertNotFound();
+    }
+
+    public function test_the_board_is_read_only_once_the_report_is_submitted(): void
+    {
+        $activity = $this->freeActivity(['starts_at' => now()->subDays(2), 'ends_at' => now()->subDays(2)->addHours(3)]);
+        $task = $activity->tasks()->create(['team' => 'event', 'label' => 'Remercier les intervenants']);
+        ActivityReport::query()->create(['activity_id' => $activity->id, 'status' => 'pending', 'summary' => 'Fait.', 'submitted_by' => $this->president->id, 'submitted_at' => now()]);
+
+        $this->actingAs($this->president)->get($this->tasksUrl($activity))->assertOk()->assertSee('Les tâches sont figées')->assertDontSee('+ Ajouter une carte');
+        $this->actingAs($this->president)->patchJson($this->tasksUrl($activity, "/{$task->id}/statut"), ['status' => 'done'])->assertUnprocessable();
+        $this->assertSame('todo', $task->fresh()->status);
     }
 }

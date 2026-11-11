@@ -7,7 +7,7 @@
 <p class="text-sm text-muted">
     Liste des tâches de l’activité : elle part avec le compte rendu.
     @if($editable)
-        Elle se gère depuis la fiche de l’activité (reprise de la liste type, ajout, affectation et suivi) et sera figée à la soumission.
+        Elle se gère dans le <a href="{{ route('admin.activities.tasks.board', $activity) }}" style="text-decoration:underline">tableau des tâches</a> (reprise de la liste type, ajout, affectation et suivi) et sera figée à la soumission.
     @endif
 </p>
 
@@ -25,7 +25,7 @@
                     @foreach($tasks as $task)
                         <tr>
                             <td class="text-sm">{{ $task->label }}@if($task->notes)<div class="cell-sub">{{ $task->notes }}</div>@endif</td>
-                            <td class="text-sm">{{ $task->assignee?->name ?? '—' }}</td>
+                            <td class="text-sm">{{ $task->assignees->isNotEmpty() ? $task->assignees->pluck('name')->implode(', ') : '—' }}</td>
                             <td class="text-sm">{{ $task->due_at?->format('d/m/Y') ?? '—' }}</td>
                             <td><span class="badge badge-{{ ['todo' => 'neutral', 'doing' => 'warning', 'done' => 'success'][$task->status] ?? 'neutral' }}">{{ $task->statusLabel() }}</span></td>
                         </tr>

@@ -8,17 +8,36 @@ use App\Models\ClubActivity;
 use App\Models\User;
 use App\Support\Challenges\ActivityAccess;
 use App\Support\Challenges\ActivityTaskTemplates;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 /**
- * Tâches d'une activité : le créateur reprend la liste type de son type d'activité, l'adapte, y ajoute les siennes,
- * les affecte à des membres et en suit l'avancement. La liste part avec le compte rendu ; elle est figée une fois celui-ci soumis.
+ * Tâches d'une activité, présentées en tableau façon Trello : le créateur reprend la liste type de son type d'activité,
+ * l'adapte, y ajoute les siennes, les confie à un ou plusieurs membres et en suit l'avancement (À faire, En cours, Terminée).
+ * La liste part avec le compte rendu ; elle est figée une fois celui-ci soumis.
  */
 class ActivityTaskController extends AdminController
 {
+    public function board(Request $request, ClubActivity $activity): View
+    {
+        abort_unless(ActivityAccess::canManageActivity($request->user(), $activity), 403, 'Cette activité n’est pas celle de votre club.');
+
+        $activity->load(['club:id,title', 'challenge:id,title', 'report', 'tasks.assignees:id,name']);
+        $locked = $activity->report !== null && ! $activity->report->isEditable();
+
+        return view('admin.activities.tasks', [
+            'activity' => $activity,
+            'columns' => collect(ActivityTask::STATUSES)->map(fn (string $label, string $status) => $activity->tasks->where('status', $status)->values()),
+            'locked' => $locked,
+            'people' => $locked ? collect() : ActivityAccess::reportCandidates($activity),
+            'template' => ActivityTaskTemplates::forType($activity->type),
+        ]);
+    }
+
     /** Reprend la liste type du type d'activité : les tâches déjà présentes (même équipe, même intitulé) ne sont pas dupliquées. */
     public function importTemplate(Request $request, ClubActivity $activity): RedirectResponse
     {
@@ -58,9 +77,13 @@ class ActivityTaskController extends AdminController
         $data = $this->validated($request, $activity);
         $order = (int) ($activity->tasks()->max('sort_order') ?? -1) + 1;
 
-        $task = $activity->tasks()->create($this->attributes($data) + ['sort_order' => $order, 'created_by' => $request->user()->id]);
+        $attributes = $this->attributes($data);
+        $attributes['completed_at'] = $attributes['status'] === 'done' ? now() : null;
 
-        $this->notifyAssignee($request, $activity, $task, null);
+        $task = $activity->tasks()->create($attributes + ['sort_order' => $order, 'created_by' => $request->user()->id]);
+        $task->assignees()->sync($data['assignee_ids']);
+
+        $this->notifyAssignees($request, $activity, $task, []);
         $this->audit($request, 'admin.activity.task_added', $activity, ['title' => $activity->title, 'task' => $task->label]);
 
         return back()->with('status', 'Tâche ajoutée.');
@@ -71,18 +94,35 @@ class ActivityTaskController extends AdminController
         $this->authorizeTasks($request, $activity);
         abort_unless($task->activity_id === $activity->id, 404);
 
-        $before = $task->assignee_id;
+        $before = $task->assignees()->pluck('users.id')->map(fn ($id): int => (int) $id)->all();
         $data = $this->validated($request, $activity);
         $attributes = $this->attributes($data);
         $attributes['status'] = $data['status'] ?? $task->status;
         $attributes['completed_at'] = $attributes['status'] === 'done' ? ($task->completed_at ?? now()) : null;
 
         $task->update($attributes);
+        $task->assignees()->sync($data['assignee_ids']);
 
-        $this->notifyAssignee($request, $activity, $task, $before);
+        $this->notifyAssignees($request, $activity, $task, $before);
         $this->audit($request, 'admin.activity.task_updated', $activity, ['title' => $activity->title, 'task' => $task->label, 'status' => $task->status]);
 
         return back()->with('status', 'Tâche mise à jour.');
+    }
+
+    /** Glisser-déposer d'un ticket d'une colonne à l'autre : change seulement le statut. */
+    public function move(Request $request, ClubActivity $activity, ActivityTask $task): JsonResponse
+    {
+        $this->authorizeTasks($request, $activity);
+        abort_unless($task->activity_id === $activity->id, 404);
+
+        $data = $request->validate(['status' => ['required', Rule::in(array_keys(ActivityTask::STATUSES))]]);
+
+        $task->update(['status' => $data['status'], 'completed_at' => $data['status'] === 'done' ? ($task->completed_at ?? now()) : null]);
+        $this->audit($request, 'admin.activity.task_updated', $activity, ['title' => $activity->title, 'task' => $task->label, 'status' => $task->status]);
+
+        $all = $activity->tasks()->pluck('status');
+
+        return response()->json(['status' => $task->status, 'label' => $task->statusLabel(), 'done' => $all->filter(fn ($status): bool => $status === 'done')->count(), 'total' => $all->count()]);
     }
 
     public function destroy(Request $request, ClubActivity $activity, ActivityTask $task): RedirectResponse
@@ -116,7 +156,8 @@ class ActivityTaskController extends AdminController
         $data = $request->validate([
             'label' => ['required', 'string', 'max:255'],
             'team' => ['required', Rule::in(array_keys(ActivityTask::TEAMS))],
-            'assignee_id' => ['nullable', 'integer'],
+            'assignee_ids' => ['nullable', 'array', 'max:50'],
+            'assignee_ids.*' => ['integer'],
             'due_at' => ['nullable', 'date'],
             'status' => ['nullable', Rule::in(array_keys(ActivityTask::STATUSES))],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -125,9 +166,14 @@ class ActivityTaskController extends AdminController
             'team.required' => 'Choisissez l’équipe de la tâche.',
         ]);
 
-        if (filled($data['assignee_id'] ?? null) && ! ActivityAccess::reportCandidates($activity)->contains('id', (int) $data['assignee_id'])) {
-            throw ValidationException::withMessages(['assignee_id' => 'Cette personne ne fait pas partie des clubs organisateurs.']);
+        $ids = collect($data['assignee_ids'] ?? [])->map(fn ($id): int => (int) $id)->unique()->values();
+        $allowed = ActivityAccess::reportCandidates($activity)->pluck('id');
+
+        if ($ids->diff($allowed)->isNotEmpty()) {
+            throw ValidationException::withMessages(['assignee_ids' => 'Certaines personnes ne font pas partie des clubs organisateurs.']);
         }
+
+        $data['assignee_ids'] = $ids->all();
 
         return $data;
     }
@@ -141,39 +187,34 @@ class ActivityTaskController extends AdminController
         return [
             'label' => trim($data['label']),
             'team' => $data['team'],
-            'assignee_id' => filled($data['assignee_id'] ?? null) ? (int) $data['assignee_id'] : null,
             'due_at' => $data['due_at'] ?? null,
             'status' => $data['status'] ?? 'todo',
             'notes' => filled($data['notes'] ?? null) ? trim($data['notes']) : null,
         ];
     }
 
-    /** Prévient la personne à qui la tâche vient d'être confiée (sauf si c'est elle qui l'a fait). */
-    private function notifyAssignee(Request $request, ClubActivity $activity, ActivityTask $task, ?int $previous): void
+    /**
+     * Prévient chaque personne à qui la tâche vient d'être confiée (pas celles qui l'avaient déjà, ni l'auteur du changement).
+     *
+     * @param  array<int, int>  $previous
+     */
+    private function notifyAssignees(Request $request, ClubActivity $activity, ActivityTask $task, array $previous): void
     {
-        $assigneeId = $task->assignee_id;
+        $new = array_diff($task->assignees()->pluck('users.id')->map(fn ($id): int => (int) $id)->all(), $previous, [$request->user()->id]);
 
-        if ($assigneeId === null || $assigneeId === $previous || $assigneeId === $request->user()->id) {
-            return;
+        foreach (User::query()->whereIn('id', $new)->get() as $assignee) {
+            $url = ActivityAccess::canManageActivity($assignee, $activity)
+                ? route('admin.activities.tasks.board', $activity, false)
+                : route('activities.show', $activity, false);
+
+            AppNotification::query()->create([
+                'user_id' => $assignee->id,
+                'type' => 'activity.task.assigned',
+                'title' => 'Une tâche vous est confiée',
+                'body' => "« {$task->label} » — activité « {$activity->title} »".($task->due_at ? ', à rendre pour le '.$task->due_at->format('d/m/Y') : '').'.',
+                'data' => ['activity_id' => $activity->id, 'task_id' => $task->id, 'url' => $url],
+            ]);
         }
-
-        $assignee = User::query()->find($assigneeId);
-
-        if ($assignee === null) {
-            return;
-        }
-
-        $url = ActivityAccess::canManageActivity($assignee, $activity)
-            ? route('admin.activities.show', $activity, false)
-            : route('activities.show', $activity, false);
-
-        AppNotification::query()->create([
-            'user_id' => $assigneeId,
-            'type' => 'activity.task.assigned',
-            'title' => 'Une tâche vous est confiée',
-            'body' => "« {$task->label} » — activité « {$activity->title} »".($task->due_at ? ', à rendre pour le '.$task->due_at->format('d/m/Y') : '').'.',
-            'data' => ['activity_id' => $activity->id, 'task_id' => $task->id, 'url' => $url],
-        ]);
     }
 
     private function key(string $team, string $label): string

@@ -25,7 +25,7 @@
                     <p class="mt-2 font-semibold text-slate-800">{{ \App\Models\ActivityTask::TEAMS[$team] ?? $team }}</p>
                     <ul class="mt-1 space-y-1">
                         @foreach($tasks as $task)
-                            <li>{{ $task->isDone() ? '✓' : '○' }} {{ $task->label }} <span class="text-slate-500">— {{ $task->statusLabel() }}@if($task->assignee), {{ $task->assignee->name }}@endif @if($task->due_at), échéance {{ $task->due_at->format('d/m/Y') }}@endif</span></li>
+                            <li>{{ $task->isDone() ? '✓' : '○' }} {{ $task->label }} <span class="text-slate-500">— {{ $task->statusLabel() }}@if($task->assignees->isNotEmpty()), {{ $task->assignees->pluck('name')->implode(', ') }}@endif @if($task->due_at), échéance {{ $task->due_at->format('d/m/Y') }}@endif</span></li>
                         @endforeach
                     </ul>
                 @endforeach

@@ -636,6 +636,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::patch('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'respondOrganizer'])->whereNumber('organizer')->name('activities.organizers.respond');
             Route::delete('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'removeOrganizer'])->whereNumber('organizer')->name('activities.organizers.destroy');
             Route::patch('activites/{activity}/inscriptions/{registration}', [Admin\ActivityController::class, 'updateRegistration'])->whereNumber(['activity', 'registration'])->name('activities.registrations.update');
+            Route::get('activites/{activity}/taches', [Admin\ActivityTaskController::class, 'board'])->whereNumber('activity')->name('activities.tasks.board');
+            Route::patch('activites/{activity}/taches/{task}/statut', [Admin\ActivityTaskController::class, 'move'])->whereNumber(['activity', 'task'])->name('activities.tasks.move');
             Route::post('activites/{activity}/taches/modele', [Admin\ActivityTaskController::class, 'importTemplate'])->whereNumber('activity')->name('activities.tasks.template');
             Route::post('activites/{activity}/taches', [Admin\ActivityTaskController::class, 'store'])->whereNumber('activity')->name('activities.tasks.store');
             Route::patch('activites/{activity}/taches/{task}', [Admin\ActivityTaskController::class, 'update'])->whereNumber(['activity', 'task'])->name('activities.tasks.update');

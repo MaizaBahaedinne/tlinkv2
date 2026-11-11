@@ -68,7 +68,7 @@ class ActivityController extends AdminController
     {
         $this->authorizeActivity($request, $activity);
 
-        $activity->load(['club:id,title,scope', 'challenge', 'department:id,title', 'organizers.club:id,title', 'tasks.assignee:id,name', 'report']);
+        $activity->load(['club:id,title,scope', 'challenge', 'department:id,title', 'organizers.club:id,title', 'tasks.assignees:id,name', 'report']);
         $taken = array_merge($activity->organizers->pluck('club_id')->all(), [$activity->club_id]);
         $tasksLocked = $activity->report !== null && ! $activity->report->isEditable();
 
@@ -81,8 +81,6 @@ class ActivityController extends AdminController
             'canLead' => ActivityAccess::canManageClub($request->user(), $activity->club_id),
             'manageable' => ActivityAccess::manageableClubIds($request->user()),
             'tasksLocked' => $tasksLocked,
-            'assignees' => $tasksLocked ? collect() : ActivityAccess::reportCandidates($activity),
-            'taskTemplate' => \App\Support\Challenges\ActivityTaskTemplates::forType($activity->type),
         ]);
     }
 

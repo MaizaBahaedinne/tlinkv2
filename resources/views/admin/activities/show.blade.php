@@ -18,7 +18,7 @@
         </x-slot:actions>
     </x-admin.page-header>
 
-    @include('admin.activities.partials.tasks-manager')
+    @include('admin.activities.partials.tasks-summary')
 
     <div class="grid-3-1">
         <article class="card card-flush" style="min-width:0">
