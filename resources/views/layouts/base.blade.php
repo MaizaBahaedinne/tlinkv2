@@ -26,9 +26,34 @@
 <body class="app-full">
     @include('partials.google-tag-noscript')
     @if (session('status'))
-        <div class="fixed inset-x-0 top-3 z-50 mx-auto w-full max-w-xl rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-soft">
-            {{ session('status') }}
+        {{-- Notification discrète en bas à gauche, façon Facebook : fond sombre, icône, fermeture auto après quelques secondes. --}}
+        <style>
+            .flash-toast{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;align-items:center;gap:12px;max-width:min(360px,calc(100vw - 32px));padding:12px 14px;border-radius:10px;background:#242526;color:#e4e6eb;box-shadow:0 12px 28px rgba(0,0,0,.25),0 2px 4px rgba(0,0,0,.2);font-size:14px;line-height:1.35;animation:flash-toast-in .3s ease-out both}
+            .flash-toast[data-leaving]{animation:flash-toast-out .25s ease-in both}
+            .flash-toast__icon{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:9999px;background:#31a24c;color:#fff;font-size:14px;font-weight:700}
+            .flash-toast__close{flex:none;margin-left:4px;width:26px;height:26px;border:0;border-radius:9999px;background:transparent;color:#b0b3b8;font-size:16px;line-height:1;cursor:pointer}
+            .flash-toast__close:hover{background:rgba(255,255,255,.1);color:#fff}
+            @keyframes flash-toast-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+            @keyframes flash-toast-out{from{opacity:1;transform:none}to{opacity:0;transform:translateY(12px)}}
+            @media (prefers-reduced-motion:reduce){.flash-toast,.flash-toast[data-leaving]{animation:none}}
+        </style>
+        <div class="flash-toast" id="flash-toast" role="status" aria-live="polite">
+            <span class="flash-toast__icon" aria-hidden="true">&#10003;</span>
+            <span>{{ session('status') }}</span>
+            <button type="button" class="flash-toast__close" id="flash-toast-close" aria-label="Fermer">&times;</button>
         </div>
+        <script>
+            (function () {
+                var toast = document.getElementById('flash-toast');
+                if (!toast) { return; }
+                function close() {
+                    toast.setAttribute('data-leaving', '');
+                    setTimeout(function () { toast.remove(); }, 260);
+                }
+                document.getElementById('flash-toast-close').addEventListener('click', close);
+                setTimeout(close, 6000);
+            })();
+        </script>
     @endif
 
     @yield('content')
