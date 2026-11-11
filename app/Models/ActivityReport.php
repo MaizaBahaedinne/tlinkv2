@@ -125,7 +125,7 @@ class ActivityReport extends Model
     public function selfEvaluation(): array
     {
         $activity = $this->activity;
-        $grid = $activity->challenge->criteriaOf($activity->in_theme ? 'theme' : 'off_theme');
+        $grid = $activity->challenge?->criteriaOf($activity->in_theme ? 'theme' : 'off_theme') ?? collect();
         $saved = (array) $this->self_scores;
 
         $rows = $grid->map(fn (ChallengeCriterion $criterion): array => [

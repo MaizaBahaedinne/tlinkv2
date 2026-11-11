@@ -14,6 +14,24 @@
             <p class="whitespace-pre-line">{{ $report->summary ?: '—' }}</p>
         </div>
 
+        @php($taskGroups = $report->activity->tasksByTeam())
+        <div>
+            <h3 class="font-semibold text-slate-900">Tâches de l’activité</h3>
+            @if($taskGroups->isEmpty())
+                <p class="text-slate-500">Aucune tâche définie.</p>
+            @else
+                <p class="text-slate-500">{{ $taskGroups->flatten(1)->where('status', 'done')->count() }} / {{ $taskGroups->flatten(1)->count() }} terminée(s)</p>
+                @foreach($taskGroups as $team => $tasks)
+                    <p class="mt-2 font-semibold text-slate-800">{{ \App\Models\ActivityTask::TEAMS[$team] ?? $team }}</p>
+                    <ul class="mt-1 space-y-1">
+                        @foreach($tasks as $task)
+                            <li>{{ $task->isDone() ? '✓' : '○' }} {{ $task->label }} <span class="text-slate-500">— {{ $task->statusLabel() }}@if($task->assignee), {{ $task->assignee->name }}@endif @if($task->due_at), échéance {{ $task->due_at->format('d/m/Y') }}@endif</span></li>
+                        @endforeach
+                    </ul>
+                @endforeach
+            @endif
+        </div>
+
         <div>
             <h3 class="font-semibold text-slate-900">Auto-évaluation du club (indicative, hors note)</h3>
             @if($self['rows']->isEmpty())

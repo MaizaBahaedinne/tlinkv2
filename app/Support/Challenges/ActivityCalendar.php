@@ -29,7 +29,7 @@ final class ActivityCalendar
         $activities = ClubActivity::query()
             ->where('status', 'published')
             ->where('audience', 'public')
-            ->whereHas('challenge', fn ($query) => $query->where('status', 'published'))
+            ->where(fn ($query) => $query->whereNull('challenge_id')->orWhereHas('challenge', fn ($challenge) => $challenge->where('status', 'published')))
             ->where('starts_at', '<=', now()->addDays(self::HORIZON_DAYS))
             ->where(fn ($query) => $query
                 ->where(fn ($ended) => $ended->whereNotNull('ends_at')->where('ends_at', '>=', now()))

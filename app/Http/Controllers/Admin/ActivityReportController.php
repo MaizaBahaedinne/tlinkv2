@@ -32,7 +32,7 @@ class ActivityReportController extends AdminController
             return redirect()->route('admin.activities.show', $activity)->with('error', 'Le compte rendu se rédige une fois l’activité terminée.');
         }
 
-        $activity->loadMissing(['club:id,title', 'challenge:id,title']);
+        $activity->loadMissing(['club:id,title', 'challenge:id,title', 'tasks.assignee:id,name']);
         $report?->load(['members.user:id,name', 'items', 'partners', 'submitter:id,name', 'validator:id,name']);
         $report ??= new ActivityReport(['status' => 'draft']);
         $report->setRelation('activity', $activity);
@@ -66,7 +66,7 @@ class ActivityReportController extends AdminController
 
         $data = $request->validate($this->rules());
         $submit = $data['action'] === 'submit';
-        $grid = $activity->challenge->criteriaOf($activity->in_theme ? 'theme' : 'off_theme')->keyBy('id');
+        $grid = $activity->challenge ? $activity->challenge->criteriaOf($activity->in_theme ? 'theme' : 'off_theme')->keyBy('id') : collect();
         $members = $this->members((array) ($data['members'] ?? []), $activity);
         $partners = $this->partners((array) ($data['partners'] ?? []));
         $media = $this->media((array) ($data['media'] ?? []));
@@ -125,7 +125,9 @@ class ActivityReportController extends AdminController
                     ActivityAccess::presidentIds((int) $activity->club_id),
                     'activity.report.submitted',
                     'Compte rendu à valider',
-                    "Le compte rendu de « {$activity->title} » attend votre validation avant d’être transmis au comité.",
+                    $activity->hasChallenge()
+                        ? "Le compte rendu de « {$activity->title} » attend votre validation avant d’être transmis au comité."
+                        : "Le compte rendu de « {$activity->title} » attend votre validation.",
                     $activity,
                     $request->user()->id,
                 );
@@ -135,7 +137,7 @@ class ActivityReportController extends AdminController
         $this->audit($request, $submit ? 'admin.activity.report_submitted' : 'admin.activity.report_saved', $activity, ['title' => $activity->title]);
 
         return redirect()->route('admin.activities.report', $activity)->with('status', $submit
-            ? 'Compte rendu soumis au président du club. Il sera transmis au comité une fois validé.'
+            ? ($activity->hasChallenge() ? 'Compte rendu soumis au président du club. Il sera transmis au comité une fois validé.' : 'Compte rendu soumis au président du club pour validation.')
             : 'Brouillon enregistré.');
     }
 
@@ -146,12 +148,15 @@ class ActivityReportController extends AdminController
 
         $report->update(['status' => 'validated', 'validated_at' => now(), 'validated_by' => $request->user()->id, 'president_comment' => null]);
 
-        $activity->loadMissing('challenge.committee:id');
-        $this->notify($activity->challenge->committee->pluck('id')->all(), 'activity.report.validated', 'Compte rendu à évaluer', "Le compte rendu de « {$activity->title} » est validé : l’activité peut être évaluée.", $activity, $request->user()->id, route('challenges.evaluation', $activity->challenge, false));
-        $this->notify(array_filter([$report->submitted_by]), 'activity.report.validated', 'Compte rendu validé', "Le président a validé le compte rendu de « {$activity->title} » : il est transmis au comité.", $activity, $request->user()->id);
+        if ($activity->hasChallenge()) {
+            $activity->loadMissing('challenge.committee:id');
+            $this->notify($activity->challenge->committee->pluck('id')->all(), 'activity.report.validated', 'Compte rendu à évaluer', "Le compte rendu de « {$activity->title} » est validé : l’activité peut être évaluée.", $activity, $request->user()->id, route('challenges.evaluation', $activity->challenge, false));
+        }
+
+        $this->notify(array_filter([$report->submitted_by]), 'activity.report.validated', 'Compte rendu validé', $activity->hasChallenge() ? "Le président a validé le compte rendu de « {$activity->title} » : il est transmis au comité." : "Le président a validé le compte rendu de « {$activity->title} ».", $activity, $request->user()->id);
         $this->audit($request, 'admin.activity.report_validated', $activity, ['title' => $activity->title]);
 
-        return back()->with('status', 'Compte rendu validé et transmis au comité d’évaluation.');
+        return back()->with('status', $activity->hasChallenge() ? 'Compte rendu validé et transmis au comité d’évaluation.' : 'Compte rendu validé.');
     }
 
     /** Le président renvoie le compte rendu au club avec un commentaire. */

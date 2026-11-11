@@ -91,6 +91,30 @@ class ClubActivity extends Model
         return $this->hasOne(ActivityReport::class, 'activity_id');
     }
 
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(ActivityTask::class, 'activity_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** Activité libre : le club n'a pas choisi de défi (ni thématique, ni barème, ni comité). */
+    public function hasChallenge(): bool
+    {
+        return $this->challenge_id !== null;
+    }
+
+    /**
+     * Tâches groupées par équipe (événement, marketing, RH, sponsoring), dans l'ordre des équipes ; les équipes vides sont omises.
+     *
+     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, ActivityTask>>
+     */
+    public function tasksByTeam(): \Illuminate\Support\Collection
+    {
+        $tasks = $this->relationLoaded('tasks') ? $this->tasks : $this->tasks()->with('assignee:id,name')->get();
+        $grouped = $tasks->groupBy('team');
+
+        return collect(ActivityTask::TEAMS)->map(fn (string $label, string $team) => $grouped->get($team, collect()))->filter(fn ($list) => $list->isNotEmpty());
+    }
+
     /** L'activité est terminée : le club peut rédiger son compte rendu de clôture. */
     public function isFinished(): bool
     {
@@ -131,7 +155,7 @@ class ClubActivity extends Model
 
     public function isPublished(): bool
     {
-        return $this->status === 'published' && $this->challenge?->isPublished() === true;
+        return $this->status === 'published' && ($this->challenge_id === null || $this->challenge?->isPublished() === true);
     }
 
     public function registeredCount(): int

@@ -636,6 +636,10 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::patch('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'respondOrganizer'])->whereNumber('organizer')->name('activities.organizers.respond');
             Route::delete('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'removeOrganizer'])->whereNumber('organizer')->name('activities.organizers.destroy');
             Route::patch('activites/{activity}/inscriptions/{registration}', [Admin\ActivityController::class, 'updateRegistration'])->whereNumber(['activity', 'registration'])->name('activities.registrations.update');
+            Route::post('activites/{activity}/taches/modele', [Admin\ActivityTaskController::class, 'importTemplate'])->whereNumber('activity')->name('activities.tasks.template');
+            Route::post('activites/{activity}/taches', [Admin\ActivityTaskController::class, 'store'])->whereNumber('activity')->name('activities.tasks.store');
+            Route::patch('activites/{activity}/taches/{task}', [Admin\ActivityTaskController::class, 'update'])->whereNumber(['activity', 'task'])->name('activities.tasks.update');
+            Route::delete('activites/{activity}/taches/{task}', [Admin\ActivityTaskController::class, 'destroy'])->whereNumber(['activity', 'task'])->name('activities.tasks.destroy');
 
             // Pointage par carte de membre (QR code) : scanner, historique et locaux.
             Route::get('pointage', [Admin\CheckpointController::class, 'index'])->name('checkpoint.index');

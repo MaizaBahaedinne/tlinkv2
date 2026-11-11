@@ -7,7 +7,7 @@
 @section('section', 'Défis')
 
 @section('content')
-    <x-admin.page-header :title="$editing ? 'Modifier « '.$activity->title.' »' : 'Nouvelle activité'" subtitle="Une activité s’inscrit dans un défi : dans la thématique ou hors thématique (barème différent).">
+    <x-admin.page-header :title="$editing ? 'Modifier « '.$activity->title.' »' : 'Nouvelle activité'" subtitle="Une activité peut s’inscrire dans un défi (dans la thématique ou hors thématique, barèmes différents) ou rester libre : le défi est un choix, pas une obligation.">
         <x-slot:actions>
             <a href="{{ $editing ? route('admin.activities.show', $activity) : route('admin.activities.index') }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour</a>
         </x-slot:actions>
@@ -20,10 +20,10 @@
         <div class="card-body">
             <div class="form-grid">
                 @if($editing)
-                    <div class="field"><label>Défi</label><p>{{ $activity->challenge->title }}</p></div>
+                    <div class="field"><label>Défi</label><p>{{ $activity->challenge?->title ?? 'Aucun (activité libre)' }}</p></div>
                     <div class="field"><label>Club porteur</label><p>{{ $activity->club->title }}</p></div>
                 @else
-                    <x-admin.select name="challenge_id" label="Défi" :options="$challenges->pluck('title', 'id')->all()" :value="$activity->challenge_id" required hint="Seuls les défis ouverts aux activités et auxquels votre club est invité apparaissent." />
+                    <x-admin.select name="challenge_id" label="Défi (facultatif)" :options="$challenges->pluck('title', 'id')->all()" :value="$activity->challenge_id" placeholder="Aucun défi (activité libre)" hint="Laissez vide pour une activité libre : sans thématique, sans barème ni comité. Seuls les défis ouverts et auxquels votre club est invité apparaissent." />
                     <x-admin.select name="club_id" label="Club porteur" :options="$clubs->pluck('title', 'id')->all()" :value="$activity->club_id" required />
                 @endif
                 <x-admin.input name="title" label="Titre" :value="$activity->title" required :maxlength="255" :span="true" />
@@ -39,20 +39,22 @@
                     @error('cover')<p class="error">{{ $message }}</p>@enderror
                 </div>
                 <x-admin.select name="type" label="Type d’activité" :options="\App\Models\ClubActivity::TYPES" :value="$activity->type" required :placeholder="null" />
-                <div class="field {{ $errors->has('in_theme') ? 'has-error' : '' }}">
+                @if(! $editing || $activity->hasChallenge())
+                <div class="field {{ $errors->has('in_theme') ? 'has-error' : '' }}" id="nature-field" @if(! $editing && ! old('challenge_id', $activity->challenge_id)) hidden @endif>
                     <label>Nature</label>
                     <label class="check"><input type="radio" name="in_theme" value="1" @checked((string) old('in_theme', $activity->in_theme ? 1 : 0) === '1')> Dans la thématique du défi</label>
                     <label class="check"><input type="radio" name="in_theme" value="0" @checked((string) old('in_theme', $activity->in_theme ? 1 : 0) === '0')> Hors thématique (barème différent)</label>
                     @error('in_theme')<p class="error">{{ $message }}</p>@enderror
                 </div>
+                @endif
                 <x-admin.select name="audience" label="Public" :options="\App\Models\ClubActivity::AUDIENCES" :value="$activity->audience" required :placeholder="null" />
                 <x-admin.select name="department_id" label="Département concerné" :options="[]" :value="$activity->department_id" placeholder="Choisir un département" hint="Uniquement pour le public « Département du club »." />
-                <x-admin.input name="starts_at" type="datetime-local" label="Début" :value="$dt($activity->starts_at)" required hint="Pendant la période du défi." />
+                <x-admin.input name="starts_at" type="datetime-local" label="Début" :value="$dt($activity->starts_at)" required hint="Pendant la période du défi, s’il y en a un." />
                 <x-admin.input name="ends_at" type="datetime-local" label="Fin" :value="$dt($activity->ends_at)" />
                 <x-admin.input name="location" label="Lieu" :value="$activity->location" :maxlength="255" />
                 <x-admin.input name="capacity" type="number" label="Places" :value="$activity->capacity" min="1" hint="Vide : illimité. Au-delà : liste d’attente." />
                 <x-admin.input name="registration_ends_at" type="datetime-local" label="Clôture des inscriptions" :value="$dt($activity->registration_ends_at)" hint="Vide : jusqu’à la fin de l’activité." />
-                <x-admin.select name="status" label="Statut" :options="\App\Models\ClubActivity::STATUSES" :value="$activity->status" required :placeholder="null" hint="Publiée : visible des membres et soumise à la notation du comité." />
+                <x-admin.select name="status" label="Statut" :options="\App\Models\ClubActivity::STATUSES" :value="$activity->status" required :placeholder="null" hint="Publiée : visible des membres (et notée par le comité si l’activité est dans un défi)." />
             </div>
 
             <h3>Formulaire d’inscription</h3>
@@ -111,6 +113,13 @@
         if (club) club.addEventListener('change', function () { current = ''; refresh(); });
         audience.addEventListener('change', refresh);
         refresh();
+
+        // La nature (dans / hors thématique) n'a de sens que dans un défi.
+        var challenge = document.getElementById('f-challenge_id');
+        var nature = document.getElementById('nature-field');
+        if (challenge && nature) {
+            challenge.addEventListener('change', function () { nature.hidden = challenge.value === ''; });
+        }
 
         document.getElementById('add-field').addEventListener('click', function () {
             var box = document.getElementById('field-rows');

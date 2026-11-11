@@ -202,7 +202,7 @@ final class ClubPage
 
         return ClubActivity::query()
             ->where('status', 'published')
-            ->whereHas('challenge', fn (Builder $challenge) => $challenge->where('status', 'published'))
+            ->where(fn (Builder $open) => $open->whereNull('challenge_id')->orWhereHas('challenge', fn (Builder $challenge) => $challenge->where('status', 'published')))
             ->whereIn('audience', $audiences)
             ->where(fn (Builder $query) => $query
                 ->where('club_id', $this->club->id)

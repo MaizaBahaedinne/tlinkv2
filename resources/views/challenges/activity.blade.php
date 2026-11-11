@@ -17,7 +17,11 @@
     @include('partials.app-header')
 
     <div class="app-container space-y-5 py-6">
-        <a href="{{ route('challenges.show', $activity->challenge) }}" class="text-sm font-semibold text-slate-500 hover:text-tlink-blue"><i class="fa-solid fa-arrow-left mr-1" aria-hidden="true"></i>{{ $activity->challenge->title }}</a>
+        @if($activity->challenge)
+            <a href="{{ route('challenges.show', $activity->challenge) }}" class="text-sm font-semibold text-slate-500 hover:text-tlink-blue"><i class="fa-solid fa-arrow-left mr-1" aria-hidden="true"></i>{{ $activity->challenge->title }}</a>
+        @else
+            <a href="{{ route('club.show', $club) }}" class="text-sm font-semibold text-slate-500 hover:text-tlink-blue"><i class="fa-solid fa-arrow-left mr-1" aria-hidden="true"></i>{{ $club->title }}</a>
+        @endif
 
         @if(session('error'))<div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">{{ session('error') }}</div>@endif
         @if($errors->any())<div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">@foreach($errors->all() as $message)<p>{{ $message }}</p>@endforeach</div>@endif
@@ -32,7 +36,7 @@
             <div class="flex min-h-[18rem] flex-col justify-end gap-5 p-6 text-white sm:min-h-[22rem] sm:p-8">
                 <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
                     <span class="rounded-full bg-white/20 px-3 py-1 backdrop-blur">{{ $activity->typeLabel() }}</span>
-                    <span class="rounded-full bg-white/20 px-3 py-1 backdrop-blur">{{ $activity->in_theme ? 'Dans la thématique' : 'Hors thématique' }}</span>
+                    @if($activity->challenge)<span class="rounded-full bg-white/20 px-3 py-1 backdrop-blur">{{ $activity->in_theme ? 'Dans la thématique' : 'Hors thématique' }}</span>@endif
                     @if($activity->status !== 'published')<span class="rounded-full bg-amber-400 px-3 py-1 text-amber-950">{{ \App\Models\ClubActivity::STATUSES[$activity->status] }} · non visible des membres</span>@endif
                 </div>
 

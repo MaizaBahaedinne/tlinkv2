@@ -8,16 +8,22 @@
     $tone = ['draft' => 'neutral', 'pending' => 'warning', 'validated' => 'success'][$report->status] ?? 'neutral';
     $tabs = [
         'bilan' => 'Bilan',
+        'taches' => 'Tâches',
         'auto' => 'Auto-évaluation',
         'rh' => 'Ressources humaines',
         'marketing' => 'Marketing',
         'budget' => 'Sponsoring et budget',
         'avis' => 'Avis des participants',
     ];
+
+    // Sans défi, il n'y a ni barème ni auto-évaluation.
+    if (! $activity->hasChallenge()) {
+        unset($tabs['auto']);
+    }
 @endphp
 
 @section('content')
-    <x-admin.page-header :title="'Compte rendu — '.$activity->title" :subtitle="$activity->challenge->title.' · '.$activity->club->title.' · '.$activity->starts_at->format('d/m/Y')">
+    <x-admin.page-header :title="'Compte rendu — '.$activity->title" :subtitle="($activity->challenge?->title ?? 'Activité libre').' · '.$activity->club->title.' · '.$activity->starts_at->format('d/m/Y')">
         <x-slot:actions>
             <a href="{{ route('admin.activities.show', $activity) }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour à l’activité</a>
         </x-slot:actions>
@@ -26,7 +32,7 @@
     <article class="card">
         <div class="card-body text-sm">
             <p><strong>Statut :</strong> <span class="badge badge-{{ $tone }}">{{ $report->statusLabel() }}</span></p>
-            <p class="text-muted">Le club rédige le compte rendu, le président du club porteur le valide, puis il est transmis au comité d’évaluation du défi. Sans compte rendu validé, l’activité ne peut pas être notée.</p>
+            <p class="text-muted">{{ $activity->hasChallenge() ? 'Le club rédige le compte rendu, le président du club porteur le valide, puis il est transmis au comité d’évaluation du défi. Sans compte rendu validé, l’activité ne peut pas être notée.' : 'Le club rédige le compte rendu, avec la liste des tâches de l’activité, puis le président du club porteur le valide.' }}</p>
             @if($report->status === 'draft' && $report->president_comment)
                 <p style="margin-top:10px"><strong>Le président demande des corrections :</strong> {{ $report->president_comment }}</p>
             @endif
@@ -72,11 +78,11 @@
     @unless($editable)
         @if($canValidate)
             <article class="card">
-                <div class="card-head"><div><h2>Décision du président</h2><div class="sub">Validez pour transmettre le compte rendu au comité d’évaluation, ou renvoyez-le au club avec vos remarques.</div></div></div>
+                <div class="card-head"><div><h2>Décision du président</h2><div class="sub">{{ $activity->hasChallenge() ? 'Validez pour transmettre le compte rendu au comité d’évaluation, ou renvoyez-le au club avec vos remarques.' : 'Validez le compte rendu, ou renvoyez-le au club avec vos remarques.' }}</div></div></div>
                 <div class="card-body">
                     <form method="post" action="{{ route('admin.activities.report.approve', $activity) }}" class="inline-form" style="margin-bottom:16px">
                         @csrf
-                        <button type="submit" class="btn btn-success"><x-admin.icon name="check" :size="16" /> Valider et transmettre au comité</button>
+                        <button type="submit" class="btn btn-success"><x-admin.icon name="check" :size="16" /> {{ $activity->hasChallenge() ? 'Valider et transmettre au comité' : 'Valider le compte rendu' }}</button>
                     </form>
                     <form method="post" action="{{ route('admin.activities.report.return', $activity) }}">
                         @csrf

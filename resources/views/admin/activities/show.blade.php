@@ -4,7 +4,7 @@
 @section('section', 'Défis')
 
 @section('content')
-    <x-admin.page-header :title="$activity->title" :subtitle="$activity->challenge->title.' · '.$activity->typeLabel().' · '.$activity->starts_at->format('d/m/Y H:i')">
+    <x-admin.page-header :title="$activity->title" :subtitle="($activity->challenge?->title ?? 'Activité libre').' · '.$activity->typeLabel().' · '.$activity->starts_at->format('d/m/Y H:i')">
         <x-slot:actions>
             <a href="{{ route('admin.activities.index') }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour</a>
             <a href="{{ route('admin.activities.qr', $activity) }}" class="btn btn-secondary"><x-admin.icon name="activity" :size="16" /> QR code de présence</a>
@@ -17,6 +17,8 @@
             @endif
         </x-slot:actions>
     </x-admin.page-header>
+
+    @include('admin.activities.partials.tasks-manager')
 
     <div class="grid-3-1">
         <article class="card card-flush" style="min-width:0">
@@ -57,15 +59,21 @@
                 <div class="card-head"><div><h2>Informations</h2></div></div>
                 <div class="card-body text-sm">
                     <p><strong>Club porteur :</strong> {{ $activity->club->title }}</p>
-                    <p><strong>Nature :</strong> {{ $activity->in_theme ? 'Dans la thématique' : 'Hors thématique' }}</p>
+                    @if($activity->hasChallenge())
+                        <p><strong>Nature :</strong> {{ $activity->in_theme ? 'Dans la thématique' : 'Hors thématique' }}</p>
+                    @else
+                        <p><strong>Défi :</strong> aucun (activité libre)</p>
+                    @endif
                     <p><strong>Public :</strong> {{ $activity->audienceLabel() }}@if($activity->department) — {{ $activity->department->title }}@endif</p>
                     <p><strong>Statut :</strong> <x-admin.badge :status="$activity->status" /></p>
-                    <p><strong>Note du comité :</strong> @if(($total['total'] ?? null) !== null){{ rtrim(rtrim(number_format($total['total'], 2, ',', ''), '0'), ',') }} / {{ $total['max'] }}@else<span class="text-muted">pas encore notée</span>@endif</p>
+                    @if($activity->hasChallenge())
+                        <p><strong>Note du comité :</strong> @if(($total['total'] ?? null) !== null){{ rtrim(rtrim(number_format($total['total'], 2, ',', ''), '0'), ',') }} / {{ $total['max'] }}@else<span class="text-muted">pas encore notée</span>@endif</p>
+                    @endif
                 </div>
             </article>
 
             <article class="card">
-                <div class="card-head"><div><h2>Compte rendu de clôture</h2><div class="sub">RH, marketing, partenaires et budget : validé par le président avant l’évaluation du comité.</div></div></div>
+                <div class="card-head"><div><h2>Compte rendu de clôture</h2><div class="sub">{{ $activity->hasChallenge() ? 'RH, marketing, partenaires et budget : validé par le président avant l’évaluation du comité.' : 'Tâches, RH, marketing, partenaires et budget : validé par le président du club.' }}</div></div></div>
                 <div class="card-body text-sm">
                     @php
                         $report = $activity->report;

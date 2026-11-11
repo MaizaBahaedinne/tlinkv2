@@ -43,7 +43,7 @@
                         @foreach($activities as $activity)
                             <tr>
                                 <td><a href="{{ route('admin.activities.show', $activity) }}" class="cell-main">{{ $activity->title }}</a><div class="cell-sub">{{ $activity->typeLabel() }} · {{ $activity->starts_at->format('d/m/Y H:i') }} · {{ $activity->in_theme ? 'Thématique' : 'Hors thématique' }}</div></td>
-                                <td class="hide-mobile">{{ $activity->challenge?->title }}</td>
+                                <td class="hide-mobile">{{ $activity->challenge?->title ?? 'Activité libre' }}</td>
                                 <td>{{ $activity->club?->title }}</td>
                                 <td class="text-sm">{{ $activity->audienceLabel() }}</td>
                                 <td>{{ $activity->registrations_count }}@if($activity->capacity) <span class="text-muted">/ {{ $activity->capacity }}</span>@endif</td>

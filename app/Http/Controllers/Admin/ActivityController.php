@@ -20,7 +20,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
-/** Activités des clubs dans un défi : création, co-organisation, inscriptions et présence (QR code). */
+/** Activités des clubs, libres ou dans un défi : création, co-organisation, inscriptions et présence (QR code). */
 class ActivityController extends AdminController
 {
     public function index(Request $request): View
@@ -68,17 +68,21 @@ class ActivityController extends AdminController
     {
         $this->authorizeActivity($request, $activity);
 
-        $activity->load(['club:id,title,scope', 'challenge', 'department:id,title', 'organizers.club:id,title']);
+        $activity->load(['club:id,title,scope', 'challenge', 'department:id,title', 'organizers.club:id,title', 'tasks.assignee:id,name', 'report']);
         $taken = array_merge($activity->organizers->pluck('club_id')->all(), [$activity->club_id]);
+        $tasksLocked = $activity->report !== null && ! $activity->report->isEditable();
 
         return view('admin.activities.show', [
             'activity' => $activity,
             'registrations' => $activity->registrations()->with('user:id,name,email')->orderBy('id')->get(),
-            'total' => ChallengeScoring::activityTotals($activity->challenge)[$activity->id] ?? null,
+            'total' => $activity->challenge ? (ChallengeScoring::activityTotals($activity->challenge)[$activity->id] ?? null) : null,
             'candidates' => OrgNode::query()->where('kind', 'club')->whereNotIn('id', $taken)->orderBy('title')->get(['id', 'title', 'scope'])
-                ->filter(fn (OrgNode $club): bool => $activity->challenge->invitesClub($club))->values(),
+                ->filter(fn (OrgNode $club): bool => $activity->challenge === null || $activity->challenge->invitesClub($club))->values(),
             'canLead' => ActivityAccess::canManageClub($request->user(), $activity->club_id),
             'manageable' => ActivityAccess::manageableClubIds($request->user()),
+            'tasksLocked' => $tasksLocked,
+            'assignees' => $tasksLocked ? collect() : ActivityAccess::reportCandidates($activity),
+            'taskTemplate' => \App\Support\Challenges\ActivityTaskTemplates::forType($activity->type),
         ]);
     }
 
@@ -157,7 +161,7 @@ class ActivityController extends AdminController
             return back()->with('error', 'Ce club est déjà organisateur ou invité.');
         }
 
-        abort_unless($activity->challenge->invitesClub($club), 422, 'Ce club n’est pas invité à ce défi.');
+        abort_unless($activity->challenge === null || $activity->challenge->invitesClub($club), 422, 'Ce club n’est pas invité à ce défi.');
 
         $organizer = $activity->organizers()->create(['club_id' => $club->id, 'status' => 'pending']);
 
@@ -229,7 +233,7 @@ class ActivityController extends AdminController
         $challenges = Challenge::query()->where('status', 'published')->where('ends_at', '>=', now())->with('criteria')->orderBy('starts_at')->get()
             ->filter(fn (Challenge $challenge): bool => $clubs->contains(fn (OrgNode $club): bool => $challenge->invitesClub($club)))->values();
 
-        if ($activity->exists && ! $challenges->contains('id', $activity->challenge_id)) {
+        if ($activity->exists && $activity->challenge_id !== null && ! $challenges->contains('id', $activity->challenge_id)) {
             $challenges->push($activity->challenge->loadMissing('criteria'));
         }
 
@@ -274,14 +278,14 @@ class ActivityController extends AdminController
         $user = $request->user();
 
         $data = $request->validate([
-            'challenge_id' => [$existing ? 'nullable' : 'required', 'integer', Rule::exists('challenges', 'id')],
+            'challenge_id' => ['nullable', 'integer', Rule::exists('challenges', 'id')],
             'club_id' => [$existing ? 'nullable' : 'required', 'integer', Rule::exists('org_nodes', 'id')->where('kind', 'club')],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'type' => ['required', Rule::in(array_keys(ClubActivity::TYPES))],
             'audience' => ['required', Rule::in(array_keys(ClubActivity::AUDIENCES))],
             'department_id' => ['nullable', 'integer', Rule::exists('org_nodes', 'id')->where('kind', 'club_department')],
-            'in_theme' => ['required', 'boolean'],
+            'in_theme' => ['nullable', 'boolean'],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'location' => ['nullable', 'string', 'max:255'],
@@ -293,36 +297,47 @@ class ActivityController extends AdminController
             'cover_remove' => ['nullable', 'boolean'],
         ]);
 
-        // Le défi et le club porteur sont choisis à la création ; ensuite ils sont figés.
-        $challenge = $existing ? $existing->challenge : Challenge::query()->with('criteria')->findOrFail($data['challenge_id']);
-        $clubId = $existing ? $existing->club_id : (int) $data['club_id'];
+        // Le défi (facultatif) et le club porteur sont choisis à la création ; ensuite ils sont figés.
+        $challenge = $existing
+            ? $existing->challenge
+            : (filled($data['challenge_id'] ?? null) ? Challenge::query()->with('criteria')->findOrFail($data['challenge_id']) : null);
+        $clubId = $existing ? $existing->club_id : (int) ($data['club_id'] ?? 0);
 
         if (! $existing) {
-            $club = OrgNode::query()->findOrFail($clubId);
+            $club = OrgNode::query()->where('kind', 'club')->find($clubId);
+
+            if ($club === null) {
+                throw ValidationException::withMessages(['club_id' => 'Choisissez le club porteur.']);
+            }
 
             if (! ActivityAccess::canManageClub($user, $clubId)) {
                 throw ValidationException::withMessages(['club_id' => 'Vous ne gérez pas ce club.']);
             }
 
-            if (! $challenge->invitesClub($club)) {
+            if ($challenge !== null && ! $challenge->invitesClub($club)) {
                 throw ValidationException::withMessages(['club_id' => 'Ce club n’est pas invité à ce défi.']);
             }
         }
 
-        if (! $challenge->acceptsActivities()) {
-            throw ValidationException::withMessages(['challenge_id' => 'Ce défi n’accepte plus d’activités (non publié ou terminé).']);
-        }
+        // Activité libre : ni thématique, ni barème, ni dates imposées par un défi.
+        $inTheme = false;
 
-        $inTheme = (bool) $data['in_theme'];
+        if ($challenge !== null) {
+            if (! $challenge->acceptsActivities()) {
+                throw ValidationException::withMessages(['challenge_id' => 'Ce défi n’accepte plus d’activités (non publié ou terminé).']);
+            }
 
-        if ($challenge->criteriaOf($inTheme ? 'theme' : 'off_theme')->isEmpty()) {
-            throw ValidationException::withMessages(['in_theme' => $inTheme ? 'Ce défi n’a pas de barème pour la thématique.' : 'Ce défi n’a pas de barème pour les activités hors thématique : elles n’y sont pas acceptées.']);
-        }
+            $inTheme = (bool) ($data['in_theme'] ?? true);
 
-        $starts = \Illuminate\Support\Carbon::parse($data['starts_at']);
+            if ($challenge->criteriaOf($inTheme ? 'theme' : 'off_theme')->isEmpty()) {
+                throw ValidationException::withMessages(['in_theme' => $inTheme ? 'Ce défi n’a pas de barème pour la thématique.' : 'Ce défi n’a pas de barème pour les activités hors thématique : elles n’y sont pas acceptées.']);
+            }
 
-        if ($starts->lt($challenge->starts_at->copy()->startOfDay()) || $starts->gt($challenge->ends_at)) {
-            throw ValidationException::withMessages(['starts_at' => 'L’activité doit commencer pendant le défi (du '.$challenge->starts_at->format('d/m/Y').' au '.$challenge->ends_at->format('d/m/Y').').']);
+            $starts = \Illuminate\Support\Carbon::parse($data['starts_at']);
+
+            if ($starts->lt($challenge->starts_at->copy()->startOfDay()) || $starts->gt($challenge->ends_at)) {
+                throw ValidationException::withMessages(['starts_at' => 'L’activité doit commencer pendant le défi (du '.$challenge->starts_at->format('d/m/Y').' au '.$challenge->ends_at->format('d/m/Y').').']);
+            }
         }
 
         $department = null;
@@ -351,7 +366,7 @@ class ActivityController extends AdminController
             'registration_fields' => $this->fields((array) ($data['fields'] ?? [])),
         ];
 
-        return $existing ? $attributes : $attributes + ['challenge_id' => $challenge->id, 'club_id' => $clubId];
+        return $existing ? $attributes : $attributes + ['challenge_id' => $challenge?->id, 'club_id' => $clubId];
     }
 
     /**
