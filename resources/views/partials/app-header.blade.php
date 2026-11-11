@@ -12,15 +12,16 @@
         ['key' => 'home', 'label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
         \App\Support\Domains::reachableFrom($section, 'academy') ? ['key' => 'academy', 'label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')] : null,
         ($hasOffice ?? false) ? ['key' => 'office', 'label' => \App\Support\AppMenu::officeLabel($me), 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
+        ['key' => 'tasks', 'label' => 'Mes tâches', 'href' => route('tasks.mine'), 'icon' => 'fa-solid fa-clipboard-check', 'active' => request()->routeIs('tasks.mine'), 'badge' => (int) ($myTasksUnseen ?? 0), 'badgeLabel' => 'tâche(s) non vue(s)', 'badgeAttr' => 'data-tasks-badge'],
         ($challengesEnabled ?? false) ? ['key' => 'challenges', 'label' => 'Défis', 'href' => route('challenges.index'), 'icon' => 'fa-solid fa-trophy', 'active' => request()->routeIs('challenges.*', 'activities.*')] : null,
         ($mentoringEnabled ?? false) ? ['key' => 'mentoring', 'label' => 'Mentorat', 'href' => route('mentoring.index'), 'icon' => 'fa-solid fa-life-ring', 'active' => request()->routeIs('mentoring.*')] : null,
-        (($storeEnabled ?? false) && \App\Support\Domains::reachableFrom($section, 'store')) ? ['key' => 'store', 'label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0)] : null,
+        (($storeEnabled ?? false) && \App\Support\Domains::reachableFrom($section, 'store')) ? ['key' => 'store', 'label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0), 'badgeLabel' => 'article(s) dans le panier'] : null,
         ($canAdmin ?? false) ? ['key' => 'admin', 'label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
         ($canSimulate ?? false) ? ['key' => 'simulator', 'label' => 'Simulateur de rôles', 'href' => route('admin.simulator.index'), 'icon' => 'fa-solid fa-user-secret', 'active' => false] : null,
     ]));
 
-    // Barre principale : 3 icônes essentielles (Fil, Academy, puis Mon bureau ou Défis) ; le reste va dans « Plus ».
-    $essentialKeys = ['home', 'academy', ($hasOffice ?? false) ? 'office' : 'challenges'];
+    // Barre principale : Fil, Mon bureau, Mes tâches et Mentorat ; le reste (Academy, Défis, Boutique, administration…) va dans « Plus ».
+    $essentialKeys = ['home', 'office', 'tasks', 'mentoring'];
     $navItems = array_values(array_filter($allNav, fn (array $item): bool => in_array($item['key'], $essentialKeys, true)));
     $moreItems = array_values(array_filter($allNav, fn (array $item): bool => ! in_array($item['key'], $essentialKeys, true)));
     $moreActive = collect($moreItems)->contains('active', true);
@@ -45,7 +46,7 @@
                    class="relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-base transition lg:h-10 lg:w-10 lg:flex-none lg:rounded-xl {{ $item['active'] ? 'text-tlink-blue lg:bg-rose-50' : 'text-slate-500 hover:text-slate-900 lg:hover:bg-slate-100' }}">
                     <i class="{{ $item['icon'] }}" aria-hidden="true"></i>
                     @if(($item['badge'] ?? 0) > 0)
-                        <span class="absolute right-1/4 top-1.5 inline-flex min-w-[1.05rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.05rem] text-white lg:-right-0.5 lg:-top-0.5" aria-label="{{ $item['badge'] }} article(s) dans le panier">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
+                        <span @if(isset($item['badgeAttr'])) {{ $item['badgeAttr'] }} @endif class="absolute right-1/4 top-1.5 inline-flex min-w-[1.05rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.05rem] text-white lg:-right-0.5 lg:-top-0.5" aria-label="{{ $item['badge'] }} {{ $item['badgeLabel'] ?? '' }}">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
                     @endif
                     <span class="max-w-full truncate px-1 text-[10px] font-medium leading-none lg:hidden">{{ $item['label'] }}</span>
                 </a>
@@ -68,7 +69,7 @@
                                 <i class="{{ $item['icon'] }} w-5 text-center text-slate-500" aria-hidden="true"></i>
                                 <span class="flex-1 truncate">{{ $item['label'] }}</span>
                                 @if(($item['badge'] ?? 0) > 0)
-                                    <span class="inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white" aria-label="{{ $item['badge'] }} article(s) dans le panier">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
+                                    <span class="inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white" aria-label="{{ $item['badge'] }} {{ $item['badgeLabel'] ?? '' }}">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
                                 @endif
                             </a>
                         @endforeach
@@ -97,15 +98,6 @@
                     <span id="nav-messages-badge" data-count="{{ $unreadMessages }}" @if($unreadMessages < 1) hidden @endif class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white">{{ $unreadMessages > 99 ? '99+' : $unreadMessages }}</span>
                 </a>
             @endif
-
-            @php $myTasksUnseen = (int) ($myTasksUnseen ?? 0); @endphp
-            <a href="{{ route('tasks.mine') }}" title="Mes tâches" id="nav-tasks" aria-label="Mes tâches{{ $myTasksUnseen > 0 ? ' ('.$myTasksUnseen.' non vue(s))' : '' }}" @if(request()->routeIs('tasks.mine')) aria-current="page" @endif
-               class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('tasks.mine') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
-                <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>
-                @if($myTasksUnseen > 0)
-                    <span data-tasks-badge class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white" aria-label="{{ $myTasksUnseen }} tâche(s) non vue(s)">{{ $myTasksUnseen > 99 ? '99+' : $myTasksUnseen }}</span>
-                @endif
-            </a>
 
             <a href="{{ route('notifications.index') }}" title="Notifications" id="nav-notifications" data-unread="{{ $unread }}" data-unread-url="{{ route('notifications.unread') }}" aria-label="Notifications{{ $unread > 0 ? ' ('.$unread.' non lues)' : '' }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif
                class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('notifications.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">

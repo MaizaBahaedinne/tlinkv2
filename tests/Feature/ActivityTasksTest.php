@@ -287,14 +287,14 @@ class ActivityTasksTest extends TestCase
         $activity = $this->freeActivity();
 
         // Sans tâche confiée : l'icône est là, sans pastille.
-        $this->actingAs($this->member)->get('/feed')->assertOk()->assertSee('id="nav-tasks"', false)->assertDontSee('data-tasks-badge', false);
+        $this->actingAs($this->member)->get('/feed')->assertOk()->assertSee('title="Mes tâches"', false)->assertDontSee('data-tasks-badge', false);
 
         $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => 'Imprimer les badges', 'team' => 'event', 'assignee_ids' => [$this->member->id, $this->president->id]])->assertSessionHasNoErrors();
         $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => 'Inviter les partenaires', 'team' => 'sponsoring', 'assignee_ids' => [$this->member->id]])->assertSessionHasNoErrors();
 
         // Le membre voit 2 tâches non vues ; le président, qui se l'est donnée lui-même, n'a pas de pastille.
-        $this->actingAs($this->member)->get('/feed')->assertOk()->assertSee('id="nav-tasks"', false)->assertSee('2 tâche(s) non vue(s)');
-        $this->actingAs($this->president)->get('/feed')->assertOk()->assertSee('id="nav-tasks"', false)->assertDontSee('data-tasks-badge', false);
+        $this->actingAs($this->member)->get('/feed')->assertOk()->assertSee('title="Mes tâches"', false)->assertSee('2 tâche(s) non vue(s)');
+        $this->actingAs($this->president)->get('/feed')->assertOk()->assertSee('title="Mes tâches"', false)->assertDontSee('data-tasks-badge', false);
 
         $notification = AppNotification::query()->where('user_id', $this->member->id)->where('type', 'activity.task.assigned')->firstOrFail();
         $this->assertSame('/mes-taches', $notification->data['url']);
@@ -302,7 +302,7 @@ class ActivityTasksTest extends TestCase
         // Ouvrir Mes tâches : les tâches apparaissent comme nouvelles, puis la pastille et les notifications disparaissent.
         $this->actingAs($this->member)->get('/mes-taches')->assertOk()->assertSee('Imprimer les badges')->assertSee('Inviter les partenaires')->assertSee('Nouvelle')->assertSee('Avec '.$this->president->name);
         $this->assertSame(0, AppNotification::query()->where('user_id', $this->member->id)->where('type', 'activity.task.assigned')->whereNull('read_at')->count());
-        $this->actingAs($this->member)->get('/feed')->assertOk()->assertSee('id="nav-tasks"', false)->assertDontSee('data-tasks-badge', false);
+        $this->actingAs($this->member)->get('/feed')->assertOk()->assertSee('title="Mes tâches"', false)->assertDontSee('data-tasks-badge', false);
         $this->actingAs($this->member)->get('/mes-taches')->assertOk()->assertDontSee('Nouvelle');
 
         // Une nouvelle tâche confiée remet la pastille à 1.
