@@ -225,6 +225,23 @@ class MembershipRequestPageTest extends TestCase
         $this->assertNotFalse(strpos($html, 'depuis le 01/11/2023'));
     }
 
+    public function test_membership_and_held_position_share_a_single_timeline_line(): void
+    {
+        $root = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'access_level' => 'none', 'category' => 'direction', 'title' => 'Bureau 2026', 'sort_order' => 0]);
+        $post = OrgNode::query()->create(['parent_id' => $root->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'access_level' => 'none', 'category' => 'direction', 'title' => 'Assistant Events', 'sort_order' => 0]);
+        \App\Models\Mandate::query()->create(['label' => '2026-2027', 'start_year' => 2026, 'end_year' => 2027, 'bureau_name' => 'Bureau', 'status' => 'current', 'root_node_id' => $root->id]);
+
+        $member = $this->applicant();
+        $person = \App\Models\OrgPerson::query()->create(['user_id' => $member->id, 'full_name' => $member->name, 'contact_visible' => true]);
+        \App\Models\OrgAssignment::query()->create(['node_id' => $post->id, 'person_id' => $person->id]);
+        Membership::query()->create(['user_id' => $member->id, 'scope' => 'university', 'position_id' => $post->id, 'status' => 'approved', 'membership_type' => 'Assistant Events', 'starts_at' => now()->toDateString()]);
+
+        $html = $this->actingAs($member)->get('/adhesions')->assertOk()->assertSee('Assistant Events')->getContent();
+
+        $this->assertSame(1, substr_count($html, 'Assistant Events'));
+        $this->assertStringNotContainsString('>Poste</p>', $html);
+    }
+
     /** @return array{0: \App\Models\Mandate, 1: \App\Models\Mandate, 2: OrgNode, 3: OrgNode, 4: OrgNode} */
     private function pastSetup(): array
     {

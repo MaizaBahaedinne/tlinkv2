@@ -65,6 +65,11 @@
                         'upcoming' => 'bg-sky-500',
                         default => 'bg-slate-400',
                     };
+                    // Une adhésion liée à un poste occupé n'a qu'une ligne : le poste y est fusionné.
+                    $heldPosts = $group['positions']->keyBy('node_id');
+                    $mergedNodes = $group['memberships']->merge($group['carried'])
+                        ->filter(fn ($m) => $m->status === 'approved' && $m->position_id !== null && $heldPosts->has($m->position_id))
+                        ->pluck('position_id')->all();
                     $empty = $group['memberships']->isEmpty() && $group['carried']->isEmpty() && $group['participations']->isEmpty() && $group['positions']->isEmpty();
                 @endphp
                 <li class="relative">
@@ -89,10 +94,10 @@
                         @else
                             <ul class="mt-3 space-y-2">
                                 @foreach($group['memberships'] as $membership)
-                                    @include('memberships.partials.membership-item', ['membership' => $membership, 'carried' => false])
+                                    @include('memberships.partials.membership-item', ['membership' => $membership, 'carried' => false, 'held' => $heldPosts->get($membership->position_id)])
                                 @endforeach
                                 @foreach($group['carried'] as $membership)
-                                    @include('memberships.partials.membership-item', ['membership' => $membership, 'carried' => true])
+                                    @include('memberships.partials.membership-item', ['membership' => $membership, 'carried' => true, 'held' => $heldPosts->get($membership->position_id)])
                                 @endforeach
 
                                 @foreach($group['participations'] as $participation)
@@ -119,7 +124,7 @@
                                     </li>
                                 @endforeach
 
-                                @foreach($group['positions'] as $assignment)
+                                @foreach($group['positions']->reject(fn ($a) => in_array($a->node_id, $mergedNodes, true)) as $assignment)
                                     @php
                                         $ongoing = $assignment->ends_at === null || $assignment->ends_at->toDateString() >= now()->toDateString();
                                         $detail = collect([$assignment->node?->subtitle, $assignment->person?->job_title])->filter()->unique()->implode(' · ');
