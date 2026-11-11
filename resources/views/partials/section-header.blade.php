@@ -44,7 +44,8 @@
             </nav>
         @endif
 
-        <div class="ml-auto flex items-center justify-end">
+        <div class="ml-auto flex items-center justify-end gap-1.5">
+            @include('partials.install-app')
             <details class="relative" id="nav-user">
                 <summary class="grid h-10 w-10 cursor-pointer list-none place-items-center overflow-hidden rounded-full bg-tlink-blue text-sm font-semibold text-white ring-2 ring-white transition hover:ring-rose-100 [&::-webkit-details-marker]:hidden" title="{{ $meName }}" aria-label="Menu de {{ $meName }}">
                     @if($meAvatar)

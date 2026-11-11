@@ -162,10 +162,25 @@ class SubdomainsTest extends TestCase
         $this->actingAs($user)->get('http://link.example.test/messagerie')->assertNotFound();
         $this->actingAs($user)->get('http://store.example.test/messagerie/12')->assertNotFound();
 
-        // Aucun lien (ni tiroir de messages) vers la messagerie depuis T.Link.
+        // T.Link propose le bouton Messenger, qui redirige vers l'application (autre hôte) ; ni tiroir de messages ni appel de comptage inter-hôtes.
         $this->actingAs($user)->get('http://link.example.test/feed')->assertOk()
-            ->assertDontSee(Domains::url('messenger', '/messagerie'), false)
-            ->assertDontSee('id="nav-messages"', false);
+            ->assertSee('id="nav-messages"', false)
+            ->assertSee('href="'.Domains::url('messenger', '/messagerie').'"', false)
+            ->assertDontSee('id="mg-dock"', false)
+            ->assertDontSee('data-url-list', false);
+    }
+
+    public function test_the_install_app_button_is_in_the_headers_and_the_manifest_detects_installed_apps(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('http://link.example.test/feed')->assertOk()->assertSee('data-install-app', false)->assertSee('Installer T.Link');
+        $this->actingAs($user)->get('http://messenger.example.test/messagerie')->assertOk()->assertSee('data-install-app', false)->assertSee('Installer T.Link Messenger');
+
+        $this->get('http://link.example.test/manifest.webmanifest')->assertOk()
+            ->assertJsonPath('related_applications.0.platform', 'play')
+            ->assertJsonPath('related_applications.1.platform', 'webapp')
+            ->assertJsonPath('related_applications.1.url', 'http://link.example.test/manifest.webmanifest');
     }
 
     public function test_section_headers_only_contain_their_own_pages(): void

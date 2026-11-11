@@ -44,8 +44,11 @@ class AppManifestController extends Controller
             'background_color' => '#ffffff',
             'theme_color' => '#d00031',
             'icons' => [$icons(192), $icons(512)],
-            // Permet au navigateur Android de savoir si l'application native est installée (navigator.getInstalledRelatedApps).
-            'related_applications' => [['platform' => 'play', 'id' => $app['id']]],
+            // Permet au navigateur Android de savoir si l'application (native ou installée depuis le navigateur) est déjà installée (navigator.getInstalledRelatedApps).
+            'related_applications' => [
+                ['platform' => 'play', 'id' => $app['id']],
+                ['platform' => 'webapp', 'url' => route('manifest')],
+            ],
             'prefer_related_applications' => false,
         ], 200, ['Content-Type' => 'application/manifest+json', 'Cache-Control' => 'public, max-age=3600']);
     }

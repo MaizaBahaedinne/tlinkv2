@@ -7,6 +7,8 @@
     // Applications cloisonnées : un lien vers une autre application n'existe que si elle n'a pas son propre sous-domaine.
     $section = \App\Support\Domains::sectionOf(request());
     $canMessenger = ($messengerEnabled ?? false) && \App\Support\Domains::reachableFrom($section, 'messenger');
+    // Le bouton Messenger est toujours proposé quand la messagerie est ouverte : sur son propre sous-domaine, il redirige vers l'application Messenger.
+    $messengerLink = (bool) ($messengerEnabled ?? false);
 
     $allNav = array_values(array_filter([
         ['key' => 'home', 'label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
@@ -90,9 +92,11 @@
                 <div id="nav-search-results" role="listbox" hidden class="absolute right-0 top-full z-40 mt-2 max-h-[70vh] w-80 max-w-[90vw] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-soft"></div>
             </form>
 
-            @if($canMessenger)
+            @include('partials.install-app')
+
+            @if($messengerLink)
                 @php $unreadMessages = (int) ($unreadMessages ?? 0); @endphp
-                <a href="{{ \App\Support\Domains::url('messenger', route('messenger.index', [], false)) }}" title="Messages" aria-label="Messages" @if(request()->routeIs('messenger.*')) aria-current="page" @endif id="nav-messages" data-unread-url="{{ route('messenger.unread') }}"
+                <a href="{{ \App\Support\Domains::url('messenger', route('messenger.index', [], false)) }}" title="{{ $canMessenger ? 'Messages' : 'Ouvrir T.Link Messenger' }}" aria-label="{{ $canMessenger ? 'Messages' : 'Ouvrir T.Link Messenger' }}" @if(request()->routeIs('messenger.*')) aria-current="page" @endif id="nav-messages" @if($canMessenger) data-unread-url="{{ route('messenger.unread') }}" @endif
                    class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('messenger.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
                     <i class="fa-regular fa-comments" aria-hidden="true"></i>
                     <span id="nav-messages-badge" data-count="{{ $unreadMessages }}" @if($unreadMessages < 1) hidden @endif class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white">{{ $unreadMessages > 99 ? '99+' : $unreadMessages }}</span>
@@ -221,7 +225,7 @@
             badge.hidden = count < 1;
         };
 
-        if (document.getElementById('messenger')) { return; }
+        if (document.getElementById('messenger') || !link.getAttribute('data-unread-url')) { return; }
 
         function refresh() {
             if (document.hidden || document.getElementById('mg-dock')) { return; }
