@@ -208,6 +208,23 @@ class MembershipRequestPageTest extends TestCase
             ->assertSee('Gérer les mandats et leur statut')->assertDontSee('Ouvrir l’organigramme');
     }
 
+    public function test_memberships_appear_in_the_vertical_timeline_under_their_mandate(): void
+    {
+        \App\Models\Mandate::query()->create(['label' => '2023-2024', 'start_year' => 2023, 'end_year' => 2024, 'bureau_name' => 'Ancien', 'status' => 'closed']);
+        \App\Models\Mandate::query()->create(['label' => '2026-2027', 'start_year' => 2026, 'end_year' => 2027, 'bureau_name' => 'Actuel', 'status' => 'current']);
+
+        $member = $this->applicant();
+        Membership::query()->create(['user_id' => $member->id, 'scope' => 'alumni', 'status' => 'approved', 'membership_type' => 'member', 'starts_at' => '2023-11-01']);
+        Membership::query()->create(['user_id' => $member->id, 'scope' => 'university_clubs', 'status' => 'pending', 'membership_type' => 'member', 'starts_at' => '2026-10-01']);
+
+        $html = $this->actingAs($member)->get('/adhesions')->assertOk()
+            ->assertSee('Mon parcours par mandat')->assertSee('Adhésion reconduite')->assertSee('Retirer ma demande')
+            ->getContent();
+
+        $this->assertLessThan(strpos($html, 'Mandat 2023-2024'), strpos($html, 'Mandat 2026-2027'));
+        $this->assertNotFalse(strpos($html, 'depuis le 01/11/2023'));
+    }
+
     /** @return array{0: \App\Models\Mandate, 1: \App\Models\Mandate, 2: OrgNode, 3: OrgNode, 4: OrgNode} */
     private function pastSetup(): array
     {

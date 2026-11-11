@@ -32,14 +32,22 @@ class MembershipRequestController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $memberships = Membership::query()->where('user_id', $user->id)->with(['node:id,title', 'position:id,title'])->latest('id')->get();
+        $rows = $this->mandateRows($user, $memberships);
+        $today = now()->toDateString();
 
         return view('memberships.index', [
-            'memberships' => Membership::query()->where('user_id', $user->id)->with('node:id,title')->latest('id')->get(),
+            'memberships' => $memberships,
+            'stats' => [
+                'active' => $memberships->filter(fn (Membership $m) => $m->status === 'approved' && ($m->ends_at === null || $m->ends_at->toDateString() >= $today))->count(),
+                'pending' => $memberships->where('status', 'pending')->count(),
+                'positions' => $rows->sum(fn (array $row) => $row['positions']->filter(fn ($a) => $a->ends_at === null || $a->ends_at->toDateString() >= $today)->count()),
+            ],
             'scopes' => OrgScopes::all(),
             'clubs' => MembershipRequests::clubsByScope(),
             'pastClubs' => MembershipRequests::clubsByScope(true),
             'statuses' => self::STATUSES,
-            'positionsByMandate' => $this->mandateRows($user),
+            'positionsByMandate' => $rows,
             'joinedMandate' => $user->joined_mandate_id ? Mandate::query()->find($user->joined_mandate_id) : null,
             'canEditPositions' => AdminContext::of($request)->isGlobal('entity.manage'),
             'missingCv' => MembershipRequests::missingCv($user->loadMissing('profile')),
@@ -49,30 +57,67 @@ class MembershipRequestController extends Controller
     }
 
     /**
-     * Tous les mandats (le plus récent d'abord), même ceux où le membre n'a pas de poste,
-     * suivis des postes hors mandat s'il y en a.
+     * Tous les mandats (le plus récent d'abord), même ceux où le membre n'a rien, avec ses adhésions, ses postes et ses
+     * participations ; puis une ligne « hors mandat » pour ce qui ne se rattache à aucun mandat connu.
+     * Une adhésion appartient au mandat où elle commence (ou, si elle a une fin, à tous ceux que sa période recoupe) ;
+     * une adhésion validée encore active apparaît aussi, comme reconduite, dans le mandat en cours (c'est elle qui renouvelle la carte).
      *
-     * @return \Illuminate\Support\Collection<int, array{mandate: ?Mandate, positions: \Illuminate\Support\Collection}>
+     * @param \Illuminate\Support\Collection<int, Membership> $memberships
+     * @return \Illuminate\Support\Collection<int, array{mandate: ?Mandate, positions: \Illuminate\Support\Collection, participations: \Illuminate\Support\Collection, memberships: \Illuminate\Support\Collection, carried: \Illuminate\Support\Collection}>
      */
-    private function mandateRows(\App\Models\User $user)
+    private function mandateRows(\App\Models\User $user, $memberships)
     {
         $groups = (new MemberJourney())->byMandate($user);
         $byMandate = $groups->filter(fn (array $group) => $group['mandate'] !== null)->keyBy(fn (array $group) => $group['mandate']->id);
+        $today = now()->toDateString();
+        $placed = [];
 
         $rows = Mandate::query()->orderByDesc('start_year')->orderByDesc('id')->get()
-            ->map(fn (Mandate $mandate) => [
-                'mandate' => $mandate,
-                'positions' => $byMandate->get($mandate->id)['positions'] ?? collect(),
-                'participations' => $byMandate->get($mandate->id)['participations'] ?? collect(),
-            ]);
+            ->map(function (Mandate $mandate) use ($byMandate, $memberships, $today, &$placed): array {
+                $own = $memberships->filter(fn (Membership $m) => $this->entersMandate($m, $mandate))->values();
+                $carried = $mandate->status === Mandate::STATUS_CURRENT
+                    ? $memberships->filter(fn (Membership $m) => $m->status === 'approved'
+                        && ($m->ends_at === null || $m->ends_at->toDateString() >= $today)
+                        && ! $own->contains('id', $m->id)
+                        && ($m->starts_at ?? $m->created_at)?->lt($mandate->windowStart()))->values()
+                    : collect();
+
+                foreach ($own->merge($carried) as $m) {
+                    $placed[$m->id] = true;
+                }
+
+                return [
+                    'mandate' => $mandate,
+                    'positions' => $byMandate->get($mandate->id)['positions'] ?? collect(),
+                    'participations' => $byMandate->get($mandate->id)['participations'] ?? collect(),
+                    'memberships' => $own,
+                    'carried' => $carried,
+                ];
+            });
 
         $loose = $groups->first(fn (array $group) => $group['mandate'] === null);
+        $loosePositions = $loose['positions'] ?? collect();
+        $looseMemberships = $memberships->reject(fn (Membership $m) => isset($placed[$m->id]))->values();
 
-        if ($loose !== null && $loose['positions']->isNotEmpty()) {
-            $rows->push(['mandate' => null, 'positions' => $loose['positions'], 'participations' => collect()]);
+        if ($loosePositions->isNotEmpty() || $looseMemberships->isNotEmpty()) {
+            $rows->push(['mandate' => null, 'positions' => $loosePositions, 'participations' => collect(), 'memberships' => $looseMemberships, 'carried' => collect()]);
         }
 
         return $rows->values();
+    }
+
+    /** La période de l'adhésion commence dans le mandat, ou (avec une date de fin) le recoupe. */
+    private function entersMandate(Membership $membership, Mandate $mandate): bool
+    {
+        $begin = $membership->starts_at ?? $membership->created_at;
+
+        if ($begin === null || $begin->gt($mandate->windowEnd())) {
+            return false;
+        }
+
+        return $membership->ends_at !== null
+            ? $membership->ends_at->gte($mandate->windowStart())
+            : $begin->gte($mandate->windowStart());
     }
 
     public function store(Request $request): RedirectResponse
