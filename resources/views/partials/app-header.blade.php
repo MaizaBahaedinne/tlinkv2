@@ -98,6 +98,17 @@
                 </a>
             @endif
 
+            @if(($myTasksTotal ?? 0) > 0)
+                @php $myTasksUnseen = (int) ($myTasksUnseen ?? 0); @endphp
+                <a href="{{ route('tasks.mine') }}" title="Mes tâches" id="nav-tasks" aria-label="Mes tâches{{ $myTasksUnseen > 0 ? ' ('.$myTasksUnseen.' non vue(s))' : '' }}" @if(request()->routeIs('tasks.mine')) aria-current="page" @endif
+                   class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('tasks.mine') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
+                    <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>
+                    @if($myTasksUnseen > 0)
+                        <span data-tasks-badge class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white" aria-label="{{ $myTasksUnseen }} tâche(s) non vue(s)">{{ $myTasksUnseen > 99 ? '99+' : $myTasksUnseen }}</span>
+                    @endif
+                </a>
+            @endif
+
             <a href="{{ route('notifications.index') }}" title="Notifications" id="nav-notifications" data-unread="{{ $unread }}" data-unread-url="{{ route('notifications.unread') }}" aria-label="Notifications{{ $unread > 0 ? ' ('.$unread.' non lues)' : '' }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif
                class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('notifications.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
                 <i class="fa-regular fa-bell" aria-hidden="true"></i>

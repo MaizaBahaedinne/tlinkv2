@@ -116,6 +116,11 @@ class AppServiceProvider extends ServiceProvider
             // Défis et activités des clubs : entrée de la navigation (module actif).
             $view->with('challengesEnabled', $user !== null && \App\Support\Challenges\Challenges::enabled());
 
+            // Mes tâches : icône dès qu'une tâche d'activité est confiée au membre, pastille pour les affectations non vues.
+            $myTasks = ($user !== null && \App\Support\Challenges\Challenges::enabled()) ? \App\Support\Challenges\MyTasks::counts($user) : ['total' => 0, 'unseen' => 0];
+            $view->with('myTasksTotal', $myTasks['total']);
+            $view->with('myTasksUnseen', $myTasks['unseen']);
+
             // Tunivisions Stores : entrée de la navigation (uniquement si la boutique est ouverte) et pastille du panier.
             $storeOpen = $user !== null && \App\Support\Store\StoreSettings::enabled();
             $view->with('storeEnabled', $storeOpen);

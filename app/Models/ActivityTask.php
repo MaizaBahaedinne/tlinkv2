@@ -32,7 +32,7 @@ class ActivityTask extends Model
     /** Membres à qui la tâche est confiée (un ou plusieurs). */
     public function assignees(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'activity_task_assignees', 'task_id', 'user_id')->withTimestamps()->orderBy('users.name');
+        return $this->belongsToMany(User::class, 'activity_task_assignees', 'task_id', 'user_id')->withPivot('seen_at')->withTimestamps()->orderBy('users.name');
     }
 
     public function teamLabel(): string

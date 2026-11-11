@@ -81,7 +81,7 @@ class ActivityTaskController extends AdminController
         $attributes['completed_at'] = $attributes['status'] === 'done' ? now() : null;
 
         $task = $activity->tasks()->create($attributes + ['sort_order' => $order, 'created_by' => $request->user()->id]);
-        $task->assignees()->sync($data['assignee_ids']);
+        $this->syncAssignees($request, $task, $data['assignee_ids']);
 
         $this->notifyAssignees($request, $activity, $task, []);
         $this->audit($request, 'admin.activity.task_added', $activity, ['title' => $activity->title, 'task' => $task->label]);
@@ -101,7 +101,7 @@ class ActivityTaskController extends AdminController
         $attributes['completed_at'] = $attributes['status'] === 'done' ? ($task->completed_at ?? now()) : null;
 
         $task->update($attributes);
-        $task->assignees()->sync($data['assignee_ids']);
+        $this->syncAssignees($request, $task, $data['assignee_ids']);
 
         $this->notifyAssignees($request, $activity, $task, $before);
         $this->audit($request, 'admin.activity.task_updated', $activity, ['title' => $activity->title, 'task' => $task->label, 'status' => $task->status]);
@@ -203,18 +203,21 @@ class ActivityTaskController extends AdminController
         $new = array_diff($task->assignees()->pluck('users.id')->map(fn ($id): int => (int) $id)->all(), $previous, [$request->user()->id]);
 
         foreach (User::query()->whereIn('id', $new)->get() as $assignee) {
-            $url = ActivityAccess::canManageActivity($assignee, $activity)
-                ? route('admin.activities.tasks.board', $activity, false)
-                : route('activities.show', $activity, false);
-
             AppNotification::query()->create([
                 'user_id' => $assignee->id,
                 'type' => 'activity.task.assigned',
                 'title' => 'Une tâche vous est confiée',
                 'body' => "« {$task->label} » — activité « {$activity->title} »".($task->due_at ? ', à rendre pour le '.$task->due_at->format('d/m/Y') : '').'.',
-                'data' => ['activity_id' => $activity->id, 'task_id' => $task->id, 'url' => $url],
+                'data' => ['activity_id' => $activity->id, 'task_id' => $task->id, 'url' => route('tasks.mine', [], false)],
             ]);
         }
+    }
+
+    /** Les nouvelles affectations sont « non vues » (pastille de Mes tâches) ; celles que l'on se donne soi-même sont vues d'emblée. */
+    private function syncAssignees(Request $request, ActivityTask $task, array $ids): void
+    {
+        $task->assignees()->sync($ids);
+        \Illuminate\Support\Facades\DB::table('activity_task_assignees')->where('task_id', $task->id)->where('user_id', $request->user()->id)->whereNull('seen_at')->update(['seen_at' => now()]);
     }
 
     private function key(string $team, string $label): string
