@@ -139,7 +139,11 @@ class MemberCardTest extends TestCase
         $membership = $this->member('Sana Ben Ali', $this->club('Club AAC'));
         $card = MemberCard::query()->where('membership_id', $membership->id)->firstOrFail();
 
-        $this->actingAs($membership->user)->get('/ma-carte')->assertOk()->assertSee('Sana Ben Ali')->assertSee($card->number)->assertSee('Club AAC');
+        $this->actingAs($membership->user)->get('/ma-carte')->assertOk()->assertSee('Sana Ben Ali')->assertSee($card->number)->assertSee('Club AAC')
+            ->assertSee('data-card-role', false)->assertSee('Membre')->assertSee('logoFondation-white.webp', false);
+
+        $membership->update(['membership_type' => 'Trésorier']);
+        $this->actingAs($membership->user)->get('/ma-carte')->assertSee('Trésorier');
 
         $response = $this->actingAs($membership->user)->getJson("/ma-carte/{$card->id}/code")->assertOk()->assertJsonPath('valid', true);
         [$resolved, $error] = CardCode::resolve($response->json('code'));

@@ -35,15 +35,25 @@
                 @php($entity = $card->membership?->node?->title ?? ($scopeLabels[$card->membership?->scope] ?? 'Fondation Tunivisions'))
                 <article class="overflow-hidden rounded-3xl bg-gradient-to-br from-tlink-blue to-[#7a001c] text-white shadow-soft" data-card data-code-url="{{ route('card.code', $card) }}">
                     <div class="flex items-start justify-between gap-3 px-6 pt-6">
-                        <img src="{{ asset('tlink-logo-white.webp') }}" alt="T.Link" width="447" height="169" class="h-8 w-auto">
+                        <img src="{{ asset('logoFondation-white.webp') }}" alt="Fondation Tunivisions" class="h-10 w-auto max-w-[9rem] object-contain">
                         <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider">Mandat {{ $card->mandate?->label }}</span>
                     </div>
 
                     <div class="px-6 pb-5 pt-5">
                         <p class="text-xs uppercase tracking-widest text-white/70">Membre</p>
                         <p class="font-display text-2xl font-semibold leading-tight">{{ $card->user->name }}</p>
-                        <p class="mt-2 text-sm text-white/90">{{ $entity }}</p>
-                        <p class="text-xs text-white/70">{{ $scopeLabels[$card->membership?->scope] ?? '' }}</p>
+                        <p class="mt-2 inline-block rounded-full bg-white/15 px-3 py-1 text-sm font-semibold" data-card-role>{{ $roles[$card->id] ?? 'Membre' }}</p>
+                        <div class="mt-3 flex items-center gap-3">
+                            @if(! empty($logos[$card->id]))
+                                <span class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+                                    <img src="{{ $logos[$card->id] }}" alt="Logo {{ $entity }}" class="max-h-full max-w-full object-contain">
+                                </span>
+                            @endif
+                            <div class="min-w-0">
+                                <p class="text-sm text-white/90">{{ $entity }}</p>
+                                <p class="text-xs text-white/70">{{ $scopeLabels[$card->membership?->scope] ?? '' }}</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="relative">
