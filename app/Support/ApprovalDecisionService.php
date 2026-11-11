@@ -97,6 +97,7 @@ class ApprovalDecisionService
             if ($membership !== null) {
                 if ($decision === 'approved' && $membership->position_id !== null) {
                     $this->assignPosition($membership);
+                    $membership->membership_type = PositionMemberships::roleOf(OrgNode::query()->find($membership->position_id));
                 }
 
                 $membership->status = $decision === 'approved' ? 'approved' : 'rejected';

@@ -36,7 +36,7 @@ final class PositionMemberships
             return 0;
         }
 
-        $nodes = OrgNode::query()->get(['id', 'parent_id', 'kind', 'scope'])->keyBy('id');
+        $nodes = OrgNode::query()->get(['id', 'parent_id', 'kind', 'scope', 'title'])->keyBy('id');
         $roots = Mandate::query()->whereNotNull('root_node_id')->pluck('id', 'root_node_id')->all();
         $created = 0;
         $done = [];
@@ -74,7 +74,8 @@ final class PositionMemberships
                 'node_id' => $clubId,
                 'position_id' => $assignment->node_id,
                 'status' => 'approved',
-                'membership_type' => 'member',
+                // Le rôle d'une adhésion est son type (comme à l'import legacy) : le poste, jamais « member » pour un responsable.
+                'membership_type' => self::roleOf($nodes[(int) $assignment->node_id] ?? null),
                 'starts_at' => $start->toDateString(),
                 'approved_at' => now(),
             ]);
@@ -83,6 +84,14 @@ final class PositionMemberships
         }
 
         return $created;
+    }
+
+    /** Rôle affiché d'une adhésion issue d'un poste : le titre du poste (60 caractères au plus, comme la colonne). */
+    public static function roleOf(?OrgNode $position): string
+    {
+        $title = trim((string) $position?->title);
+
+        return $title === '' ? 'member' : mb_substr($title, 0, 60);
     }
 
     /**

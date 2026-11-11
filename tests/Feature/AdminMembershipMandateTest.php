@@ -64,6 +64,7 @@ class AdminMembershipMandateTest extends TestCase
         $this->assertSame('university', $membership->scope);
         $this->assertSame($club->id, $membership->node_id);
         $this->assertSame($position->id, $membership->position_id);
+        $this->assertSame('Trésorier', $membership->membership_type);
         $this->assertSame($current->windowStart()->toDateString(), $membership->starts_at->toDateString());
 
         // Idempotent : pas de doublon, et un membre déjà adhérent du mandat n'en reçoit pas une seconde.
