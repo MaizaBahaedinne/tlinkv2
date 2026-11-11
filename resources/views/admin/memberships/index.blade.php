@@ -88,6 +88,10 @@
                                 </td>
                                 <td class="nowrap">
                                     <x-admin.badge :status="$membership->status" />
+                                    @if($membership->status === 'pending')
+                                        @php $reviewer = ($approvals[$membership->id] ?? null)?->reviewer; @endphp
+                                        <div class="cell-sub">{{ $reviewer ? 'Validateur : '.$reviewer->name : 'Sans validateur assigné' }}@if(! ($decidable[$membership->id] ?? false)) · vous ne pouvez pas statuer @endif</div>
+                                    @endif
                                     @if($membership->status === 'rejected' && $membership->rejection_reason)
                                         <div class="cell-sub">{{ \Illuminate\Support\Str::limit($membership->rejection_reason, 60) }}</div>
                                     @endif
@@ -102,7 +106,7 @@
                                                 <button type="submit" class="btn {{ $target === 'approved' ? 'btn-secondary' : 'btn-ghost' }} btn-sm">{{ ['approved' => 'Réactiver', 'suspended' => 'Suspendre', 'archived' => 'Archiver'][$target] }}</button>
                                             </form>
                                         @endforeach
-                                    @elseif($membership->status === 'pending' && $canReview)
+                                    @elseif($membership->status === 'pending' && $canReview && ($decidable[$membership->id] ?? false))
                                         <form method="post" action="{{ route('admin.memberships.decide', $membership) }}">
                                             @csrf
                                             @method('PATCH')

@@ -81,7 +81,7 @@
                                     <button type="submit" name="decision" value="rejected" class="btn btn-danger btn-sm"><x-admin.icon name="x" :size="15" /> Rejeter</button>
                                 </form>
                             @else
-                                <span class="text-sm text-muted">Vous ne pouvez pas statuer sur cette demande.</span>
+                                <span class="text-sm text-muted">Vous ne pouvez pas statuer sur cette demande.@if($approval->reviewer) Validateur assigné : {{ $approval->reviewer->name }}.@endif</span>
                             @endif
                         @endif
                     </div>

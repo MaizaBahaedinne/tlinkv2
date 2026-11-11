@@ -32,6 +32,11 @@ class ApprovalRequest extends Model
         return $this->belongsTo(User::class, 'requester_id');
     }
 
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_reviewer_id');
+    }
+
     public function decisions(): HasMany
     {
         return $this->hasMany(ApprovalDecision::class);

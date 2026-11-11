@@ -118,6 +118,25 @@ class AdminMembershipMandateTest extends TestCase
         $this->assertSame('approved', $accepted->fresh()->status);
     }
 
+    public function test_request_assigned_to_another_reviewer_shows_who_and_hides_the_buttons(): void
+    {
+        $this->mandates();
+        $manager = User::factory()->create();
+        $this->grantAccess($manager, 'entity_admin', 'university');
+        $other = User::factory()->create(['name' => 'Validatrice Assignee']);
+        $pending = $this->membership(User::factory()->create(), '2026-10-01', 'pending');
+        \App\Models\ApprovalRequest::query()->create([
+            'request_type' => 'membership', 'requester_id' => $pending->user_id, 'approvable_type' => Membership::class,
+            'approvable_id' => $pending->id, 'assigned_reviewer_id' => $other->id, 'status' => 'pending', 'submitted_at' => now(),
+        ]);
+
+        $this->actingAs($manager)->get('/admin/adhesions')->assertOk()
+            ->assertSee('Validateur : Validatrice Assignee')->assertSee('vous ne pouvez pas statuer')->assertDontSee('>Accepter<', false);
+
+        $this->actingAs($manager)->patch("/admin/adhesions/{$pending->id}/decision", ['decision' => 'approved'])->assertSessionHas('error');
+        $this->assertSame('pending', $pending->fresh()->status);
+    }
+
     public function test_a_plain_member_cannot_decide_a_membership(): void
     {
         $this->mandates();

@@ -35,7 +35,7 @@ class ApprovalController extends AdminController
         $counts = (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all();
 
         $approvals = (clone $base)
-            ->with('requester:id,name,email')
+            ->with('requester:id,name,email', 'reviewer:id,name')
             ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             ->latest('id')
             ->paginate(15)

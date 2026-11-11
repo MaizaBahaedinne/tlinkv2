@@ -34,7 +34,7 @@ class MembershipController extends AdminController
         'archived' => ['approved'],
     ];
 
-    public function index(Request $request): View
+    public function index(Request $request, ApprovalDecisionService $service): View
     {
         $mandates = Mandate::query()->orderByDesc('start_year')->get();
 
@@ -84,7 +84,22 @@ class MembershipController extends AdminController
             ->limit(100)
             ->get();
 
+        // Demandes en attente : validateur assigné et droit de statuer de l'utilisateur (mêmes règles que dans Approbations).
+        $pending = $memberships->getCollection()->where('status', 'pending');
+        $approvals = ApprovalRequest::query()
+            ->where('approvable_type', Membership::class)->where('status', 'pending')
+            ->whereIn('approvable_id', $pending->pluck('id'))
+            ->with('reviewer:id,name')->get()->keyBy('approvable_id');
+        $decidable = [];
+
+        foreach ($pending as $row) {
+            $approval = $approvals->get($row->id);
+            $decidable[$row->id] = $approval === null || $service->denialReason($approval, $request->user()) === null;
+        }
+
         return view('admin.memberships.index', [
+            'approvals' => $approvals,
+            'decidable' => $decidable,
             'memberships' => $memberships,
             'filters' => $filters,
             'statuses' => self::STATUSES,
