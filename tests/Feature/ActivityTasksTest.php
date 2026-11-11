@@ -286,8 +286,8 @@ class ActivityTasksTest extends TestCase
     {
         $activity = $this->freeActivity();
 
-        // Sans tâche confiée : pas d'icône.
-        $this->actingAs($this->member)->get('/feed')->assertOk()->assertDontSee('id="nav-tasks"', false);
+        // Sans tâche confiée : l'icône est là, sans pastille.
+        $this->actingAs($this->member)->get('/feed')->assertOk()->assertSee('id="nav-tasks"', false)->assertDontSee('data-tasks-badge', false);
 
         $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => 'Imprimer les badges', 'team' => 'event', 'assignee_ids' => [$this->member->id, $this->president->id]])->assertSessionHasNoErrors();
         $this->actingAs($this->president)->post($this->tasksUrl($activity), ['label' => 'Inviter les partenaires', 'team' => 'sponsoring', 'assignee_ids' => [$this->member->id]])->assertSessionHasNoErrors();

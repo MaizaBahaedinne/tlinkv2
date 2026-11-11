@@ -116,8 +116,8 @@ class AppServiceProvider extends ServiceProvider
             // Défis et activités des clubs : entrée de la navigation (module actif).
             $view->with('challengesEnabled', $user !== null && \App\Support\Challenges\Challenges::enabled());
 
-            // Mes tâches : icône dès qu'une tâche d'activité est confiée au membre, pastille pour les affectations non vues.
-            $myTasks = ($user !== null && \App\Support\Challenges\Challenges::enabled()) ? \App\Support\Challenges\MyTasks::counts($user) : ['total' => 0, 'unseen' => 0];
+            // Mes tâches : icône toujours présente, pastille pour les affectations non vues.
+            $myTasks = ($user !== null && \Illuminate\Support\Facades\Schema::hasTable('activity_task_assignees')) ? \App\Support\Challenges\MyTasks::counts($user) : ['total' => 0, 'unseen' => 0];
             $view->with('myTasksTotal', $myTasks['total']);
             $view->with('myTasksUnseen', $myTasks['unseen']);
 
