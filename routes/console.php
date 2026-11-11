@@ -18,6 +18,14 @@ Artisan::command('stories:purge', function () {
 
 \Illuminate\Support\Facades\Schedule::command('stories:purge')->hourly();
 
+Artisan::command('cards:sync', function () {
+    $result = \App\Support\Cards\MemberCards::sync();
+
+    $this->info($result['issued'].' carte(s) émise(s), '.$result['expired'].' carte(s) expirée(s).');
+})->purpose('Émet les cartes de membre du mandat en cours (une par adhésion validée) et fait expirer les autres');
+
+\Illuminate\Support\Facades\Schedule::command('cards:sync')->dailyAt('03:00');
+
 Artisan::command('gamification:sync', function () {
     $result = GamificationEngine::refreshEveryone();
 

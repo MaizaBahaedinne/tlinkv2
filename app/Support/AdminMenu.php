@@ -53,6 +53,10 @@ class AdminMenu
         'admin.events.*' => 'events.events',
         'admin.challenges.*' => 'challenges.challenges',
         'admin.activities.*' => 'challenges.activities',
+        'admin.checkpoint.*' => 'cards.checkpoint',
+        'admin.checkpoint-history.*' => 'cards.checkpoint',
+        'admin.premises.*' => 'cards.premises',
+        'admin.cards.*' => 'cards.cards',
         'admin.badges.*' => 'gamification.badges',
         'admin.companies.*' => 'members.companies',
         'admin.verifications.*' => 'members.verification',
@@ -193,6 +197,15 @@ class AdminMenu
                     ['label' => 'Événements', 'route' => 'admin.events.index', 'icon' => 'calendar', 'match' => 'admin.events.*', 'perms' => ['event.manage']],
                     ['label' => 'Défis', 'route' => 'admin.challenges.index', 'icon' => 'award', 'match' => 'admin.challenges.*', 'perms' => ['event.manage']],
                     ['label' => 'Activités des clubs', 'route' => 'admin.activities.index', 'icon' => 'calendar', 'match' => 'admin.activities.*', 'perms' => ['event.manage']],
+                ],
+            ],
+            [
+                'title' => 'Cartes et pointage',
+                'items' => [
+                    ['label' => 'Pointage', 'route' => 'admin.checkpoint.index', 'icon' => 'check', 'match' => 'admin.checkpoint.*', 'perms' => ['event.manage']],
+                    ['label' => 'Historique des pointages', 'route' => 'admin.checkpoint-history.index', 'icon' => 'clock', 'match' => 'admin.checkpoint-history.*', 'perms' => ['event.manage']],
+                    ['label' => 'Locaux', 'route' => 'admin.premises.index', 'icon' => 'building', 'match' => 'admin.premises.*', 'perms' => ['event.manage']],
+                    ['label' => 'Cartes de membre', 'route' => 'admin.cards.index', 'icon' => 'user-check', 'match' => 'admin.cards.*', 'perms' => ['membership.manage']],
                 ],
             ],
         ];

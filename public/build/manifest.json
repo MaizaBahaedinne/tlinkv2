@@ -1,4 +1,11 @@
 {
+  "_browser-CnJLfRiM.js": {
+    "file": "assets/browser-CnJLfRiM.js",
+    "name": "browser",
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js"
+    ]
+  },
   "_fonts-C9MNnjVw.css": {
     "file": "assets/fonts-C9MNnjVw.css",
     "src": "_fonts-C9MNnjVw.css"
@@ -26,6 +33,13 @@
   "_instrument-sans-600-normal-B9e8oLYv.woff": {
     "file": "assets/instrument-sans-600-normal-B9e8oLYv.woff",
     "src": "_instrument-sans-600-normal-B9e8oLYv.woff"
+  },
+  "_jsQR-CU8t__kh.js": {
+    "file": "assets/jsQR-CU8t__kh.js",
+    "name": "jsQR",
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js"
+    ]
   },
   "_messenger-realtime-CNy-OEXI.js": {
     "file": "assets/messenger-realtime-CNy-OEXI.js",
@@ -102,7 +116,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-DgxHloGB.css",
+    "file": "assets/app-DQ5P30a-.css",
     "name": "app",
     "names": [
       "app.css"
@@ -111,7 +125,7 @@
     "isEntry": true
   },
   "resources/css/site.css": {
-    "file": "assets/site-B5bVKspq.css",
+    "file": "assets/site-BhoxU0CF.css",
     "name": "site",
     "names": [
       "site.css"
@@ -125,20 +139,40 @@
     "src": "resources/js/app-links.js",
     "isEntry": true
   },
+  "resources/js/checkpoint.js": {
+    "file": "assets/checkpoint-CkgoBFDA.js",
+    "name": "checkpoint",
+    "src": "resources/js/checkpoint.js",
+    "isEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_jsQR-CU8t__kh.js"
+    ]
+  },
   "resources/js/main.ts": {
-    "file": "assets/main-iBCeI740.js",
+    "file": "assets/main-Czu6mGpU.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-DgxHloGB.css"
+      "assets/app-DQ5P30a-.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",
       "assets/fa-regular-400-DRN8N0d1.woff2",
       "assets/fa-solid-900-IAB4Droh.woff2",
       "assets/fa-v4compatibility-CErXDOsT.woff2"
+    ]
+  },
+  "resources/js/member-card.js": {
+    "file": "assets/member-card-eLpVWgCd.js",
+    "name": "member-card",
+    "src": "resources/js/member-card.js",
+    "isEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_browser-CnJLfRiM.js"
     ]
   },
   "resources/js/messenger-dock.js": {
@@ -172,21 +206,23 @@
     "isEntry": true
   },
   "resources/js/qr.js": {
-    "file": "assets/qr-CxXcOrPi.js",
+    "file": "assets/qr-Dh_lHgcr.js",
     "name": "qr",
     "src": "resources/js/qr.js",
     "isEntry": true,
     "imports": [
-      "_rolldown-runtime-WkwZ5CU-.js"
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_browser-CnJLfRiM.js"
     ]
   },
   "resources/js/scan.js": {
-    "file": "assets/scan-QQo8wr0R.js",
+    "file": "assets/scan-DITY8KBJ.js",
     "name": "scan",
     "src": "resources/js/scan.js",
     "isEntry": true,
     "imports": [
-      "_rolldown-runtime-WkwZ5CU-.js"
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_jsQR-CU8t__kh.js"
     ]
   },
   "resources/js/site-map.js": {

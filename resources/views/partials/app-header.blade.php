@@ -123,6 +123,7 @@
                     </div>
                     <a href="{{ route('profile.show') }}" class="mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2 w-4 text-center text-slate-500"></i>Mon profil</a>
                     <a href="{{ route('memberships.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-people-group mr-2 w-4 text-center text-slate-500"></i>Mes adhésions</a>
+                    <a href="{{ route('card.show') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-qrcode mr-2 w-4 text-center text-slate-500"></i>Ma carte de membre</a>
                     @if($challengesEnabled ?? false)
                         <a href="{{ route('activities.scan') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-qrcode mr-2 w-4 text-center text-slate-500"></i>Scanner un QR code</a>
                     @endif

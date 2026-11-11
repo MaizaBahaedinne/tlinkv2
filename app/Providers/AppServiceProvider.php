@@ -35,6 +35,15 @@ class AppServiceProvider extends ServiceProvider
         // Badges : le recalcul se déclenche à l'enregistrement des modèles listés dans le catalogue d'activités.
         \App\Support\Gamification\ActivityCatalog::listen();
 
+        // Cartes de membre : émises à la validation d'une adhésion, renouvelées ou expirées au changement de mandat.
+        // Une erreur de synchronisation est journalisée mais ne doit jamais bloquer la validation d'une adhésion.
+        \App\Models\Membership::saved(fn (\App\Models\Membership $membership) => rescue(fn () => \App\Support\Cards\MemberCards::sync($membership->user_id)));
+        \App\Models\Mandate::saved(function (\App\Models\Mandate $mandate): void {
+            if ($mandate->wasRecentlyCreated || $mandate->wasChanged('status')) {
+                rescue(fn () => \App\Support\Cards\MemberCards::sync());
+            }
+        });
+
         RateLimiter::for('api', function (Request $request) {
             $key = $request->user()?->id ? 'user:'.$request->user()->id : 'ip:'.$request->ip();
 

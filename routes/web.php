@@ -132,6 +132,10 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/adhesions/mandats', [MembershipRequestController::class, 'storePast'])->middleware('throttle:20,10')->name('memberships.past');
     Route::delete('/adhesions/mandats/{participation}', [MembershipRequestController::class, 'destroyPast'])->name('memberships.past.destroy');
 
+    // Ma carte de membre : une par adhésion validée et par mandat, avec un QR code qui change toutes les 30 secondes.
+    Route::get('/ma-carte', [\App\Http\Controllers\MemberCardController::class, 'show'])->name('card.show');
+    Route::get('/ma-carte/{card}/code', [\App\Http\Controllers\MemberCardController::class, 'code'])->whereNumber('card')->middleware('throttle:120,1')->name('card.code');
+
     // Tunivisions Stores : boutique, panier, commande, suivi et retours (fermée tant que l'administration ne l'ouvre pas).
     Domains::on('store')->prefix('boutique')->name('store.')->middleware('store.open')->group(function (): void {
         Route::get('/', [StoreController::class, 'index'])->name('index');
@@ -574,6 +578,9 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('membres', [Admin\EntityMemberController::class, 'index'])->name('members.index');
             Route::post('membres', [Admin\EntityMemberController::class, 'store'])->name('members.store');
             Route::patch('membres/{membership}', [Admin\EntityMemberController::class, 'update'])->name('members.update');
+            Route::get('cartes', [Admin\MemberCardController::class, 'index'])->name('cards.index');
+            Route::patch('cartes/{card}/suspendre', [Admin\MemberCardController::class, 'suspend'])->whereNumber('card')->name('cards.suspend');
+            Route::patch('cartes/{card}/reactiver', [Admin\MemberCardController::class, 'reactivate'])->whereNumber('card')->name('cards.reactivate');
         });
 
         // Contenu
@@ -626,6 +633,15 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::patch('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'respondOrganizer'])->whereNumber('organizer')->name('activities.organizers.respond');
             Route::delete('activites/co-organisateurs/{organizer}', [Admin\ActivityController::class, 'removeOrganizer'])->whereNumber('organizer')->name('activities.organizers.destroy');
             Route::patch('activites/{activity}/inscriptions/{registration}', [Admin\ActivityController::class, 'updateRegistration'])->whereNumber(['activity', 'registration'])->name('activities.registrations.update');
+
+            // Pointage par carte de membre (QR code) : scanner, historique et locaux.
+            Route::get('pointage', [Admin\CheckpointController::class, 'index'])->name('checkpoint.index');
+            Route::post('pointage', [Admin\CheckpointController::class, 'scan'])->middleware('throttle:180,1')->name('checkpoint.scan');
+            Route::get('pointage/historique', [Admin\CheckpointController::class, 'history'])->name('checkpoint-history.index');
+            Route::get('locaux', [Admin\PremisesController::class, 'index'])->name('premises.index');
+            Route::post('locaux', [Admin\PremisesController::class, 'store'])->name('premises.store');
+            Route::put('locaux/{premises}', [Admin\PremisesController::class, 'update'])->whereNumber('premises')->name('premises.update');
+            Route::delete('locaux/{premises}', [Admin\PremisesController::class, 'destroy'])->whereNumber('premises')->name('premises.destroy');
 
             // Tunivisions Academy : calendrier des sessions en direct
             Route::get('academy/sessions', [Admin\AcademySessionController::class, 'index'])->name('academy.sessions.index');

@@ -46,6 +46,14 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'cards', 'name' => 'Cartes et pointage', 'description' => 'Carte de membre (une par adhésion validée et par mandat) et pointage des entrées et sorties.',
+                'children' => [
+                    ['key' => 'cards.checkpoint', 'name' => 'Pointage', 'description' => 'Scanner la carte d’un membre pour pointer son entrée ou sa sortie (activité, événement, local) et consulter l’historique des pointages.', 'actions' => self::CRUD],
+                    ['key' => 'cards.premises', 'name' => 'Locaux', 'description' => 'Locaux (siège, salles, espaces partagés) où les membres pointent.', 'actions' => self::CRUD],
+                    ['key' => 'cards.cards', 'name' => 'Cartes de membre', 'description' => 'Suivi des cartes du périmètre : suspension et réactivation (l’émission et l’expiration sont automatiques).', 'actions' => ['read', 'update']],
+                ],
+            ],
+            [
                 'key' => 'members', 'name' => 'Communauté', 'description' => 'Membres, profils et adhésions.',
                 'children' => [
                     ['key' => 'members.users', 'name' => 'Comptes utilisateurs', 'description' => 'Liste, fiches et administration des comptes.', 'actions' => self::CRUD],
