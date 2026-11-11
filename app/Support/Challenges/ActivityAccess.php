@@ -24,19 +24,7 @@ final class ActivityAccess
      */
     public static function manageableClubIds(User $user): ?array
     {
-        $responsibility = OrgAccess::responsibility($user, self::PERMISSION);
-
-        if ($responsibility['all']) {
-            return null;
-        }
-
-        $ids = $responsibility['clubs'];
-
-        if ($responsibility['scopes'] !== []) {
-            $ids = array_merge($ids, OrgNode::query()->where('kind', 'club')->whereIn('scope', $responsibility['scopes'])->pluck('id')->all());
-        }
-
-        return array_values(array_unique(array_map('intval', $ids)));
+        return OrgAccess::manageableClubIds($user, self::PERMISSION);
     }
 
     public static function canManageClub(User $user, int $clubId): bool

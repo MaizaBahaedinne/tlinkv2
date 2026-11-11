@@ -192,7 +192,9 @@ class StructureController extends AdminController
             'governorate_id' => ['nullable', 'integer'],
         ]);
 
-        $clubs = $this->clubQuery($filters)
+        $reach = $this->clubReach($request);
+
+        $clubs = $this->clubQuery($filters, $reach)
             ->with('governorate:id,name')
             ->orderBy('title')
             ->paginate(20)
@@ -240,7 +242,7 @@ class StructureController extends AdminController
             'canEdit' => $this->canEdit($request),
             'governorates' => Governorate::query()->orderBy('name')->pluck('name', 'id')->all(),
             'statuses' => OrgNode::CLUB_STATUSES,
-            'statusCounts' => OrgNode::query()->where('kind', 'club')->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(),
+            'statusCounts' => OrgNode::query()->where('kind', 'club')->when($reach !== null, fn ($query) => $query->whereIn('id', $reach))->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(),
             'total' => $clubs->total(),
         ]);
     }
@@ -282,10 +284,11 @@ class StructureController extends AdminController
      * @param array<string, mixed> $filters
      * @return \Illuminate\Database\Eloquent\Builder<OrgNode>
      */
-    private function clubQuery(array $filters): \Illuminate\Database\Eloquent\Builder
+    private function clubQuery(array $filters, ?array $reach = null): \Illuminate\Database\Eloquent\Builder
     {
         return OrgNode::query()
             ->where('kind', 'club')
+            ->when($reach !== null, fn ($query) => $query->whereIn('id', $reach))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['governorate_id'] ?? null, fn ($query, $id) => $query->where('governorate_id', $id))
@@ -352,6 +355,9 @@ class StructureController extends AdminController
     public function showClub(Request $request, OrgNode $node): View
     {
         abort_unless($node->kind === 'club', 404);
+
+        $reach = $this->clubReach($request);
+        abort_if($reach !== null && ! in_array($node->id, $reach, true), 403, 'Ce club est hors de votre périmètre.');
 
         $node->load('governorate:id,name');
         $current = $this->currentAssignments();
@@ -807,6 +813,16 @@ class StructureController extends AdminController
     }
 
     /* ------------------------------------------------------------------ Internes */
+
+    /**
+     * Clubs visibles par l'utilisateur : son club et ceux des périmètres qu'il pilote (null = tous).
+     *
+     * @return array<int, int>|null
+     */
+    private function clubReach(Request $request): ?array
+    {
+        return OrgAccess::manageableClubIds($request->user(), 'entity.manage');
+    }
 
     private function canEdit(Request $request): bool
     {

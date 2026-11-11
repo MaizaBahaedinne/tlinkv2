@@ -165,6 +165,36 @@ class OrgAccess
     }
 
     /**
+     * Clubs sur lesquels l'utilisateur agit pour cette permission : son club (poste dans un club)
+     * et les clubs des perimetres qu'il pilote (perimetre explicite ou herite de l'organigramme).
+     * null = tous les clubs (droits globaux).
+     *
+     * @return array<int, int>|null
+     */
+    public static function manageableClubIds(User $user, string $permission): ?array
+    {
+        $responsibility = self::responsibility($user, $permission);
+
+        if ($responsibility['all']) {
+            return null;
+        }
+
+        $ids = $responsibility['clubs'];
+
+        if ($responsibility['scopes'] !== []) {
+            $map = self::scopeMap();
+
+            foreach (OrgNode::query()->where('kind', 'club')->pluck('id') as $clubId) {
+                if (in_array($map[$clubId] ?? null, $responsibility['scopes'], true)) {
+                    $ids[] = $clubId;
+                }
+            }
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    /**
      * Titulaires d'un poste situe dans le club qui detiennent la permission, le president de club d'abord.
      *
      * @return array<int, int>

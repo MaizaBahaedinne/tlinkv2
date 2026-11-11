@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Models\Governorate;
+use App\Support\MembershipResponsibility;
+use App\Support\OrgAccess;
 use App\Support\OrgScopes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -39,7 +42,7 @@ class EventController extends AdminController
             'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
         ]);
 
-        $events = $this->scoped(FoundationEvent::query(), $request, 'event.manage')
+        $events = $this->reach($this->scoped(FoundationEvent::query(), $request, 'event.manage'), $request)
             ->withCount('registrations')
             ->when($filters['q'] ?? null, fn ($query, $needle) => $query->where(fn ($inner) => $inner->where('title', 'like', "%{$needle}%")->orWhere('location', 'like', "%{$needle}%")))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
@@ -64,7 +67,10 @@ class EventController extends AdminController
 
     public function store(Request $request): RedirectResponse
     {
-        $event = FoundationEvent::query()->create($this->validated($request) + ['organizer_id' => $request->user()->id]);
+        $responsibility = OrgAccess::responsibility($request->user(), 'event.manage');
+        $nodeId = ! $responsibility['all'] && $responsibility['scopes'] === [] && count($responsibility['clubs']) === 1 ? $responsibility['clubs'][0] : null;
+
+        $event = FoundationEvent::query()->create($this->validated($request) + ['organizer_id' => $request->user()->id, 'node_id' => $nodeId]);
         $this->syncCover($request, $event);
 
         $this->audit($request, 'admin.event.created', $event, ['title' => $event->title, 'scope' => $event->scope]);
@@ -74,7 +80,7 @@ class EventController extends AdminController
 
     public function show(Request $request, FoundationEvent $event): View
     {
-        $this->authorizeScope($request, 'event.manage', $event->scope);
+        $this->authorizeEvent($request, $event);
 
         $registrations = $event->registrations()->with('user:id,name,email')->latest('id')->get();
 
@@ -91,14 +97,14 @@ class EventController extends AdminController
 
     public function edit(Request $request, FoundationEvent $event): View
     {
-        $this->authorizeScope($request, 'event.manage', $event->scope);
+        $this->authorizeEvent($request, $event);
 
         return view('admin.events.form', $this->formData($request, $event));
     }
 
     public function update(Request $request, FoundationEvent $event): RedirectResponse
     {
-        $this->authorizeScope($request, 'event.manage', $event->scope);
+        $this->authorizeEvent($request, $event);
 
         $event->update($this->validated($request));
         $this->syncCover($request, $event);
@@ -110,7 +116,7 @@ class EventController extends AdminController
 
     public function destroy(Request $request, FoundationEvent $event): RedirectResponse
     {
-        $this->authorizeScope($request, 'event.manage', $event->scope);
+        $this->authorizeEvent($request, $event);
 
         if ($event->registrations()->exists()) {
             return back()->with('error', 'Suppression impossible : des inscriptions existent. Annulez plutôt l’événement.');
@@ -127,7 +133,7 @@ class EventController extends AdminController
 
     public function updateRegistration(Request $request, FoundationEvent $event, EventRegistration $registration): RedirectResponse
     {
-        $this->authorizeScope($request, 'event.manage', $event->scope);
+        $this->authorizeEvent($request, $event);
         abort_unless($registration->event_id === $event->id, 404);
 
         $data = $request->validate([
@@ -145,6 +151,26 @@ class EventController extends AdminController
         ]);
 
         return back()->with('status', 'Inscription mise à jour.');
+    }
+
+    /**
+     * Un responsable de club ne voit que les événements de son club ; un responsable de périmètre, ceux de tout le périmètre.
+     * Les événements du périmètre sans club restent réservés à ses responsables.
+     */
+    private function reach(Builder $query, Request $request): Builder
+    {
+        return MembershipResponsibility::of($request->user(), 'event.manage')->apply($query, 'scope', 'node_id');
+    }
+
+    private function authorizeEvent(Request $request, FoundationEvent $event): void
+    {
+        $this->authorizeScope($request, 'event.manage', $event->scope);
+
+        abort_unless(
+            MembershipResponsibility::of($request->user(), 'event.manage')->covers($event->scope, $event->node_id),
+            403,
+            'Cet élément est hors de votre périmètre.'
+        );
     }
 
     /**
