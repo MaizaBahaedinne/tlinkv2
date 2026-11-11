@@ -218,6 +218,34 @@ class MailLogAndTemplatesTest extends TestCase
         $this->assertFalse(MailTemplates::isCustomized('verification_code'));
     }
 
+    public function test_official_mails_carry_the_tlink_logo_in_the_header_and_the_foundation_in_the_footer(): void
+    {
+        $html = (string) MailTemplates::sample('position_invitation')->render();
+
+        $this->assertStringContainsString('/tlink-logo.png', $html);
+        $this->assertStringContainsString('alt="T.Link"', $html);
+        $this->assertStringContainsString('/logoFondation.png', $html);
+        $this->assertStringContainsString('alt="Tunivisions Foundation"', $html);
+        $this->assertStringContainsString('Fondation Tunivisions. Tous droits réservés.', $html);
+        // L'en-tête précède le contenu et le pied le suit.
+        $this->assertLessThan(strpos($html, 'Bonjour Amel'), strpos($html, '/tlink-logo.png'));
+        $this->assertGreaterThan(strpos($html, 'Créer mon compte et candidater'), strpos($html, '/logoFondation.png'));
+        // Texte du bouton de secours en français, et non plus en anglais.
+        $this->assertStringContainsString('ne fonctionne pas', $html);
+        $this->assertStringNotContainsString('Laravel', $html);
+        $this->assertFileExists(public_path('tlink-logo.png'));
+        $this->assertFileExists(public_path('logoFondation.png'));
+    }
+
+    public function test_the_plain_text_version_is_branded_too(): void
+    {
+        $message = MailTemplates::sample('position_invitation');
+        $text = (string) app(\Illuminate\Mail\Markdown::class)->renderText('notifications::email', $message->data());
+
+        $this->assertStringContainsString('Fondation Tunivisions', $text);
+        $this->assertStringNotContainsString('Laravel', $text);
+    }
+
     public function test_a_test_message_is_sent_with_sample_values_and_logged(): void
     {
         $this->actingAs($this->admin())->post('/admin/messagerie-modeles/position_invitation/test', ['to' => 'test@example.com'])
