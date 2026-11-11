@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Models\AuditLog;
 use App\Models\AppModule;
-use App\Models\FoundationEvent;
+use App\Models\ClubActivity;
+use App\Models\Mandate;
 use App\Models\Governorate;
 use App\Models\Membership;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
-use App\Models\Post;
 use App\Models\User;
 use App\Support\AccessLevels;
 use App\Support\AdminContext;
@@ -378,11 +377,17 @@ class StructureController extends AdminController
             ->with('person.user:id,name')->get()->groupBy('node_id');
         $positions = $team->where('kind', 'position');
         $filled = $positions->filter(fn (OrgNode $position): bool => isset($assignments[$position->id]))->count();
-        $nodeIds = $team->pluck('id')->push($node->id);
+        $mandate = Mandate::query()->where('status', Mandate::STATUS_CURRENT)->orderByDesc('start_year')->first();
 
-        $memberships = Membership::query()->where('node_id', $node->id);
-        $events = FoundationEvent::query()->where('node_id', $node->id);
-        $posts = Post::query()->where('node_id', $node->id);
+        $activities = ClubActivity::query()->with('challenge:id,title')
+            ->where(fn ($query) => $query->where('club_id', $node->id)
+                ->orWhereHas('organizers', fn ($organizer) => $organizer->where('club_id', $node->id)->where('status', 'accepted')));
+
+        $mandateActivities = $mandate
+            ? (clone $activities)->whereBetween('starts_at', [$mandate->windowStart(), $mandate->windowEnd()])->count()
+            : null;
+
+        [$mandates, $departments, $matrix, $currentMembers] = $this->clubMembershipMatrix($node, $team, $assignments, $mandate);
 
         return view('admin.structure.club', [
             'club' => $node,
@@ -391,17 +396,80 @@ class StructureController extends AdminController
             'assignments' => $assignments,
             'positions' => $positions,
             'filled' => $filled,
-            'memberStats' => (clone $memberships)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(),
-            'recentMembers' => (clone $memberships)->with('user:id,name')->latest('id')->limit(6)->get(),
-            'postCount' => (clone $posts)->count(),
-            'recentPosts' => (clone $posts)->with('author:id,name')->latest('id')->limit(5)->get(),
-            'eventCount' => (clone $events)->count(),
-            'upcomingEvents' => (clone $events)->where('starts_at', '>=', now())->orderBy('starts_at')->limit(5)->get(),
-            'pastEvents' => (clone $events)->where('starts_at', '<', now())->count(),
-            'logs' => AuditLog::query()->where('target_type', OrgNode::class)->whereIn('target_id', $nodeIds)
-                ->with('actor:id,name')->latest('id')->limit(8)->get(),
-            'levels' => AccessLevels::LEVELS,
+            'mandate' => $mandate,
+            'currentMembers' => $currentMembers,
+            'mandateActivities' => $mandateActivities,
+            'mandates' => $mandates,
+            'departments' => $departments,
+            'matrix' => $matrix,
+            'upcomingActivities' => (clone $activities)->where('starts_at', '>=', now())->orderBy('starts_at')->limit(10)->get(),
+            'pastActivities' => (clone $activities)->where('starts_at', '<', now())->orderByDesc('starts_at')->limit(10)->get(),
+            'activityStatuses' => ClubActivity::STATUSES,
         ]);
+    }
+
+    /**
+     * Adhésions approuvées du club par mandat et par département (poste visé, sinon poste occupé dans le club).
+     *
+     * @param Collection<int, OrgNode> $team
+     * @param Collection<int|string, Collection<int, OrgAssignment>> $assignments
+     * @return array{0: Collection<int, Mandate>, 1: array<string, string>, 2: array<string, array<int, int>>, 3: int|null}
+     */
+    private function clubMembershipMatrix(OrgNode $club, Collection $team, Collection $assignments, ?Mandate $current): array
+    {
+        $parents = $team->pluck('parent_id', 'id')->all();
+        $kinds = $team->pluck('kind', 'id')->all();
+
+        $departmentOf = function (?int $nodeId) use ($parents, $kinds): ?int {
+            for ($guard = 0; $nodeId !== null && $guard < 40; $guard++) {
+                if (($kinds[$nodeId] ?? null) === 'club_department') {
+                    return $nodeId;
+                }
+
+                $nodeId = $parents[$nodeId] ?? null;
+            }
+
+            return null;
+        };
+
+        $held = [];
+
+        foreach ($assignments as $nodeId => $list) {
+            foreach ($list as $assignment) {
+                $userId = $assignment->person?->user_id;
+
+                if ($userId !== null) {
+                    $held[$userId] ??= $departmentOf((int) $nodeId);
+                }
+            }
+        }
+
+        $departments = $team->where('kind', 'club_department')
+            ->mapWithKeys(fn (OrgNode $department): array => [(string) $department->id => $department->title])->all();
+        $mandates = Mandate::query()->orderByDesc('start_year')->limit(6)->get();
+        $matrix = [];
+        $currentCount = null;
+
+        foreach ($mandates as $mandate) {
+            $members = Membership::query()->where('node_id', $club->id)->where('status', 'approved')
+                ->duringMandate($mandate)->get(['id', 'user_id', 'position_id']);
+
+            if ($current && $mandate->id === $current->id) {
+                $currentCount = $members->count();
+            }
+
+            foreach ($members as $member) {
+                $department = ($member->position_id ? $departmentOf((int) $member->position_id) : null) ?? ($held[$member->user_id] ?? null);
+                $key = $department !== null ? (string) $department : 'none';
+                $matrix[$key][$mandate->id] = ($matrix[$key][$mandate->id] ?? 0) + 1;
+            }
+        }
+
+        if (isset($matrix['none'])) {
+            $departments['none'] = 'Sans département';
+        }
+
+        return [$mandates, $departments, $matrix, $currentCount];
     }
 
     /* ------------------------------------------------------------------ Roles des clubs */
