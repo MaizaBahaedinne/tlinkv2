@@ -137,6 +137,26 @@ class AdminMembershipMandateTest extends TestCase
         $this->assertSame('pending', $pending->fresh()->status);
     }
 
+    public function test_a_global_admin_can_decide_a_request_assigned_to_someone_else(): void
+    {
+        $this->mandates();
+        $admin = User::factory()->create();
+        $this->grantPlatformAdmin($admin);
+        $other = User::factory()->create(['name' => 'Autre Validateur']);
+        $pending = $this->membership(User::factory()->create(), '2026-10-01', 'pending');
+        \App\Models\ApprovalRequest::query()->create([
+            'request_type' => 'membership', 'requester_id' => $pending->user_id, 'approvable_type' => Membership::class,
+            'approvable_id' => $pending->id, 'assigned_reviewer_id' => $other->id, 'status' => 'pending', 'submitted_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->get('/admin/adhesions')->assertOk()
+            ->assertSee('Validateur : Autre Validateur')->assertDontSee('vous ne pouvez pas statuer')->assertSee('Accepter');
+
+        $this->actingAs($admin)->patch("/admin/adhesions/{$pending->id}/decision", ['decision' => 'approved'])->assertSessionHas('status');
+        $this->assertSame('approved', $pending->fresh()->status);
+        $this->assertSame($admin->id, $pending->fresh()->approved_by);
+    }
+
     public function test_a_plain_member_cannot_decide_a_membership(): void
     {
         $this->mandates();

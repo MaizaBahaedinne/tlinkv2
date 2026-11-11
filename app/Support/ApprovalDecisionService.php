@@ -30,7 +30,12 @@ class ApprovalDecisionService
             return new ApprovalDecisionException('Auto-approbation interdite.', 403);
         }
 
-        if ($approvalRequest->assigned_reviewer_id !== null && (int) $approvalRequest->assigned_reviewer_id !== (int) $actor->id) {
+        // Le validateur assigné est celui qu'on notifie : un administrateur global (périmètre « tout ») peut statuer à sa place.
+        if (
+            $approvalRequest->assigned_reviewer_id !== null
+            && (int) $approvalRequest->assigned_reviewer_id !== (int) $actor->id
+            && ! OrgAccess::responsibility($actor, 'approval.review')['all']
+        ) {
             return new ApprovalDecisionException('Tu n\'es pas le validateur assigne.', 403);
         }
 
