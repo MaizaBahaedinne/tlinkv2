@@ -12,14 +12,12 @@ use Illuminate\Support\Str;
 class ClubActivity extends Model
 {
     public const TYPES = [
-        'event' => 'Événement',
-        'training' => 'Formation',
         'conference' => 'Conférence',
-        'competition' => 'Compétition',
-        'party' => 'Soirée',
+        'training' => 'Formation / Workshop',
+        'event' => 'Événement général',
         'teambuilding' => 'Team building',
-        'camping' => 'Camping',
-        'other' => 'Autre',
+        'camping' => 'Camping / Retreat',
+        'competition' => 'Compétition / Challenge',
     ];
 
     public const AUDIENCES = [
@@ -129,7 +127,7 @@ class ClubActivity extends Model
 
     public function typeLabel(): string
     {
-        return self::TYPES[$this->type] ?? self::TYPES['other'];
+        return self::TYPES[$this->type] ?? self::TYPES['event'];
     }
 
     public function audienceLabel(): string

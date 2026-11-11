@@ -15,13 +15,11 @@ final class ActivityTaskTemplates
         'sponsoring' => 'Sponsoring',
     ];
 
-    /** Type d'activité => famille de liste. */
+    /** Type d'activité => famille de liste (les anciens types « soirée » et « autre » retombent sur l'événement général). */
     public const SET_OF_TYPE = [
         'conference' => 'conference',
         'training' => 'training',
         'event' => 'general',
-        'party' => 'general',
-        'other' => 'general',
         'teambuilding' => 'teambuilding',
         'camping' => 'camping',
         'competition' => 'competition',

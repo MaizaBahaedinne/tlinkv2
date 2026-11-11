@@ -76,12 +76,50 @@ class ActivityTasksTest extends TestCase
         $this->assertSame('Organiser la remise des prix et publier le classement final.', ActivityTaskTemplates::forType('competition')['teams']['event'][5]);
     }
 
+    public function test_activity_types_are_the_six_official_ones(): void
+    {
+        $this->assertSame([
+            'conference' => 'Conférence',
+            'training' => 'Formation / Workshop',
+            'event' => 'Événement général',
+            'teambuilding' => 'Team building',
+            'camping' => 'Camping / Retreat',
+            'competition' => 'Compétition / Challenge',
+        ], ClubActivity::TYPES);
+
+        $page = $this->actingAs($this->president)->get('/admin/activites/creer')->assertOk();
+
+        foreach (ClubActivity::TYPES as $label) {
+            $page->assertSee($label);
+        }
+
+        $page->assertDontSee('Soirée')->assertDontSee('>Autre<', false);
+
+        $base = ['club_id' => $this->club->id, 'title' => 'Type refusé', 'audience' => 'public', 'status' => 'draft', 'starts_at' => now()->addDays(5)->format('Y-m-d\TH:i')];
+        $this->actingAs($this->president)->post('/admin/activites', ['type' => 'party'] + $base)->assertSessionHasErrors('type');
+        $this->actingAs($this->president)->post('/admin/activites', ['type' => 'other'] + $base)->assertSessionHasErrors('type');
+    }
+
+    public function test_old_party_and_other_activities_become_general_events(): void
+    {
+        $party = $this->freeActivity(['type' => 'party', 'title' => 'Ancienne soirée']);
+        $other = $this->freeActivity(['type' => 'other', 'title' => 'Ancien autre']);
+        $kept = $this->freeActivity(['type' => 'camping', 'title' => 'Séjour']);
+
+        (include database_path('migrations/2026_12_15_100000_merge_party_and_other_activity_types.php'))->up();
+
+        $this->assertSame('event', $party->fresh()->type);
+        $this->assertSame('event', $other->fresh()->type);
+        $this->assertSame('camping', $kept->fresh()->type);
+        $this->assertSame('Événement général', $party->fresh()->typeLabel());
+    }
+
     public function test_a_club_creates_an_activity_without_any_challenge(): void
     {
         $this->actingAs($this->president)->get('/admin/activites/creer')->assertOk()->assertSee('Aucun défi (activité libre)');
 
         $this->actingAs($this->president)->post('/admin/activites', [
-            'club_id' => $this->club->id, 'title' => 'Soirée de rentrée', 'type' => 'party', 'audience' => 'public',
+            'club_id' => $this->club->id, 'title' => 'Soirée de rentrée', 'type' => 'event', 'audience' => 'public',
             'in_theme' => 1, 'status' => 'published', 'starts_at' => now()->addDays(60)->format('Y-m-d\TH:i'),
         ])->assertSessionHasNoErrors()->assertRedirect();
 
