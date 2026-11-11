@@ -48,7 +48,8 @@ class AdvertsTest extends TestCase
         $this->assertStringNotContainsString('Formation Leadership', $source);
 
         $aside = strpos($source, '<aside class="hidden lg:col-span-3');
-        $this->assertLessThan(strpos($source, '<ActivityCalendar', $aside), strpos($source, '<PartnersCarousel', $aside));
+        $this->assertNotFalse(strpos($source, '<PartnersCarousel', $aside));
+        $this->assertStringNotContainsString('<ActivityCalendar', $source);
     }
 
     public function test_global_admin_adds_edits_and_deletes_an_advert(): void

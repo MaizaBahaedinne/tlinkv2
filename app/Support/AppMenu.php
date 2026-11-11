@@ -36,7 +36,7 @@ final class AppMenu
         $items = [$item('home', 'Accueil', route('home'), 'fa-solid fa-house', true)];
 
         if (Challenges::enabled()) {
-            $items[] = $item('challenges', 'Défis', route('challenges.index'), 'fa-solid fa-trophy');
+            $items[] = $item('challenges', 'Activité', route('challenges.index'), 'fa-solid fa-trophy');
         }
 
         if (MyOffice::enabled() && (MyOffice::holdsPosition($user) || MyOfficeSpace::hasActivity($user))) {

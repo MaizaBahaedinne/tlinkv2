@@ -40,8 +40,6 @@
             menu: @json($menu ?? []),
             storiesEnabled: @json((bool) ($storiesEnabled ?? false)),
             stories: @json($stories ?? []),
-            calendar: @json($calendar ?? []),
-            calendarEnabled: @json((bool) ($calendarEnabled ?? false)),
             governorates: @json($governorates),
             csrf: @json(csrf_token()),
         };

@@ -88,8 +88,6 @@ class FeedController extends Controller
             'menu' => \App\Support\AppMenu::for($request),
             'storiesEnabled' => $request->user() !== null && \App\Support\Stories::enabled(),
             'stories' => $request->user() !== null && \App\Support\Stories::enabled() ? \App\Support\Stories::feedFor($request->user()) : [],
-            'calendar' => \App\Support\Challenges\ActivityCalendar::for($request->user()),
-            'calendarEnabled' => $request->user() !== null && \App\Support\Challenges\Challenges::enabled(),
             'governorates' => Governorate::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
     }

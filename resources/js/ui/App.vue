@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import ActivityCalendar from './ActivityCalendar.vue';
 import PartnersCarousel from './PartnersCarousel.vue';
 import StoriesBar from './StoriesBar.vue';
 
@@ -61,24 +60,7 @@ type RootData = {
     all_seen: boolean;
     items: Array<{ id: number; type: 'image' | 'video'; url: string; caption: string | null; created_at: string | null; seen: boolean; views: number | null }>;
   }>;
-  calendar?: Array<{
-    id: number;
-    title: string;
-    club: string | null;
-    type: string;
-    day: string;
-    time: string;
-    location: string | null;
-    state: 'open' | 'full' | 'closed' | 'registered' | 'waitlisted';
-    needs_form: boolean;
-    registered: number;
-    capacity: number | null;
-    url: string;
-    register_url: string;
-    scan_url: string | null;
-  }>;
   governorates: Array<{ id: number; name: string; slug: string }>;
-  calendarEnabled?: boolean;
   csrf: string;
 };
 
@@ -89,7 +71,6 @@ const data = (window.__TLINK__ ?? {
   partners: [],
   links: {},
   myBadges: [],
-  calendar: [],
   governorates: [],
   csrf: '',
 }) as RootData;
@@ -261,8 +242,8 @@ function onVisible() {
   if (!document.hidden) void refreshLive();
 }
 
-// Badges regroupés par type (du plus élevé au plus courant).
-const TIER_ORDER = ['platinum', 'gold', 'silver', 'bronze'];
+// Badges regroupés par type, du plus courant au plus élevé.
+const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum'];
 const badgeGroups = computed(() => {
   const groups = new Map<string, { key: string; label: string; chip: string; badges: NonNullable<RootData['myBadges']> }>();
   for (const badge of data.myBadges ?? []) {
@@ -498,9 +479,6 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
           :me-avatar="data.auth.user?.avatar_url"
         />
         <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="3" class="lg:hidden" />
-        <div v-if="data.auth.isAuthenticated && data.calendarEnabled" class="lg:hidden">
-          <ActivityCalendar :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
-        </div>
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4" @submit.prevent="publish">
           <input type="hidden" name="_token" :value="data.csrf" />
           <div class="flex items-start gap-3">
@@ -861,8 +839,6 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
         <aside class="hidden lg:col-span-3 lg:block">
           <div class="sticky top-24 space-y-4">
             <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="2" />
-
-            <ActivityCalendar v-if="data.auth.isAuthenticated && data.calendarEnabled" :entries="data.calendar ?? []" :csrf="data.csrf" :challenges-url="data.links?.challenges" />
           </div>
         </aside>
       </div>

@@ -10,18 +10,18 @@
 
     $allNav = array_values(array_filter([
         ['key' => 'home', 'label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
-        \App\Support\Domains::reachableFrom($section, 'academy') ? ['key' => 'academy', 'label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')] : null,
+        ($challengesEnabled ?? false) ? ['key' => 'challenges', 'label' => 'Activité', 'href' => route('challenges.index'), 'icon' => 'fa-solid fa-trophy', 'active' => request()->routeIs('challenges.*', 'activities.*')] : null,
         ($hasOffice ?? false) ? ['key' => 'office', 'label' => \App\Support\AppMenu::officeLabel($me), 'href' => route('office.index'), 'icon' => 'fa-solid fa-briefcase', 'active' => request()->routeIs('office.*')] : null,
         ['key' => 'tasks', 'label' => 'Mes tâches', 'href' => route('tasks.mine'), 'icon' => 'fa-solid fa-clipboard-check', 'active' => request()->routeIs('tasks.mine'), 'badge' => (int) ($myTasksUnseen ?? 0), 'badgeLabel' => 'tâche(s) non vue(s)', 'badgeAttr' => 'data-tasks-badge'],
-        ($challengesEnabled ?? false) ? ['key' => 'challenges', 'label' => 'Défis', 'href' => route('challenges.index'), 'icon' => 'fa-solid fa-trophy', 'active' => request()->routeIs('challenges.*', 'activities.*')] : null,
         ($mentoringEnabled ?? false) ? ['key' => 'mentoring', 'label' => 'Mentorat', 'href' => route('mentoring.index'), 'icon' => 'fa-solid fa-life-ring', 'active' => request()->routeIs('mentoring.*')] : null,
+        \App\Support\Domains::reachableFrom($section, 'academy') ? ['key' => 'academy', 'label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')] : null,
         (($storeEnabled ?? false) && \App\Support\Domains::reachableFrom($section, 'store')) ? ['key' => 'store', 'label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0), 'badgeLabel' => 'article(s) dans le panier'] : null,
         ($canAdmin ?? false) ? ['key' => 'admin', 'label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
         ($canSimulate ?? false) ? ['key' => 'simulator', 'label' => 'Simulateur de rôles', 'href' => route('admin.simulator.index'), 'icon' => 'fa-solid fa-user-secret', 'active' => false] : null,
     ]));
 
-    // Barre principale : Fil, Mon bureau, Mes tâches et Mentorat ; le reste (Academy, Défis, Boutique, administration…) va dans « Plus ».
-    $essentialKeys = ['home', 'office', 'tasks', 'mentoring'];
+    // Barre principale : Fil, Activité, Mon bureau, Mes tâches et Mentorat ; le reste (Academy, Boutique, administration…) va dans « Plus ».
+    $essentialKeys = ['home', 'challenges', 'office', 'tasks', 'mentoring'];
     $navItems = array_values(array_filter($allNav, fn (array $item): bool => in_array($item['key'], $essentialKeys, true)));
     $moreItems = array_values(array_filter($allNav, fn (array $item): bool => ! in_array($item['key'], $essentialKeys, true)));
     $moreActive = collect($moreItems)->contains('active', true);

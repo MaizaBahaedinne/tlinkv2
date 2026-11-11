@@ -30,6 +30,7 @@ class ChallengeController extends Controller
             'open' => $challenges->get('open', collect()),
             'past' => $challenges->get('past', collect()),
             'evaluating' => $evaluating,
+            'upcoming' => \App\Support\Challenges\ActivityCalendar::for($user),
         ]);
     }
 

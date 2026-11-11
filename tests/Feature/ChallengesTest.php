@@ -577,7 +577,7 @@ class ChallengesTest extends TestCase
         $this->assertContains('high-school', \App\Support\Challenges\ActivityAccess::scopesOf($member));
         $this->actingAs($member)->get('/defis')->assertSee('Défi Lycées')->assertDontSee('Défi Anciens');
         $this->actingAs($member)->get('/defis/'.$school->id)->assertOk();
-        $this->assertContains('Atelier lycées', collect($this->actingAs($member)->get('/feed')->viewData('calendar'))->pluck('title')->all());
+        $this->assertContains('Atelier lycées', collect($this->actingAs($member)->get('/defis')->viewData('upcoming'))->pluck('title')->all());
 
         // Adhésion validée portant un autre périmètre.
         \App\Models\Membership::query()->where('user_id', $member->id)->update(['scope' => 'alumni']);
@@ -686,7 +686,7 @@ class ChallengesTest extends TestCase
         $this->actingAs(User::factory()->create())->get('/defis')->assertOk()->assertSee(route('challenges.index'), false);
     }
 
-    public function test_feed_lists_upcoming_public_activities_and_registers_directly(): void
+    public function test_activity_page_lists_upcoming_public_activities_and_registers_directly(): void
     {
         $club = $this->club('ESPRIT');
         $challenge = $this->challenge();
@@ -702,7 +702,7 @@ class ChallengesTest extends TestCase
         // Le périmètre du défi n'est pas un filtre : seul le public « Public » compte, même sans aucun rattachement du membre.
         $this->activity($this->challenge(null, ['title' => 'Défi Lycées', 'scope' => 'high-school']), $club, ['title' => 'Autre périmètre']);
 
-        $calendar = collect($this->actingAs($member)->get('/feed')->assertOk()->viewData('calendar'))->keyBy('title');
+        $calendar = collect($this->actingAs($member)->get('/defis')->assertOk()->viewData('upcoming'))->keyBy('title');
 
         $this->assertSame(['Autre périmètre', 'Avec formulaire', 'Plage propre'], $calendar->keys()->sort()->values()->all());
         $this->assertSame('open', $calendar['Plage propre']['state']);
@@ -710,37 +710,40 @@ class ChallengesTest extends TestCase
         $this->assertTrue($calendar['Avec formulaire']['needs_form']);
         $this->assertSame($open->starts_at->format('Y-m-d'), $calendar['Plage propre']['day']);
 
-        // Inscription depuis le fil : retour sur le fil, état mis à jour.
-        $this->actingAs($member)->from('/feed')->post($calendar['Plage propre']['register_url'])->assertRedirect('/feed')->assertSessionHas('status');
-        $this->assertSame('registered', collect($this->actingAs($member)->get('/feed')->viewData('calendar'))->firstWhere('title', 'Plage propre')['state']);
+        // Inscription depuis la page Activité : retour sur la page, état mis à jour.
+        $this->actingAs($member)->from('/defis')->post($calendar['Plage propre']['register_url'])->assertRedirect('/defis')->assertSessionHas('status');
+        $this->assertSame('registered', collect($this->actingAs($member)->get('/defis')->viewData('upcoming'))->firstWhere('title', 'Plage propre')['state']);
 
         // Une fois complète, l'activité propose la liste d'attente ; les inscriptions closes sont signalées.
         $other = User::factory()->create();
         $open->update(['capacity' => 1]);
-        $this->assertSame('full', collect($this->actingAs($other)->get('/feed')->viewData('calendar'))->firstWhere('title', 'Plage propre')['state']);
+        $this->assertSame('full', collect($this->actingAs($other)->get('/defis')->viewData('upcoming'))->firstWhere('title', 'Plage propre')['state']);
         $open->update(['registration_ends_at' => now()->subHour()]);
-        $this->assertSame('closed', collect($this->actingAs($other)->get('/feed')->viewData('calendar'))->firstWhere('title', 'Plage propre')['state']);
+        $this->assertSame('closed', collect($this->actingAs($other)->get('/defis')->viewData('upcoming'))->firstWhere('title', 'Plage propre')['state']);
     }
 
-    public function test_feed_activities_are_sorted_by_date(): void
+    public function test_upcoming_activities_are_sorted_by_date(): void
     {
         $club = $this->club('ESPRIT');
         $challenge = $this->challenge();
         $this->activity($challenge, $club, ['title' => 'Plus tard', 'starts_at' => now()->addDays(9), 'ends_at' => now()->addDays(9)->addHours(2)]);
         $this->activity($challenge, $club, ['title' => 'Bientôt', 'starts_at' => now()->addDay(), 'ends_at' => now()->addDay()->addHours(2)]);
 
-        $titles = collect($this->actingAs(User::factory()->create())->get('/feed')->viewData('calendar'))->pluck('title')->all();
+        $titles = collect($this->actingAs(User::factory()->create())->get('/defis')->viewData('upcoming'))->pluck('title')->all();
 
         $this->assertSame(['Bientôt', 'Plus tard'], $titles);
     }
 
-    public function test_feed_calendar_is_empty_without_activities_or_when_the_module_is_unavailable(): void
+    public function test_upcoming_activities_leave_the_feed_and_live_on_the_activity_page(): void
     {
-        $response = $this->actingAs(User::factory()->create())->get('/feed')->assertOk();
+        $club = $this->club('ESPRIT');
+        $this->activity($this->challenge(), $club, ['title' => 'Plage propre']);
+        $member = User::factory()->create();
 
-        // La carte reste affichée (avec un message) même sans activité à venir.
-        $this->assertSame([], $response->viewData('calendar'));
-        $this->assertTrue($response->viewData('calendarEnabled'));
-        $response->assertSee('calendarEnabled: true', false);
+        $feed = $this->actingAs($member)->get('/feed')->assertOk();
+        $feed->assertDontSee('calendarEnabled', false)->assertDontSee('Plage propre');
+
+        $this->actingAs($member)->get('/defis')->assertOk()->assertSee('Activités à venir')->assertSee('Plage propre');
+        $this->actingAs(User::factory()->create())->get('/defis')->assertOk()->assertSee('Activités à venir');
     }
 }
