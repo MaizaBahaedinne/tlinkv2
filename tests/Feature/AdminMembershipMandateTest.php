@@ -81,4 +81,49 @@ class AdminMembershipMandateTest extends TestCase
 
         $this->assertSame(1, Membership::query()->where('user_id', $user->id)->count());
     }
+
+    public function test_migration_gives_existing_position_memberships_the_position_title_as_role(): void
+    {
+        $position = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'category' => 'direction', 'title' => 'Présidente', 'scope' => 'university', 'sort_order' => 0]);
+        $membership = $this->membership(User::factory()->create(), '2026-10-01');
+        $membership->forceFill(['position_id' => $position->id])->save();
+        $plain = $this->membership(User::factory()->create(), '2026-10-01');
+
+        (require base_path('database/migrations/2026_12_14_120000_set_position_title_as_membership_role.php'))->up();
+
+        $this->assertSame('Présidente', $membership->fresh()->membership_type);
+        $this->assertSame('member', $plain->fresh()->membership_type);
+    }
+
+    public function test_pending_membership_is_accepted_or_refused_directly_from_the_list(): void
+    {
+        $this->mandates();
+        $manager = User::factory()->create();
+        $this->grantAccess($manager, 'entity_admin', 'university');
+        $accepted = $this->membership(User::factory()->create(), '2026-10-01', 'pending');
+        $refused = $this->membership(User::factory()->create(), '2026-10-01', 'pending');
+
+        $this->actingAs($manager)->get('/admin/adhesions')->assertOk()->assertSee('Accepter')->assertSee('Refuser');
+
+        $this->actingAs($manager)->patch("/admin/adhesions/{$accepted->id}/decision", ['decision' => 'approved'])->assertSessionHas('status');
+        $this->actingAs($manager)->patch("/admin/adhesions/{$refused->id}/decision", ['decision' => 'rejected', 'explanation' => 'Dossier incomplet'])->assertSessionHas('status');
+
+        $this->assertSame('approved', $accepted->fresh()->status);
+        $this->assertSame($manager->id, $accepted->fresh()->approved_by);
+        $this->assertSame('rejected', $refused->fresh()->status);
+        $this->assertSame('Dossier incomplet', $refused->fresh()->rejection_reason);
+
+        // Déjà traitée : aucune seconde décision.
+        $this->actingAs($manager)->patch("/admin/adhesions/{$accepted->id}/decision", ['decision' => 'rejected'])->assertSessionHas('error');
+        $this->assertSame('approved', $accepted->fresh()->status);
+    }
+
+    public function test_a_plain_member_cannot_decide_a_membership(): void
+    {
+        $this->mandates();
+        $pending = $this->membership(User::factory()->create(), '2026-10-01', 'pending');
+
+        $this->actingAs(User::factory()->create())->patch("/admin/adhesions/{$pending->id}/decision", ['decision' => 'approved'])->assertForbidden();
+        $this->assertSame('pending', $pending->fresh()->status);
+    }
 }

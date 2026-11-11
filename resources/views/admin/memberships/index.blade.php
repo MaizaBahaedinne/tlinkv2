@@ -4,7 +4,7 @@
 @section('section', 'Adhésions')
 
 @section('content')
-    <x-admin.page-header title="Adhésions" :subtitle="($globalView ? 'Toutes les adhésions de la plateforme' : 'Les adhésions et demandes sous votre responsabilité') . ($mandate ? ' — mandat '.$mandate->label : ' — tous les mandats').'. Les titulaires de postes de l’organigramme sont des adhérents validés de leur mandat. Les demandes en attente sont toujours affichées en tête ; elles se traitent dans Approbations.'" />
+    <x-admin.page-header title="Adhésions" :subtitle="($globalView ? 'Toutes les adhésions de la plateforme' : 'Les adhésions et demandes sous votre responsabilité') . ($mandate ? ' — mandat '.$mandate->label : ' — tous les mandats').'. Les titulaires de postes de l’organigramme sont des adhérents validés de leur mandat. Les demandes en attente sont affichées en tête : acceptez-les ou refusez-les directement ici.'" />
 
     <article class="card card-flush">
         <div class="tabs">
@@ -103,7 +103,19 @@
                                             </form>
                                         @endforeach
                                     @elseif($membership->status === 'pending' && $canReview)
-                                        <a href="{{ route('admin.approvals.index') }}" class="btn btn-secondary btn-sm">Traiter la demande</a>
+                                        <form method="post" action="{{ route('admin.memberships.decide', $membership) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="decision" value="approved">
+                                            <button type="submit" class="btn btn-primary btn-sm">Accepter</button>
+                                        </form>
+                                        <form method="post" action="{{ route('admin.memberships.decide', $membership) }}" onsubmit="var r = prompt('Motif du refus (facultatif)'); if (r === null) { return false; } this.explanation.value = r;">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="decision" value="rejected">
+                                            <input type="hidden" name="explanation" value="">
+                                            <button type="submit" class="btn btn-ghost btn-sm">Refuser</button>
+                                        </form>
                                     @endif
                                 </td>
                             </tr>

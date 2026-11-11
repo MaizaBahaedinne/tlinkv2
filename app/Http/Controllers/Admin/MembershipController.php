@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\ApprovalRequest;
 use App\Models\Mandate;
 use App\Models\MandateParticipation;
 use App\Models\Membership;
+use App\Support\ApprovalDecisionException;
+use App\Support\ApprovalDecisionService;
 use App\Support\MembershipResponsibility;
 use App\Support\OrgScopes;
 use Illuminate\Http\RedirectResponse;
@@ -95,6 +98,35 @@ class MembershipController extends AdminController
             'participations' => $participations,
             'globalView' => $responsibility->all(),
         ]);
+    }
+
+    /**
+     * Accepte ou refuse une demande en attente depuis cette page : mêmes règles, même journal et même notification
+     * que dans Approbations (le service de décision est partagé).
+     */
+    public function decide(Request $request, Membership $membership, ApprovalDecisionService $service): RedirectResponse
+    {
+        $data = $request->validate([
+            'decision' => ['required', Rule::in(['approved', 'rejected'])],
+            'explanation' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        if ($membership->status !== 'pending') {
+            return back()->with('error', 'Cette demande est déjà traitée.');
+        }
+
+        $approval = ApprovalRequest::query()->firstOrCreate(
+            ['approvable_type' => Membership::class, 'approvable_id' => $membership->id, 'status' => 'pending'],
+            ['request_type' => 'membership', 'requester_id' => $membership->user_id, 'submitted_at' => now()],
+        );
+
+        try {
+            $service->decide($approval, $request->user(), $data['decision'], $data['explanation'] ?? null, $request->ip());
+        } catch (ApprovalDecisionException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', $data['decision'] === 'approved' ? 'Adhésion acceptée.' : 'Demande refusée.');
     }
 
     public function update(Request $request, Membership $membership): RedirectResponse
