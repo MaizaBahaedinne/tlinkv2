@@ -388,14 +388,14 @@ class OnboardingFlowTest extends TestCase
         $this->assertSame('2022-01-15', $experiences[0]['start_date']);
     }
 
-    public function test_only_university_high_school_and_we_are_carthage_are_selectable(): void
+    public function test_only_university_high_school_alumni_and_we_are_carthage_are_selectable(): void
     {
         $this->currentMandate();
         $user = $this->readyForPlacement('alumni');
         $html = $this->actingAs($user)->get('/integration')->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('/<option value="alumni"[^>]*disabled/', $html);
         $this->assertMatchesRegularExpression('/<option value="foundation"[^>]*disabled/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<option value="alumni"[^>]*disabled/', $html);
         $this->assertDoesNotMatchRegularExpression('/<option value="university"[^>]*disabled/', $html);
         $this->assertDoesNotMatchRegularExpression('/<option value="high-school"[^>]*disabled/', $html);
     }
