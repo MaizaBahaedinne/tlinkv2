@@ -24,7 +24,9 @@ function when(entry: Entry) {
       <a v-if="props.challengesUrl" :href="props.challengesUrl" class="text-xs font-semibold text-tlink-blue hover:underline">Tout voir</a>
     </div>
 
-    <ul class="space-y-2">
+    <p v-if="props.entries.length === 0" class="rounded-xl bg-slate-50 px-3 py-3 text-xs text-slate-500">Aucune activité publique à venir pour le moment.</p>
+
+    <ul v-else class="space-y-2">
       <li v-for="entry in shown" :key="entry.id" class="rounded-xl border border-slate-200 p-3">
         <a :href="entry.url" class="text-sm font-semibold text-slate-900 hover:text-tlink-blue">{{ entry.title }}</a>
         <p class="mt-0.5 text-xs text-slate-500">{{ when(entry) }}<span v-if="entry.location"> · {{ entry.location }}</span></p>
