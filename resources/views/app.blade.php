@@ -40,6 +40,8 @@
             menu: @json($menu ?? []),
             storiesEnabled: @json((bool) ($storiesEnabled ?? false)),
             stories: @json($stories ?? []),
+            upcoming: @json($upcoming ?? []),
+            pendingMemberships: @json($pendingMemberships ?? null),
             governorates: @json($governorates),
             csrf: @json(csrf_token()),
         };

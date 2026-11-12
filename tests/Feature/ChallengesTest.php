@@ -734,14 +734,15 @@ class ChallengesTest extends TestCase
         $this->assertSame(['Bientôt', 'Plus tard'], $titles);
     }
 
-    public function test_upcoming_activities_leave_the_feed_and_live_on_the_activity_page(): void
+    public function test_upcoming_activities_show_in_the_feed_without_register_button_and_on_the_activity_page(): void
     {
         $club = $this->club('ESPRIT');
         $this->activity($this->challenge(), $club, ['title' => 'Plage propre']);
         $member = User::factory()->create();
 
         $feed = $this->actingAs($member)->get('/feed')->assertOk();
-        $feed->assertDontSee('calendarEnabled', false)->assertDontSee('Plage propre');
+        $feed->assertSee('Plage propre')->assertDontSee('calendarEnabled', false);
+        $this->assertSame('Plage propre', $feed->viewData('upcoming')[0]['title']);
 
         $this->actingAs($member)->get('/defis')->assertOk()->assertSee('Activités à venir')->assertSee('Plage propre');
         $this->actingAs(User::factory()->create())->get('/defis')->assertOk()->assertSee('Activités à venir');

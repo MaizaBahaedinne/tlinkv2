@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Models\Partner;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GrantsAccess;
 use Tests\TestCase;
 
 class FeedSidebarsTest extends TestCase
 {
+    use GrantsAccess;
     use RefreshDatabase;
 
     public function test_the_feed_exposes_active_partners_with_their_logo_and_the_mission_link(): void
@@ -41,6 +43,33 @@ class FeedSidebarsTest extends TestCase
 
         $other = User::factory()->create();
         $this->assertNull($this->actingAs($other)->get('/feed')->assertOk()->viewData('authUser')['avatar_url']);
+    }
+
+    public function test_pending_memberships_are_only_listed_for_a_reviewer(): void
+    {
+        $applicant = User::factory()->create(['name' => 'Candidat Test']);
+        \App\Models\Membership::query()->create([
+            'user_id' => $applicant->id, 'scope' => 'university', 'status' => 'pending', 'membership_type' => 'member',
+            'starts_at' => now()->toDateString(),
+        ]);
+
+        $this->assertNull($this->actingAs(User::factory()->create())->get('/feed')->assertOk()->viewData('pendingMemberships'));
+
+        $reviewer = User::factory()->create();
+        $this->grantPlatformAdmin($reviewer);
+
+        $payload = $this->actingAs($reviewer)->get('/feed')->assertOk()->viewData('pendingMemberships');
+        $this->assertSame(1, $payload['total']);
+        $this->assertSame('Candidat Test', $payload['items'][0]['name']);
+        $this->assertNotEmpty($payload['items'][0]['ago']);
+
+        // Sa propre demande n'est pas à valider par soi-même.
+        $this->assertNull($this->actingAs($applicant)->get('/feed')->viewData('pendingMemberships'));
+    }
+
+    public function test_the_feed_lists_upcoming_activities(): void
+    {
+        $this->assertIsArray($this->actingAs(User::factory()->create())->get('/feed')->assertOk()->viewData('upcoming'));
     }
 
     public function test_the_mission_anchor_exists_on_the_about_page(): void

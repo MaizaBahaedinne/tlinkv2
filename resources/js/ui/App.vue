@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import PartnersCarousel from './PartnersCarousel.vue';
+import PendingMemberships from './PendingMemberships.vue';
 import StoriesBar from './StoriesBar.vue';
+import UpcomingActivities from './UpcomingActivities.vue';
 
 type FeedPost = {
   id: number;
@@ -61,6 +63,8 @@ type RootData = {
     items: Array<{ id: number; type: 'image' | 'video'; url: string; caption: string | null; created_at: string | null; seen: boolean; views: number | null }>;
   }>;
   governorates: Array<{ id: number; name: string; slug: string }>;
+  upcoming?: Array<{ id: number; title: string; club: string | null; type: string; day: string; time: string; location: string | null; url: string }>;
+  pendingMemberships?: { total: number; url: string; items: Array<{ id: number; name: string; photo_url: string | null; position: string | null; ago: string | null }> } | null;
   csrf: string;
 };
 
@@ -72,6 +76,8 @@ const data = (window.__TLINK__ ?? {
   links: {},
   myBadges: [],
   governorates: [],
+  upcoming: [],
+  pendingMemberships: null,
   csrf: '',
 }) as RootData;
 
@@ -479,6 +485,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
           :me-avatar="data.auth.user?.avatar_url"
         />
         <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="3" class="lg:hidden" />
+        <UpcomingActivities v-if="data.upcoming?.length" :entries="data.upcoming" :challenges-url="data.links?.challenges" class="lg:hidden" />
+        <PendingMemberships v-if="data.pendingMemberships?.total" v-bind="data.pendingMemberships" class="lg:hidden" />
         <form v-if="data.auth.isAuthenticated" action="/posts" method="post" enctype="multipart/form-data" class="card p-4" @submit.prevent="publish">
           <input type="hidden" name="_token" :value="data.csrf" />
           <div class="flex items-start gap-3">
@@ -839,6 +847,8 @@ if (!visibilityChoices.value.some((item) => item.value === form.visibility)) {
         <aside class="hidden lg:col-span-3 lg:block">
           <div class="sticky top-24 space-y-4">
             <PartnersCarousel v-if="data.partners?.length" :partners="data.partners" :per-page="2" />
+            <UpcomingActivities v-if="data.upcoming?.length" :entries="data.upcoming" :challenges-url="data.links?.challenges" />
+            <PendingMemberships v-if="data.pendingMemberships?.total" v-bind="data.pendingMemberships" />
           </div>
         </aside>
       </div>
