@@ -59,11 +59,10 @@ class MembershipRequestController extends Controller
     /**
      * Tous les mandats (le plus récent d'abord), même ceux où le membre n'a rien, avec ses adhésions, ses postes et ses
      * participations ; puis une ligne « hors mandat » pour ce qui ne se rattache à aucun mandat connu.
-     * Une adhésion appartient au mandat où elle commence (ou, si elle a une fin, à tous ceux que sa période recoupe) ;
-     * une adhésion validée encore active apparaît aussi, comme reconduite, dans le mandat en cours (c'est elle qui renouvelle la carte).
+     * Une adhésion appartient au mandat où elle commence (ou, si elle a une fin, à tous ceux que sa période recoupe) ; elle n'est pas répétée dans les mandats suivants.
      *
      * @param \Illuminate\Support\Collection<int, Membership> $memberships
-     * @return \Illuminate\Support\Collection<int, array{mandate: ?Mandate, positions: \Illuminate\Support\Collection, participations: \Illuminate\Support\Collection, memberships: \Illuminate\Support\Collection, carried: \Illuminate\Support\Collection}>
+     * @return \Illuminate\Support\Collection<int, array{mandate: ?Mandate, positions: \Illuminate\Support\Collection, participations: \Illuminate\Support\Collection, memberships: \Illuminate\Support\Collection}>
      */
     private function mandateRows(\App\Models\User $user, $memberships)
     {
@@ -73,16 +72,10 @@ class MembershipRequestController extends Controller
         $placed = [];
 
         $rows = Mandate::query()->orderByDesc('start_year')->orderByDesc('id')->get()
-            ->map(function (Mandate $mandate) use ($byMandate, $memberships, $today, &$placed): array {
+            ->map(function (Mandate $mandate) use ($byMandate, $memberships, &$placed): array {
                 $own = $memberships->filter(fn (Membership $m) => $this->entersMandate($m, $mandate))->values();
-                $carried = $mandate->status === Mandate::STATUS_CURRENT
-                    ? $memberships->filter(fn (Membership $m) => $m->status === 'approved'
-                        && ($m->ends_at === null || $m->ends_at->toDateString() >= $today)
-                        && ! $own->contains('id', $m->id)
-                        && ($m->starts_at ?? $m->created_at)?->lt($mandate->windowStart()))->values()
-                    : collect();
 
-                foreach ($own->merge($carried) as $m) {
+                foreach ($own as $m) {
                     $placed[$m->id] = true;
                 }
 
@@ -91,7 +84,6 @@ class MembershipRequestController extends Controller
                     'positions' => $byMandate->get($mandate->id)['positions'] ?? collect(),
                     'participations' => $byMandate->get($mandate->id)['participations'] ?? collect(),
                     'memberships' => $own,
-                    'carried' => $carried,
                 ];
             });
 
@@ -100,7 +92,7 @@ class MembershipRequestController extends Controller
         $looseMemberships = $memberships->reject(fn (Membership $m) => isset($placed[$m->id]))->values();
 
         if ($loosePositions->isNotEmpty() || $looseMemberships->isNotEmpty()) {
-            $rows->push(['mandate' => null, 'positions' => $loosePositions, 'participations' => collect(), 'memberships' => $looseMemberships, 'carried' => collect()]);
+            $rows->push(['mandate' => null, 'positions' => $loosePositions, 'participations' => collect(), 'memberships' => $looseMemberships]);
         }
 
         return $rows->values();

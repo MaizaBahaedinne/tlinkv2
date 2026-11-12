@@ -218,11 +218,14 @@ class MembershipRequestPageTest extends TestCase
         Membership::query()->create(['user_id' => $member->id, 'scope' => 'university_clubs', 'status' => 'pending', 'membership_type' => 'member', 'starts_at' => '2026-10-01']);
 
         $html = $this->actingAs($member)->get('/adhesions')->assertOk()
-            ->assertSee('Mon parcours par mandat')->assertSee('Adhésion reconduite')->assertSee('Retirer ma demande')
+            ->assertSee('Mon parcours par mandat')->assertDontSee('Adhésion reconduite')->assertSee('Retirer ma demande')
             ->getContent();
 
         $this->assertLessThan(strpos($html, 'Mandat 2023-2024'), strpos($html, 'Mandat 2026-2027'));
-        $this->assertNotFalse(strpos($html, 'depuis le 01/11/2023'));
+
+        // Chaque adhésion n'apparaît qu'une fois, sous son mandat d'origine : celle de 2023 n'est pas répétée dans le mandat en cours.
+        $this->assertSame(2, substr_count($html, 'text-sky-700">Adhésion'));
+        $this->assertSame(1, substr_count(substr($html, strpos($html, 'Mandat 2026-2027'), strpos($html, 'Mandat 2023-2024') - strpos($html, 'Mandat 2026-2027')), 'text-sky-700">Adhésion'));
     }
 
     public function test_membership_and_held_position_share_a_single_timeline_line(): void

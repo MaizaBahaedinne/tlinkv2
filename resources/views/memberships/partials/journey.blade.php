@@ -67,10 +67,10 @@
                     };
                     // Une adhésion liée à un poste occupé n'a qu'une ligne : le poste y est fusionné.
                     $heldPosts = $group['positions']->keyBy('node_id');
-                    $mergedNodes = $group['memberships']->merge($group['carried'])
+                    $mergedNodes = $group['memberships']
                         ->filter(fn ($m) => $m->status === 'approved' && $m->position_id !== null && $heldPosts->has($m->position_id))
                         ->pluck('position_id')->all();
-                    $empty = $group['memberships']->isEmpty() && $group['carried']->isEmpty() && $group['participations']->isEmpty() && $group['positions']->isEmpty();
+                    $empty = $group['memberships']->isEmpty() && $group['participations']->isEmpty() && $group['positions']->isEmpty();
                 @endphp
                 <li class="relative">
                     <span class="absolute top-5 -left-[35px] h-4 w-4 rounded-full ring-4 ring-white sm:-left-[43px] {{ $dot }}" aria-hidden="true"></span>
@@ -94,10 +94,7 @@
                         @else
                             <ul class="mt-3 space-y-2">
                                 @foreach($group['memberships'] as $membership)
-                                    @include('memberships.partials.membership-item', ['membership' => $membership, 'carried' => false, 'held' => $heldPosts->get($membership->position_id)])
-                                @endforeach
-                                @foreach($group['carried'] as $membership)
-                                    @include('memberships.partials.membership-item', ['membership' => $membership, 'carried' => true, 'held' => $heldPosts->get($membership->position_id)])
+                                    @include('memberships.partials.membership-item', ['membership' => $membership, 'held' => $heldPosts->get($membership->position_id)])
                                 @endforeach
 
                                 @foreach($group['participations'] as $participation)
