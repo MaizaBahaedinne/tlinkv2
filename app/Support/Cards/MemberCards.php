@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Cycle de vie des cartes de membre : une carte par adhésion validée et par mandat.
- * Au changement de mandat, chaque adhésion encore active reçoit sa nouvelle carte ; les autres cartes expirent.
+ * Seules les adhésions validées dans le mandat en cours (ou dont la période le recoupe) donnent droit à une carte :
+ * une adhésion d'un mandat précédent n'est pas reconduite, sa carte expire au changement de mandat.
  */
 final class MemberCards
 {
@@ -38,7 +39,7 @@ final class MemberCards
 
         Membership::query()
             ->where('status', 'approved')
-            ->duringMandate($mandate)
+            ->inMandate($mandate, false)
             ->when($userId !== null, fn ($query) => $query->where('user_id', $userId))
             ->chunkById(500, function ($memberships) use ($mandate, &$keep, &$result): void {
                 $cards = MemberCard::query()->where('mandate_id', $mandate->id)

@@ -57,7 +57,7 @@ class MemberCardTest extends TestCase
     {
         return Membership::query()->create([
             'user_id' => User::factory()->create(['name' => $name])->id, 'scope' => $scope, 'node_id' => $club?->id,
-            'status' => $status, 'membership_type' => 'member', 'starts_at' => now()->setDate($this->startYear(), 9, 1)->subMonth()->toDateString(), 'ends_at' => $endsAt,
+            'status' => $status, 'membership_type' => 'member', 'starts_at' => now()->setDate($this->startYear(), 9, 1)->toDateString(), 'ends_at' => $endsAt,
         ]);
     }
 
@@ -106,7 +106,7 @@ class MemberCardTest extends TestCase
         $this->assertSame(0, MemberCard::query()->count());
     }
 
-    public function test_cards_renew_with_the_mandate_while_the_membership_is_active_and_expire_otherwise(): void
+    public function test_cards_are_not_renewed_through_carried_memberships_but_follow_the_period_of_the_membership(): void
     {
         $old = $this->mandate();
         $stays = $this->member('Reste');
@@ -118,7 +118,9 @@ class MemberCardTest extends TestCase
         $new = $this->mandate(1);
 
         $this->assertSame('expired', MemberCard::query()->where('membership_id', $stays->id)->where('mandate_id', $old->id)->value('status'));
-        $this->assertSame('active', MemberCard::query()->where('membership_id', $stays->id)->where('mandate_id', $new->id)->value('status'));
+        // Adhésion sans fin d'un mandat précédent : pas de carte reconduite sans adhésion validée dans le nouveau mandat.
+        $this->assertNull(MemberCard::query()->where('membership_id', $stays->id)->where('mandate_id', $new->id)->first());
+        $this->assertSame(0, MemberCard::query()->where('user_id', $stays->user_id)->where('status', 'active')->count());
         $this->assertSame('expired', MemberCard::query()->where('membership_id', $leaves->id)->where('mandate_id', $old->id)->value('status'));
         $this->assertNull(MemberCard::query()->where('membership_id', $leaves->id)->where('mandate_id', $new->id)->first());
     }

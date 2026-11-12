@@ -81,7 +81,7 @@ class Membership extends Model
 
     /**
      * Adhésions actives pendant un mandat : celles dont la période recoupe la sienne (une adhésion approuvée sans fin
-     * reste active sur les mandats suivants : base du renouvellement des cartes). Les demandes en attente sont conservées.
+     * reste active sur les mandats suivants ; ne sert plus à l'émission des cartes, voir inMandate). Les demandes en attente sont conservées.
      *
      * @param Builder<Membership> $query
      */
