@@ -116,7 +116,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BUcM8OEa.css",
+    "file": "assets/app-oKJrBxFM.css",
     "name": "app",
     "names": [
       "app.css"
@@ -125,7 +125,7 @@
     "isEntry": true
   },
   "resources/css/site.css": {
-    "file": "assets/site-Ba8weJZc.css",
+    "file": "assets/site-NHAT-yaG.css",
     "name": "site",
     "names": [
       "site.css"
@@ -156,13 +156,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-gRjGsl3q.js",
+    "file": "assets/main-BK5K4oy9.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-BUcM8OEa.css"
+      "assets/app-oKJrBxFM.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",

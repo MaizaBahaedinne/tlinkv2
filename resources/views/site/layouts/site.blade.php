@@ -25,6 +25,9 @@
         $nav = [$section.'.showcase' => $nav[$section.'.showcase']];
     }
 
+    // Barre de navigation : Clubs, Store et Academy n'y figurent plus (hors vitrine cloisonnée, qui garde son seul lien).
+    $mainNav = $isolated ? $nav : array_diff_key($nav, array_flip(['site.clubs', 'store.showcase', 'academy.showcase']));
+
     $homeUrl = $isolated ? route($section.'.showcase') : route('site.home');
     $joinUrl = match (true) {
         $isolated && auth()->check() => \App\Support\Domains::homeUrl(request()),
@@ -98,19 +101,20 @@
     @include('partials.google-tag-noscript')
     <a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">{{ __('site.skip') }}</a>
 
-    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div class="w-full flex items-center justify-between gap-4 px-4 py-3 lg:px-8">
-            <a href="{{ $homeUrl }}" class="flex items-center gap-3" aria-label="{{ __('site.name') }}">
+    <header id="site-header" class="sticky top-0 z-40 px-3 pt-3 sm:px-5">
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/80 px-3 py-2 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/5 backdrop-blur-xl transition-shadow sm:px-4 lg:rounded-full lg:ps-5">
+            <a href="{{ $homeUrl }}" class="flex shrink-0 items-center gap-3" aria-label="{{ __('site.name') }}">
                 <picture>
                     <source srcset="{{ asset('logoFondation.webp') }}" type="image/webp">
-                    <img src="{{ asset('logoFondation.png') }}" alt="{{ __('site.name') }}" class="h-11 w-auto sm:h-12" loading="eager" decoding="async">
+                    <img src="{{ asset('logoFondation.png') }}" alt="{{ __('site.name') }}" class="h-9 w-auto sm:h-10" loading="eager" decoding="async">
                 </picture>
             </a>
 
-            <nav class="hidden items-center gap-1 lg:flex" aria-label="{{ __('site.footer.navigation') }}">
-                @foreach($nav as $name => $label)
+            <nav class="hidden items-center gap-0.5 lg:flex" aria-label="{{ __('site.footer.navigation') }}">
+                @foreach($mainNav as $name => $label)
+                    @php $active = $routeName === $name || str_starts_with((string) $routeName, $name.'.'); @endphp
                     <a href="{{ route($name) }}"
-                       class="rounded-lg px-2.5 py-2 text-sm font-semibold xl:px-3 {{ $routeName === $name || str_starts_with((string) $routeName, $name.'.') ? 'bg-brand-100 text-brand-800' : 'text-slate-600 hover:bg-slate-100' }}"
+                       class="relative rounded-full px-3.5 py-2 text-sm font-semibold transition-colors {{ $active ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}"
                        @if($routeName === $name) aria-current="page" @endif>{{ $label }}</a>
                 @endforeach
             </nav>
@@ -118,11 +122,11 @@
             <div class="flex items-center gap-2">
                 @unless($isolated)
                 <details class="relative" id="lang-switcher">
-                    <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" aria-label="{{ __('site.language') }}">
+                    <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" aria-label="{{ __('site.language') }}">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3Z"/></svg>
                         <span>{{ strtoupper($locale) }}</span>
-                        <span aria-hidden="true" class="text-xs">▾</span>
                     </summary>
-                    <ul class="absolute end-0 z-50 mt-2 min-w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    <ul class="absolute end-0 z-50 mt-3 min-w-40 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-xl">
                         @foreach($locales as $code => $meta)
                             <li>
                                 <a href="{{ $isSiteRoute ? route($routeName, ['locale' => $code] + $route->parameters() + request()->query()) : route('site.home', ['locale' => $code]) }}"
@@ -137,19 +141,22 @@
                     </ul>
                 </details>
                 @endunless
-                <a href="{{ $joinUrl }}" class="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800 sm:inline-block">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
+                <a href="{{ $joinUrl }}" class="hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-600 to-brand-800 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-brand-600/25 transition hover:shadow-lg hover:brightness-110 sm:inline-flex">{{ __('site.nav.join') }} / {{ __('site.nav.members') }} <span aria-hidden="true" class="rtl:rotate-180">→</span></a>
+                <button type="button" id="site-menu-toggle" class="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden" aria-expanded="false" aria-controls="site-menu-panel" aria-label="{{ __('site.footer.navigation') }}">
+                    <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path data-icon="open" d="M4 7h16M4 12h16M4 17h16"/><path data-icon="close" class="hidden" d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
             </div>
         </div>
 
-        <details class="border-t border-slate-100 lg:hidden">
-            <summary class="cursor-pointer list-none px-4 py-2 text-sm font-semibold text-brand-800">☰ {{ __('site.footer.navigation') }}</summary>
-            <nav class="grid gap-1 px-4 pb-3">
-                @foreach($nav as $name => $label)
-                    <a href="{{ route($name) }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">{{ $label }}</a>
+        <div id="site-menu-panel" class="mx-auto mt-2 hidden max-w-7xl overflow-hidden rounded-2xl border border-white/60 bg-white/95 p-2 shadow-[0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/5 backdrop-blur-xl lg:hidden">
+            <nav class="grid gap-1" aria-label="{{ __('site.footer.navigation') }}">
+                @foreach($mainNav as $name => $label)
+                    @php $active = $routeName === $name || str_starts_with((string) $routeName, $name.'.'); @endphp
+                    <a href="{{ route($name) }}" class="rounded-xl px-4 py-3 text-base font-semibold {{ $active ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-100' }}">{{ $label }}</a>
                 @endforeach
-                <a href="{{ $joinUrl }}" class="rounded-lg px-3 py-2 text-sm font-bold text-brand-600">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
+                <a href="{{ $joinUrl }}" class="mt-1 rounded-xl bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 text-center text-base font-bold text-white">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
             </nav>
-        </details>
+        </div>
     </header>
 
     <main id="contenu">
@@ -236,6 +243,22 @@
             © {{ now()->year }} Fondation Tunivisions. Tous droits réservés. · Propulsé par Persomy.com
         </div>
     </footer>
+    <script>
+        // Menu mobile : ouverture, fermeture et Échap.
+        (function () {
+            var toggle = document.getElementById('site-menu-toggle');
+            var panel = document.getElementById('site-menu-panel');
+            if (!toggle || !panel) { return; }
+            function set(open) {
+                panel.classList.toggle('hidden', !open);
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                toggle.querySelector('[data-icon=open]').classList.toggle('hidden', open);
+                toggle.querySelector('[data-icon=close]').classList.toggle('hidden', !open);
+            }
+            toggle.addEventListener('click', function () { set(toggle.getAttribute('aria-expanded') !== 'true'); });
+            document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { set(false); } });
+        })();
+    </script>
     <script>
         // Ferme la liste des langues au clic ailleurs ou avec Échap.
         (function () {
