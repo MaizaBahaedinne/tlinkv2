@@ -24,7 +24,7 @@ return [
         'academy' => 'Academy',
         'contact' => 'Contact',
         'join' => 'Rejoindre',
-        'members' => 'Espace membres',
+        'members' => 'Espace membre',
     ],
 
     'showcase' => [

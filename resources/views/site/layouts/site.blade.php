@@ -96,13 +96,21 @@
         <link rel="stylesheet" href="{{ asset($siteCssPath) }}">
     @endif
     @stack('head')
+    <style>
+        /* En haut de page : barre classique pleine largeur ; au défilement : pilule flottante. */
+        #site-header { transition: padding .25s ease; }
+        #site-header .site-bar { background: #fff; border-bottom: 1px solid rgb(226 232 240); transition: max-width .25s ease, border-radius .25s ease, box-shadow .25s ease, background-color .25s ease, margin .25s ease; }
+        #site-header.is-scrolled { padding: .75rem .75rem 0; }
+        #site-header.is-scrolled .site-bar { max-width: 80rem; border-radius: 1rem; border: 1px solid rgb(255 255 255 / .6); background: rgb(255 255 255 / .82); box-shadow: 0 8px 30px rgb(15 23 42 / .1), 0 0 0 1px rgb(15 23 42 / .05); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+        @media (min-width: 1024px) { #site-header.is-scrolled .site-bar { border-radius: 9999px; padding-inline-start: 1.25rem; } }
+    </style>
 </head>
 <body class="min-h-screen bg-brand-50 font-sans text-slate-800 antialiased">
     @include('partials.google-tag-noscript')
     <a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">{{ __('site.skip') }}</a>
 
-    <header id="site-header" class="sticky top-0 z-40 px-3 pt-3 sm:px-5">
-        <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/80 px-3 py-2 shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/5 backdrop-blur-xl transition-shadow sm:px-4 lg:rounded-full lg:ps-5">
+    <header id="site-header" class="sticky top-0 z-40">
+        <div class="site-bar mx-auto flex items-center justify-between gap-3 px-3 py-2 sm:px-4 lg:px-8">
             <a href="{{ $homeUrl }}" class="flex shrink-0 items-center gap-3" aria-label="{{ __('site.name') }}">
                 <picture>
                     <source srcset="{{ asset('logoFondation.webp') }}" type="image/webp">
@@ -141,20 +149,20 @@
                     </ul>
                 </details>
                 @endunless
-                <a href="{{ $joinUrl }}" class="hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-600 to-brand-800 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-brand-600/25 transition hover:shadow-lg hover:brightness-110 sm:inline-flex">{{ __('site.nav.join') }} / {{ __('site.nav.members') }} <span aria-hidden="true" class="rtl:rotate-180">→</span></a>
+                <a href="{{ $joinUrl }}" class="hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-600 to-brand-800 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-brand-600/25 transition hover:shadow-lg hover:brightness-110 sm:inline-flex">{{ __('site.nav.members') }} <span aria-hidden="true" class="rtl:rotate-180">→</span></a>
                 <button type="button" id="site-menu-toggle" class="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 lg:hidden" aria-expanded="false" aria-controls="site-menu-panel" aria-label="{{ __('site.footer.navigation') }}">
                     <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path data-icon="open" d="M4 7h16M4 12h16M4 17h16"/><path data-icon="close" class="hidden" d="M6 6l12 12M18 6L6 18"/></svg>
                 </button>
             </div>
         </div>
 
-        <div id="site-menu-panel" class="mx-auto mt-2 hidden max-w-7xl overflow-hidden rounded-2xl border border-white/60 bg-white/95 p-2 shadow-[0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/5 backdrop-blur-xl lg:hidden">
+        <div id="site-menu-panel" class="mx-3 mt-2 hidden sm:mx-auto sm:w-[calc(100%-1.5rem)] max-w-7xl overflow-hidden rounded-2xl border border-white/60 bg-white/95 p-2 shadow-[0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/5 backdrop-blur-xl lg:hidden">
             <nav class="grid gap-1" aria-label="{{ __('site.footer.navigation') }}">
                 @foreach($mainNav as $name => $label)
                     @php $active = $routeName === $name || str_starts_with((string) $routeName, $name.'.'); @endphp
                     <a href="{{ route($name) }}" class="rounded-xl px-4 py-3 text-base font-semibold {{ $active ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-100' }}">{{ $label }}</a>
                 @endforeach
-                <a href="{{ $joinUrl }}" class="mt-1 rounded-xl bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 text-center text-base font-bold text-white">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a>
+                <a href="{{ $joinUrl }}" class="mt-1 rounded-xl bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 text-center text-base font-bold text-white">{{ __('site.nav.members') }}</a>
             </nav>
         </div>
     </header>
@@ -216,7 +224,7 @@
                                 @endisset
                             @endforeach
                             @if($loop->last)
-                                <li><a href="{{ $joinUrl }}" class="font-semibold text-white hover:text-brand-100">{{ __('site.nav.join') }} / {{ __('site.nav.members') }}</a></li>
+                                <li><a href="{{ $joinUrl }}" class="font-semibold text-white hover:text-brand-100">{{ __('site.nav.members') }}</a></li>
                             @endif
                         </ul>
                     </div>
@@ -244,8 +252,11 @@
         </div>
     </footer>
     <script>
-        // Menu mobile : ouverture, fermeture et Échap.
+        // Menu mobile : ouverture, fermeture et Échap ; la barre devient flottante dès qu'on défile.
         (function () {
+            var header = document.getElementById('site-header');
+            function onScroll() { header.classList.toggle('is-scrolled', window.scrollY > 24); }
+            if (header) { onScroll(); window.addEventListener('scroll', onScroll, { passive: true }); }
             var toggle = document.getElementById('site-menu-toggle');
             var panel = document.getElementById('site-menu-panel');
             if (!toggle || !panel) { return; }
