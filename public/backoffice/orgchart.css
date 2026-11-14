@@ -365,3 +365,14 @@ html, body { height: 100%; margin: 0; }
 .oc-invite-item small{display:block;word-break:break-all}
 .oc-invite-actions{display:flex;flex-wrap:wrap;gap:6px}
 .oc-btn[hidden]{display:none}
+
+/* ------------------------------------------------------------ Modèles de clubs */
+.oc-tabs { display: flex; gap: 4px; flex: none; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, .12); }
+.oc-tab { color: #fff; text-decoration: none; font-weight: 700; font-size: .8rem; padding: 6px 14px; border-radius: 999px; white-space: nowrap; }
+.oc-tab:hover { background: rgba(255, 255, 255, .14); }
+.oc-tab.is-active { background: #fff; color: var(--oc-navy-800); }
+.oc-toolbar-note { font-size: .78rem; color: var(--oc-muted); flex: 1; min-width: 200px; }
+.ct-levels { display: grid; gap: 12px; }
+.ct-levels strong { font-size: .82rem; }
+.ct-levels .oc-badges { margin-top: 5px; }
+@media (max-width: 900px) { .oc-tabs { order: 3; width: 100%; overflow-x: auto; } .oc-top { flex-wrap: wrap; padding-block: 8px; } }

@@ -8,8 +8,10 @@ use App\Support\AccessLevels;
 use App\Support\AdminContext;
 use App\Support\AuditLogger;
 use App\Support\OrgChart\ClubTemplates;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -17,42 +19,25 @@ use Illuminate\View\View;
 /**
  * Modèles d'équipe des clubs, un par type (University, High School, We Are Carthage) : intitulés des postes,
  * départements, capacités et niveaux d'accès. Tous les clubs du type suivent le modèle dès l'enregistrement.
+ * L'écran est un organigramme interactif (même moteur que /organigramme) ; ses actions répondent en JSON.
  * Lecture pour qui pilote l'organisation, écriture réservée aux administrateurs globaux.
  */
 class ClubTemplateController extends AdminController
 {
     public function index(Request $request, string $category): View
     {
-        $slots = ClubTemplates::slots($category);
-
-        $counts = OrgNode::query()->where('category', $category)->whereNotNull('role_key')
-            ->selectRaw('role_key, count(*) as total')->groupBy('role_key')->pluck('total', 'role_key')->all();
-
-        $parents = [];
-
-        foreach ($slots as $key => $slot) {
-            $excluded = array_merge([$key], ClubTemplates::descendantKeys($category, $key));
-            $parents[$key] = collect($slots)->except($excluded)->map(fn (array $other): string => $other['title'])->all();
-        }
-
         return view('admin.structure.templates', [
             'canEdit' => $this->canEdit($request),
             'category' => $category,
             'categories' => ClubTemplates::CATEGORIES,
-            'slots' => $slots,
-            'parents' => $parents,
-            'counts' => $counts,
-            'clubCount' => OrgNode::query()->where('kind', 'club')->where('category', $category)->count(),
-            'kinds' => ClubTemplates::KINDS,
-            'levels' => array_intersect_key(AccessLevels::LEVELS, array_flip(ClubTemplates::ALLOWED_LEVELS)),
-            'levelPermissions' => collect(AccessLevels::LEVELS)->map(fn ($label, $level): array => array_map(
-                fn (string $permission): string => AccessLevels::PERMISSIONS[$permission],
-                AccessLevels::permissions($level)
-            ))->all(),
+            'payload' => $this->payload($category, $this->canEdit($request)),
+            'userName' => $request->user()->name,
+            'adminUrl' => route('admin.clubs.index'),
         ]);
     }
 
-    public function update(Request $request, string $category): RedirectResponse
+    /** Remplace tout le modèle d'un coup (formulaire classique). */
+    public function update(Request $request, string $category): RedirectResponse|JsonResponse
     {
         $this->requireEditor($request);
 
@@ -64,49 +49,35 @@ class ClubTemplateController extends AdminController
             'slots.*.parent_key' => ['nullable', 'string', 'max:40'],
         ]);
 
-        $existing = ClubTemplateSlot::query()->where('category', $category)->get()->keyBy('key');
-        $rows = array_intersect_key($data['slots'], $existing->all());
-        $parentOf = $existing->map(fn (ClubTemplateSlot $slot): ?string => $slot->parent_key)->all();
+        $changes = $this->applyRows($request, $category, $data['slots']);
 
-        foreach ($rows as $key => $row) {
-            $parent = $row['parent_key'] ?? null;
-
-            if ($parent !== null && $parent !== '' && ! $existing->has($parent)) {
-                throw ValidationException::withMessages(["slots.$key.parent_key" => 'Rattachement inconnu.']);
-            }
-
-            $parentOf[$key] = $parent === '' ? null : $parent;
-        }
-
-        foreach (array_keys($rows) as $key) {
-            for ($walk = $parentOf[$key] ?? null, $guard = 0; $walk !== null; $walk = $parentOf[$walk] ?? null, $guard++) {
-                if ($walk === $key || $guard > 50) {
-                    throw ValidationException::withMessages(["slots.$key.parent_key" => 'Un bloc ne peut pas être rattaché à l’un de ses propres sous-blocs.']);
-                }
-            }
-        }
-
-        $this->assertDistinctTitles($existing, $rows);
-
-        foreach ($rows as $key => $row) {
-            $slot = $existing[$key];
-            $isPosition = $slot->kind === 'position';
-
-            $slot->update([
-                'title' => trim($row['title']),
-                'parent_key' => $parentOf[$key],
-                'capacity' => $isPosition ? $row['capacity'] : 'single',
-                'access_level' => $isPosition ? $row['access_level'] : 'none',
-            ]);
-        }
-
-        $changes = (new ClubTemplates())->sync($category);
-        AuditLogger::record($request->user()->id, 'orgchart.club_template.updated', null, null, ['category' => $category, 'slots' => count($rows), 'changes' => $changes], $request->ip());
-
-        return back()->with('status', 'Modèle enregistré : '.$changes.' bloc(s) mis à jour dans les clubs '.ClubTemplates::CATEGORIES[$category].'.');
+        return $this->respond($request, $category, 'Modèle enregistré : '.$changes.' bloc(s) mis à jour dans les clubs '.ClubTemplates::CATEGORIES[$category].'.');
     }
 
-    public function store(Request $request, string $category): RedirectResponse
+    /** Modifie un seul bloc : intitulé, rattachement, titulaires, niveau d'accès. */
+    public function updateSlot(Request $request, string $category, string $key): RedirectResponse|JsonResponse
+    {
+        $this->requireEditor($request);
+
+        $slot = ClubTemplateSlot::query()->where('category', $category)->where('key', $key)->firstOrFail();
+
+        $data = $request->validate([
+            'title' => ['sometimes', 'required', 'string', 'max:120'],
+            'parent_key' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'capacity' => ['sometimes', Rule::in(['single', 'multiple'])],
+            'access_level' => ['sometimes', Rule::in(ClubTemplates::ALLOWED_LEVELS)],
+        ]);
+
+        $row = array_merge([
+            'title' => $slot->title, 'parent_key' => $slot->parent_key, 'capacity' => $slot->capacity, 'access_level' => $slot->access_level,
+        ], $data);
+
+        $changes = $this->applyRows($request, $category, [$key => $row]);
+
+        return $this->respond($request, $category, '« '.$row['title'].' » enregistré : '.$changes.' bloc(s) mis à jour dans les clubs.');
+    }
+
+    public function store(Request $request, string $category): RedirectResponse|JsonResponse
     {
         $this->requireEditor($request);
 
@@ -142,10 +113,53 @@ class ClubTemplateController extends AdminController
         $changes = (new ClubTemplates())->sync($category);
         $this->audit($request, 'orgchart.club_template.slot_added', $slot, ['category' => $category, 'changes' => $changes]);
 
-        return back()->with('status', '« '.$slot->title.' » ajouté : '.$changes.' bloc(s) créé(s) ou mis à jour dans les clubs.');
+        return $this->respond($request, $category, '« '.$slot->title.' » ajouté : '.$changes.' bloc(s) créé(s) ou mis à jour dans les clubs.', ['created' => $slot->key]);
     }
 
-    public function destroy(Request $request, string $category, string $key): RedirectResponse
+    /** Monte ou descend un bloc parmi ses frères. */
+    public function move(Request $request, string $category, string $key): RedirectResponse|JsonResponse
+    {
+        $this->requireEditor($request);
+
+        $data = $request->validate(['direction' => ['required', Rule::in(['up', 'down'])]]);
+        $slot = ClubTemplateSlot::query()->where('category', $category)->where('key', $key)->firstOrFail();
+
+        $siblings = ClubTemplateSlot::query()->where('category', $category)->where('parent_key', $slot->parent_key)
+            ->orderBy('sort_order')->orderBy('id')->get()->values();
+        $index = $siblings->search(fn (ClubTemplateSlot $row): bool => $row->id === $slot->id);
+        $target = $data['direction'] === 'up' ? $index - 1 : $index + 1;
+
+        if ($target >= 0 && $target < $siblings->count()) {
+            $order = $siblings->all();
+            [$order[$index], $order[$target]] = [$order[$target], $order[$index]];
+
+            // Seul l'ordre relatif des frères compte : on les renumérote à partir du plus petit rang.
+            $first = (int) $siblings->min('sort_order');
+
+            foreach ($order as $position => $row) {
+                $row->update(['sort_order' => $first + $position]);
+            }
+
+            (new ClubTemplates())->sync($category);
+        }
+
+        return $this->respond($request, $category, 'Ordre modifié.');
+    }
+
+    /** Réapplique le modèle à tous les clubs du type (utile après un import ou une édition à la main). */
+    public function apply(Request $request, string $category): RedirectResponse|JsonResponse
+    {
+        $this->requireEditor($request);
+
+        $changes = (new ClubTemplates())->sync($category);
+        AuditLogger::record($request->user()->id, 'orgchart.club_template.updated', null, null, ['category' => $category, 'changes' => $changes], $request->ip());
+
+        return $this->respond($request, $category, $changes === 0
+            ? 'Tous les clubs suivent déjà ce modèle.'
+            : $changes.' bloc(s) créé(s), modifié(s) ou retiré(s) pour suivre le modèle.');
+    }
+
+    public function destroy(Request $request, string $category, string $key): RedirectResponse|JsonResponse
     {
         $this->requireEditor($request);
 
@@ -161,16 +175,124 @@ class ClubTemplateController extends AdminController
         $changes = (new ClubTemplates())->sync($category);
         AuditLogger::record($request->user()->id, 'orgchart.club_template.slot_removed', null, null, ['category' => $category, 'key' => $key, 'title' => $title, 'changes' => $changes], $request->ip());
 
-        return back()->with('status', '« '.$title.' » retiré du modèle. Les blocs vides sont supprimés des clubs ; ceux qui ont des titulaires sont conservés, sans rôle.');
+        return $this->respond($request, $category, '« '.$title.' » retiré du modèle. Les blocs vides sont supprimés des clubs ; ceux qui ont des titulaires sont conservés, sans rôle.');
+    }
+
+    /**
+     * Applique des modifications de blocs (clé => intitulé, rattachement, capacité, niveau) puis aligne les clubs.
+     *
+     * @param array<string, array<string, mixed>> $submitted
+     */
+    private function applyRows(Request $request, string $category, array $submitted): int
+    {
+        $existing = ClubTemplateSlot::query()->where('category', $category)->get()->keyBy('key');
+        $rows = array_intersect_key($submitted, $existing->all());
+        $parentOf = $existing->map(fn (ClubTemplateSlot $slot): ?string => $slot->parent_key)->all();
+
+        foreach ($rows as $key => $row) {
+            $parent = $row['parent_key'] ?? null;
+            $parent = $parent === '' ? null : $parent;
+
+            if ($parent !== null && ! $existing->has($parent)) {
+                throw ValidationException::withMessages(['parent_key' => 'Rattachement inconnu.']);
+            }
+
+            $rows[$key]['parent_key'] = $parent;
+            $parentOf[$key] = $parent;
+        }
+
+        foreach (array_keys($rows) as $key) {
+            for ($walk = $parentOf[$key] ?? null, $guard = 0; $walk !== null; $walk = $parentOf[$walk] ?? null, $guard++) {
+                if ($walk === $key || $guard > 50) {
+                    throw ValidationException::withMessages(['parent_key' => 'Un bloc ne peut pas être rattaché à l’un de ses propres sous-blocs.']);
+                }
+            }
+        }
+
+        $this->assertDistinctTitles($existing, $rows);
+
+        foreach ($rows as $key => $row) {
+            $slot = $existing[$key];
+            $isPosition = $slot->kind === 'position';
+
+            $slot->update([
+                'title' => trim((string) $row['title']),
+                'parent_key' => $row['parent_key'],
+                'capacity' => $isPosition ? $row['capacity'] : 'single',
+                'access_level' => $isPosition ? $row['access_level'] : 'none',
+            ]);
+        }
+
+        $changes = (new ClubTemplates())->sync($category);
+        AuditLogger::record($request->user()->id, 'orgchart.club_template.updated', null, null, ['category' => $category, 'slots' => count($rows), 'changes' => $changes], $request->ip());
+
+        return $changes;
+    }
+
+    /**
+     * Données de l'organigramme du modèle : un bloc « club » racine et les blocs du modèle (ordre = ordre de l'arbre).
+     *
+     * @return array<string, mixed>
+     */
+    private function payload(string $category, bool $canEdit): array
+    {
+        $slots = ClubTemplates::slots($category);
+        $ids = collect($slots)->map(fn (array $slot): ?int => $slot['id']);
+        $counts = OrgNode::query()->where('category', $category)->whereNotNull('role_key')
+            ->selectRaw('role_key, count(*) as total')->groupBy('role_key')->pluck('total', 'role_key')->all();
+
+        $blocks = [];
+        $order = 0;
+
+        foreach ($slots as $key => $slot) {
+            $blocks[] = [
+                'id' => $slot['id'],
+                'key' => $key,
+                'parent_id' => $slot['parent'] !== null ? $ids[$slot['parent']] : null,
+                'parent_key' => $slot['parent'],
+                'title' => $slot['title'],
+                'kind' => $slot['kind'],
+                'capacity' => $slot['capacity'],
+                'access_level' => $slot['access'],
+                'sort_order' => $order++,
+                'clubs' => (int) ($counts[$key] ?? 0),
+            ];
+        }
+
+        return [
+            'category' => $category,
+            'label' => ClubTemplates::CATEGORIES[$category],
+            'can_edit' => $canEdit,
+            'club_count' => OrgNode::query()->where('kind', 'club')->where('category', $category)->count(),
+            'blocks' => $blocks,
+            'kinds' => ClubTemplates::KINDS,
+            'levels' => array_intersect_key(AccessLevels::LEVELS, array_flip(ClubTemplates::ALLOWED_LEVELS)),
+            'level_permissions' => collect(array_flip(ClubTemplates::ALLOWED_LEVELS))->map(fn ($i, $level): array => array_map(
+                fn (string $permission): string => AccessLevels::PERMISSIONS[$permission],
+                AccessLevels::permissions($level)
+            ))->all(),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
+    private function respond(Request $request, string $category, string $message, array $extra = []): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message] + $extra + ['chart' => $this->payload($category, $this->canEdit($request))]);
+        }
+
+        return back()->with('status', $message);
     }
 
     /**
      * Deux blocs du même type ne portent pas le même intitulé : c'est lui qui rattache un bloc de club à son rôle.
      *
-     * @param \Illuminate\Support\Collection<string, ClubTemplateSlot> $existing
+     * @param Collection<string, ClubTemplateSlot> $existing
      * @param array<string, array<string, mixed>> $rows
      */
-    private function assertDistinctTitles($existing, array $rows, ?string $added = null): void
+    private function assertDistinctTitles(Collection $existing, array $rows, ?string $added = null): void
     {
         $seen = [];
 
@@ -181,7 +303,7 @@ class ClubTemplateController extends AdminController
 
         foreach ($seen as $keys) {
             if (count($keys) > 1) {
-                throw ValidationException::withMessages(["slots.{$keys[1]}.title" => 'Cet intitulé existe déjà dans le modèle.']);
+                throw ValidationException::withMessages(['title' => 'Cet intitulé existe déjà dans le modèle.']);
             }
         }
 

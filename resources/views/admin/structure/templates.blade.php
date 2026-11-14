@@ -1,154 +1,128 @@
-@extends('admin.layouts.app')
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    @include('partials.google-tag')
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Modèles de clubs · {{ $categories[$category] }} · T.Link</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link rel="stylesheet" href="https://fonts.bunny.net/css?family=space-grotesk:500,600,700|manrope:400,500,600,700,800">
+    @php($ocv = max(array_map(fn ($f) => @filemtime(public_path('backoffice/'.$f)) ?: 1, ['orgchart.css', 'orgchart-layout.js', 'clubtemplate.js'])))
+    <link rel="stylesheet" href="{{ asset('backoffice/orgchart.css') }}?v={{ $ocv }}">
+</head>
+<body class="oc-body">
+    @include('partials.google-tag-noscript')
+<div class="oc" id="oc-app" data-edit-mode="off">
 
-@section('title', 'Modèles de clubs')
-@section('section', 'Organisation')
-
-@section('content')
-    <x-admin.page-header title="Modèles de clubs" subtitle="Un modèle d’équipe par type de club : départements, postes, titulaires autorisés et niveau d’accès. Tous les clubs du type le suivent.">
-        <x-slot:actions>
-            <a href="{{ route('admin.clubs.index') }}" class="btn btn-secondary"><x-admin.icon name="building" :size="16" /> Clubs</a>
-        </x-slot:actions>
-    </x-admin.page-header>
-
-    <nav class="tabs" aria-label="Type de club" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        @foreach($categories as $key => $label)
-            <a href="{{ route('admin.templates.index', ['category' => $key]) }}" class="btn {{ $key === $category ? 'btn-primary' : 'btn-secondary' }}" @if($key === $category) aria-current="page" @endif>{{ $label }}</a>
-        @endforeach
-    </nav>
-
-    @if($errors->any())
-        <div class="alert alert-error" role="alert">
-            <x-admin.icon name="x" />
-            <span>@foreach($errors->all() as $message){{ $message }} @endforeach</span>
+    <header class="oc-top">
+        <a class="oc-brand" href="{{ route('home') }}" title="Retour à T.Link">
+            <span class="oc-mark">T</span><span class="oc-brand-name">T.Link</span>
+        </a>
+        <h1 class="oc-title">Modèles de clubs</h1>
+        <nav class="oc-tabs" aria-label="Type de club">
+            @foreach($categories as $key => $label)
+                <a href="{{ route('admin.templates.index', ['category' => $key]) }}" class="oc-tab {{ $key === $category ? 'is-active' : '' }}" @if($key === $category) aria-current="page" @endif>{{ $label }}</a>
+            @endforeach
+        </nav>
+        <div class="oc-top-actions">
+            <span class="oc-user" title="Compte connecté">{{ $userName }}</span>
+            <span class="oc-role {{ $canEdit ? 'is-admin' : '' }}">{{ $canEdit ? 'Administrateur' : 'Lecture seule' }}</span>
+            <a class="oc-link" href="{{ $adminUrl }}">Administration</a>
         </div>
-    @endif
+    </header>
 
-    <div class="grid-3-1">
-        <div style="display:grid;gap:16px;align-self:start">
-            <form method="post" action="{{ route('admin.templates.update', $category) }}" class="card card-flush">
-                @csrf
-                @method('PUT')
-                <div class="card-head">
-                    <div>
-                        <h2>Équipe type — {{ $categories[$category] }}</h2>
-                        <p class="sub">{{ $clubCount }} club(s) suivent ce modèle. Les changements s’appliquent à tous dès l’enregistrement ; les postes occupés ne sont jamais retirés.</p>
-                    </div>
-                </div>
-                <div class="table-wrap">
-                    <table class="tbl">
-                        <thead>
-                            <tr>
-                                <th>Intitulé</th>
-                                <th>Rattaché à</th>
-                                <th>Titulaires</th>
-                                <th>Niveau d’accès</th>
-                                <th class="hide-mobile">Clubs</th>
-                                @if($canEdit)<th></th>@endif
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($slots as $key => $slot)
-                                @php $isPosition = $slot['kind'] === 'position'; @endphp
-                                <tr>
-                                    <td style="padding-inline-start:{{ 12 + $slot['depth'] * 22 }}px">
-                                        <input type="text" name="slots[{{ $key }}][title]" value="{{ old('slots.'.$key.'.title', $slot['title']) }}" maxlength="120" required aria-label="Intitulé" @disabled(! $canEdit)>
-                                        <div class="cell-sub">{{ $kinds[$slot['kind']] ?? $slot['kind'] }}</div>
-                                    </td>
-                                    <td>
-                                        <select name="slots[{{ $key }}][parent_key]" aria-label="Rattaché à : {{ $slot['title'] }}" @disabled(! $canEdit)>
-                                            <option value="">Le club</option>
-                                            @foreach($parents[$key] as $parentKey => $parentTitle)
-                                                <option value="{{ $parentKey }}" @selected(old('slots.'.$key.'.parent_key', $slot['parent']) === $parentKey)>{{ $parentTitle }}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td>
-                                        @if($isPosition)
-                                            <select name="slots[{{ $key }}][capacity]" aria-label="Titulaires : {{ $slot['title'] }}" @disabled(! $canEdit)>
-                                                <option value="single" @selected(old('slots.'.$key.'.capacity', $slot['capacity']) === 'single')>Un seul</option>
-                                                <option value="multiple" @selected(old('slots.'.$key.'.capacity', $slot['capacity']) === 'multiple')>Plusieurs</option>
-                                            </select>
-                                        @else
-                                            <input type="hidden" name="slots[{{ $key }}][capacity]" value="single">
-                                            <span class="text-muted">—</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($isPosition)
-                                            <select name="slots[{{ $key }}][access_level]" aria-label="Niveau d’accès : {{ $slot['title'] }}" @disabled(! $canEdit)>
-                                                @foreach($levels as $level => $label)
-                                                    <option value="{{ $level }}" @selected(old('slots.'.$key.'.access_level', $slot['access']) === $level)>{{ $label }}</option>
-                                                @endforeach
-                                            </select>
-                                        @else
-                                            <input type="hidden" name="slots[{{ $key }}][access_level]" value="none">
-                                            <span class="text-muted">—</span>
-                                        @endif
-                                    </td>
-                                    <td class="hide-mobile">{{ $counts[$key] ?? 0 }}</td>
-                                    @if($canEdit)
-                                        <td class="cell-actions">
-                                            <button type="submit" form="remove-{{ $key }}" class="btn btn-ghost btn-sm" onclick="return confirm('Retirer « {{ addslashes($slot['title']) }} » du modèle ?')">Retirer</button>
-                                        </td>
-                                    @endif
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                @if($canEdit)
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary"><x-admin.icon name="check" :size="16" /> Enregistrer et appliquer aux clubs</button>
-                    </div>
-                @else
-                    <div class="card-body"><p class="text-sm text-muted">Seuls les administrateurs globaux peuvent modifier les modèles.</p></div>
-                @endif
-            </form>
+    <div class="oc-toolbar" role="toolbar" aria-label="Actions du modèle">
+        <button type="button" class="oc-btn oc-only-mobile" data-act="toggle-side" aria-label="Afficher la synthèse">Synthèse</button>
 
-            @if($canEdit)
-                @foreach($slots as $key => $slot)
-                    <form id="remove-{{ $key }}" method="post" action="{{ route('admin.templates.destroy', [$category, $key]) }}" hidden>
-                        @csrf
-                        @method('DELETE')
-                    </form>
-                @endforeach
-
-                <form method="post" action="{{ route('admin.templates.store', $category) }}" class="card card-flush">
-                    @csrf
-                    <div class="card-head"><div><h2>Ajouter un poste ou un département</h2><p class="sub">Il est créé dans tous les clubs {{ $categories[$category] }}.</p></div></div>
-                    <div class="card-body">
-                        <div class="form-grid">
-                            <x-admin.input name="title" label="Intitulé" required :maxlength="120" />
-                            <x-admin.select name="kind" label="Type" required :options="$kinds" />
-                            <x-admin.select name="parent_key" label="Rattaché à" :options="collect($slots)->map(fn ($slot) => $slot['title'])->all()" placeholder="Le club" />
-                            <x-admin.select name="capacity" label="Titulaires (poste)" :options="['single' => 'Un seul', 'multiple' => 'Plusieurs']" />
-                            <x-admin.select name="access_level" label="Niveau d’accès (poste)" :options="$levels" />
-                        </div>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary"><x-admin.icon name="plus" :size="16" /> Ajouter au modèle</button>
-                    </div>
-                </form>
-            @endif
-        </div>
-
-        <article class="card card-flush" style="align-self:start">
-            <div class="card-head"><div><h2>Ce que permet chaque niveau</h2></div></div>
-            <div class="card-body" style="display:grid;gap:14px">
-                @foreach($levels as $level => $label)
-                    <div>
-                        <strong>{{ $label }}</strong>
-                        <div class="chips" style="margin-top:6px">
-                            @forelse($levelPermissions[$level] ?? [] as $permission)
-                                <span class="chip">{{ $permission }}</span>
-                            @empty
-                                <span class="text-sm text-muted">Aucun droit d’administration.</span>
-                            @endforelse
-                        </div>
-                    </div>
-                @endforeach
-                <p class="hint">Les droits s’exercent sur le périmètre du club. Les droits globaux et d’entité sont réservés aux postes de direction. Un poste ajouté à la main dans un club, hors modèle, n’est jamais modifié par ces réglages.</p>
+        @if($canEdit)
+            <div class="oc-group">
+                <button type="button" class="oc-btn oc-btn-primary" data-act="add" title="Ajoute un poste ou un département sous le bloc sélectionné">Ajouter un bloc</button>
+                <button type="button" class="oc-btn" data-act="apply" title="Réapplique le modèle à tous les clubs de ce type">Réappliquer aux clubs</button>
             </div>
-        </article>
+        @endif
+
+        <div class="oc-group">
+            <button type="button" class="oc-btn" data-act="reset-view" title="Recentre et ajuste le zoom">Réinitialiser la vue</button>
+        </div>
+
+        <span class="oc-toolbar-note">Un modèle par type de club : tous les clubs {{ $categories[$category] }} le suivent dès l’enregistrement.</span>
+
+        <button type="button" class="oc-btn oc-only-mobile oc-push" data-act="toggle-panel" aria-label="Afficher les détails">Détails</button>
     </div>
-@endsection
+
+    <div class="oc-main">
+        <aside class="oc-side" id="oc-side" aria-label="Synthèse du modèle">
+            <div class="oc-side-body">
+                <h2 class="oc-side-title">Synthèse</h2>
+                <dl id="oc-stats" class="oc-stats"></dl>
+                <h2 class="oc-side-title">Niveaux d’accès</h2>
+                <div id="ct-levels" class="ct-levels"></div>
+                <p class="oc-note">Les droits s’exercent sur le périmètre du club. Les droits globaux et d’entité sont réservés aux postes de direction. Un poste ajouté à la main dans un club, hors modèle, n’est jamais modifié.</p>
+            </div>
+        </aside>
+
+        <main class="oc-stage" id="oc-stage">
+            <svg id="oc-svg" role="img" aria-label="Modèle d’équipe des clubs {{ $categories[$category] }}" tabindex="0">
+                <g id="oc-viewport">
+                    <g id="oc-links"></g>
+                    <g id="oc-nodes"></g>
+                </g>
+            </svg>
+
+            <div class="oc-zoom" aria-label="Zoom">
+                <button type="button" data-act="zoom-out" aria-label="Zoom arrière">−</button>
+                <button type="button" data-act="zoom-reset" id="oc-zoom-label" aria-label="Zoom 100 %">100 %</button>
+                <button type="button" data-act="zoom-in" aria-label="Zoom avant">+</button>
+                <button type="button" data-act="fit" aria-label="Ajuster à l'écran" title="Ajuster à l'écran">⤢</button>
+            </div>
+
+            <div class="oc-hint" id="oc-hint" @if(! $canEdit) hidden @endif>Maj + glisser un bloc sur un autre pour le rattacher</div>
+            <div class="oc-loading" id="oc-loading">Chargement du modèle…</div>
+        </main>
+
+        <aside class="oc-panel" id="oc-panel" aria-label="Propriétés du bloc sélectionné">
+            <div class="oc-panel-head">
+                <h2>Propriétés</h2>
+                <button type="button" class="oc-icon-btn oc-only-mobile" data-act="close-panel" aria-label="Fermer">×</button>
+            </div>
+            <div class="oc-panel-body" id="oc-panel-body"></div>
+        </aside>
+    </div>
+
+    <div class="oc-toasts" id="oc-toasts" aria-live="polite"></div>
+</div>
+
+{{-- Ajout d'un bloc --}}
+<dialog id="dlg-add" class="oc-dlg oc-dlg-small">
+    <form id="f-add" novalidate>
+        <header><h2>Ajouter au modèle</h2><button type="button" class="oc-icon-btn" data-close aria-label="Fermer">×</button></header>
+        <div class="oc-dlg-body">
+            <p class="oc-note" id="a-where"></p>
+            <div class="oc-field"><label for="a-title">Intitulé *</label><input id="a-title" name="title" maxlength="120" required></div>
+            <div class="oc-field"><label for="a-kind">Type</label><select id="a-kind" name="kind"></select></div>
+            <div class="oc-field" id="a-capacity-wrap"><label for="a-capacity">Titulaires</label><select id="a-capacity" name="capacity"><option value="single">Un seul titulaire</option><option value="multiple">Plusieurs personnes</option></select></div>
+            <div class="oc-field" id="a-access-wrap"><label for="a-access">Niveau d’accès</label><select id="a-access" name="access_level"></select></div>
+            <p class="oc-form-error" id="a-error" role="alert" hidden></p>
+        </div>
+        <footer><button type="button" class="oc-btn" data-close>Annuler</button><button type="submit" class="oc-btn oc-btn-primary">Ajouter à tous les clubs</button></footer>
+    </form>
+</dialog>
+
+{{-- Confirmation --}}
+<dialog id="dlg-confirm" class="oc-dlg oc-dlg-small">
+    <form method="dialog" id="f-confirm">
+        <header><h2 id="cf-title">Confirmer</h2></header>
+        <div class="oc-dlg-body"><p id="cf-body"></p></div>
+        <footer><button type="submit" value="cancel" class="oc-btn" id="cf-cancel">Annuler</button><button type="submit" value="ok" class="oc-btn oc-btn-danger" id="cf-ok">Confirmer</button></footer>
+    </form>
+</dialog>
+
+<script type="application/json" id="ct-config">{!! json_encode(['base' => route('admin.templates.index', ['category' => $category]), 'chart' => $payload], JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+<script src="{{ asset('backoffice/orgchart-layout.js') }}?v={{ $ocv }}" defer></script>
+<script src="{{ asset('backoffice/clubtemplate.js') }}?v={{ $ocv }}" defer></script>
+@include('partials.impersonation-banner')
+@include('partials.role-simulation-banner')
+</body>
+</html>

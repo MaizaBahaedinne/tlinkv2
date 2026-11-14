@@ -152,7 +152,7 @@ class ClubRolesTest extends TestCase
         ])->all();
         $slots['president']['parent_key'] = 'vp-marketing';
 
-        $this->actingAs($admin)->put('/admin/structure/modeles/university_club', ['slots' => $slots])->assertSessionHasErrors('slots.president.parent_key');
+        $this->actingAs($admin)->put('/admin/structure/modeles/university_club', ['slots' => $slots])->assertSessionHasErrors('parent_key');
     }
 
     public function test_a_club_role_cannot_receive_global_rights_and_only_global_admins_edit(): void
@@ -215,5 +215,34 @@ class ClubRolesTest extends TestCase
             ->assertOk()
             ->assertDontSee('Équipe type')
             ->assertSee('/admin/structure/clubs/'.$club->id, false);
+    }
+
+    public function test_template_editor_json_api_updates_moves_and_reapplies_blocks(): void
+    {
+        $admin = $this->admin();
+        $club = $this->club('ESPRIT', true);
+        $base = '/admin/structure/modeles/university_club';
+
+        $this->actingAs($admin)->get($base)->assertOk()->assertSee('ct-config', false)->assertSee('VP Marketing');
+
+        $res = $this->actingAs($admin)->patchJson($base.'/blocs/vp-marketing', ['title' => 'VP Communication', 'access_level' => 'moderator'])
+            ->assertOk()
+            ->assertJsonStructure(['message', 'chart' => ['category', 'label', 'can_edit', 'club_count', 'blocks', 'kinds', 'levels', 'level_permissions']]);
+        $this->assertContains('VP Communication', collect($res->json('chart.blocks'))->pluck('title')->all());
+
+        $node = OrgNode::query()->where('subtitle', $club->title)->where('role_key', 'vp-marketing')->firstOrFail();
+        $this->assertSame('VP Communication', $node->title);
+        $this->assertSame('moderator', $node->access_level);
+
+        $this->actingAs($admin)->patchJson($base.'/blocs/vp-marketing', ['title' => 'président de club'])->assertStatus(422)->assertJsonValidationErrors('title');
+
+        $order = fn (): array => collect($this->actingAs($admin)->getJson($base)->assertOk()->original->getData()['payload']['blocks'])->pluck('key')->all();
+        $before = $order();
+        $this->actingAs($admin)->postJson($base.'/blocs/dept-marketing/deplacer', ['direction' => 'down'])->assertOk();
+        $this->assertNotSame($before, $order());
+
+        $this->actingAs($admin)->postJson($base.'/appliquer')->assertOk()->assertJsonPath('chart.club_count', 1);
+
+        $this->actingAs(User::factory()->create())->patchJson($base.'/blocs/vp-marketing', ['title' => 'X'])->assertForbidden();
     }
 }

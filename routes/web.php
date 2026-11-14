@@ -552,6 +552,9 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('structure/modeles/{category}', [Admin\ClubTemplateController::class, 'index'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.index');
             Route::put('structure/modeles/{category}', [Admin\ClubTemplateController::class, 'update'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.update');
             Route::post('structure/modeles/{category}/blocs', [Admin\ClubTemplateController::class, 'store'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.store');
+            Route::post('structure/modeles/{category}/appliquer', [Admin\ClubTemplateController::class, 'apply'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.apply');
+            Route::patch('structure/modeles/{category}/blocs/{key}', [Admin\ClubTemplateController::class, 'updateSlot'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.slot');
+            Route::post('structure/modeles/{category}/blocs/{key}/deplacer', [Admin\ClubTemplateController::class, 'move'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.move');
             Route::delete('structure/modeles/{category}/blocs/{key}', [Admin\ClubTemplateController::class, 'destroy'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.destroy');
             Route::get('structure/perimetres', [Admin\ScopeSettingsController::class, 'edit'])->name('scopes.edit');
             Route::put('structure/perimetres', [Admin\ScopeSettingsController::class, 'update'])->name('scopes.update');
