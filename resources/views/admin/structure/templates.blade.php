@@ -57,9 +57,9 @@
             <div class="oc-side-body">
                 <h2 class="oc-side-title">Synthèse</h2>
                 <dl id="oc-stats" class="oc-stats"></dl>
-                <h2 class="oc-side-title">Niveaux d’accès</h2>
+                <h2 class="oc-side-title">Préréglages de droits</h2>
                 <div id="ct-levels" class="ct-levels"></div>
-                <p class="oc-note">Les droits s’exercent sur le périmètre du club. Les droits globaux et d’entité sont réservés aux postes de direction. Un poste ajouté à la main dans un club, hors modèle, n’est jamais modifié.</p>
+                <p class="oc-note">Les droits se règlent module par module (C R U D) et s’exercent sur le périmètre du club. Un poste ajouté à la main dans un club, hors modèle, n’est jamais modifié.</p>
             </div>
         </aside>
 
@@ -103,7 +103,7 @@
             <div class="oc-field"><label for="a-title">Intitulé *</label><input id="a-title" name="title" maxlength="120" required></div>
             <div class="oc-field"><label for="a-kind">Type</label><select id="a-kind" name="kind"></select></div>
             <div class="oc-field" id="a-capacity-wrap"><label for="a-capacity">Titulaires</label><select id="a-capacity" name="capacity"><option value="single">Un seul titulaire</option><option value="multiple">Plusieurs personnes</option></select></div>
-            <div class="oc-field" id="a-access-wrap"><label for="a-access">Niveau d’accès</label><select id="a-access" name="access_level"></select></div>
+            <div class="oc-field" id="a-access-wrap"><label for="a-access">Préréglage de droits</label><select id="a-access" name="access_level"></select></div>
             <p class="oc-form-error" id="a-error" role="alert" hidden></p>
         </div>
         <footer><button type="button" class="oc-btn" data-close>Annuler</button><button type="submit" class="oc-btn oc-btn-primary">Ajouter à tous les clubs</button></footer>

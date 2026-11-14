@@ -227,10 +227,17 @@
         renderSide();
     }
 
+    function moduleCount(n) { return Object.keys(n.modules || {}).length; }
+
+    function rightsSuffix(n) {
+        var count = moduleCount(n);
+        return count ? ' · ' + count + ' module' + (count > 1 ? 's' : '') : '';
+    }
+
     function subtitleLine(n) {
         if (n.id === ROOT_ID) { return n.clubs + ' club' + (n.clubs > 1 ? 's' : '') + ' suivent ce modèle'; }
         if (n.kind === 'position') {
-            return (n.capacity === 'multiple' ? 'Plusieurs titulaires' : 'Un titulaire') + (n.access_level !== 'none' ? ' · ' + shortLevel(n.access_level) : '');
+            return (n.capacity === 'multiple' ? 'Plusieurs titulaires' : 'Un titulaire') + rightsSuffix(n);
         }
         var count = descendantKeys(n.id).length;
         return 'Département · ' + count + ' poste' + (count > 1 ? 's' : '');
@@ -497,6 +504,102 @@
         return s;
     }
 
+    /* Matrice C R U D par module, comme sur la fiche d'un poste. */
+    function buildMatrix(n) {
+        var actions = Object.keys(S.chart.actions);
+        var boxes = {};
+        var current = n.modules || {};
+        var table = h('table', { class: 'ct-matrix' });
+        var head = h('tr', {}, h('th', { text: 'Module' }));
+
+        function setCell(key, action, on) {
+            var cell = boxes[key] && boxes[key][action];
+            if (cell) { cell.checked = on; }
+        }
+
+        function fill(preset) {
+            Object.keys(boxes).forEach(function (key) {
+                actions.forEach(function (a) { setCell(key, a, ((preset[key] || []).indexOf(a) !== -1)); });
+            });
+        }
+
+        actions.forEach(function (a) {
+            var th = h('th', { class: 'ct-matrix-col' });
+            th.appendChild(h('button', {
+                type: 'button', class: 'oc-btn oc-btn-sm', disabled: !S.canEdit, title: 'Tout cocher / décocher : ' + S.chart.actions[a], text: S.chart.action_letters[a],
+                onclick: function () {
+                    var keys = Object.keys(boxes).filter(function (k) { return boxes[k][a]; });
+                    var all = keys.every(function (k) { return boxes[k][a].checked; });
+                    keys.forEach(function (k) { setCell(k, a, !all); if (!all && a !== 'read') { setCell(k, 'read', true); } });
+                    if (all && a === 'read') { keys.forEach(function (k) { actions.forEach(function (x) { setCell(k, x, false); }); }); }
+                }
+            }));
+            head.appendChild(th);
+        });
+        table.appendChild(h('thead', {}, head));
+
+        var tbody = h('tbody');
+        var group = null;
+
+        S.chart.module_catalog.forEach(function (m) {
+            if (m.group !== group) {
+                group = m.group;
+                tbody.appendChild(h('tr', { class: 'ct-matrix-group' }, h('td', { colspan: actions.length + 1, text: group })));
+            }
+
+            boxes[m.key] = {};
+            var row = h('tr', {}, h('td', { class: 'ct-matrix-name', text: m.name }));
+
+            actions.forEach(function (a) {
+                var td = h('td', { class: 'ct-matrix-cell' });
+
+                if (m.actions.indexOf(a) === -1) {
+                    td.textContent = '—';
+                } else {
+                    var box = h('input', { type: 'checkbox', disabled: !S.canEdit, 'aria-label': S.chart.actions[a] + ' — ' + m.name });
+                    box.checked = (current[m.key] || []).indexOf(a) !== -1;
+                    box.addEventListener('change', function () {
+                        // « Consulter » accompagne toute autre action ; le retirer retire les autres.
+                        if (box.checked && a !== 'read') { setCell(m.key, 'read', true); }
+                        if (!box.checked && a === 'read') { actions.forEach(function (x) { setCell(m.key, x, false); }); }
+                    });
+                    boxes[m.key][a] = box;
+                    td.appendChild(box);
+                }
+
+                row.appendChild(td);
+            });
+
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        var presets = h('div', { class: 'oc-actions' });
+        if (S.canEdit) {
+            presets.appendChild(h('span', { class: 'oc-muted', text: 'Préréglage :' }));
+            presets.appendChild(btn('Aucun droit', function () { fill({}); }, 'oc-btn-sm'));
+            Object.keys(S.chart.presets).forEach(function (level) {
+                if (level === 'none') { return; }
+                presets.appendChild(btn(shortLevel(level), function () { fill(S.chart.presets[level]); }, 'oc-btn-sm'));
+            });
+        }
+
+        var el = h('div', {}, presets, h('div', { class: 'ct-matrix-wrap' }, table),
+            h('p', { class: 'oc-note', text: 'Ces droits s’exercent sur le périmètre du club, pour chaque titulaire du poste. « Consulter » est ajouté dès qu’une autre action est accordée.' }));
+
+        return {
+            el: el,
+            read: function () {
+                var out = {};
+                Object.keys(boxes).forEach(function (key) {
+                    var picked = actions.filter(function (a) { return boxes[key][a] && boxes[key][a].checked; });
+                    if (picked.length) { out[key] = picked; }
+                });
+                return out;
+            }
+        };
+    }
+
     function renderPanel() {
         var body = $('#oc-panel-body');
         body.textContent = '';
@@ -531,7 +634,7 @@
             h('div', { class: 'oc-badges' },
                 h('span', { class: 'oc-chip', text: S.chart.kinds[n.kind] || n.kind }),
                 isPos ? h('span', { class: 'oc-chip' + (n.capacity === 'multiple' ? ' is-ok' : ''), text: n.capacity === 'multiple' ? 'Plusieurs personnes' : 'Un seul titulaire' }) : null,
-                isPos && n.access_level !== 'none' ? h('span', { class: 'oc-chip', style: '--chip:#6d3fd0', text: 'Accès : ' + shortLevel(n.access_level) }) : null
+                isPos && moduleCount(n) ? h('span', { class: 'oc-chip', style: '--chip:#6d3fd0', text: 'Droits : ' + moduleCount(n) + ' module' + (moduleCount(n) > 1 ? 's' : '') }) : null
             )
         ));
 
@@ -552,19 +655,19 @@
         var parentOptions = [{ value: '', label: 'Le club' }].concat(S.chart.blocks.filter(function (b) { return !blocked[b.key]; }).map(function (b) { return { value: b.key, label: b.title }; }));
         var parent = selectOf(parentOptions, n.parent_key || '', !S.canEdit);
         var capacity = selectOf([{ value: 'single', label: 'Un seul titulaire' }, { value: 'multiple', label: 'Plusieurs personnes' }], n.capacity, !S.canEdit);
-        var access = selectOf(Object.keys(S.chart.levels).map(function (k) { return { value: k, label: S.chart.levels[k] }; }), n.access_level, !S.canEdit);
+        var matrix = isPos ? buildMatrix(n) : null;
 
         var form = h('form', { class: 'oc-form', novalidate: true },
             field('Intitulé', title),
             field('Rattaché à', parent),
             isPos ? field('Titulaires du poste', capacity) : null,
-            isPos ? field('Niveau d’accès', access) : null,
+            isPos ? h('div', { class: 'oc-field' }, h('label', { text: 'Habilitations par module' }), matrix.el) : null,
             S.canEdit ? h('div', { class: 'oc-actions' }, h('button', { type: 'submit', class: 'oc-btn oc-btn-primary', text: 'Enregistrer pour tous les clubs' })) : null
         );
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             var payload = { title: title.value.trim(), parent_key: parent.value === '' ? null : parent.value };
-            if (isPos) { payload.capacity = capacity.value; payload.access_level = access.value; }
+            if (isPos) { payload.capacity = capacity.value; payload.modules = matrix.read(); }
             mutate('PATCH', '/blocs/' + encodeURIComponent(n.key), payload);
         });
         body.appendChild(section('Réglages', form));

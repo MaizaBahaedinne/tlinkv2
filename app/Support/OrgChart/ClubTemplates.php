@@ -5,6 +5,8 @@ namespace App\Support\OrgChart;
 use App\Models\ClubTemplateSlot;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
+use App\Support\AccessLevels;
+use App\Support\ModulePermissions;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -118,11 +120,40 @@ final class ClubTemplates
         $ids = [];
 
         foreach ($rows as $row) {
-            $definitions[$row->key] = ['title' => $row->title, 'parent' => $row->parent_key, 'kind' => $row->kind, 'capacity' => $row->capacity, 'access' => $row->access_level];
+            $definitions[$row->key] = [
+                'title' => $row->title, 'parent' => $row->parent_key, 'kind' => $row->kind, 'capacity' => $row->capacity, 'access' => $row->access_level,
+                'modules' => $row->module_permissions,
+            ];
             $ids[$row->key] = $row->id;
         }
 
         return self::flatten($definitions, $ids);
+    }
+
+    /**
+     * Habilitations CRUD d'un bloc : la matrice réglée sur le modèle, sinon celle que donne son niveau d'accès prédéfini.
+     *
+     * @param array<string, mixed> $slot
+     * @return array<string, array<int, string>>
+     */
+    public static function matrixOf(array $slot): array
+    {
+        if (is_array($slot['modules'] ?? null)) {
+            return $slot['modules'];
+        }
+
+        return $slot['kind'] === 'position' ? ModulePermissions::fromPermissions(AccessLevels::permissions((string) $slot['access'])) : [];
+    }
+
+    /**
+     * Niveau et permissions d'un poste de club dont les droits sont une matrice (jamais de portée plateforme).
+     *
+     * @param array<string, array<int, string>> $matrix
+     * @return array{0: string, 1: array<int, string>|null}
+     */
+    public static function rightsOf(array $matrix): array
+    {
+        return AccessLevels::fromChecked(ModulePermissions::derivePermissions($matrix), false);
     }
 
     /**
@@ -245,6 +276,19 @@ final class ClubTemplates
         });
     }
 
+    /**
+     * Colonnes d'un poste de club pour une matrice de droits.
+     *
+     * @param array<string, array<int, string>> $matrix
+     * @return array{access_level: string, permissions: array<int, string>|null, module_permissions: array<string, array<int, string>>|null}
+     */
+    private function rightColumns(array $matrix): array
+    {
+        [$level, $stored] = self::rightsOf($matrix);
+
+        return ['access_level' => $level, 'permissions' => $stored, 'module_permissions' => $matrix === [] ? null : $matrix];
+    }
+
     /** Blocs sous un club, requête par niveau (un seul club). */
     private function subtree(OrgNode $club): Collection
     {
@@ -334,6 +378,7 @@ final class ClubTemplates
                     'kind' => $slot['kind'],
                     'capacity' => $slot['capacity'],
                     'access_level' => $slot['kind'] === 'position' ? $slot['access'] : 'none',
+                ] + ($slot['kind'] === 'position' && is_array($slot['modules'] ?? null) ? $this->rightColumns($slot['modules']) : []) + [
                     'role_key' => $key,
                     'category' => $club->category,
                     'title' => $slot['title'],
@@ -354,7 +399,13 @@ final class ClubTemplates
             }
 
             if ($node->kind === 'position') {
-                if ($node->access_level !== $slot['access']) {
+                if (is_array($slot['modules'] ?? null)) {
+                    $columns = $this->rightColumns($slot['modules']);
+
+                    if ($node->access_level !== $columns['access_level'] || $node->permissions != $columns['permissions'] || (array) $node->module_permissions != (array) $columns['module_permissions']) {
+                        $attributes += $columns;
+                    }
+                } elseif ($node->access_level !== $slot['access']) {
                     $attributes['access_level'] = $slot['access'];
                 }
 

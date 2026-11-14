@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\AppModule;
 use App\Models\ClubTemplateSlot;
 use App\Models\OrgNode;
 use App\Support\AccessLevels;
 use App\Support\AdminContext;
 use App\Support\AuditLogger;
+use App\Support\ModulePermissions;
 use App\Support\OrgChart\ClubTemplates;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -66,11 +68,18 @@ class ClubTemplateController extends AdminController
             'parent_key' => ['sometimes', 'nullable', 'string', 'max:40'],
             'capacity' => ['sometimes', Rule::in(['single', 'multiple'])],
             'access_level' => ['sometimes', Rule::in(ClubTemplates::ALLOWED_LEVELS)],
+            'modules' => ['sometimes', 'nullable', 'array'],
         ]);
 
         $row = array_merge([
             'title' => $slot->title, 'parent_key' => $slot->parent_key, 'capacity' => $slot->capacity, 'access_level' => $slot->access_level,
         ], $data);
+
+        if (array_key_exists('modules', $data)) {
+            $row['modules'] = (array) $data['modules'];
+        } else {
+            unset($row['modules']);
+        }
 
         $changes = $this->applyRows($request, $category, [$key => $row]);
 
@@ -87,6 +96,7 @@ class ClubTemplateController extends AdminController
             'parent_key' => ['nullable', 'string', 'max:40'],
             'capacity' => ['nullable', Rule::in(['single', 'multiple'])],
             'access_level' => ['nullable', Rule::in(ClubTemplates::ALLOWED_LEVELS)],
+            'modules' => ['nullable', 'array'],
         ]);
 
         $existing = ClubTemplateSlot::query()->where('category', $category)->get()->keyBy('key');
@@ -99,6 +109,9 @@ class ClubTemplateController extends AdminController
         $this->assertDistinctTitles($existing, [], trim($data['title']));
         $isPosition = $data['kind'] === 'position';
 
+        // Droits : une matrice libre, ou (sans matrice) le niveau prédéfini choisi.
+        $matrix = $isPosition && array_key_exists('modules', $data) ? ModulePermissions::normalize((array) $data['modules']) : null;
+
         $slot = ClubTemplateSlot::query()->create([
             'category' => $category,
             'key' => ClubTemplates::newKey($category, $data['title']),
@@ -106,7 +119,8 @@ class ClubTemplateController extends AdminController
             'kind' => $data['kind'],
             'title' => trim($data['title']),
             'capacity' => $isPosition ? ($data['capacity'] ?? 'single') : 'single',
-            'access_level' => $isPosition ? ($data['access_level'] ?? 'none') : 'none',
+            'access_level' => $matrix !== null ? ClubTemplates::rightsOf($matrix)[0] : ($isPosition ? ($data['access_level'] ?? 'none') : 'none'),
+            'module_permissions' => $matrix,
             'sort_order' => ((int) $existing->max('sort_order')) + 1,
         ]);
 
@@ -215,12 +229,23 @@ class ClubTemplateController extends AdminController
             $slot = $existing[$key];
             $isPosition = $slot->kind === 'position';
 
+            $rights = [];
+
+            if (! $isPosition) {
+                $rights = ['access_level' => 'none', 'module_permissions' => null];
+            } elseif (array_key_exists('modules', $row)) {
+                $matrix = ModulePermissions::normalize((array) $row['modules']);
+                $rights = ['access_level' => ClubTemplates::rightsOf($matrix)[0], 'module_permissions' => $matrix];
+            } elseif ($row['access_level'] !== $slot->access_level) {
+                // Niveau prédéfini choisi : il remplace la matrice.
+                $rights = ['access_level' => $row['access_level'], 'module_permissions' => null];
+            }
+
             $slot->update([
                 'title' => trim((string) $row['title']),
                 'parent_key' => $row['parent_key'],
                 'capacity' => $isPosition ? $row['capacity'] : 'single',
-                'access_level' => $isPosition ? $row['access_level'] : 'none',
-            ]);
+            ] + $rights);
         }
 
         $changes = (new ClubTemplates())->sync($category);
@@ -254,6 +279,8 @@ class ClubTemplateController extends AdminController
                 'kind' => $slot['kind'],
                 'capacity' => $slot['capacity'],
                 'access_level' => $slot['access'],
+                'modules' => (object) ($slot['kind'] === 'position' ? ClubTemplates::matrixOf($slot) : []),
+                'custom_rights' => is_array($slot['modules'] ?? null),
                 'sort_order' => $order++,
                 'clubs' => (int) ($counts[$key] ?? 0),
             ];
@@ -266,12 +293,40 @@ class ClubTemplateController extends AdminController
             'club_count' => OrgNode::query()->where('kind', 'club')->where('category', $category)->count(),
             'blocks' => $blocks,
             'kinds' => ClubTemplates::KINDS,
+            'module_catalog' => $this->moduleCatalog(),
+            'presets' => collect(ClubTemplates::ALLOWED_LEVELS)->mapWithKeys(fn (string $level): array => [$level => (object) ModulePermissions::fromPermissions(AccessLevels::permissions($level))])->all(),
+            'actions' => AppModule::ACTIONS,
+            'action_letters' => AppModule::ACTION_LETTERS,
             'levels' => array_intersect_key(AccessLevels::LEVELS, array_flip(ClubTemplates::ALLOWED_LEVELS)),
             'level_permissions' => collect(array_flip(ClubTemplates::ALLOWED_LEVELS))->map(fn ($i, $level): array => array_map(
                 fn (string $permission): string => AccessLevels::PERMISSIONS[$permission],
                 AccessLevels::permissions($level)
             ))->all(),
         ];
+    }
+
+    /**
+     * Modules actifs et leurs actions CRUD, groupés comme dans la matrice d'un poste : [{key, name, group, root, actions}].
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function moduleCatalog(): array
+    {
+        $catalog = [];
+        $roots = AppModule::query()->whereNull('parent_id')->where('is_active', true)
+            ->with(['children' => fn ($query) => $query->where('is_active', true)])->orderBy('sort_order')->orderBy('id')->get();
+
+        foreach ($roots as $root) {
+            foreach (collect($root->actions ? [$root] : [])->concat($root->children) as $module) {
+                $supported = $module->supportedActions();
+
+                if ($supported !== []) {
+                    $catalog[] = ['key' => $module->key, 'name' => $module->id === $root->id ? 'Général' : $module->name, 'group' => $root->name, 'actions' => $supported];
+                }
+            }
+        }
+
+        return $catalog;
     }
 
     /**

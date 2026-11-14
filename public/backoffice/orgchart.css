@@ -376,3 +376,12 @@ html, body { height: 100%; margin: 0; }
 .ct-levels strong { font-size: .82rem; }
 .ct-levels .oc-badges { margin-top: 5px; }
 @media (max-width: 900px) { .oc-tabs { order: 3; width: 100%; overflow-x: auto; } .oc-top { flex-wrap: wrap; padding-block: 8px; } }
+
+/* Matrice d'habilitations d'un poste du modèle */
+.ct-matrix-wrap { max-height: 360px; overflow: auto; border: 1px solid var(--oc-line, #e2d5d8); border-radius: 8px; margin: 8px 0; }
+.ct-matrix { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.ct-matrix th, .ct-matrix td { padding: 4px 6px; text-align: center; }
+.ct-matrix th:first-child, .ct-matrix .ct-matrix-name { text-align: left; }
+.ct-matrix thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
+.ct-matrix .ct-matrix-group td { background: #f6f1f2; font-weight: 700; text-align: left; }
+.ct-matrix tbody tr:not(.ct-matrix-group) { border-top: 1px solid #f0e8ea; }

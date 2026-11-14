@@ -245,4 +245,47 @@ class ClubRolesTest extends TestCase
 
         $this->actingAs(User::factory()->create())->patchJson($base.'/blocs/vp-marketing', ['title' => 'X'])->assertForbidden();
     }
+
+    public function test_template_post_rights_are_a_free_crud_matrix_applied_to_every_club(): void
+    {
+        $admin = $this->admin();
+        $first = $this->club('ESPRIT', true);
+        $base = '/admin/structure/modeles/university_club';
+
+        $matrix = ['members.memberships' => ['read', 'update'], 'events.events' => ['create']];
+        $res = $this->actingAs($admin)->patchJson($base.'/blocs/vp-marketing', ['modules' => $matrix])->assertOk();
+
+        // « Consulter » est ajouté automatiquement et la matrice revient dans le payload.
+        $block = collect($res->json('chart.blocks'))->firstWhere('key', 'vp-marketing');
+        $this->assertTrue($block['custom_rights']);
+        $this->assertSame(['read', 'update'], $block['modules']['members.memberships']);
+        $this->assertSame(['create', 'read'], $block['modules']['events.events']);
+        $this->assertNotEmpty($res->json('chart.module_catalog'));
+
+        $node = OrgNode::query()->where('subtitle', $first->title)->where('role_key', 'vp-marketing')->firstOrFail();
+        $this->assertSame('custom', $node->access_level);
+        $this->assertEqualsCanonicalizing(['membership.manage', 'event.manage'], $node->permissions);
+        $this->assertSame(['read', 'update'], $node->module_permissions['members.memberships']);
+        $this->assertNotContains('scope.all', $node->permissions);
+
+        // Un club créé ensuite suit la même matrice, et un poste sans case cochée n'a plus aucun droit.
+        $second = $this->club('INSAT', true);
+        $this->assertSame('custom', OrgNode::query()->where('subtitle', $second->title)->where('role_key', 'vp-marketing')->value('access_level'));
+
+        $this->actingAs($admin)->patchJson($base.'/blocs/vp-marketing', ['modules' => []])->assertOk();
+        $node->refresh();
+        $this->assertSame('none', $node->access_level);
+        $this->assertNull($node->module_permissions);
+
+        // Les autres postes (niveau prédéfini) restent inchangés.
+        $this->assertSame('club_president', OrgNode::query()->where('subtitle', $first->title)->where('role_key', 'president')->value('access_level'));
+
+        // Un poste ajouté avec un préréglage garde ce niveau, que la matrice affiche puis permet d'affiner.
+        $this->actingAs($admin)->postJson($base.'/blocs', ['title' => 'Modérateur club', 'kind' => 'position', 'access_level' => 'moderator'])->assertOk();
+        $moderator = OrgNode::query()->where('subtitle', $first->title)->where('role_key', 'moderateur-club')->firstOrFail();
+        $this->assertSame('moderator', $moderator->access_level);
+
+        $res = $this->actingAs($admin)->getJson($base)->assertOk()->original->getData()['payload'];
+        $this->assertArrayHasKey('governance.moderation', (array) collect($res['blocks'])->firstWhere('key', 'moderateur-club')['modules']);
+    }
 }
