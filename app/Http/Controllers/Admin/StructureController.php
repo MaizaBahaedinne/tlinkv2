@@ -14,7 +14,6 @@ use App\Models\User;
 use App\Support\AccessLevels;
 use App\Support\AdminContext;
 use App\Support\AuditLogger;
-use App\Support\ClubRoles;
 use App\Support\ModulePermissions;
 use App\Support\OrgAccess;
 use App\Support\OrgChart\OrgChartInstaller;
@@ -345,7 +344,7 @@ class StructureController extends AdminController
         AuditLogger::record($request->user()->id, 'orgchart.club.aligned', null, null, ['changes' => $changes], $request->ip());
 
         return back()->with('status', $changes === 0
-            ? 'Tous les clubs University / High School suivent déjà le modèle.'
+            ? 'Tous les clubs suivent déjà leur modèle.'
             : $changes.' bloc(s) créé(s), déplacé(s) ou retiré(s) pour suivre le modèle.');
     }
 
@@ -470,41 +469,6 @@ class StructureController extends AdminController
         }
 
         return [$mandates, $departments, $matrix, $currentCount];
-    }
-
-    /* ------------------------------------------------------------------ Roles des clubs */
-
-    public function roles(Request $request): View
-    {
-        $counts = OrgNode::query()->whereNotNull('role_key')->whereIn('category', ClubRoles::CATEGORIES)
-            ->selectRaw('role_key, count(*) as total')->groupBy('role_key')->pluck('total', 'role_key')->all();
-
-        return view('admin.structure.roles', [
-            'canEdit' => $this->canEdit($request),
-            'roles' => ClubRoles::all(),
-            'current' => ClubRoles::levels(),
-            'counts' => $counts,
-            'levels' => array_intersect_key(AccessLevels::LEVELS, array_flip(ClubRoles::ALLOWED_LEVELS)),
-            'levelPermissions' => collect(AccessLevels::LEVELS)->map(fn ($label, $level): array => array_map(
-                fn (string $permission): string => AccessLevels::PERMISSIONS[$permission],
-                AccessLevels::permissions($level)
-            ))->all(),
-        ]);
-    }
-
-    public function updateRoles(Request $request): RedirectResponse
-    {
-        $this->requireEditor($request);
-
-        $data = $request->validate([
-            'levels' => ['required', 'array'],
-            'levels.*' => ['required', Rule::in(ClubRoles::ALLOWED_LEVELS)],
-        ]);
-
-        $updated = ClubRoles::save($data['levels']);
-        AuditLogger::record($request->user()->id, 'orgchart.club_roles.updated', null, null, ['levels' => ClubRoles::levels(), 'positions' => $updated], $request->ip());
-
-        return back()->with('status', 'Droits enregistrés : '.$updated.' poste(s) de club mis à jour.');
     }
 
     /* ------------------------------------------------------------------ Fiche d'un bloc */

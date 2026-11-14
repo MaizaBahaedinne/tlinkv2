@@ -7,7 +7,7 @@ use App\Models\OrgAssignment;
 use App\Models\OrgNode;
 use App\Models\OrgPerson;
 use App\Models\User;
-use App\Support\ClubRoles;
+use App\Support\OrgChart\ClubTemplates;
 use App\Support\OrgChart\OrgChartInstaller;
 use Database\Seeders\GovernorateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,12 +35,12 @@ class ClubRolesTest extends TestCase
         return app(OrgChartInstaller::class)->createClub($branch, $name, $category, Governorate::query()->first(), $template);
     }
 
-    public function test_clubs_without_a_team_receive_the_standard_team_and_roles(): void
+    public function test_clubs_without_a_team_receive_the_template_of_their_type(): void
     {
         $this->admin();
         $empty = $this->club('ESPRIT', false);
         $highschool = $this->club('Lycée Pilote', false, 'highschool_club', 'highschool-clubs');
-        $regional = $this->club('We Are Tunis', false, 'regional_club', 'regional-clubs');
+        $regional = $this->club('We Are Carthage Test', false, 'regional_club', 'regional-clubs');
 
         $this->assertSame(0, OrgNode::query()->where('parent_id', $empty->id)->count());
 
@@ -54,8 +54,12 @@ class ClubRolesTest extends TestCase
             $this->assertSame('multiple', $team->firstWhere('role_key', 'members-rd')->capacity);
         }
 
-        // Les clubs regionaux gardent leur propre structure.
-        $this->assertSame(0, OrgNode::query()->where('parent_id', $regional->id)->count());
+        // Les clubs We Are Carthage ont leur propre modele : president, 4 departements avec VP, assistants et membres.
+        $team = OrgNode::query()->where('subtitle', $regional->title)->get();
+        $this->assertSame(6, $team->where('kind', 'position')->count());
+        $this->assertSame(4, $team->where('kind', 'club_department')->count());
+        $this->assertSame('Président du club régional', $team->firstWhere('role_key', 'president')->title);
+        $this->assertNull($team->firstWhere('role_key', 'assistant-marketing'));
     }
 
     public function test_existing_team_without_role_keys_is_tagged(): void
@@ -64,35 +68,91 @@ class ClubRolesTest extends TestCase
         $club = $this->club('ESPRIT', true);
         OrgNode::query()->where('subtitle', $club->title)->update(['role_key' => null]);
 
-        app(OrgChartInstaller::class)->tagClubRoles();
+        app(OrgChartInstaller::class)->alignClubTeams();
 
         $this->assertSame('vp-marketing', OrgNode::query()->where('subtitle', $club->title)->where('title', 'VP Marketing')->value('role_key'));
         $this->assertSame(0, OrgNode::query()->where('subtitle', $club->title)->whereNull('role_key')->count());
+        $this->assertSame(0, app(OrgChartInstaller::class)->alignClubTeams());
     }
 
-    public function test_role_rights_are_defined_once_for_all_clubs(): void
+    public function test_the_template_of_each_type_is_edited_once_and_every_club_follows(): void
     {
         $admin = $this->admin();
         $first = $this->club('ESPRIT', true);
         $second = $this->club('INSAT', true);
+        $lycee = $this->club('Lycée Pilote', true, 'highschool_club', 'highschool-clubs');
 
-        $this->actingAs($admin)->get('/admin/structure/roles')->assertOk()->assertSee('VP Marketing')->assertSee('Droits des clubs');
+        $this->actingAs($admin)->get('/admin/structure/modeles/university_club')->assertOk()->assertSee('VP Marketing')->assertSee('Modèles de clubs');
+        $this->actingAs($admin)->get('/admin/structure/modeles/regional_club')->assertOk()->assertSee('Président du club régional');
+        $this->actingAs($admin)->get('/admin/structure/modeles/inconnu')->assertNotFound();
 
-        $levels = ClubRoles::levels();
-        $levels['vp-events'] = 'moderator';
-        $levels['assistant-events'] = 'manager';
+        $slots = collect(ClubTemplates::slots('university_club'))->map(fn (array $slot): array => [
+            'title' => $slot['title'], 'parent_key' => $slot['parent'], 'capacity' => $slot['capacity'], 'access_level' => $slot['access'],
+        ])->all();
+        $slots['vp-events']['access_level'] = 'moderator';
+        $slots['assistant-events']['access_level'] = 'manager';
+        $slots['vp-events']['title'] = 'Vice-président Événements';
 
-        $this->actingAs($admin)->put('/admin/structure/roles', ['levels' => $levels])->assertSessionHasNoErrors();
+        $this->actingAs($admin)->put('/admin/structure/modeles/university_club', ['slots' => $slots])->assertSessionHasNoErrors();
 
         foreach ([$first, $second] as $club) {
             $team = OrgNode::query()->where('subtitle', $club->title);
             $this->assertSame('moderator', (clone $team)->where('role_key', 'vp-events')->value('access_level'));
             $this->assertSame('manager', (clone $team)->where('role_key', 'assistant-events')->value('access_level'));
+            $this->assertSame('Vice-président Événements', (clone $team)->where('role_key', 'vp-events')->value('title'));
         }
 
-        // Un club cree ensuite suit le meme reglage.
+        // Un autre type de club n'est pas touche, et un club cree ensuite suit le meme reglage.
+        $this->assertSame('none', OrgNode::query()->where('subtitle', $lycee->title)->where('role_key', 'vp-events')->value('access_level'));
         $third = $this->club('ENIT', true);
         $this->assertSame('moderator', OrgNode::query()->where('subtitle', $third->title)->where('role_key', 'vp-events')->value('access_level'));
+    }
+
+    public function test_a_slot_added_to_the_template_is_created_in_every_club_and_removed_when_empty(): void
+    {
+        $admin = $this->admin();
+        $first = $this->club('ESPRIT', true);
+        $second = $this->club('INSAT', true);
+
+        $this->actingAs($admin)->post('/admin/structure/modeles/university_club/blocs', [
+            'title' => 'Trésorier', 'kind' => 'position', 'parent_key' => 'president', 'capacity' => 'single', 'access_level' => 'manager',
+        ])->assertSessionHasNoErrors();
+
+        foreach ([$first, $second] as $club) {
+            $treasurer = OrgNode::query()->where('subtitle', $club->title)->where('role_key', 'tresorier')->first();
+            $this->assertNotNull($treasurer);
+            $this->assertSame('manager', $treasurer->access_level);
+            $this->assertSame('president', OrgNode::query()->find($treasurer->parent_id)->role_key);
+        }
+
+        // Un intitule deja pris est refuse.
+        $this->actingAs($admin)->post('/admin/structure/modeles/university_club/blocs', ['title' => 'trésorier', 'kind' => 'position'])->assertSessionHasErrors('title');
+
+        // Un titulaire dans un club : le poste y reste (sans role) quand il quitte le modele.
+        $held = OrgNode::query()->where('subtitle', $first->title)->where('role_key', 'tresorier')->firstOrFail();
+        $person = OrgPerson::query()->create(['user_id' => User::factory()->create()->id, 'full_name' => 'Titulaire', 'contact_visible' => true]);
+        OrgAssignment::query()->create(['node_id' => $held->id, 'person_id' => $person->id]);
+
+        $this->actingAs($admin)->delete('/admin/structure/modeles/university_club/blocs/tresorier')->assertSessionHasNoErrors();
+
+        $this->assertNotNull($held->fresh());
+        $this->assertNull($held->fresh()->role_key);
+        $this->assertSame(0, OrgNode::query()->where('subtitle', $second->title)->where('title', 'Trésorier')->count());
+    }
+
+    public function test_a_template_block_with_children_cannot_be_removed_and_cycles_are_refused(): void
+    {
+        $admin = $this->admin();
+        $this->club('ESPRIT', true);
+
+        $this->actingAs($admin)->delete('/admin/structure/modeles/university_club/blocs/dept-marketing')->assertSessionHasErrors('slot');
+
+        $slots = collect(ClubTemplates::slots('university_club'))->map(fn (array $slot): array => [
+            'title' => $slot['title'], 'parent_key' => $slot['parent'], 'capacity' => $slot['capacity'], 'access_level' => $slot['access'],
+        ])->all();
+        $slots['president']['parent_key'] = 'vp-marketing';
+
+        $this->actingAs($admin)->put('/admin/structure/modeles/university_club', ['slots' => $slots])->assertSessionHasErrors('slots.president.parent_key');
     }
 
     public function test_a_club_role_cannot_receive_global_rights_and_only_global_admins_edit(): void
@@ -100,10 +160,15 @@ class ClubRolesTest extends TestCase
         $admin = $this->admin();
         $this->club('ESPRIT', true);
 
-        $this->actingAs($admin)->put('/admin/structure/roles', ['levels' => ['president' => 'global_admin']])->assertSessionHasErrors('levels.president');
-        $this->assertSame('club_president', ClubRoles::level('president'));
+        $slots = collect(ClubTemplates::slots('university_club'))->map(fn (array $slot): array => [
+            'title' => $slot['title'], 'parent_key' => $slot['parent'], 'capacity' => $slot['capacity'], 'access_level' => $slot['access'],
+        ])->all();
+        $slots['president']['access_level'] = 'global_admin';
 
-        $this->actingAs(User::factory()->create())->put('/admin/structure/roles', ['levels' => ['president' => 'none']])->assertForbidden();
+        $this->actingAs($admin)->put('/admin/structure/modeles/university_club', ['slots' => $slots])->assertSessionHasErrors('slots.president.access_level');
+        $this->assertSame('club_president', ClubTemplates::slots('university_club')['president']['access']);
+
+        $this->actingAs(User::factory()->create())->put('/admin/structure/modeles/university_club', ['slots' => $slots])->assertForbidden();
     }
 
     public function test_role_positions_ignore_bulk_and_sheet_level_changes(): void

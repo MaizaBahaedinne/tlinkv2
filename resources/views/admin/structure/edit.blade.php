@@ -87,7 +87,7 @@
                                         @if($nodeEverywhere)<span class="chip">Agit sur toute la plateforme</span>@endif
                                     </div>
                                     @if($node->role_key)
-                                        <p class="hint" style="margin-top:6px">Poste de l’équipe standard des clubs : les droits sont les mêmes dans tous les clubs et se règlent dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p>
+                                        <p class="hint" style="margin-top:6px">Poste de l’équipe standard des clubs : ce poste suit le modèle de son type de club et se règle dans <a href="{{ route('admin.templates.index', ['category' => $node->category]) }}">Modèles de clubs</a>.</p>
                                     @else
                                         <p class="hint" style="margin-top:6px">Les droits ne se règlent qu’à un endroit : la carte « Habilitations par module » ci-dessous. Ils s’appliquent à chaque personne qui occupe ce poste, dans le périmètre choisi plus haut.</p>
                                     @endif
@@ -150,7 +150,7 @@
                         <x-admin.empty icon="layers" title="Aucun module actif" />
                     @else
                         @if($node->role_key)
-                            <div class="card-body" style="padding-bottom:0"><p class="hint">Poste de l’équipe standard des clubs : voici les droits déduits de son rôle, en lecture seule. Ils se règlent dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</p></div>
+                            <div class="card-body" style="padding-bottom:0"><p class="hint">Poste de l’équipe standard des clubs : voici les droits déduits de son rôle, en lecture seule. Ils se règlent dans <a href="{{ route('admin.templates.index', ['category' => $node->category]) }}">Modèles de clubs</a>.</p></div>
                         @elseif($matrixDerived)
                             <div class="card-body" style="padding-bottom:0"><p class="hint">Ce poste a été créé avec un niveau d’accès : la matrice ci-dessous en reprend les droits. Enregistrez pour la rendre modifiable module par module.</p></div>
                         @endif

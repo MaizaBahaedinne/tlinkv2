@@ -4,9 +4,9 @@
 @section('section', 'Organisation')
 
 @section('content')
-    <x-admin.page-header title="Clubs" subtitle="Chaque club University / High School a la même équipe : un Président et 4 départements (VP, Assistant, membres). Elle est créée automatiquement.">
+    <x-admin.page-header title="Clubs" subtitle="Chaque club suit le modèle d’équipe de son type (University, High School, We Are Carthage), réglé dans Modèles de clubs.">
         <x-slot:actions>
-            <a href="{{ route('admin.roles.index') }}" class="btn btn-secondary"><x-admin.icon name="shield" :size="16" /> Droits des clubs</a>
+            <a href="{{ route('admin.templates.home') }}" class="btn btn-secondary"><x-admin.icon name="shield" :size="16" /> Modèles de clubs</a>
             @if($canEdit)
                 <form method="post" action="{{ route('admin.clubs.align') }}" data-confirm="Les clubs University et High School qui n’ont pas encore l’équipe standard (ou dont elle est incomplète) seront complétés. Les personnes déjà affectées ne bougent pas." data-confirm-title="Compléter les équipes des clubs ?">
                     @csrf

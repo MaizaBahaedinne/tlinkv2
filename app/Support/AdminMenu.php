@@ -130,7 +130,7 @@ class AdminMenu
                     ['label' => 'Candidatures aux postes', 'route' => 'admin.candidatures.index', 'icon' => 'user-check', 'match' => 'admin.candidatures.*', 'perms' => ['entity.manage'], 'badge' => 'applications'],
                     ['label' => 'Clubs', 'route' => 'admin.clubs.index', 'icon' => 'building', 'match' => 'admin.clubs.*', 'perms' => ['entity.manage']],
                     ['label' => 'Établissements', 'route' => 'admin.institutions.index', 'icon' => 'graduation', 'match' => 'admin.institutions.*', 'perms' => ['entity.manage']],
-                    ['label' => 'Droits des clubs', 'route' => 'admin.roles.index', 'icon' => 'shield', 'match' => 'admin.roles.*', 'perms' => ['entity.manage']],
+                    ['label' => 'Modèles de clubs', 'route' => 'admin.templates.home', 'icon' => 'shield', 'match' => 'admin.templates.*', 'perms' => ['entity.manage']],
                     ['label' => 'Périmètres', 'route' => 'admin.scopes.edit', 'icon' => 'network', 'match' => 'admin.scopes.*', 'perms' => ['entity.manage']],
                 ],
             ],

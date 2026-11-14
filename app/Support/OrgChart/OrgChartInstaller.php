@@ -4,7 +4,6 @@ namespace App\Support\OrgChart;
 
 use App\Models\Governorate;
 use App\Models\OrgNode;
-use App\Support\ClubRoles;
 use App\Support\OrgScopes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -345,210 +344,23 @@ class OrgChartInstaller
     }
 
     /**
-     * Ajoute l'equipe type a un club. Modele par defaut : l'administrateur peut ensuite tout modifier.
+     * Ajoute au club l'equipe de son type (University, High School, We Are Carthage), telle que definie dans
+     * Admin > Modeles de clubs. Ne cree que les blocs manquants : l'appel est sans risque sur un club deja equipe.
      */
     public function applyTemplate(OrgNode $clubNode): int
     {
-        $regional = $clubNode->category === 'regional_club';
-        $created = [];
-        $count = 0;
-        $levels = $regional ? [] : ClubRoles::levels();
-
-        foreach ($this->clubTemplate($regional) as $slot => $definition) {
-            $parentId = $definition['parent'] === null ? $clubNode->id : (isset($created[$definition['parent']]) ? $created[$definition['parent']]->id : $clubNode->id);
-
-            $created[$slot] = OrgNode::query()->create([
-                'parent_id' => $parentId,
-                'relation_type' => 'hierarchy',
-                'kind' => $definition['kind'],
-                'capacity' => $definition['capacity'],
-                'access_level' => $regional ? $definition['access'] : ($levels[$slot] ?? 'none'),
-                'role_key' => $regional ? null : $slot,
-                'category' => $clubNode->category,
-                'title' => $definition['title'],
-                'subtitle' => $clubNode->title,
-                'validation_status' => $definition['validate'] ? 'to_validate' : 'confirmed',
-                'validation_note' => $definition['validate'] ? 'Rattachement du modèle par défaut : à adapter à la réalité du club.' : null,
-                'sort_order' => $this->nextSort($parentId),
-            ]);
-            $count++;
-        }
-
-        return $count;
+        return app(ClubTemplates::class)->sync((string) $clubNode->category, $clubNode);
     }
 
     /**
-     * @return array<string, array{title: string, parent: string|null, validate: bool, kind: string, capacity: string, access: string}>
-     */
-    public function clubTemplate(bool $regional): array
-    {
-        $slot = static fn (string $title, ?string $parent, bool $validate = false, string $kind = 'position', string $capacity = 'single', string $access = 'none'): array => [
-            'title' => $title, 'parent' => $parent, 'validate' => $validate, 'kind' => $kind, 'capacity' => $capacity, 'access' => $access,
-        ];
-
-        $slots = ['president' => $slot($regional ? 'Président du club régional' : 'Président de club', null, false, 'position', 'single', 'club_president')];
-
-        foreach (self::DEPARTMENT_SLOTS as $slug => $label) {
-            $slots['dept-'.$slug] = $slot('Département '.$label, 'president', false, 'club_department');
-            $slots['vp-'.$slug] = $slot(($regional ? 'Vice-président ' : 'VP ').$label, 'dept-'.$slug);
-
-            // University / High School : chaque departement = 1 VP + 1 Assistant + des membres.
-            if (! $regional) {
-                $slots['assistant-'.$slug] = $slot('Assistant '.$label, 'dept-'.$slug);
-                $slots['members-'.$slug] = $slot('Membres '.$label, 'dept-'.$slug, false, 'position', 'multiple');
-            }
-        }
-
-        if ($regional) {
-            $slots['members'] = $slot('Assistants et membres', 'president', true, 'position', 'multiple');
-        }
-
-        return $slots;
-    }
-
-    /**
-     * Met les clubs University / High School existants au modele : dans chaque departement, un VP, un Assistant
-     * et des membres. Les assistants places sous le VP remontent au niveau du departement, les postes manquants
-     * sont crees, et l'ancien bloc vide « Autres membres et responsables » disparait. Idempotent.
-     * Un club sans aucun bloc recoit l'equipe type ; chaque poste prend le niveau d'acces de son role.
+     * Aligne tous les clubs sur le modele de leur type : blocs manquants crees, intitules, droits, capacites et
+     * rattachements remis au modele, blocs retires du modele supprimes s'ils sont vides. Idempotent.
      *
-     * @return int nombre de blocs crees, deplaces ou retires
+     * @return int nombre de blocs crees, modifies, deplaces ou retires
      */
     public function alignClubTeams(): int
     {
-        return DB::transaction(function (): int {
-            $changes = 0;
-            $nodes = OrgNode::query()->get(['id', 'parent_id', 'kind', 'title', 'category', 'subtitle']);
-            $children = $nodes->groupBy('parent_id');
-            $held = \App\Models\OrgAssignment::query()->distinct()->pluck('node_id')->flip();
-
-            $descendants = function (OrgNode $root) use ($children): \Illuminate\Support\Collection {
-                $found = collect();
-                $queue = [$root->id];
-
-                while ($queue !== []) {
-                    foreach ($children[array_shift($queue)] ?? [] as $child) {
-                        $found->push($child);
-                        $queue[] = $child->id;
-                    }
-                }
-
-                return $found;
-            };
-
-            $clubs = $nodes->where('kind', 'club')->whereIn('category', ['university_club', 'highschool_club']);
-
-            foreach ($clubs as $club) {
-                $team = $descendants($club);
-
-                // Club sans equipe (ex. importe de l'ancienne base) : il recoit l'equipe type.
-                if ($team->isEmpty()) {
-                    $changes += $this->applyTemplate(OrgNode::query()->findOrFail($club->id));
-
-                    continue;
-                }
-
-                foreach ($team->where('kind', 'club_department') as $department) {
-                    foreach (self::DEPARTMENT_SLOTS as $label) {
-                        if ($department->title !== 'Département '.$label) {
-                            continue;
-                        }
-
-                        $direct = $children[$department->id] ?? collect();
-
-                        // Assistant place sous le VP : il remonte au niveau du departement.
-                        foreach ($direct->where('kind', 'position') as $vp) {
-                            foreach ($children[$vp->id] ?? [] as $below) {
-                                if ($below->kind === 'position' && $below->title === 'Assistant '.$label) {
-                                    OrgNode::query()->whereKey($below->id)->update(['parent_id' => $department->id, 'sort_order' => $this->nextSort($department->id)]);
-                                    $direct->push($below);
-                                    $changes++;
-                                }
-                            }
-                        }
-
-                        foreach ([['Assistant '.$label, 'single'], ['Membres '.$label, 'multiple']] as [$title, $capacity]) {
-                            if ($direct->contains(fn (OrgNode $child): bool => $child->kind === 'position' && $child->title === $title)) {
-                                continue;
-                            }
-
-                            OrgNode::query()->create([
-                                'parent_id' => $department->id,
-                                'relation_type' => 'hierarchy',
-                                'kind' => 'position',
-                                'capacity' => $capacity,
-                                'access_level' => 'none',
-                                'category' => $club->category,
-                                'title' => $title,
-                                'subtitle' => $club->title,
-                                'sort_order' => $this->nextSort($department->id),
-                            ]);
-                            $changes++;
-                        }
-                    }
-                }
-
-                // Ancien bloc fourre-tout du modele precedent, sans personne ni sous-bloc.
-                foreach ($team->where('title', 'Autres membres et responsables') as $others) {
-                    if (! isset($held[$others->id]) && ! isset($children[$others->id])) {
-                        OrgNode::query()->whereKey($others->id)->delete();
-                        $changes++;
-                    }
-                }
-            }
-
-            return $changes + $this->tagClubRoles();
-        });
-    }
-
-    /**
-     * Pose le role (cle de l'equipe type) sur les blocs des clubs University / High School qui n'en ont pas encore,
-     * et aligne le niveau d'acces des postes sur celui defini pour leur role.
-     *
-     * @return int nombre de blocs etiquetes
-     */
-    public function tagClubRoles(): int
-    {
-        $keys = ClubRoles::keysByTitle();
-        $levels = ClubRoles::levels();
-        $nodes = OrgNode::query()->get(['id', 'parent_id', 'kind', 'title', 'category', 'role_key'])->keyBy('id');
-        $count = 0;
-
-        foreach ($nodes as $node) {
-            if ($node->role_key !== null || ! in_array($node->kind, ['position', 'club_department'], true) || ! isset($keys[$node->title])) {
-                continue;
-            }
-
-            // Le bloc doit se trouver dans un club University / High School.
-            $inside = false;
-
-            for ($id = $node->parent_id, $guard = 0; $id && $guard < 80; $guard++) {
-                $parent = $nodes[$id] ?? null;
-
-                if (! $parent) {
-                    break;
-                }
-
-                if ($parent->kind === 'club') {
-                    $inside = in_array($parent->category, ClubRoles::CATEGORIES, true);
-                    break;
-                }
-
-                $id = $parent->parent_id;
-            }
-
-            if (! $inside) {
-                continue;
-            }
-
-            $key = $keys[$node->title];
-            $attributes = ['role_key' => $key];
-            $node->kind === 'position' && $attributes['access_level'] = $levels[$key] ?? 'none';
-            OrgNode::query()->whereKey($node->id)->update($attributes);
-            $count++;
-        }
-
-        return $count;
+        return app(ClubTemplates::class)->sync();
     }
 
     private function installNationalOffice(OrgNode $director, string $key, string $coordinatorTitle, string $office, string $clubsBranchTitle, string $clubCategory): void

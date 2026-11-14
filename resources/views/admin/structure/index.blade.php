@@ -33,7 +33,7 @@
                 @endforeach
                 <li><strong>Périmètre</strong> : le poste agit dans ce périmètre et dans ses sous-périmètres. « Hérité » reprend le périmètre du bloc parent. Sans périmètre, un poste ne donne aucun droit.</li>
                 <li><strong>Plateforme entière</strong> : le poste agit partout, sans limite de périmètre (réservé aux administrateurs).</li>
-                <li>Les postes de l’équipe standard des clubs se règlent ensemble dans <a href="{{ route('admin.roles.index') }}">Droits des clubs</a>.</li>
+                <li>Les postes de l’équipe standard des clubs se règlent ensemble dans <a href="{{ route('admin.templates.home') }}">Modèles de clubs</a>.</li>
             </ul>
         </div>
     </details>
@@ -178,7 +178,7 @@
 
                                     <td class="cell-actions">
                                         @if($locked)
-                                            <a href="{{ route('admin.roles.index') }}" class="btn btn-ghost btn-sm" title="Droits communs à tous les clubs">Droits des clubs</a>
+                                            <a href="{{ route('admin.templates.home') }}" class="btn btn-ghost btn-sm" title="Poste défini par le modèle de son type de club">Modèle</a>
                                         @endif
                                         <a href="{{ route('admin.postes.edit', $node) }}" class="btn btn-secondary btn-sm">{{ $canEdit ? 'Modifier' : 'Voir' }}</a>
                                     </td>

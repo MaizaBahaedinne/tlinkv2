@@ -40,7 +40,7 @@
             <div class="card-head">
                 <div>
                     <h2>Organigramme du club</h2>
-                    <p class="sub">Les postes sont les mêmes dans tous les clubs University / High School.</p>
+                    <p class="sub">Les postes suivent le modèle du type de club (Admin > Modèles de clubs).</p>
                 </div>
             </div>
             <div class="card-body">

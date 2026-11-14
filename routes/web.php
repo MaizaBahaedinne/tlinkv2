@@ -547,8 +547,12 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('structure/clubs/aligner', [Admin\StructureController::class, 'alignClubs'])->name('clubs.align');
             Route::post('structure/clubs/statut', [Admin\StructureController::class, 'bulkClubStatus'])->name('clubs.status');
             Route::get('structure/clubs/{node}', [Admin\StructureController::class, 'showClub'])->name('clubs.show');
-            Route::get('structure/roles', [Admin\StructureController::class, 'roles'])->name('roles.index');
-            Route::put('structure/roles', [Admin\StructureController::class, 'updateRoles'])->name('roles.update');
+            Route::get('structure/roles', fn () => redirect()->route('admin.templates.index', ['category' => 'university_club']))->name('roles.index');
+            Route::get('structure/modeles', fn () => redirect()->route('admin.templates.index', ['category' => 'university_club']))->name('templates.home');
+            Route::get('structure/modeles/{category}', [Admin\ClubTemplateController::class, 'index'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.index');
+            Route::put('structure/modeles/{category}', [Admin\ClubTemplateController::class, 'update'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.update');
+            Route::post('structure/modeles/{category}/blocs', [Admin\ClubTemplateController::class, 'store'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.store');
+            Route::delete('structure/modeles/{category}/blocs/{key}', [Admin\ClubTemplateController::class, 'destroy'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.destroy');
             Route::get('structure/perimetres', [Admin\ScopeSettingsController::class, 'edit'])->name('scopes.edit');
             Route::put('structure/perimetres', [Admin\ScopeSettingsController::class, 'update'])->name('scopes.update');
             Route::post('structure/perimetres/{scope}/validateurs', [Admin\ScopeValidatorController::class, 'store'])->name('scopes.validators.store');

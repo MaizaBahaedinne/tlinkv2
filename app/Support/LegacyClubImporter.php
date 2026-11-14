@@ -157,7 +157,7 @@ class LegacyClubImporter
         ])->save();
 
         // Un club University / High School importé reçoit l'équipe type (identique pour tous).
-        if ($created && in_array($club->category, ClubRoles::CATEGORIES, true)) {
+        if ($created && array_key_exists((string) $club->category, \App\Support\OrgChart\ClubTemplates::CATEGORIES)) {
             $this->installer->applyTemplate($club);
         }
 
