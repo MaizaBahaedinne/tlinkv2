@@ -51,6 +51,18 @@ abstract class AdminController extends Controller
         return $scope === [] ? OrgScopes::all() : array_intersect_key(OrgScopes::all(), array_flip($scope));
     }
 
+    /**
+     * Action CRUD précise sur un module : le garde-fou des routes POST, que l'intergiciel accepte dès « créer » ou « modifier ».
+     */
+    protected function requireModuleAction(Request $request, string $module, string $action, string $permission = 'event.manage'): void
+    {
+        abort_unless(
+            $this->context($request)->allowsModule([$permission], $module, [$action]),
+            403,
+            'Les habilitations de votre poste ne couvrent pas cette action.'
+        );
+    }
+
     protected function audit(Request $request, string $action, object $target, array $metadata = []): void
     {
         AuditLogger::record(

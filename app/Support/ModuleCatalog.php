@@ -46,6 +46,25 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'marketing', 'name' => 'Marketing', 'description' => 'Comptes de communication des clubs (Facebook, Instagram, e-mail).',
+                'children' => [
+                    ['key' => 'marketing.accounts', 'name' => 'Comptes marketing', 'description' => 'Coffre des accès partagés Facebook, Instagram et e-mail : mots de passe chiffrés, consultation tracée, suivi des clubs qui n’ont pas encore déposé leurs accès.', 'actions' => self::CRUD],
+                ],
+            ],
+            [
+                'key' => 'sponsoring', 'name' => 'Sponsors et partenaires', 'description' => 'Carnet d’adresses des sponsors et partenaires, et pistes de sponsoring des clubs.',
+                'children' => [
+                    ['key' => 'sponsoring.contacts', 'name' => 'Carnet sponsors et partenaires', 'description' => 'Organisations avec lesquelles la Fondation et les clubs travaillent, leurs interlocuteurs et l’historique des échanges.', 'actions' => self::CRUD],
+                    ['key' => 'sponsoring.leads', 'name' => 'Pistes de sponsoring', 'description' => 'Pistes lancées par les clubs auprès des sponsors : montant visé, échéance, relances et résultat.', 'actions' => self::CRUD],
+                ],
+            ],
+            [
+                'key' => 'meetings', 'name' => 'Réunions', 'description' => 'Planification des réunions des clubs et de la Fondation.',
+                'children' => [
+                    ['key' => 'meetings.meetings', 'name' => 'Réunions', 'description' => 'Date, lieu, sujet, durée, ordre du jour, invitations, présences et décisions par point.', 'actions' => self::CRUD],
+                ],
+            ],
+            [
                 'key' => 'cards', 'name' => 'Cartes et pointage', 'description' => 'Carte de membre (une par adhésion validée et par mandat) et pointage des entrées et sorties.',
                 'children' => [
                     ['key' => 'cards.checkpoint', 'name' => 'Pointage', 'description' => 'Scanner la carte d’un membre pour pointer son entrée ou sa sortie (activité, événement, local) et consulter l’historique des pointages.', 'actions' => self::CRUD],

@@ -53,6 +53,10 @@ class AdminMenu
         'admin.events.*' => 'events.events',
         'admin.challenges.*' => 'challenges.challenges',
         'admin.activities.*' => 'challenges.activities',
+        'admin.marketing.*' => 'marketing.accounts',
+        'admin.sponsors.*' => 'sponsoring.contacts',
+        'admin.sponsor-leads.*' => 'sponsoring.leads',
+        'admin.meetings.*' => 'meetings.meetings',
         'admin.checkpoint.*' => 'cards.checkpoint',
         'admin.checkpoint-history.*' => 'cards.checkpoint',
         'admin.premises.*' => 'cards.premises',
@@ -197,6 +201,15 @@ class AdminMenu
                     ['label' => 'Événements', 'route' => 'admin.events.index', 'icon' => 'calendar', 'match' => 'admin.events.*', 'perms' => ['event.manage']],
                     ['label' => 'Défis', 'route' => 'admin.challenges.index', 'icon' => 'award', 'match' => 'admin.challenges.*', 'perms' => ['event.manage']],
                     ['label' => 'Activités des clubs', 'route' => 'admin.activities.index', 'icon' => 'calendar', 'match' => 'admin.activities.*', 'perms' => ['event.manage']],
+                    ['label' => 'Réunions', 'route' => 'admin.meetings.index', 'icon' => 'users', 'match' => 'admin.meetings.*', 'perms' => ['event.manage']],
+                ],
+            ],
+            [
+                'title' => 'Marketing et partenariats',
+                'items' => [
+                    ['label' => 'Comptes marketing', 'route' => 'admin.marketing.accounts.index', 'icon' => 'key', 'match' => 'admin.marketing.*', 'perms' => ['event.manage']],
+                    ['label' => 'Sponsors et partenaires', 'route' => 'admin.sponsors.index', 'icon' => 'award', 'match' => 'admin.sponsors.*', 'perms' => ['event.manage']],
+                    ['label' => 'Pistes de sponsoring', 'route' => 'admin.sponsor-leads.index', 'icon' => 'flag', 'match' => 'admin.sponsor-leads.*', 'perms' => ['event.manage']],
                 ],
             ],
             [

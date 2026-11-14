@@ -250,6 +250,8 @@ Route::middleware('auth')->group(function (): void {
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
     Route::get('/mes-taches', [\App\Http\Controllers\MyTasksController::class, 'index'])->name('tasks.mine');
+    Route::get('/mes-reunions', [\App\Http\Controllers\MyMeetingsController::class, 'index'])->name('meetings.mine');
+    Route::post('/mes-reunions/{meeting}/reponse', [\App\Http\Controllers\MyMeetingsController::class, 'respond'])->whereNumber('meeting')->middleware('throttle:30,1')->name('meetings.respond');
     Route::get('/recherche', [SearchController::class, 'index'])->name('search.index');
     Route::get('/recherche/suggestions', [SearchController::class, 'suggest'])->middleware('throttle:search-suggest')->name('search.suggest');
 
@@ -610,6 +612,48 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
         });
 
         Route::middleware('admin.can:event.manage')->group(function (): void {
+
+            // Comptes marketing (coffre des accès Facebook / Instagram / e-mail).
+            Route::get('marketing/comptes', [Admin\MarketingAccountController::class, 'index'])->name('marketing.accounts.index');
+            Route::get('marketing/comptes/creer', [Admin\MarketingAccountController::class, 'create'])->name('marketing.accounts.create');
+            Route::post('marketing/comptes', [Admin\MarketingAccountController::class, 'store'])->name('marketing.accounts.store');
+            Route::get('marketing/comptes/{account}/modifier', [Admin\MarketingAccountController::class, 'edit'])->whereNumber('account')->name('marketing.accounts.edit');
+            Route::put('marketing/comptes/{account}', [Admin\MarketingAccountController::class, 'update'])->whereNumber('account')->name('marketing.accounts.update');
+            Route::delete('marketing/comptes/{account}', [Admin\MarketingAccountController::class, 'destroy'])->whereNumber('account')->name('marketing.accounts.destroy');
+            Route::get('marketing/comptes/{account}/secret', [Admin\MarketingAccountController::class, 'secret'])->whereNumber('account')->middleware('throttle:30,1')->name('marketing.accounts.secret');
+
+            // Sponsors et partenaires : carnet d'adresses et pistes de sponsoring.
+            Route::get('sponsors', [Admin\SponsorController::class, 'index'])->name('sponsors.index');
+            Route::post('sponsors', [Admin\SponsorController::class, 'store'])->name('sponsors.store');
+            Route::get('sponsors/{sponsor}', [Admin\SponsorController::class, 'show'])->whereNumber('sponsor')->name('sponsors.show');
+            Route::put('sponsors/{sponsor}', [Admin\SponsorController::class, 'update'])->whereNumber('sponsor')->name('sponsors.update');
+            Route::delete('sponsors/{sponsor}', [Admin\SponsorController::class, 'destroy'])->whereNumber('sponsor')->name('sponsors.destroy');
+            Route::post('sponsors/{sponsor}/contacts', [Admin\SponsorController::class, 'storeContact'])->whereNumber('sponsor')->name('sponsors.contacts.store');
+            Route::put('sponsors/{sponsor}/contacts/{contact}', [Admin\SponsorController::class, 'updateContact'])->whereNumber(['sponsor', 'contact'])->name('sponsors.contacts.update');
+            Route::delete('sponsors/{sponsor}/contacts/{contact}', [Admin\SponsorController::class, 'destroyContact'])->whereNumber(['sponsor', 'contact'])->name('sponsors.contacts.destroy');
+            Route::get('pistes-sponsoring', [Admin\SponsorLeadController::class, 'index'])->name('sponsor-leads.index');
+            Route::post('pistes-sponsoring', [Admin\SponsorLeadController::class, 'store'])->name('sponsor-leads.store');
+            Route::put('pistes-sponsoring/{lead}', [Admin\SponsorLeadController::class, 'update'])->whereNumber('lead')->name('sponsor-leads.update');
+            Route::delete('pistes-sponsoring/{lead}', [Admin\SponsorLeadController::class, 'destroy'])->whereNumber('lead')->name('sponsor-leads.destroy');
+
+            // Réunions : ordre du jour, invités, présences, décisions.
+            Route::get('reunions', [Admin\MeetingController::class, 'index'])->name('meetings.index');
+            Route::get('reunions/creer', [Admin\MeetingController::class, 'create'])->name('meetings.create');
+            Route::post('reunions', [Admin\MeetingController::class, 'store'])->name('meetings.store');
+            Route::get('reunions/{meeting}', [Admin\MeetingController::class, 'show'])->whereNumber('meeting')->name('meetings.show');
+            Route::get('reunions/{meeting}/modifier', [Admin\MeetingController::class, 'edit'])->whereNumber('meeting')->name('meetings.edit');
+            Route::put('reunions/{meeting}', [Admin\MeetingController::class, 'update'])->whereNumber('meeting')->name('meetings.update');
+            Route::delete('reunions/{meeting}', [Admin\MeetingController::class, 'destroy'])->whereNumber('meeting')->name('meetings.destroy');
+            Route::post('reunions/{meeting}/statut', [Admin\MeetingController::class, 'status'])->whereNumber('meeting')->name('meetings.status');
+            Route::put('reunions/{meeting}/compte-rendu', [Admin\MeetingController::class, 'minutes'])->whereNumber('meeting')->name('meetings.minutes');
+            Route::post('reunions/{meeting}/points', [Admin\MeetingController::class, 'storeItem'])->whereNumber('meeting')->name('meetings.items.store');
+            Route::put('reunions/{meeting}/points/{item}', [Admin\MeetingController::class, 'updateItem'])->whereNumber(['meeting', 'item'])->name('meetings.items.update');
+            Route::delete('reunions/{meeting}/points/{item}', [Admin\MeetingController::class, 'destroyItem'])->whereNumber(['meeting', 'item'])->name('meetings.items.destroy');
+            Route::post('reunions/{meeting}/points/{item}/deplacer', [Admin\MeetingController::class, 'moveItem'])->whereNumber(['meeting', 'item'])->name('meetings.items.move');
+            Route::post('reunions/{meeting}/invites', [Admin\MeetingController::class, 'addAttendees'])->whereNumber('meeting')->name('meetings.attendees.store');
+            Route::delete('reunions/{meeting}/invites/{attendee}', [Admin\MeetingController::class, 'removeAttendee'])->whereNumber(['meeting', 'attendee'])->name('meetings.attendees.destroy');
+            Route::put('reunions/{meeting}/presences', [Admin\MeetingController::class, 'attendance'])->whereNumber('meeting')->name('meetings.attendance');
+            Route::post('reunions/{meeting}/invitations', [Admin\MeetingController::class, 'sendInvitations'])->whereNumber('meeting')->name('meetings.invitations');
             Route::get('evenements', [Admin\EventController::class, 'index'])->name('events.index');
             Route::get('evenements/creer', [Admin\EventController::class, 'create'])->name('events.create');
             Route::post('evenements', [Admin\EventController::class, 'store'])->name('events.store');
