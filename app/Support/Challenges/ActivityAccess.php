@@ -162,8 +162,18 @@ final class ActivityAccess
      */
     public static function reportCandidates(ClubActivity $activity): \Illuminate\Support\Collection
     {
+        return self::candidatesForClubs($activity->organizerClubIds());
+    }
+
+    /**
+     * Adhérents validés et titulaires d'un poste (départements compris) des clubs donnés, avec leur poste dans `report_role`.
+     *
+     * @param  array<int, int>  $clubIds
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public static function candidatesForClubs(array $clubIds): \Illuminate\Support\Collection
+    {
         $parents = OrgNode::query()->pluck('parent_id', 'id')->all();
-        $clubIds = $activity->organizerClubIds();
         $nodeIds = array_values(array_filter(array_map('intval', array_keys($parents)), function (int $id) use ($clubIds, $parents): bool {
             foreach ($clubIds as $clubId) {
                 if (self::isInside($id, $clubId, $parents) || $id === $clubId) {

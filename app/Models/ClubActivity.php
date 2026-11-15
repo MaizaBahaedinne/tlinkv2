@@ -74,6 +74,11 @@ class ClubActivity extends Model
         return $this->hasMany(ActivityOrganizer::class, 'activity_id');
     }
 
+    public function committee(): HasMany
+    {
+        return $this->hasMany(ActivityCommitteeMember::class, 'activity_id')->orderBy('id');
+    }
+
     public function registrations(): HasMany
     {
         return $this->hasMany(ActivityRegistration::class, 'activity_id');

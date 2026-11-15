@@ -92,6 +92,20 @@
             </article>
 
             <article class="card">
+                <div class="card-head"><div><h2>Comité d’organisation</h2><div class="sub">{{ $activity->committee->count() }} membre(s)</div></div>@if($canLead)<a href="{{ route('admin.activities.edit', $activity) }}" class="btn btn-secondary btn-sm">Modifier</a>@endif</div>
+                <div class="card-body text-sm">
+                    @forelse($activity->committee as $member)
+                        <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px">
+                            <strong>{{ $member->user?->name }}</strong>
+                            <span class="badge badge-{{ $member->role === 'lead' ? 'info' : 'neutral' }}">{{ $member->roleLabel() }}</span>
+                        </div>
+                    @empty
+                        <p class="text-muted">Aucun comité désigné.</p>
+                    @endforelse
+                </div>
+            </article>
+
+            <article class="card">
                 <div class="card-head"><div><h2>Co-organisateurs</h2><div class="sub">Chaque club organisateur reçoit la note complète de l’activité.</div></div></div>
                 <div class="card-body text-sm">
                     @forelse($activity->organizers as $organizer)

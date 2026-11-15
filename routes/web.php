@@ -674,6 +674,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
 
             Route::get('activites', [Admin\ActivityController::class, 'index'])->name('activities.index');
             Route::get('activites/creer', [Admin\ActivityController::class, 'create'])->name('activities.create');
+            Route::get('activites/comite', [Admin\ActivityController::class, 'committee'])->middleware('throttle:60,1')->name('activities.committee');
             Route::post('activites', [Admin\ActivityController::class, 'store'])->name('activities.store');
             Route::get('activites/{activity}', [Admin\ActivityController::class, 'show'])->whereNumber('activity')->name('activities.show');
             Route::get('activites/{activity}/modifier', [Admin\ActivityController::class, 'edit'])->whereNumber('activity')->name('activities.edit');

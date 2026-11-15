@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\ActivityCommitteeMember;
 use App\Models\ActivityOrganizer;
 use App\Models\ActivityRegistration;
 use App\Models\AppNotification;
@@ -9,10 +10,12 @@ use App\Models\Challenge;
 use App\Models\ClubActivity;
 use App\Models\OrgNode;
 use App\Support\Challenges\ActivityAccess;
+use App\Support\Challenges\ActivityRegistrationQuestions;
 use App\Support\Challenges\Challenges;
 use App\Support\Challenges\ChallengeScoring;
 use App\Support\OrgAccess;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -52,12 +55,24 @@ class ActivityController extends AdminController
         ])));
     }
 
+    /** Personnes que l'on peut mettre au comité d'organisation d'un club (JSON, utilisé par l'étape « Comité » du formulaire). */
+    public function committee(Request $request): JsonResponse
+    {
+        $clubId = $request->integer('club');
+        abort_unless($clubId > 0 && ActivityAccess::canManageClub($request->user(), $clubId), 403, 'Vous ne gérez pas ce club.');
+        abort_unless(OrgNode::query()->where('kind', 'club')->whereKey($clubId)->exists(), 404);
+
+        return response()->json($this->people(ActivityAccess::candidatesForClubs([$clubId])))->header('Cache-Control', 'no-store, private');
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request, null);
+        $committee = $this->committeeInput($request, [(int) $data['club_id']]);
 
         $activity = ClubActivity::query()->create($data + ['created_by' => $request->user()->id]);
         $this->syncCover($request, $activity);
+        $this->syncCommittee($request, $activity, $committee);
 
         $this->audit($request, 'admin.activity.created', $activity, ['title' => $activity->title, 'challenge_id' => $activity->challenge_id, 'club_id' => $activity->club_id]);
 
@@ -68,7 +83,7 @@ class ActivityController extends AdminController
     {
         $this->authorizeActivity($request, $activity);
 
-        $activity->load(['club:id,title,scope', 'challenge', 'department:id,title', 'organizers.club:id,title', 'tasks.assignees:id,name', 'report']);
+        $activity->load(['club:id,title,scope', 'challenge', 'department:id,title', 'organizers.club:id,title', 'tasks.assignees:id,name', 'report', 'committee.user:id,name']);
         $taken = array_merge($activity->organizers->pluck('club_id')->all(), [$activity->club_id]);
         $tasksLocked = $activity->report !== null && ! $activity->report->isEditable();
 
@@ -97,8 +112,12 @@ class ActivityController extends AdminController
         $this->authorizeActivity($request, $activity);
         abort_unless(ActivityAccess::canManageClub($request->user(), $activity->club_id), 403, 'Seul le club porteur modifie l’activité.');
 
-        $activity->update($this->validated($request, $activity));
+        $attributes = $this->validated($request, $activity);
+        $committee = $this->committeeInput($request, $activity->organizerClubIds());
+
+        $activity->update($attributes);
         $this->syncCover($request, $activity);
+        $this->syncCommittee($request, $activity, $committee);
         $this->audit($request, 'admin.activity.updated', $activity, ['title' => $activity->title, 'status' => $activity->status]);
 
         return redirect()->route('admin.activities.show', $activity)->with('status', 'Activité mise à jour.');
@@ -240,6 +259,10 @@ class ActivityController extends AdminController
             'clubs' => $clubs,
             'challenges' => $challenges,
             'departments' => Challenges::departmentsByClub(),
+            'committeeRoles' => ActivityCommitteeMember::ROLES,
+            'committeeSelected' => $this->selectedCommittee($activity),
+            'committeePeople' => $activity->exists ? $this->people(ActivityAccess::reportCandidates($activity)) : [],
+            'questionSuggestions' => ActivityRegistrationQuestions::all(),
             'fieldRows' => collect(old('fields', $activity->registration_fields ?? []))->map(fn ($row) => [
                 'label' => $row['label'] ?? '',
                 'type' => $row['type'] ?? 'text',
@@ -247,6 +270,83 @@ class ActivityController extends AdminController
                 'options' => is_array($row['options'] ?? null) ? implode(', ', $row['options']) : (string) ($row['options'] ?? ''),
             ])->values()->all(),
         ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \App\Models\User>  $users
+     * @return array<int, array{id: int, name: string, role: string}>
+     */
+    private function people(\Illuminate\Support\Collection $users): array
+    {
+        return $users->map(fn ($user): array => ['id' => (int) $user->id, 'name' => $user->name, 'role' => (string) $user->report_role])->values()->all();
+    }
+
+    /** @return array<int, string> user_id => rôle, tel que saisi (ancienne saisie en cas d'erreur) ou enregistré. */
+    private function selectedCommittee(ClubActivity $activity): array
+    {
+        if (is_array(old('committee_ids'))) {
+            $roles = (array) old('committee_roles', []);
+
+            return collect(old('committee_ids'))->mapWithKeys(fn ($id): array => [(int) $id => array_key_exists($roles[$id] ?? '', ActivityCommitteeMember::ROLES) ? $roles[$id] : 'member'])->all();
+        }
+
+        return $activity->exists ? $activity->committee()->pluck('role', 'user_id')->all() : [];
+    }
+
+    /**
+     * Comité saisi dans le formulaire : seules des personnes des clubs organisateurs sont acceptées.
+     *
+     * @param  array<int, int>  $clubIds
+     * @return array<int, string> user_id => rôle
+     */
+    private function committeeInput(Request $request, array $clubIds): array
+    {
+        $data = $request->validate([
+            'committee_ids' => ['nullable', 'array', 'max:60'],
+            'committee_ids.*' => ['integer'],
+            'committee_roles' => ['nullable', 'array'],
+            'committee_roles.*' => ['nullable', Rule::in(array_keys(ActivityCommitteeMember::ROLES))],
+        ]);
+
+        $ids = collect($data['committee_ids'] ?? [])->map(fn ($id): int => (int) $id)->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        if ($ids->diff(ActivityAccess::candidatesForClubs($clubIds)->pluck('id'))->isNotEmpty()) {
+            throw ValidationException::withMessages(['committee_ids' => 'Certaines personnes ne font pas partie du club organisateur.']);
+        }
+
+        $roles = (array) ($data['committee_roles'] ?? []);
+
+        return $ids->mapWithKeys(fn (int $id): array => [$id => ($roles[$id] ?? '') ?: 'member'])->all();
+    }
+
+    /** Remplace le comité par la saisie, et prévient les nouveaux membres (pas l'auteur du changement). */
+    private function syncCommittee(Request $request, ClubActivity $activity, array $committee): void
+    {
+        $current = $activity->committee()->pluck('role', 'user_id')->all();
+
+        $activity->committee()->whereNotIn('user_id', array_keys($committee))->delete();
+
+        foreach ($committee as $userId => $role) {
+            $activity->committee()->updateOrCreate(['user_id' => $userId], ['role' => $role]);
+        }
+
+        foreach (array_diff(array_keys($committee), array_keys($current), [$request->user()->id]) as $userId) {
+            AppNotification::query()->create([
+                'user_id' => $userId,
+                'type' => 'activity.committee',
+                'title' => 'Vous êtes au comité d’organisation',
+                'body' => 'Vous faites partie du comité d’organisation de « '.$activity->title.' » ('.ActivityCommitteeMember::ROLES[$committee[$userId]].').',
+                'data' => ['activity_id' => $activity->id, 'url' => route('tasks.mine', [], false)],
+            ]);
+        }
+
+        if ($committee !== $current) {
+            $this->audit($request, 'admin.activity.committee_updated', $activity, ['title' => $activity->title, 'members' => count($committee)]);
+        }
     }
 
     /** Enregistre, remplace ou retire l'image de couverture (disque public, dossier activities/covers). */

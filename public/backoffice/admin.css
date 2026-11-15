@@ -534,3 +534,28 @@ a.team-title:hover { color: var(--cyan); }
     .stepper.is-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 0; }
     .store-totals { margin-left: 0; width: 100%; }
 }
+
+/* Formulaire d'activité en étapes (wizard) */
+.stepper.is-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 22px 20px; border-bottom: 1px solid var(--line); }
+.stepper.is-4 li.is-done:last-child::before { content: '\2713'; }
+.wizard-nav .step-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.wizard-nav .step-btn:hover { text-decoration: underline; }
+.wizard-title { margin: 0 0 14px; font: 700 16px var(--font-display); color: var(--navy-800); }
+.wizard-actions .grow { flex: 1; }
+.question-row { margin-top: 8px; }
+.suggestions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.suggestions .chip { cursor: pointer; }
+.suggestions .chip:hover:not(:disabled) { border-color: var(--navy-800); color: var(--navy-800); }
+.suggestions .chip:disabled { opacity: .45; cursor: default; }
+.committee-list { display: grid; gap: 8px; margin-top: 10px; max-height: 420px; overflow: auto; }
+.committee-row { display: flex; align-items: center; gap: 12px; margin: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; }
+.committee-row:hover { background: #fffafb; }
+.committee-row .who { flex: 1; min-width: 0; display: grid; }
+.committee-row .who small { color: var(--muted); }
+.committee-row select { width: auto; max-width: 200px; }
+#committee-search { margin-top: 8px; width: 100%; }
+
+@media (max-width: 720px) {
+    .stepper.is-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 0; }
+    .committee-row { flex-wrap: wrap; }
+}

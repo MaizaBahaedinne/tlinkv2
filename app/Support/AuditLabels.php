@@ -162,6 +162,7 @@ class AuditLabels
         'admin.premises.deleted' => 'Local supprimé (pointage)',
         'admin.activity.updated' => 'Activité de club modifiée',
         'admin.activity.deleted' => 'Activité de club supprimée',
+        'admin.activity.committee_updated' => 'Comité d’organisation d’une activité modifié',
         'admin.activity.report_saved' => 'Compte rendu d’activité enregistré',
         'admin.activity.report_submitted' => 'Compte rendu d’activité soumis au président',
         'admin.activity.report_validated' => 'Compte rendu d’activité validé par le président',
