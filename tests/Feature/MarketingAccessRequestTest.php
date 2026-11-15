@@ -164,6 +164,11 @@ class MarketingAccessRequestTest extends TestCase
         $this->assertSame('approved', $request->status);
         $this->assertTrue(AppNotification::query()->where('user_id', $this->member->id)->where('title', 'like', 'Demande d’accès validée%')->exists());
 
+        // Le lien de la notification est un chemin relatif (seuls ceux-là sont cliquables dans la liste).
+        $link = AppNotification::query()->where('user_id', $this->member->id)->where('title', 'like', 'Demande d’accès validée%')->firstOrFail()->data['url'];
+        $this->assertSame('/mes-acces-reseaux', $link);
+        $this->actingAs($this->member)->get('/notifications')->assertOk()->assertSee('href="/mes-acces-reseaux"', false);
+
         // Pas de mot de passe avant la signature de la charte.
         $this->flushSession();
         $this->actingAs($this->member)->getJson("/mes-acces-reseaux/{$request->id}/acces")->assertForbidden();

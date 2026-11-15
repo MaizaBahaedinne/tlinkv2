@@ -45,11 +45,22 @@ final class DigitalManagers
         return (new AdminContext($user))->isGlobal('entity.manage') || in_array($user->id, self::userIds($action), true);
     }
 
-    /** Notifie un ou plusieurs comptes (dans T.Link). */
+    /** Notifie un ou plusieurs comptes (dans T.Link). Le lien est stocké en chemin relatif : la liste des notifications n'affiche que ceux-là. */
     public static function notify(array $userIds, string $title, string $body, string $url, string $type = 'marketing_access'): void
     {
+        $url = self::relative($url);
+
         foreach (array_unique($userIds) as $userId) {
             AppNotification::query()->create(['user_id' => $userId, 'type' => $type, 'title' => $title, 'body' => $body, 'data' => ['url' => $url]]);
         }
+    }
+
+    /** « https://hote/chemin?x=1 » devient « /chemin?x=1 ». */
+    public static function relative(string $url): string
+    {
+        $path = parse_url($url, PHP_URL_PATH) ?: '/';
+        $query = parse_url($url, PHP_URL_QUERY);
+
+        return $path.($query ? '?'.$query : '');
     }
 }
