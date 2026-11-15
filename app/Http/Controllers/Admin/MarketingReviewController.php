@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\MarketingAccessRequest;
-use App\Support\ClubReach;
 use App\Support\DigitalManagers;
 use App\Support\MarketingCharters;
 use Illuminate\Http\RedirectResponse;
@@ -12,7 +11,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Validation des demandes d'accès aux comptes marketing par le digital manager de la Fondation : validation (suivie
+ * Validation des demandes d'accès aux comptes marketing par les postes habilités (module « Gestion des demandes d’accès ») : validation (suivie
  * de la signature de la charte par le bénéficiaire), refus, attribution du portfolio Meta et retrait de l'accès.
  */
 class MarketingReviewController extends AdminController
@@ -133,11 +132,11 @@ class MarketingReviewController extends AdminController
         return redirect()->route('admin.marketing.review.show', $accessRequest)->with('status', 'Accès retiré. Pensez à changer les mots de passe concernés.');
     }
 
-    /** Réservé aux personnes à portée globale (digital manager de la Fondation, administrateurs). */
+    /** Réservé aux postes dont la matrice accorde « Gestion des demandes d’accès » (consulter / modifier). */
     private function authorizeReviewer(Request $request, string $action = 'read'): void
     {
         $this->requireModuleAction($request, self::MODULE, $action);
-        abort_unless(ClubReach::isGlobal($request->user()), 403, 'La validation des demandes revient au digital manager de la Fondation.');
+        abort_unless(DigitalManagers::canReview($request->user(), $action), 403, 'La validation des demandes est réservée aux postes habilités par l’administration.');
     }
 
     private function trace(MarketingAccessRequest $accessRequest): array

@@ -13,6 +13,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Support\DigitalManagers;
 use App\Support\MarketingEntities;
+use App\Support\ModulePermissions;
 use App\Support\OrgChart\OrgChartInstaller;
 use Database\Seeders\GovernorateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,7 +60,10 @@ class MarketingAccessRequestTest extends TestCase
         $this->verify($this->member);
 
         $this->manager = User::factory()->create();
-        $this->placeOn(DigitalManagers::ensurePosition(), $this->manager);
+        // Poste habilité, limité à un périmètre : la validation ne dépend que de la matrice, pas d'une portée globale.
+        $reviewerNode = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'category' => 'direction', 'title' => 'Poste habilité', 'scope' => 'university', 'sort_order' => 0]);
+        ModulePermissions::apply($reviewerNode, ['marketing.review' => ['read', 'update']], false);
+        $this->placeOn($reviewerNode, $this->manager);
 
         MarketingAccount::query()->create(['club_id' => $this->club->id, 'platform' => 'facebook', 'name' => 'Page ESPRIT', 'profile_url' => 'https://facebook.com/esprit', 'login' => 'esprit@example.org', 'password' => 'Secret-Fb-123!', 'two_factor' => 'none']);
         MarketingAccount::query()->create(['club_id' => $this->club->id, 'platform' => 'instagram', 'name' => 'Insta ESPRIT', 'profile_url' => 'https://instagram.com/esprit', 'two_factor' => 'none']);
@@ -90,11 +94,11 @@ class MarketingAccessRequestTest extends TestCase
         return MarketingAccessRequest::query()->latest('id')->firstOrFail();
     }
 
-    public function test_the_digital_manager_position_exists_and_reviews_everything(): void
+    public function test_a_position_granted_the_review_module_reviews_requests_without_global_reach(): void
     {
         $this->assertContains($this->manager->id, DigitalManagers::userIds());
         $this->assertNotContains($this->president->id, DigitalManagers::userIds());
-        $this->assertTrue(OrgNode::query()->where('system_key', DigitalManagers::KEY)->exists());
+        $this->assertFalse(OrgNode::query()->where('system_key', 'digital-manager')->exists());
 
         $this->actingAs($this->manager)->get('/admin/marketing/validation')->assertOk();
         $this->actingAs($this->manager)->get('/admin/marketing/chartes')->assertOk();
@@ -135,7 +139,7 @@ class MarketingAccessRequestTest extends TestCase
         $this->assertSame(0, MarketingAccessRequest::query()->count());
     }
 
-    public function test_only_the_digital_manager_reviews_requests(): void
+    public function test_only_positions_with_the_review_module_review_requests(): void
     {
         $request = $this->submit();
 

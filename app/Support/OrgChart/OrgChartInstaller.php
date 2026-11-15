@@ -66,8 +66,6 @@ class OrgChartInstaller
                 'description' => 'Coordonne les bureaux nationaux et les responsables des projets.',
             ]);
 
-            \App\Support\DigitalManagers::ensurePosition();
-
             $this->installNationalOffice($director, 'university', 'Coordinateur national University', 'Bureau national University', 'University Clubs', 'university_club');
             $this->installNationalOffice($director, 'highschool', 'Coordinateur national Highschool', 'Bureau national Highschool', 'High School Clubs', 'highschool_club');
 

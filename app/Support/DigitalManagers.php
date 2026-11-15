@@ -5,64 +5,26 @@ namespace App\Support;
 use App\Models\AppNotification;
 use App\Models\OrgAssignment;
 use App\Models\OrgNode;
-use App\Support\OrgChart\OrgChartInstaller;
+use App\Models\User;
 
 /**
- * Digital manager de la Fondation : poste système (sous le directeur exécutif) qui valide ou refuse les demandes d'accès
- * aux comptes marketing, gère la charte d'usage des réseaux sociaux et attribue les portfolios Meta.
+ * Personnes qui valident les demandes d'accès aux comptes marketing : les titulaires de tout poste dont la matrice
+ * accorde « Gestion des demandes d’accès » (marketing.review). Aucun poste n'est créé : on l'affecte dans l'organigramme.
  */
 final class DigitalManagers
 {
-    public const KEY = 'digital-manager';
-
-    public const MATRIX = [
-        'marketing.accounts' => ['create', 'read', 'update', 'delete'],
-        'marketing.requests' => ['create', 'read', 'delete'],
-        'marketing.review' => ['read', 'update'],
-    ];
-
-    /** Crée le poste (idempotent) avec ses droits sur toute la plateforme. Sans organigramme installé, ne fait rien. */
-    public static function ensurePosition(): ?OrgNode
-    {
-        $existing = OrgNode::query()->where('system_key', self::KEY)->first();
-
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        $director = OrgNode::query()->where('system_key', 'executive-director')->first();
-
-        if ($director === null) {
-            return null;
-        }
-
-        ModuleCatalog::sync();
-
-        $node = OrgNode::query()->create([
-            'parent_id' => $director->id,
-            'category' => 'direction',
-            'title' => 'Digital manager de la Fondation',
-            'subtitle' => 'Communication digitale',
-            'description' => 'Valide ou refuse les demandes d’accès aux comptes Facebook et Instagram des entités, tient la charte d’usage des réseaux sociaux et attribue les portfolios Meta.',
-            'capacity' => 'single',
-            'system_key' => self::KEY,
-            'sort_order' => (int) OrgNode::query()->where('parent_id', $director->id)->max('sort_order') + 1,
-        ]);
-
-        ModulePermissions::apply($node, self::MATRIX, true);
-
-        return $node->refresh();
-    }
-
     /**
-     * Comptes des personnes qui valident les demandes : titulaires actuels d'un poste dont la matrice permet de modifier « marketing.review ».
+     * Comptes des titulaires actuels d'un poste dont la matrice accorde explicitement « marketing.review » (modifier par défaut).
+     * Un poste sans matrice n'en fait pas partie : la validation ne s'obtient pas par défaut.
      *
      * @return array<int, int>
      */
-    public static function userIds(): array
+    public static function userIds(string $action = 'update'): array
     {
+        $actions = $action === 'read' ? ['read', 'update'] : ['update'];
+
         $nodeIds = OrgNode::query()->where('kind', 'position')->whereNotNull('module_permissions')->get(['id', 'module_permissions'])
-            ->filter(fn (OrgNode $node): bool => in_array('update', (array) (((array) $node->module_permissions)['marketing.review'] ?? []), true))
+            ->filter(fn (OrgNode $node): bool => array_intersect($actions, (array) (((array) $node->module_permissions)['marketing.review'] ?? [])) !== [])
             ->pluck('id')->all();
 
         if ($nodeIds === []) {
@@ -75,6 +37,12 @@ final class DigitalManagers
             ->with('person:id,user_id')->get()
             ->map(fn (OrgAssignment $assignment): ?int => $assignment->person?->user_id)
             ->filter()->unique()->map(fn ($id): int => (int) $id)->values()->all();
+    }
+
+    /** Peut valider les demandes : administrateur global, ou poste à qui la matrice accorde « Gestion des demandes d’accès ». */
+    public static function canReview(User $user, string $action = 'read'): bool
+    {
+        return (new AdminContext($user))->isGlobal('entity.manage') || in_array($user->id, self::userIds($action), true);
     }
 
     /** Notifie un ou plusieurs comptes (dans T.Link). */

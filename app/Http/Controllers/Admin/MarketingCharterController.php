@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\MarketingCharter;
-use App\Support\ClubReach;
+use App\Support\DigitalManagers;
 use App\Support\MarketingCharters;
 use App\Support\MarketingEntities;
 use Illuminate\Http\RedirectResponse;
@@ -101,6 +101,6 @@ class MarketingCharterController extends AdminController
     private function authorizeReviewer(Request $request, string $action = 'read'): void
     {
         $this->requireModuleAction($request, self::MODULE, $action);
-        abort_unless(ClubReach::isGlobal($request->user()), 403, 'La charte est tenue par le digital manager de la Fondation.');
+        abort_unless(DigitalManagers::canReview($request->user(), $action), 403, 'La validation des demandes est réservée aux postes habilités par l’administration.');
     }
 }

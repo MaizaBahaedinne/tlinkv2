@@ -2,7 +2,6 @@
 
 use App\Models\MarketingAccount;
 use App\Models\OrgNode;
-use App\Support\DigitalManagers;
 use App\Support\EntityPages;
 use App\Support\ModuleCatalog;
 use App\Support\ModulePermissions;
@@ -13,7 +12,7 @@ return new class extends Migration
 {
     /**
      * Demandes d'accès et validation : les postes qui gèrent déjà les événements peuvent demander l'accès aux pages de
-     * leur entité ; le poste « Digital manager » valide. Les liens Facebook / Instagram déjà saisis sur les fiches des
+     * leur entité ; les postes qui reçoivent « Gestion des demandes d’accès » valident. Les liens Facebook / Instagram déjà saisis sur les fiches des
      * clubs et dans les réglages du site deviennent des pages du coffre.
      */
     public function up(): void
@@ -33,8 +32,6 @@ return new class extends Migration
                 $matrix['marketing.requests'] = ['read', 'create'];
                 $node->update(['module_permissions' => $matrix]);
             });
-
-        DigitalManagers::ensurePosition();
 
         foreach (['facebook' => 'facebook_url', 'instagram' => 'instagram_url'] as $platform => $column) {
             OrgNode::query()->where('kind', 'club')->whereNotNull($column)->get(['id', 'title', $column])->each(function (OrgNode $club) use ($platform, $column): void {
