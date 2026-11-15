@@ -26,7 +26,6 @@ class MarketingAccountController extends AdminController
     public function index(Request $request): View
     {
         $user = $request->user();
-        $platform = array_key_exists((string) $request->query('platform'), MarketingAccount::PLATFORMS) ? (string) $request->query('platform') : null;
         $reach = MarketingEntities::reach($user);
         $entity = $reach->has((string) $request->query('entity')) ? (string) $request->query('entity') : null;
         $type = array_key_exists((string) $request->query('type'), MarketingEntities::TYPES) ? (string) $request->query('type') : null;
@@ -34,54 +33,51 @@ class MarketingAccountController extends AdminController
         $needle = trim(mb_substr((string) $request->query('q', ''), 0, 80));
 
         $accounts = MarketingEntities::restrict(MarketingAccount::query(), $user)
-            ->with(['club:id,title', 'updater:id,name'])
-            ->when($platform, fn ($query) => $query->where('platform', $platform))
-            ->when($entity, function ($query) use ($reach, $entity): void {
-                $selected = $reach[$entity];
-                $selected['club_id'] !== null
-                    ? $query->where('club_id', $selected['club_id'])
-                    : $query->whereNull('club_id')->where('scope', $selected['scope']);
-            })
-            ->when($needle !== '', function ($query) use ($needle): void {
-                $like = '%'.addcslashes($needle, '\\%_').'%';
-                $query->where(fn ($inner) => $inner->where('name', 'like', $like)->orWhere('login', 'like', $like));
-            })
-            ->orderBy('club_id')->orderBy('scope')->orderBy('platform')->orderBy('name')
-            ->paginate(20, ['*'], 'page')->withQueryString();
-
-        // Conformité : chaque entité doit renseigner la page Facebook et la page Instagram.
-        $present = MarketingEntities::restrict(MarketingAccount::query(), $user)
-            ->whereIn('platform', MarketingAccount::REQUIRED)->get(['club_id', 'scope', 'platform', 'profile_url', 'password'])
+            ->orderBy('platform')->orderBy('name')->get()
             ->groupBy(fn (MarketingAccount $account): string => $account->entityKey());
 
-        $compliance = $reach->when($type, fn ($entities) => $entities->where('type', $type))->when($entity, fn ($entities) => $entities->where('key', $entity))->map(function (array $item) use ($present): array {
-            $states = [];
+        // Une ligne par entité : l'état de ses pages Facebook et Instagram, avec les accès déposés, et ses autres accès.
+        $rows = $reach
+            ->when($type, fn ($entities) => $entities->where('type', $type))
+            ->when($entity, fn ($entities) => $entities->where('key', $entity))
+            ->map(function (array $item) use ($accounts): array {
+                $owned = $accounts[$item['key']] ?? collect();
+                $cells = [];
 
-            foreach (MarketingAccount::REQUIRED as $key) {
-                $rows = ($present[$item['key']] ?? collect())->where('platform', $key);
-                $states[$key] = $rows->contains(fn (MarketingAccount $row): bool => filled($row->profile_url))
-                    ? ($rows->contains(fn (MarketingAccount $row): bool => $row->hasPassword()) ? 'complete' : 'page')
-                    : 'none';
-            }
+                foreach (MarketingAccount::REQUIRED as $key) {
+                    $list = $owned->where('platform', $key)->values();
+                    $cells[$key] = [
+                        'accounts' => $list,
+                        'state' => $list->contains(fn (MarketingAccount $row): bool => filled($row->profile_url))
+                            ? ($list->contains(fn (MarketingAccount $row): bool => $row->hasPassword()) ? 'complete' : 'page')
+                            : 'none',
+                    ];
+                }
 
-            return ['entity' => $item, 'states' => $states];
-        })->values();
+                return ['entity' => $item, 'cells' => $cells, 'others' => $owned->whereNotIn('platform', MarketingAccount::REQUIRED)->values()];
+            })
+            ->values();
 
-        $missing = $compliance->sum(fn (array $row): int => collect($row['states'])->filter(fn (string $state): bool => $state === 'none')->count());
+        $missing = $rows->sum(fn (array $row): int => collect($row['cells'])->where('state', 'none')->count());
 
         if ($onlyMissing) {
-            $compliance = $compliance->filter(fn (array $row): bool => in_array('none', $row['states'], true))->values();
+            $rows = $rows->filter(fn (array $row): bool => collect($row['cells'])->contains('state', 'none'))->values();
         }
 
-        $page = max(1, (int) $request->query('cpage', 1));
-        $complianceRows = (new LengthAwarePaginator($compliance->forPage($page, 15)->values(), $compliance->count(), 15, $page, ['path' => $request->url(), 'pageName' => 'cpage']))->withQueryString();
+        if ($needle !== '') {
+            $lower = mb_strtolower($needle);
+            $rows = $rows->filter(fn (array $row): bool => str_contains(mb_strtolower($row['entity']['label']), $lower)
+                || collect($row['cells'])->pluck('accounts')->push($row['others'])->flatten()
+                    ->contains(fn (MarketingAccount $account): bool => str_contains(mb_strtolower($account->name.' '.$account->login), $lower)))->values();
+        }
+
+        $page = max(1, (int) $request->query('page', 1));
+        $entities = (new LengthAwarePaginator($rows->forPage($page, 20)->values(), $rows->count(), 20, $page, ['path' => $request->url(), 'pageName' => 'page']))->withQueryString();
 
         return view('admin.marketing.index', [
-            'accounts' => $accounts,
-            'compliance' => $complianceRows,
+            'entities' => $entities,
             'missing' => $missing,
-            'entityOptions' => MarketingEntities::grouped($reach),
-            'filters' => ['platform' => $platform, 'entity' => $entity, 'type' => $type, 'missing' => $onlyMissing, 'q' => $needle],
+            'filters' => ['entity' => $entity, 'type' => $type, 'missing' => $onlyMissing, 'q' => $needle],
             'canCreate' => $this->context($request)->allowsModule(['event.manage'], self::MODULE, ['create']),
             'canUpdate' => $this->context($request)->allowsModule(['event.manage'], self::MODULE, ['update']),
             'canDelete' => $this->context($request)->allowsModule(['event.manage'], self::MODULE, ['delete']),
