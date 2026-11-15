@@ -6,6 +6,8 @@
     $logo = asset('app-icons/'.($app['icons'] ?? 'link').'/icon-192.png');
     $homeUrl = \App\Support\Domains::homeUrl(request());
 
+    $webmailBox = $section === 'webmail' ? \App\Support\Webmail\WebmailAccess::current($me, request()) : null;
+
     $sectionNav = match ($section) {
         'store' => [
             ['label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.index', 'store.products.*', 'store.packs.*')],
@@ -16,8 +18,14 @@
             ['label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*') && ! request()->routeIs('academy.calendar')],
             ['label' => 'Calendrier', 'href' => route('academy.calendar'), 'icon' => 'fa-regular fa-calendar', 'active' => request()->routeIs('academy.calendar')],
         ],
+        'webmail' => $webmailBox === null ? [] : [
+            ['label' => 'Réception', 'href' => route('webmail.index', ['boite' => $webmailBox->id]), 'icon' => 'fa-solid fa-inbox', 'active' => request()->routeIs('webmail.index', 'webmail.show'), 'badge' => \App\Support\Webmail\WebmailAccess::unseen($me), 'badgeLabel' => 'message(s) non lu(s)'],
+            \App\Support\Webmail\WebmailAccess::allows($me, $webmailBox, 'create') ? ['label' => 'Écrire', 'href' => route('webmail.compose', $webmailBox), 'icon' => 'fa-solid fa-pen', 'active' => request()->routeIs('webmail.compose')] : null,
+            ['label' => 'Réglages', 'href' => route('webmail.settings', $webmailBox), 'icon' => 'fa-solid fa-gear', 'active' => request()->routeIs('webmail.settings')],
+        ],
         default => [],
     };
+    $sectionNav = array_values(array_filter($sectionNav));
     $meName = $me->name;
     $meAvatar = $me->profile?->photoUrl();
     $meInitials = mb_strtoupper(collect(preg_split('/\s+/u', trim($meName)))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''));
@@ -36,7 +44,7 @@
                        class="relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-base transition lg:h-10 lg:w-auto lg:flex-none lg:flex-row lg:gap-2 lg:rounded-xl lg:px-3 {{ $item['active'] ? 'text-tlink-blue lg:bg-rose-50' : 'text-slate-500 hover:text-slate-900 lg:hover:bg-slate-100' }}">
                         <i class="{{ $item['icon'] }}" aria-hidden="true"></i>
                         @if(($item['badge'] ?? 0) > 0)
-                            <span class="absolute right-1/4 top-1.5 inline-flex min-w-[1.05rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.05rem] text-white lg:static" aria-label="{{ $item['badge'] }} article(s) dans le panier">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
+                            <span class="absolute right-1/4 top-1.5 inline-flex min-w-[1.05rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.05rem] text-white lg:static" aria-label="{{ $item['badge'] }} {{ $item['badgeLabel'] ?? 'article(s) dans le panier' }}">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
                         @endif
                         <span class="max-w-full truncate px-1 text-[10px] font-medium leading-none lg:px-0 lg:text-sm">{{ $item['label'] }}</span>
                     </a>

@@ -332,15 +332,16 @@ class ImapGateway implements MailGateway
             }
         }
 
-        $body = (string) ($message['body'] ?? '');
+        $text = (string) ($message['body'] ?? '');
+        $html = '<div style="white-space:pre-wrap;font-family:Arial,sans-serif;font-size:14px">'.e($text === '' ? ' ' : $text).'</div>';
         $signature = trim((string) $this->mailbox->signature);
 
         if ($signature !== '' && ! $draft) {
-            $body = rtrim($body)."\n\n-- \n".$signature;
+            $text = rtrim($text)."\n\n-- \n".WebmailSignature::text($signature);
+            $html .= '<div style="margin-top:16px;font-family:Arial,sans-serif;font-size:14px">-- <br>'.WebmailSignature::html($signature).'</div>';
         }
 
-        $body = $body === '' ? ' ' : $body;
-        $email->text($body)->html('<div style="white-space:pre-wrap;font-family:Arial,sans-serif;font-size:14px">'.e($body).'</div>');
+        $email->text($text === '' ? ' ' : $text)->html($html);
 
         if (! empty($message['in_reply_to'])) {
             $email->getHeaders()->addIdHeader('In-Reply-To', trim((string) $message['in_reply_to'], '<> '));

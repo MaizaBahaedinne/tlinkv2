@@ -11,7 +11,8 @@ final class HtmlSanitizer
 {
     private const FORBIDDEN = ['script', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet', 'form', 'input', 'button', 'select', 'textarea', 'meta', 'link', 'base', 'audio', 'video', 'source', 'svg', 'math', 'style'];
 
-    public static function clean(string $html): string
+    /** @param bool $remoteImages Autorise les images https (signature écrite par l'entité, pas un message reçu). */
+    public static function clean(string $html, bool $remoteImages = false): string
     {
         if (trim($html) === '') {
             return '';
@@ -46,7 +47,8 @@ final class HtmlSanitizer
                 if (in_array($name, ['href', 'src', 'background', 'action', 'xlink:href', 'poster'], true)) {
                     $allowed = $name === 'href'
                         ? preg_match('/^(https?:|mailto:|tel:|#)/i', $value) === 1
-                        : preg_match('/^(cid:|data:image\/(png|jpe?g|gif|webp);base64,)/i', $value) === 1;
+                        : preg_match('/^(cid:|data:image\/(png|jpe?g|gif|webp);base64,)/i', $value) === 1
+                            || ($remoteImages && $name === 'src' && preg_match('/^https:\/\//i', $value) === 1);
 
                     if (! $allowed) {
                         $element->removeAttribute($attribute->nodeName);

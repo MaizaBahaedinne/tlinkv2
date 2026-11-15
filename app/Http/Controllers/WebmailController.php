@@ -6,7 +6,6 @@ use App\Models\WebmailContact;
 use App\Models\WebmailLabel;
 use App\Models\WebmailMailbox;
 use App\Models\WebmailMessageLabel;
-use App\Support\AdminContext;
 use App\Support\AuditLogger;
 use App\Support\Webmail\FolderRoles;
 use App\Support\Webmail\GatewayFactory;
@@ -14,6 +13,7 @@ use App\Support\Webmail\HtmlSanitizer;
 use App\Support\Webmail\MailGateway;
 use App\Support\Webmail\WebmailAccess;
 use App\Support\Webmail\WebmailException;
+use App\Support\Webmail\WebmailSignature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -29,8 +29,6 @@ use Illuminate\View\View;
  */
 class WebmailController extends Controller
 {
-    private const MODULE = 'webmail.inbox';
-
     private const PER_PAGE = 25;
 
     public function __construct(private readonly GatewayFactory $gateways)
@@ -39,7 +37,7 @@ class WebmailController extends Controller
 
     public function index(Request $request): View
     {
-        $mailboxes = WebmailAccess::mailboxes($request->user())->get();
+        $mailboxes = WebmailAccess::readable($request->user());
         $mailbox = $mailboxes->firstWhere('id', $request->integer('boite')) ?? $mailboxes->first();
 
         $view = ['mailboxes' => $mailboxes, 'mailbox' => $mailbox, 'folders' => [], 'messages' => null, 'error' => null, 'folder' => 'INBOX', 'search' => '', 'labels' => collect(), 'activeLabel' => null, 'labelMap' => [], 'canWrite' => false, 'canUpdate' => false, 'roleLabels' => FolderRoles::LABELS];
@@ -47,9 +45,6 @@ class WebmailController extends Controller
         if ($mailbox === null) {
             return view('webmail.index', $view);
         }
-
-        $context = $this->context($request);
-        $this->requireModuleAction($request, self::MODULE, 'read');
 
         $folder = $this->folderParam($request, 'dossier');
         $search = trim(mb_substr((string) $request->query('q', ''), 0, 80));
@@ -59,9 +54,9 @@ class WebmailController extends Controller
 
         $view = array_merge($view, [
             'mailbox' => $mailbox, 'folder' => $folder, 'search' => $search, 'labels' => $labels, 'activeLabel' => $activeLabel,
-            'canWrite' => $context->allowsModule(['event.manage'], self::MODULE, ['create']),
-            'canUpdate' => $context->allowsModule(['event.manage'], self::MODULE, ['update']),
-            'canDelete' => $context->allowsModule(['event.manage'], self::MODULE, ['delete']),
+            'canWrite' => WebmailAccess::allows($request->user(), $mailbox, 'create'),
+            'canUpdate' => WebmailAccess::allows($request->user(), $mailbox, 'update'),
+            'canDelete' => WebmailAccess::allows($request->user(), $mailbox, 'delete'),
         ]);
 
         try {
@@ -103,7 +98,7 @@ class WebmailController extends Controller
 
         abort_if($message === null, 404, 'Ce message n’existe plus.');
 
-        $canUpdate = $this->context($request)->allowsModule(['event.manage'], self::MODULE, ['update']);
+        $canUpdate = WebmailAccess::allows($request->user(), $mailbox, 'update');
 
         if (! $message['seen'] && $canUpdate) {
             try {
@@ -125,9 +120,9 @@ class WebmailController extends Controller
             'labels' => $labels,
             'assigned' => $assigned,
             'folders' => collect($gateway->folders()),
-            'canWrite' => $this->context($request)->allowsModule(['event.manage'], self::MODULE, ['create']),
+            'canWrite' => WebmailAccess::allows($request->user(), $mailbox, 'create'),
             'canUpdate' => $canUpdate,
-            'canDelete' => $this->context($request)->allowsModule(['event.manage'], self::MODULE, ['delete']),
+            'canDelete' => WebmailAccess::allows($request->user(), $mailbox, 'delete'),
         ]);
     }
 
@@ -340,8 +335,8 @@ class WebmailController extends Controller
             'labels' => $mailbox->labels()->orderBy('name')->get(),
             'contacts' => $mailbox->contacts()->orderBy('name')->orderBy('email')->paginate(30, ['*'], 'page')->withQueryString(),
             'colors' => WebmailLabel::COLORS,
-            'canUpdate' => $this->context($request)->allowsModule(['event.manage'], self::MODULE, ['update']),
-            'canDelete' => $this->context($request)->allowsModule(['event.manage'], self::MODULE, ['delete']),
+            'canUpdate' => WebmailAccess::allows($request->user(), $mailbox, 'update'),
+            'canDelete' => WebmailAccess::allows($request->user(), $mailbox, 'delete'),
         ]);
     }
 
@@ -349,8 +344,8 @@ class WebmailController extends Controller
     {
         $this->authorizeMailbox($request, $mailbox, 'update');
 
-        $data = $request->validate(['signature' => ['nullable', 'string', 'max:1500']]);
-        $mailbox->update(['signature' => $data['signature'] ?? null]);
+        $data = $request->validate(['signature' => ['nullable', 'string', 'max:'.WebmailSignature::MAX_LENGTH]], ['signature.max' => 'La signature est trop longue.']);
+        $mailbox->update(['signature' => WebmailSignature::normalize($data['signature'] ?? null)]);
 
         return back()->with('status', 'Signature enregistrée : elle est ajoutée à chaque message envoyé.');
     }
@@ -400,20 +395,6 @@ class WebmailController extends Controller
         return back()->with('status', 'Contact supprimé.');
     }
 
-    private function context(Request $request): AdminContext
-    {
-        return AdminContext::of($request);
-    }
-
-    private function requireModuleAction(Request $request, string $module, string $action): void
-    {
-        abort_unless(
-            $this->context($request)->allowsModule(['event.manage'], $module, [$action]),
-            403,
-            'Les habilitations de votre poste ne couvrent pas cette action.'
-        );
-    }
-
     private function audit(Request $request, string $action, object $target, array $metadata = []): void
     {
         AuditLogger::record(actorId: $request->user()->id, action: $action, targetType: $target::class, targetId: $target->getKey(), metadata: $metadata, ip: $request->ip());
@@ -421,8 +402,7 @@ class WebmailController extends Controller
 
     private function authorizeMailbox(Request $request, WebmailMailbox $mailbox, string $action): void
     {
-        $this->requireModuleAction($request, self::MODULE, $action);
-        abort_unless(WebmailAccess::can($request->user(), $mailbox), 403, 'Cette boîte est hors de votre périmètre.');
+        abort_unless(WebmailAccess::allows($request->user(), $mailbox, $action), 403, 'Les droits de votre compte ne couvrent pas cette action sur cette boîte.');
     }
 
     private function folderParam(Request $request, string $key): string

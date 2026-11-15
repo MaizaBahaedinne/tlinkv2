@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WebmailContact;
 use App\Models\WebmailLabel;
 use App\Models\WebmailMailbox;
+use App\Models\WebmailMailboxUser;
 use App\Models\WebmailMessageLabel;
 use App\Support\ModulePermissions;
 use App\Support\OrgChart\OrgChartInstaller;
@@ -17,6 +18,7 @@ use App\Support\Webmail\GatewayFactory;
 use App\Support\Webmail\HtmlSanitizer;
 use App\Support\Webmail\ImapGateway;
 use App\Support\Webmail\OvhApi;
+use App\Support\Webmail\WebmailAccess;
 use App\Support\Webmail\WebmailSettings;
 use App\Support\Webmail\WebmailSync;
 use Database\Seeders\GovernorateSeeder;
@@ -381,9 +383,102 @@ class WebmailTest extends TestCase
         $this->actingAs($this->president)->get(route('admin.webmail.mailboxes.index'))->assertOk()->assertDontSee('Boîtes de réception');
 
         $this->assertTrue(\App\Support\Webmail\WebmailAccess::available($this->president));
-        request()->attributes->remove('webmail.available.'.$this->otherPresident->id);
+        request()->attributes->remove('webmail.readable.'.$this->otherPresident->id);
         $this->assertFalse(\App\Support\Webmail\WebmailAccess::available($this->otherPresident));
         $this->assertFalse(\App\Support\Webmail\WebmailAccess::available(User::factory()->create()));
+    }
+
+    public function test_accounts_are_chosen_by_search_and_get_their_own_rights(): void
+    {
+        $member = User::factory()->create(['name' => 'Salma Ben Youssef', 'email' => 'salma@example.org']);
+        $inactive = User::factory()->create(['name' => 'Salma Inactive', 'is_active' => false]);
+
+        $this->actingAs($this->president)->getJson(route('admin.webmail.mailboxes.users.search', [$this->mailbox, 'q' => 'salma']))
+            ->assertOk()->assertJsonCount(1, 'users')->assertJsonPath('users.0.id', $member->id)->assertJsonMissing(['id' => $inactive->id]);
+        $this->getJson(route('admin.webmail.mailboxes.users.search', [$this->mailbox, 'q' => 's']))->assertOk()->assertJson(['users' => []]);
+
+        // Sans poste ni droit manuel : aucune boîte.
+        $this->flushSession();
+        $this->actingAs($member)->get(route('webmail.index'))->assertOk()->assertSee('Aucune boîte à lire');
+        $this->get(route('webmail.show', ['mailbox' => $this->mailbox, 'uid' => 7]))->assertForbidden();
+
+        $this->flushSession();
+        $this->actingAs($this->president)->post(route('admin.webmail.mailboxes.users.store', $this->mailbox), ['user_id' => $member->id, 'actions' => ['create']])
+            ->assertRedirect(route('admin.webmail.mailboxes.edit', $this->mailbox));
+        $this->assertSame(['read', 'create'], WebmailMailboxUser::query()->where('user_id', $member->id)->firstOrFail()->actions);
+        $this->get(route('admin.webmail.mailboxes.edit', $this->mailbox))->assertOk()->assertSee('Salma Ben Youssef')->assertSee('Choisi ici');
+        $this->getJson(route('admin.webmail.mailboxes.users.search', [$this->mailbox, 'q' => 'salma']))->assertJson(['users' => []]);
+        $this->assertTrue(AuditLog::query()->where('action', 'admin.webmail.access.granted')->exists());
+
+        // Elle lit et écrit, mais ne classe ni ne supprime.
+        $this->flushSession();
+        $this->actingAs($member)->get(route('webmail.index'))->assertOk()->assertSee('Demande de partenariat')->assertSee('esprit@fondation.test');
+        $this->get(route('webmail.show', ['mailbox' => $this->mailbox, 'uid' => 7]))->assertOk();
+        $this->get(route('webmail.compose', $this->mailbox))->assertOk();
+        $this->post(route('webmail.mark', ['mailbox' => $this->mailbox, 'uid' => 7]), ['flag' => 'flagged', 'on' => 1])->assertForbidden();
+        $this->delete(route('webmail.trash', ['mailbox' => $this->mailbox, 'uid' => 7]))->assertForbidden();
+        $this->assertTrue(WebmailAccess::available($member));
+        $this->get(route('admin.webmail.mailboxes.edit', $this->mailbox))->assertForbidden();
+
+        // Droits modifiés puis retirés.
+        $this->flushSession();
+        $this->actingAs($this->president)->put(route('admin.webmail.mailboxes.users.update', [$this->mailbox, $member]), ['actions' => ['update', 'delete']])->assertRedirect();
+        $this->assertSame(['read', 'update', 'delete'], WebmailMailboxUser::query()->where('user_id', $member->id)->firstOrFail()->actions);
+
+        $this->delete(route('admin.webmail.mailboxes.users.destroy', [$this->mailbox, $member]))->assertRedirect();
+        $this->assertSame(0, WebmailMailboxUser::query()->count());
+        $this->flushSession();
+        $this->actingAs($member)->get(route('webmail.index'))->assertOk()->assertSee('Aucune boîte à lire');
+    }
+
+    public function test_manually_chosen_accounts_are_managed_only_by_those_who_manage_the_mailbox(): void
+    {
+        $member = User::factory()->create();
+
+        $this->actingAs($this->otherPresident)->post(route('admin.webmail.mailboxes.users.store', $this->mailbox), ['user_id' => $member->id])->assertForbidden();
+        $this->getJson(route('admin.webmail.mailboxes.users.search', [$this->mailbox, 'q' => 'ab']))->assertForbidden();
+        $this->assertSame(0, WebmailMailboxUser::query()->count());
+
+        $this->flushSession();
+        $this->actingAs($this->president)->post(route('admin.webmail.mailboxes.users.store', $this->mailbox), ['user_id' => 999999])->assertSessionHasErrors('user_id');
+    }
+
+    public function test_manually_chosen_accounts_are_notified_of_new_messages(): void
+    {
+        $member = User::factory()->create();
+        WebmailMailboxUser::query()->create(['mailbox_id' => $this->mailbox->id, 'user_id' => $member->id, 'actions' => ['read']]);
+
+        $this->assertContains($member->id, WebmailAccess::readers($this->mailbox));
+    }
+
+    public function test_signature_accepts_long_text_and_html_which_is_sanitised_and_sent_as_html(): void
+    {
+        $long = str_repeat("Cordialement, le bureau du club ESPRIT.\n", 2000);
+        $this->assertGreaterThan(65535, strlen($long));
+
+        $this->actingAs($this->president)->put(route('admin.webmail.mailboxes.update', $this->mailbox), ['signature' => $long, 'is_active' => 1])->assertRedirect();
+        $this->assertSame(trim($long), $this->mailbox->fresh()->signature);
+
+        $html = '<p><strong>Le bureau</strong><script>alert(1)</script></p><a href="javascript:x()" onclick="y()">site</a> <a href="https://esprit.example">ESPRIT</a><img src="https://esprit.example/logo.png" onerror="z()">';
+        $this->put(route('webmail.signature', $this->mailbox), ['signature' => $html])->assertRedirect();
+
+        $saved = (string) $this->mailbox->fresh()->signature;
+        $this->assertStringContainsString('<strong>Le bureau</strong>', $saved);
+        $this->assertStringContainsString('https://esprit.example/logo.png', $saved);
+        $this->assertStringNotContainsString('<script', $saved);
+        $this->assertStringNotContainsString('javascript:', $saved);
+        $this->assertStringNotContainsString('onclick', $saved);
+        $this->assertStringNotContainsString('onerror', $saved);
+
+        $method = new \ReflectionMethod(ImapGateway::class, 'email');
+        $raw = $method->invoke(new ImapGateway($this->mailbox->fresh()), ['to' => ['marie@example.org'], 'subject' => 'Sujet', 'body' => 'Bonjour'])->toString();
+
+        $this->assertStringContainsString('text/html', $raw);
+        $this->assertStringContainsString('<strong>Le bureau</strong>', quoted_printable_decode($raw));
+        $this->assertStringContainsString('-- ', quoted_printable_decode($raw));
+
+        $this->get(route('webmail.settings', $this->mailbox))->assertOk()->assertSee('Aperçu');
+        $this->get(route('admin.webmail.mailboxes.edit', $this->mailbox))->assertOk()->assertSee('signature-preview', false);
     }
 
     public function test_deleting_a_mailbox_at_ovh_only_when_asked(): void

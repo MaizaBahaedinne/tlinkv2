@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\User;
 use App\Models\WebmailMailbox;
+use App\Models\WebmailMailboxUser;
 use App\Support\MarketingEntities;
 use App\Support\Webmail\GatewayFactory;
 use App\Support\Webmail\OvhApi;
 use App\Support\Webmail\WebmailAccess;
 use App\Support\Webmail\WebmailException;
+use App\Support\Webmail\WebmailSignature;
 use App\Support\Webmail\WebmailSettings;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -56,7 +60,7 @@ class WebmailMailboxController extends AdminController
             'entity' => ['required', 'string', Rule::in($reach->keys()->all())],
             'local_part' => ['required', 'string', 'max:64', 'regex:/^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$/'],
             'display_name' => ['nullable', 'string', 'max:120'],
-            'signature' => ['nullable', 'string', 'max:1500'],
+            'signature' => ['nullable', 'string', 'max:'.WebmailSignature::MAX_LENGTH],
             'mode' => ['required', Rule::in(['ovh', 'existing'])],
             'password' => ['nullable', 'string', 'min:8', 'max:128', Rule::requiredIf($request->input('mode') === 'existing')],
         ], [
@@ -93,7 +97,7 @@ class WebmailMailboxController extends AdminController
             'scope' => $entity['scope'],
             'address' => $address,
             'display_name' => $data['display_name'] ?? null,
-            'signature' => $data['signature'] ?? null,
+            'signature' => WebmailSignature::normalize($data['signature'] ?? null),
             'password' => $password,
             'provisioned' => $provisioned,
             'created_by' => $request->user()->id,
@@ -119,11 +123,11 @@ class WebmailMailboxController extends AdminController
 
         $data = $request->validate([
             'display_name' => ['nullable', 'string', 'max:120'],
-            'signature' => ['nullable', 'string', 'max:1500'],
+            'signature' => ['nullable', 'string', 'max:'.WebmailSignature::MAX_LENGTH],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $mailbox->update(['display_name' => $data['display_name'] ?? null, 'signature' => $data['signature'] ?? null, 'is_active' => $request->boolean('is_active')]);
+        $mailbox->update(['display_name' => $data['display_name'] ?? null, 'signature' => WebmailSignature::normalize($data['signature'] ?? null), 'is_active' => $request->boolean('is_active')]);
 
         $this->audit($request, 'admin.webmail.mailbox.updated', $mailbox, $this->trace($mailbox) + ['is_active' => $mailbox->is_active]);
 
@@ -180,6 +184,80 @@ class WebmailMailboxController extends AdminController
         $mailbox->delete();
 
         return redirect()->route('admin.webmail.mailboxes.index')->with('status', 'Boîte '.$address.' retirée de T.Link'.($deletedAtOvh ? ' et supprimée chez OVH.' : ' (elle existe toujours chez OVH).'));
+    }
+
+    /** Recherche d'un compte à autoriser sur la boîte (nom ou e-mail), hors comptes déjà choisis. */
+    public function searchUsers(Request $request, WebmailMailbox $mailbox): JsonResponse
+    {
+        $this->authorizeMailbox($request, $mailbox);
+
+        $term = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($term) < 2) {
+            return response()->json(['users' => []]);
+        }
+
+        $query = User::query()->where('is_active', true)->whereNotIn('id', WebmailMailboxUser::query()->where('mailbox_id', $mailbox->id)->select('user_id'));
+
+        foreach (array_slice(preg_split('/\s+/u', mb_substr($term, 0, 80)) ?: [], 0, 4) as $word) {
+            $like = '%'.addcslashes($word, '\\%_').'%';
+            $query->where(fn ($inner) => $inner->where('name', 'like', $like)->orWhere('email', 'like', $like));
+        }
+
+        return response()->json(['users' => $query->orderBy('name')->limit(10)->get(['id', 'name', 'email'])->map(fn (User $user): array => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => str_ends_with((string) $user->email, '@legacy.invalid') ? null : $user->email,
+        ])->all()]);
+    }
+
+    /** Autorise un compte sur la boîte, avec ses droits (lire est toujours inclus). */
+    public function grantUser(Request $request, WebmailMailbox $mailbox): RedirectResponse
+    {
+        $this->authorizeMailbox($request, $mailbox);
+
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('is_active', true)],
+            'actions' => ['nullable', 'array'],
+            'actions.*' => [Rule::in(array_keys(WebmailAccess::ACTIONS))],
+        ], ['user_id.required' => 'Choisissez un compte dans la recherche.', 'user_id.exists' => 'Ce compte est introuvable ou désactivé.']);
+
+        $user = User::query()->findOrFail($data['user_id']);
+        $actions = WebmailAccess::normalizeActions((array) ($data['actions'] ?? ['create', 'update', 'delete']));
+
+        WebmailMailboxUser::query()->updateOrCreate(['mailbox_id' => $mailbox->id, 'user_id' => $user->id], ['actions' => $actions, 'granted_by' => $request->user()->id]);
+
+        $this->audit($request, 'admin.webmail.access.granted', $mailbox, $this->trace($mailbox) + ['user_id' => $user->id, 'actions' => $actions]);
+
+        return redirect()->route('admin.webmail.mailboxes.edit', $mailbox)->with('status', $user->name.' peut maintenant utiliser '.$mailbox->address.'.');
+    }
+
+    /** Change les droits d'un compte autorisé à la main. */
+    public function updateUser(Request $request, WebmailMailbox $mailbox, User $user): RedirectResponse
+    {
+        $this->authorizeMailbox($request, $mailbox);
+
+        $data = $request->validate(['actions' => ['nullable', 'array'], 'actions.*' => [Rule::in(array_keys(WebmailAccess::ACTIONS))]]);
+        $grant = WebmailMailboxUser::query()->where('mailbox_id', $mailbox->id)->where('user_id', $user->id)->firstOrFail();
+        $actions = WebmailAccess::normalizeActions((array) ($data['actions'] ?? []));
+
+        $grant->update(['actions' => $actions]);
+
+        $this->audit($request, 'admin.webmail.access.updated', $mailbox, $this->trace($mailbox) + ['user_id' => $user->id, 'actions' => $actions]);
+
+        return redirect()->route('admin.webmail.mailboxes.edit', $mailbox)->with('status', 'Droits de '.$user->name.' mis à jour.');
+    }
+
+    /** Retire l'autorisation donnée à la main (les droits venant d'un poste ne se retirent pas ici). */
+    public function revokeUser(Request $request, WebmailMailbox $mailbox, User $user): RedirectResponse
+    {
+        $this->authorizeMailbox($request, $mailbox);
+
+        WebmailMailboxUser::query()->where('mailbox_id', $mailbox->id)->where('user_id', $user->id)->delete();
+
+        $this->audit($request, 'admin.webmail.access.revoked', $mailbox, $this->trace($mailbox) + ['user_id' => $user->id]);
+
+        return redirect()->route('admin.webmail.mailboxes.edit', $mailbox)->with('status', 'L’accès de '.$user->name.' à '.$mailbox->address.' est retiré.');
     }
 
     /** Teste la connexion IMAP de la boîte. */

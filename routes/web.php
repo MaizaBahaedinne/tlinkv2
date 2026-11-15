@@ -684,6 +684,10 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('webmail/boites/{mailbox}', [Admin\WebmailMailboxController::class, 'update'])->whereNumber('mailbox')->name('webmail.mailboxes.update');
             Route::post('webmail/boites/{mailbox}/mot-de-passe', [Admin\WebmailMailboxController::class, 'password'])->whereNumber('mailbox')->middleware('throttle:10,1')->name('webmail.mailboxes.password');
             Route::post('webmail/boites/{mailbox}/test', [Admin\WebmailMailboxController::class, 'check'])->whereNumber('mailbox')->middleware('throttle:10,1')->name('webmail.mailboxes.check');
+            Route::get('webmail/boites/{mailbox}/comptes/recherche', [Admin\WebmailMailboxController::class, 'searchUsers'])->whereNumber('mailbox')->middleware('throttle:60,1')->name('webmail.mailboxes.users.search');
+            Route::post('webmail/boites/{mailbox}/comptes', [Admin\WebmailMailboxController::class, 'grantUser'])->whereNumber('mailbox')->middleware('throttle:30,1')->name('webmail.mailboxes.users.store');
+            Route::put('webmail/boites/{mailbox}/comptes/{user}', [Admin\WebmailMailboxController::class, 'updateUser'])->whereNumber(['mailbox', 'user'])->name('webmail.mailboxes.users.update');
+            Route::delete('webmail/boites/{mailbox}/comptes/{user}', [Admin\WebmailMailboxController::class, 'revokeUser'])->whereNumber(['mailbox', 'user'])->name('webmail.mailboxes.users.destroy');
             Route::delete('webmail/boites/{mailbox}', [Admin\WebmailMailboxController::class, 'destroy'])->whereNumber('mailbox')->name('webmail.mailboxes.destroy');
 
             // Sponsors et partenaires : carnet d'adresses et pistes de sponsoring.

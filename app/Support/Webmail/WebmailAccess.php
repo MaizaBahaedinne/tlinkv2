@@ -5,21 +5,26 @@ namespace App\Support\Webmail;
 use App\Models\OrgAssignment;
 use App\Models\User;
 use App\Models\WebmailMailbox;
+use App\Models\WebmailMailboxUser;
 use App\Support\AccessLevels;
 use App\Support\AdminContext;
 use App\Support\MarketingEntities;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
-/** Qui voit quelle boîte : le périmètre vient de la matrice du poste (droit « événements » + module « Lecture et envoi »). */
+/**
+ * Qui utilise quelle boîte : soit des comptes choisis à la main sur la fiche de la boîte (avec leurs droits), soit les titulaires
+ * d'un poste dont la matrice ouvre « Lecture et envoi » sur l'entité de la boîte.
+ */
 final class WebmailAccess
 {
     public const INBOX = 'webmail.inbox';
 
     public const ACTIONS = ['read' => 'Lire', 'create' => 'Écrire', 'update' => 'Classer', 'delete' => 'Supprimer'];
 
-    /** Boîtes actives des entités que l'utilisateur gère. @return Builder<WebmailMailbox> */
+    /** Boîtes actives des entités que l'utilisateur gère par son poste. @return Builder<WebmailMailbox> */
     public static function mailboxes(User $user): Builder
     {
         return MarketingEntities::restrict(WebmailMailbox::query()->where('is_active', true), $user)->orderBy('address');
@@ -30,36 +35,104 @@ final class WebmailAccess
         return $mailbox->is_active && MarketingEntities::allows($user, $mailbox->club_id, $mailbox->scope);
     }
 
-    /** Le poste de l'utilisateur ouvre le webmail et au moins une boîte active lui est rattachée (entrée du menu). */
-    public static function available(User $user): bool
+    /**
+     * Droits donnés à la main sur chaque boîte : [identifiant de la boîte => actions]. Lire est toujours inclus.
+     *
+     * @return array<int, array<int, string>>
+     */
+    public static function grants(User $user): array
     {
-        $key = 'webmail.available.'.$user->id;
-
-        if (request()->attributes->has($key)) {
-            return (bool) request()->attributes->get($key);
+        if (! Schema::hasTable('webmail_mailbox_users')) {
+            return [];
         }
 
-        $open = Schema::hasTable('webmail_mailboxes')
-            && WebmailMailbox::query()->where('is_active', true)->exists()
-            && (new AdminContext($user))->allowsModule(['event.manage'], self::INBOX, ['read'])
-            && self::mailboxes($user)->exists();
+        return WebmailMailboxUser::query()->where('user_id', $user->id)->get(['mailbox_id', 'actions'])
+            ->mapWithKeys(fn (WebmailMailboxUser $grant): array => [(int) $grant->mailbox_id => self::normalizeActions((array) $grant->actions)])->all();
+    }
 
-        request()->attributes->set($key, $open);
+    /**
+     * L'utilisateur peut-il faire cette action sur la boîte ? Soit par un droit donné à la main sur la boîte, soit par son
+     * poste (entité de la boîte + module « Lecture et envoi »).
+     */
+    public static function allows(User $user, WebmailMailbox $mailbox, string $action): bool
+    {
+        if (! $mailbox->is_active) {
+            return false;
+        }
 
-        return $open;
+        if (in_array($action, self::grants($user)[$mailbox->id] ?? [], true)) {
+            return true;
+        }
+
+        return self::can($user, $mailbox) && self::context($user)->allowsModule(['event.manage'], self::INBOX, [$action]);
+    }
+
+    /**
+     * Boîtes que l'utilisateur peut lire (droit manuel ou poste), par ordre d'adresse.
+     *
+     * @return Collection<int, WebmailMailbox>
+     */
+    public static function readable(User $user): Collection
+    {
+        $key = 'webmail.readable.'.$user->id;
+
+        if (request()->attributes->has($key)) {
+            return request()->attributes->get($key);
+        }
+
+        $readable = collect();
+
+        if (Schema::hasTable('webmail_mailboxes')) {
+            $granted = array_keys(self::grants($user));
+            $byPost = self::mailboxes($user)->get();
+            $manual = $granted === [] ? collect() : WebmailMailbox::query()->where('is_active', true)->whereIn('id', $granted)->get();
+
+            $readable = $byPost->merge($manual)->unique('id')->filter(fn (WebmailMailbox $mailbox): bool => self::allows($user, $mailbox, 'read'))->sortBy('address')->values();
+        }
+
+        request()->attributes->set($key, $readable);
+
+        return $readable;
+    }
+
+    /** Au moins une boîte est ouverte à l'utilisateur (entrée du menu). */
+    public static function available(User $user): bool
+    {
+        return self::readable($user)->isNotEmpty();
     }
 
     /** Messages non lus (dernier relevé) dans les boîtes que l'utilisateur peut lire. */
     public static function unseen(User $user): int
     {
-        return self::available($user) ? (int) self::mailboxes($user)->sum('unseen') : 0;
+        return (int) self::readable($user)->sum('unseen');
+    }
+
+    /** Boîte affichée : celle de la route ou de ?boite=, à défaut la première de l'utilisateur. */
+    public static function current(User $user, Request $request): ?WebmailMailbox
+    {
+        $routed = $request->route('mailbox');
+        $wanted = $routed instanceof WebmailMailbox ? $routed->id : (int) $request->query('boite', 0);
+        $readable = self::readable($user);
+
+        return $readable->firstWhere('id', $wanted) ?? $readable->first();
     }
 
     /**
-     * Comptes autorisés à utiliser la boîte : titulaires d'un poste dont le niveau et la matrice ouvrent « Lecture et envoi »
-     * sur l'entité de la boîte, avec leur poste et leurs droits. Les droits se règlent poste par poste dans la matrice.
+     * Lire est toujours inclus ; les autres actions sont celles demandées.
      *
-     * @return Collection<int, array{user: User, roles: array<int, string>, actions: array<int, string>, explicit: bool}>
+     * @param array<int, string> $actions
+     * @return array<int, string>
+     */
+    public static function normalizeActions(array $actions): array
+    {
+        return array_values(array_filter(array_keys(self::ACTIONS), fn (string $action): bool => $action === 'read' || in_array($action, $actions, true)));
+    }
+
+    /**
+     * Comptes autorisés à utiliser la boîte : ceux choisis à la main (droits propres) et les titulaires d'un poste dont le
+     * niveau et la matrice ouvrent « Lecture et envoi » sur l'entité de la boîte.
+     *
+     * @return Collection<int, array{user: User, roles: array<int, string>, actions: array<int, string>, explicit: bool, manual: bool, manual_actions: array<int, string>}>
      */
     public static function authorized(WebmailMailbox $mailbox): Collection
     {
@@ -103,25 +176,53 @@ final class WebmailAccess
                 continue;
             }
 
-            $rows->push([
+            $rows->put((int) $user->id, [
                 'user' => $user,
                 'roles' => $held->map(fn (OrgAssignment $assignment): string => trim($assignment->node->title.($assignment->node->subtitle ? ' — '.$assignment->node->subtitle : '')))->unique()->values()->all(),
                 'actions' => $actions,
                 'explicit' => $held->contains(fn (OrgAssignment $assignment): bool => (array) (((array) $assignment->node->module_permissions)[self::INBOX] ?? []) !== []),
+                'manual' => false,
+                'manual_actions' => [],
             ]);
+        }
+
+        if (Schema::hasTable('webmail_mailbox_users')) {
+            foreach (WebmailMailboxUser::query()->where('mailbox_id', $mailbox->id)->with('user')->get() as $grant) {
+                if ($grant->user === null || ! $grant->user->is_active) {
+                    continue;
+                }
+
+                $manual = self::normalizeActions((array) $grant->actions);
+                $row = $rows->get((int) $grant->user_id) ?? ['user' => $grant->user, 'roles' => [], 'actions' => []];
+                $merged = array_values(array_unique(array_merge($row['actions'], $manual)));
+
+                $rows->put((int) $grant->user_id, array_merge($row, [
+                    'actions' => array_values(array_filter(array_keys(self::ACTIONS), fn (string $action): bool => in_array($action, $merged, true))),
+                    'explicit' => true,
+                    'manual' => true,
+                    'manual_actions' => $manual,
+                ]));
+            }
         }
 
         return $rows->sortBy(fn (array $row): string => mb_strtolower($row['user']->name))->values();
     }
 
     /**
-     * Comptes à prévenir d'un nouveau message : ceux dont le poste a explicitement ouvert « Lecture et envoi » (pas les
-     * administrateurs globaux, qui y ont accès sans y être affectés).
+     * Comptes à prévenir d'un nouveau message : ceux choisis à la main et ceux dont le poste a explicitement ouvert « Lecture et
+     * envoi » (pas les administrateurs globaux, qui y ont accès sans y être affectés).
      *
      * @return array<int, int>
      */
     public static function readers(WebmailMailbox $mailbox): array
     {
         return self::authorized($mailbox)->where('explicit', true)->map(fn (array $row): int => (int) $row['user']->id)->all();
+    }
+
+    private static function context(User $user): AdminContext
+    {
+        $request = request();
+
+        return $request->user()?->is($user) ? AdminContext::of($request) : new AdminContext($user);
     }
 }

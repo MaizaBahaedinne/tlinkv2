@@ -24,7 +24,14 @@
             @csrf
             @method('PUT')
             <label for="f-signature" class="block text-sm font-semibold text-slate-900">Signature (ajoutée à chaque message envoyé)</label>
-            <textarea id="f-signature" name="signature" rows="4" maxlength="1500" class="{{ $input }}">{{ old('signature', $mailbox->signature) }}</textarea>
+            <textarea id="f-signature" name="signature" rows="8" maxlength="{{ \App\Support\Webmail\WebmailSignature::MAX_LENGTH }}" spellcheck="false" class="{{ $input }} font-mono">{{ old('signature', $mailbox->signature) }}</textarea>
+            <p class="text-xs text-slate-500">Texte libre (long texte accepté) ou code HTML : liens, mise en forme, logo en https. Les scripts et formulaires sont retirés à l’enregistrement.</p>
+            @error('signature')<p class="text-xs text-rose-700">{{ $message }}</p>@enderror
+            @if(filled($mailbox->signature))
+                <p class="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Aperçu</p>
+                @php($previewDocument = '<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src https: data:; style-src \'unsafe-inline\'"><body style="margin:10px;font:14px/1.5 Arial,sans-serif;color:#222">'.\App\Support\Webmail\WebmailSignature::html($mailbox->signature).'</body>')
+                <iframe sandbox="" title="Aperçu de la signature" srcdoc="{{ $previewDocument }}" class="h-40 w-full rounded-xl border border-slate-200 bg-white"></iframe>
+            @endif
             @if($canUpdate)
                 <button class="{{ $btnPrimary }}" type="submit"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer la signature</button>
             @endif
