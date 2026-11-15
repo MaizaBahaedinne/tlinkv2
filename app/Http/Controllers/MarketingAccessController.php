@@ -10,6 +10,7 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -50,7 +51,18 @@ class MarketingAccessController extends Controller
         $data = $request->validate([
             'accept' => ['accepted'],
             'signed_name' => ['required', 'string', 'min:3', 'max:160'],
-        ], ['accept.accepted' => 'Vous devez accepter la charte pour obtenir l’accès.', 'signed_name.required' => 'Saisissez votre nom complet pour signer.']);
+            'signature' => ['required', 'string', 'max:600000', 'regex:#^data:image/png;base64,[A-Za-z0-9+/=]+$#'],
+        ], [
+            'accept.accepted' => 'Vous devez accepter la charte pour obtenir l’accès.',
+            'signed_name.required' => 'Saisissez votre nom complet pour signer.',
+            'signature.required' => 'Dessinez votre signature dans le cadre.',
+            'signature.regex' => 'La signature est invalide : dessinez-la à nouveau.',
+            'signature.max' => 'La signature est trop volumineuse : dessinez-la à nouveau.',
+        ]);
+
+        if (! $this->isDrawnPng((string) $data['signature'])) {
+            throw ValidationException::withMessages(['signature' => 'Dessinez votre signature dans le cadre avant de signer.']);
+        }
 
         $charter = MarketingCharters::forEntity($accessRequest->club_id, $accessRequest->scope);
 
@@ -59,6 +71,7 @@ class MarketingAccessController extends Controller
             'charter_version' => $charter['version'],
             'charter_text' => $charter['title']."\n\n".$charter['body'],
             'charter_signed_name' => $data['signed_name'],
+            'charter_signature' => $data['signature'],
             'charter_signed_ip' => $request->ip(),
             'charter_signed_at' => now(),
         ]);
@@ -110,6 +123,39 @@ class MarketingAccessController extends Controller
         );
 
         return response()->json(['accounts' => $accounts, 'meta_portfolio' => $accessRequest->meta_portfolio])->header('Cache-Control', 'no-store, private');
+    }
+
+    /** Vrai PNG dont au moins un point a été tracé (un cadre vide est refusé). */
+    private function isDrawnPng(string $dataUrl): bool
+    {
+        $binary = base64_decode(substr($dataUrl, strlen('data:image/png;base64,')), true);
+        $info = $binary === false ? false : @getimagesizefromstring($binary);
+
+        if ($info === false || $info[2] !== IMAGETYPE_PNG || $info[0] > 1600 || $info[1] > 800) {
+            return false;
+        }
+
+        if (! function_exists('imagecreatefromstring')) {
+            return strlen($binary) > 1500;
+        }
+
+        $image = @imagecreatefromstring($binary);
+
+        if ($image === false) {
+            return false;
+        }
+
+        $step = max(1, (int) floor(min($info[0], $info[1]) / 60));
+
+        for ($x = 0; $x < $info[0]; $x += $step) {
+            for ($y = 0; $y < $info[1]; $y++) {
+                if (((imagecolorat($image, $x, $y) >> 24) & 0x7F) < 100) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function authorizeBeneficiary(Request $request, MarketingAccessRequest $accessRequest): void

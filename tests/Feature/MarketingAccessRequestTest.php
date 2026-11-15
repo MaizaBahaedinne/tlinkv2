@@ -87,6 +87,26 @@ class MarketingAccessRequestTest extends TestCase
         ];
     }
 
+    /** PNG transparent de 200 x 80, avec ou sans trait. */
+    private function signature(bool $drawn = true): string
+    {
+        $image = imagecreatetruecolor(200, 80);
+        imagesavealpha($image, true);
+        imagealphablending($image, false);
+        imagefill($image, 0, 0, imagecolorallocatealpha($image, 0, 0, 0, 127));
+
+        if ($drawn) {
+            imagesetthickness($image, 3);
+            imageline($image, 10, 60, 100, 15, imagecolorallocatealpha($image, 15, 23, 42, 0));
+            imageline($image, 100, 15, 190, 60, imagecolorallocatealpha($image, 15, 23, 42, 0));
+        }
+
+        ob_start();
+        imagepng($image);
+
+        return 'data:image/png;base64,'.base64_encode((string) ob_get_clean());
+    }
+
     private function submit(): MarketingAccessRequest
     {
         $this->actingAs($this->president)->post('/admin/marketing/demandes', $this->payload())->assertSessionHasNoErrors();
@@ -174,12 +194,20 @@ class MarketingAccessRequestTest extends TestCase
         $this->actingAs($this->member)->getJson("/mes-acces-reseaux/{$request->id}/acces")->assertForbidden();
         $this->actingAs($this->member)->get('/mes-acces-reseaux')->assertOk()->assertSee('Lire et signer la charte');
         $this->actingAs($this->member)->get("/mes-acces-reseaux/{$request->id}/charte")->assertOk()->assertSee('ESPRIT')->assertSee('Représentation');
-        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['signed_name' => 'Membre Test'])->assertSessionHasErrors('accept');
+        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['signed_name' => 'Membre Test', 'signature' => $this->signature()])->assertSessionHasErrors('accept');
+        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Membre Test'])->assertSessionHasErrors('signature');
+        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Membre Test', 'signature' => $this->signature(false)])->assertSessionHasErrors('signature');
+        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Membre Test', 'signature' => 'data:image/png;base64,AAAA'])->assertSessionHasErrors('signature');
+        $this->assertSame('approved', $request->fresh()->status);
 
         // Seul le bénéficiaire signe.
-        $this->actingAs($this->president)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Président'])->assertForbidden();
+        $this->actingAs($this->president)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Président', 'signature' => $this->signature()])->assertForbidden();
 
-        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Membre Test'])->assertRedirect('/mes-acces-reseaux');
+        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Membre Test', 'signature' => $this->signature()])->assertRedirect('/mes-acces-reseaux');
+        $this->assertStringStartsWith('data:image/png;base64,', (string) $request->fresh()->charter_signature);
+        $this->actingAs($this->member)->get("/mes-acces-reseaux/{$request->id}/charte")->assertOk()->assertSee('data:image/png;base64,', false);
+        $this->actingAs($this->manager)->get("/admin/marketing/validation/{$request->id}")->assertOk()->assertSee('data:image/png;base64,', false);
+        $this->flushSession();
         $request->refresh();
         $this->assertSame('active', $request->status);
         $this->assertSame('Membre Test', $request->charter_signed_name);
@@ -236,7 +264,7 @@ class MarketingAccessRequestTest extends TestCase
         $request = $this->submit();
         $this->actingAs($this->manager)->post("/admin/marketing/validation/{$request->id}/valider", ['platforms' => ['facebook']]);
         $this->flushSession();
-        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Membre Test']);
+        $this->actingAs($this->member)->post("/mes-acces-reseaux/{$request->id}/charte", ['accept' => 1, 'signed_name' => 'Membre Test', 'signature' => $this->signature()]);
         $signedText = $request->fresh()->charter_text;
 
         $this->actingAs($this->manager)->get('/admin/marketing/chartes/modifier?entity=default')->assertOk()->assertSee('Représentation');

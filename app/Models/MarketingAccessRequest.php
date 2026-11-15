@@ -29,7 +29,7 @@ class MarketingAccessRequest extends Model
 
     protected $fillable = [
         'club_id', 'scope', 'requester_id', 'beneficiary_id', 'platforms', 'reason', 'facebook_profile_url', 'phone', 'identity_verified',
-        'status', 'reviewed_by', 'reviewed_at', 'review_note', 'charter_version', 'charter_text', 'charter_signed_name', 'charter_signed_ip',
+        'status', 'reviewed_by', 'reviewed_at', 'review_note', 'charter_version', 'charter_text', 'charter_signed_name', 'charter_signature', 'charter_signed_ip',
         'charter_signed_at', 'meta_portfolio', 'meta_assigned_at', 'meta_assigned_by', 'revoked_at', 'revoked_by',
     ];
 
