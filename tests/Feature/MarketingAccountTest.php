@@ -49,15 +49,24 @@ class MarketingAccountTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return $overrides + [
-            'club_id' => $this->club->id, 'platform' => 'facebook', 'name' => 'Page ESPRIT', 'login' => 'esprit@example.org',
-            'password' => 'Secret-Fb-123!', 'two_factor' => 'app', 'recovery_codes' => 'AAAA-BBBB',
+            'entity' => 'club:'.$this->club->id, 'platform' => 'facebook', 'name' => 'Page ESPRIT', 'profile_url' => 'https://facebook.com/esprit',
+            'login' => 'esprit@example.org', 'password' => 'Secret-Fb-123!', 'two_factor' => 'app', 'recovery_codes' => 'AAAA-BBBB',
         ];
     }
 
-    public function test_password_is_required_and_stored_encrypted(): void
+    public function test_password_is_optional_but_the_page_link_is_required(): void
     {
-        $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload(['password' => '']))->assertSessionHasErrors('password');
+        $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload(['profile_url' => '']))->assertSessionHasErrors('profile_url');
 
+        $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload(['login' => '', 'password' => '']))->assertRedirect('/admin/marketing/comptes');
+
+        $account = MarketingAccount::query()->firstOrFail();
+        $this->assertFalse($account->hasPassword());
+        $this->assertSame($this->club->id, $account->club_id);
+    }
+
+    public function test_password_is_stored_encrypted(): void
+    {
         $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload())->assertRedirect('/admin/marketing/comptes');
 
         $account = MarketingAccount::query()->firstOrFail();
@@ -109,20 +118,45 @@ class MarketingAccountTest extends TestCase
         $this->assertSame('AAAA-BBBB', $account->recovery_codes);
     }
 
-    public function test_compliance_lists_clubs_missing_facebook_or_instagram(): void
+    public function test_compliance_lists_entities_missing_facebook_or_instagram(): void
     {
         $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload());
 
         $page = $this->actingAs($this->admin)->get('/admin/marketing/comptes')->assertOk();
 
-        $page->assertSee('ENIT')->assertSee('ESPRIT');
+        $page->assertSee('Fondation');
         $this->assertGreaterThan(0, $page->viewData('missing'));
+
+        $this->actingAs($this->admin)->get('/admin/marketing/comptes?entity=club:'.$this->otherClub->id)->assertOk()->assertSee('ENIT');
+        $this->actingAs($this->admin)->get('/admin/marketing/comptes?type=club&missing=1&entity=club:'.$this->club->id)->assertOk()->assertSee('ESPRIT');
+    }
+
+    public function test_pages_are_copied_to_the_club_and_the_foundation(): void
+    {
+        $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload())->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload(['entity' => 'scope:foundation', 'name' => 'Instagram Fondation', 'platform' => 'instagram', 'profile_url' => 'https://instagram.com/tunivisions']))->assertSessionHasNoErrors();
+
+        $this->assertSame('https://facebook.com/esprit', $this->club->fresh()->facebook_url);
+        $this->assertSame('https://instagram.com/tunivisions', (new \App\Support\SiteSettings())->raw()['instagram_url'] ?? null);
+        $this->assertSame([['Facebook', 'fa-brands fa-facebook', 'https://facebook.com/esprit']], \App\Support\EntityPages::links($this->club->id, null));
+    }
+
+    public function test_a_link_saved_on_the_club_record_creates_its_page(): void
+    {
+        $this->otherClub->update(['instagram_url' => 'https://instagram.com/enit']);
+
+        $account = MarketingAccount::query()->where('club_id', $this->otherClub->id)->firstOrFail();
+        $this->assertSame('instagram', $account->platform);
+        $this->assertSame('https://instagram.com/enit', $account->profile_url);
+
+        $this->otherClub->update(['instagram_url' => null]);
+        $this->assertNull($account->fresh()->profile_url);
     }
 
     public function test_a_club_manager_only_reaches_their_own_club(): void
     {
         $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload());
-        $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload(['club_id' => $this->otherClub->id, 'name' => 'Page ENIT', 'login' => 'enit@example.org']));
+        $this->actingAs($this->admin)->post('/admin/marketing/comptes', $this->payload(['entity' => 'club:'.$this->otherClub->id, 'name' => 'Page ENIT', 'login' => 'enit@example.org']));
         $foreign = MarketingAccount::query()->where('club_id', $this->otherClub->id)->firstOrFail();
         $own = MarketingAccount::query()->where('club_id', $this->club->id)->firstOrFail();
 
@@ -131,7 +165,7 @@ class MarketingAccountTest extends TestCase
         $this->actingAs($this->president)->getJson("/admin/marketing/comptes/{$foreign->id}/secret")->assertForbidden();
         $this->actingAs($this->president)->get("/admin/marketing/comptes/{$foreign->id}/modifier")->assertForbidden();
         $this->actingAs($this->president)->delete("/admin/marketing/comptes/{$foreign->id}")->assertForbidden();
-        $this->actingAs($this->president)->post('/admin/marketing/comptes', $this->payload(['club_id' => $this->otherClub->id]))->assertSessionHasErrors('club_id');
+        $this->actingAs($this->president)->post('/admin/marketing/comptes', $this->payload(['entity' => 'club:'.$this->otherClub->id]))->assertSessionHasErrors('entity');
         $this->actingAs($this->president)->getJson("/admin/marketing/comptes/{$own->id}/secret")->assertOk();
     }
 

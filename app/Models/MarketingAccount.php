@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\EntityPages;
+use App\Support\MarketingEntities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -19,7 +21,7 @@ class MarketingAccount extends Model
     public const TWO_FACTOR = ['none' => 'Non activée', 'app' => 'Application d’authentification', 'sms' => 'SMS', 'email' => 'E-mail'];
 
     protected $fillable = [
-        'club_id', 'platform', 'name', 'login', 'password', 'profile_url', 'recovery_email', 'recovery_phone', 'two_factor',
+        'club_id', 'scope', 'platform', 'name', 'login', 'password', 'profile_url', 'recovery_email', 'recovery_phone', 'two_factor',
         'recovery_codes', 'notes', 'password_changed_at', 'created_by', 'updated_by',
     ];
 
@@ -30,6 +32,28 @@ class MarketingAccount extends Model
         'recovery_codes' => 'encrypted',
         'password_changed_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // La page saisie dans le coffre est recopiée sur la fiche de l'entité (club ou Fondation).
+        static::saved(fn (self $account) => EntityPages::push($account));
+        static::deleted(fn (self $account) => EntityPages::push($account));
+    }
+
+    public function entityKey(): string
+    {
+        return MarketingEntities::keyOf($this->club_id, $this->scope);
+    }
+
+    public function entityLabel(): string
+    {
+        return MarketingEntities::label($this->club_id, $this->scope);
+    }
+
+    public function hasPassword(): bool
+    {
+        return filled($this->password);
+    }
 
     public function club(): BelongsTo
     {

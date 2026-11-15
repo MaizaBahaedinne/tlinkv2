@@ -1,60 +1,74 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Comptes marketing')
+@section('title', 'Pages et comptes marketing')
 @section('section', 'Marketing et partenariats')
 
 @section('content')
-    <x-admin.page-header title="Comptes marketing" subtitle="Coffre des accès partagés Facebook, Instagram et e-mail. Chaque club dépose les accès de ses pages : si le responsable change, l’équipe garde la main. Les mots de passe sont chiffrés et chaque consultation est tracée.">
+    <x-admin.page-header title="Pages et comptes marketing" subtitle="Pages Facebook et Instagram de chaque entité (Fondation, chapitre, projet, club), affichées sur sa page. Les accès sont déposés ensuite : mots de passe chiffrés, consultation tracée, remise aux membres par demande validée.">
         <x-slot:actions>
             @if($canCreate)
-                <a href="{{ route('admin.marketing.accounts.create') }}" class="btn btn-primary"><x-admin.icon name="plus" :size="16" /> Ajouter un accès</a>
+                <a href="{{ route('admin.marketing.accounts.create') }}" class="btn btn-primary"><x-admin.icon name="plus" :size="16" /> Ajouter une page</a>
             @endif
         </x-slot:actions>
     </x-admin.page-header>
 
     <article class="card card-flush" style="margin-bottom:16px">
-        <details @if($missing > 0) open @endif>
-            <summary class="card-head" style="cursor:pointer">
-                <div>
-                    <h2>Accès obligatoires par club</h2>
-                    <p class="sub">
-                        @if($missing > 0)
-                            <strong>{{ $missing }}</strong> accès Facebook ou Instagram manquant(s) : chaque club doit les renseigner.
-                        @else
-                            Tous les clubs ont renseigné leurs accès Facebook et Instagram.
-                        @endif
-                    </p>
-                </div>
-            </summary>
-            @if($compliance->isEmpty())
-                <x-admin.empty icon="building" title="Aucun club dans votre périmètre" />
-            @else
-                <div class="table-wrap">
-                    <table class="tbl">
-                        <thead><tr><th>Club</th>@foreach(\App\Models\MarketingAccount::PLATFORMS as $label)<th>{{ $label }}</th>@endforeach</tr></thead>
-                        <tbody>
-                            @foreach($compliance as $row)
-                                <tr>
-                                    <td><span class="cell-main">{{ $row['club']->title }}</span></td>
-                                    @foreach(\App\Models\MarketingAccount::PLATFORMS as $key => $label)
-                                        <td>
-                                            @if($row['platforms'][$key])
-                                                <x-admin.badge status="active" label="Renseigné" />
-                                            @elseif(in_array($key, \App\Models\MarketingAccount::REQUIRED, true))
-                                                <span class="badge badge-danger">Manquant</span>
-                                                @if($canCreate)<a class="text-sm" href="{{ route('admin.marketing.accounts.create', ['club' => $row['club']->id, 'platform' => $key]) }}">Renseigner</a>@endif
-                                            @else
-                                                <span class="text-sm text-muted">Facultatif</span>
-                                            @endif
-                                        </td>
-                                    @endforeach
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </details>
+        <div class="card-head">
+            <div>
+                <h2>Pages Facebook et Instagram par entité</h2>
+                <p class="sub">
+                    @if($missing > 0)
+                        <strong>{{ $missing }}</strong> page(s) Facebook ou Instagram à renseigner. Les liens saisis s’affichent sur la page de l’entité.
+                    @else
+                        Toutes les entités ont renseigné leurs pages Facebook et Instagram.
+                    @endif
+                </p>
+            </div>
+        </div>
+        <form method="get" class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;padding-top:0">
+            <div class="field">
+                <label for="type">Type d’entité</label>
+                <select id="type" name="type">
+                    <option value="">Tous</option>
+                    @foreach(\App\Support\MarketingEntities::TYPES as $key => $label)
+                        <option value="{{ $key }}" @selected($filters['type'] === $key)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <label style="display:flex;gap:6px;align-items:center;padding-bottom:10px"><input type="checkbox" name="missing" value="1" @checked($filters['missing'])> Pages manquantes uniquement</label>
+            <input type="hidden" name="platform" value="{{ $filters['platform'] }}"><input type="hidden" name="entity" value="{{ $filters['entity'] }}"><input type="hidden" name="q" value="{{ $filters['q'] }}">
+            <button class="btn btn-secondary" type="submit"><x-admin.icon name="search" :size="16" /> Filtrer</button>
+        </form>
+        @if($compliance->isEmpty())
+            <x-admin.empty icon="building" title="Aucune entité à afficher" text="Aucune entité de votre périmètre ne correspond à ce filtre." />
+        @else
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead><tr><th>Entité</th><th>Type</th>@foreach(\App\Models\MarketingAccount::REQUIRED as $key)<th>{{ \App\Models\MarketingAccount::PLATFORMS[$key] }}</th>@endforeach</tr></thead>
+                    <tbody>
+                        @foreach($compliance as $row)
+                            <tr>
+                                <td><span class="cell-main">{{ $row['entity']['label'] }}</span></td>
+                                <td class="text-sm">{{ $row['entity']['type_label'] }}</td>
+                                @foreach(\App\Models\MarketingAccount::REQUIRED as $key)
+                                    <td>
+                                        @if($row['states'][$key] === 'complete')
+                                            <x-admin.badge status="active" label="Page et accès" />
+                                        @elseif($row['states'][$key] === 'page')
+                                            <x-admin.badge status="active" label="Page renseignée" />
+                                        @else
+                                            <span class="badge badge-danger">Manquante</span>
+                                            @if($canCreate)<a class="text-sm" href="{{ route('admin.marketing.accounts.create', ['entity' => $row['entity']['key'], 'platform' => $key]) }}">Renseigner</a>@endif
+                                        @endif
+                                    </td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-body">{{ $compliance->links() }}</div>
+        @endif
     </article>
 
     <article class="card card-flush">
@@ -73,11 +87,15 @@
                 </select>
             </div>
             <div class="field">
-                <label for="club">Club</label>
-                <select id="club" name="club">
-                    <option value="">Tous</option>
-                    @foreach($clubOptions as $id => $title)
-                        <option value="{{ $id }}" @selected($filters['club'] === $id)>{{ $title }}</option>
+                <label for="entity">Entité</label>
+                <select id="entity" name="entity">
+                    <option value="">Toutes</option>
+                    @foreach($entityOptions as $group => $options)
+                        <optgroup label="{{ $group }}">
+                            @foreach($options as $key => $title)
+                                <option value="{{ $key }}" @selected($filters['entity'] === $key)>{{ $title }}</option>
+                            @endforeach
+                        </optgroup>
                     @endforeach
                 </select>
             </div>
@@ -87,20 +105,22 @@
         @if($accounts->count())
             <div class="table-wrap">
                 <table class="tbl">
-                    <thead><tr><th>Plateforme</th><th>Compte</th><th class="hide-mobile">Club</th><th class="hide-mobile">Double authentification</th><th class="hide-mobile">Mot de passe</th><th></th></tr></thead>
+                    <thead><tr><th>Plateforme</th><th>Page ou compte</th><th class="hide-mobile">Entité</th><th class="hide-mobile">Double authentification</th><th class="hide-mobile">Mot de passe</th><th></th></tr></thead>
                     <tbody>
                         @foreach($accounts as $account)
                             <tr>
                                 <td><x-admin.badge :status="$account->platform" :label="$account->platformLabel()" /></td>
                                 <td>
                                     <span class="cell-main">{{ $account->name }}</span>
-                                    <div class="cell-sub">{{ $account->login }}@if($account->profile_url) · <a href="{{ $account->profile_url }}" target="_blank" rel="noopener noreferrer">Ouvrir</a>@endif</div>
+                                    <div class="cell-sub">{{ $account->login }}@if($account->login && $account->profile_url) · @endif @if($account->profile_url)<a href="{{ $account->profile_url }}" target="_blank" rel="noopener noreferrer">Ouvrir la page</a>@endif</div>
                                 </td>
-                                <td class="hide-mobile">{{ $account->club?->title ?? 'Fondation' }}</td>
+                                <td class="hide-mobile">{{ $account->entityLabel() }}</td>
                                 <td class="hide-mobile">{{ \App\Models\MarketingAccount::TWO_FACTOR[$account->two_factor] ?? '—' }}</td>
-                                <td class="hide-mobile">{{ $account->password_changed_at ? 'Changé '.$account->password_changed_at->diffForHumans() : '—' }}</td>
+                                <td class="hide-mobile">{{ $account->hasPassword() ? ($account->password_changed_at ? 'Changé '.$account->password_changed_at->diffForHumans() : 'Enregistré') : 'Sans mot de passe' }}</td>
                                 <td class="cell-actions">
-                                    <button type="button" class="btn btn-secondary btn-sm" data-reveal="{{ route('admin.marketing.accounts.secret', $account) }}" data-name="{{ $account->name }}"><x-admin.icon name="eye" :size="15" /> Révéler</button>
+                                    @if($account->hasPassword() || $account->login)
+                                        <button type="button" class="btn btn-secondary btn-sm" data-reveal="{{ route('admin.marketing.accounts.secret', $account) }}" data-name="{{ $account->name }}"><x-admin.icon name="eye" :size="15" /> Révéler</button>
+                                    @endif
                                     @if($canUpdate)<a href="{{ route('admin.marketing.accounts.edit', $account) }}" class="btn btn-secondary btn-sm"><x-admin.icon name="edit" :size="15" /> Modifier</a>@endif
                                     @if($canDelete)<x-admin.delete-button :action="route('admin.marketing.accounts.destroy', $account)" :message="'L’accès « '.$account->name.' » sera retiré du coffre.'" title="Supprimer cet accès ?" />@endif
                                 </td>
@@ -111,7 +131,7 @@
             </div>
             <div class="card-body">{{ $accounts->links() }}</div>
         @else
-            <x-admin.empty icon="key" title="Aucun accès enregistré" text="Ajoutez les accès Facebook, Instagram et e-mail de votre club." />
+            <x-admin.empty icon="key" title="Aucune page enregistrée" text="Ajoutez les pages Facebook et Instagram de votre entité." />
         @endif
     </article>
 

@@ -35,6 +35,14 @@
             @if($project->text('summary') !== '')
                 <p class="mt-4 max-w-2xl text-lg text-slate-200">{{ $project->text('summary') }}</p>
             @endif
+            @php($pageLinks = \App\Support\EntityPages::links(null, $project->scope))
+            @if($pageLinks !== [])
+                <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold">
+                    @foreach($pageLinks as [$linkLabel, $linkIcon, $linkUrl])
+                        <a href="{{ $linkUrl }}" target="_blank" rel="noopener noreferrer" class="rounded-full bg-white/15 px-3 py-1 hover:bg-white/25">{{ $linkLabel }} →</a>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </section>
 

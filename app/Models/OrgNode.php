@@ -118,6 +118,16 @@ class OrgNode extends Model
         static::saving(function (self $node): void {
             $node->syncInstitution();
         });
+
+        static::saved(fn () => \App\Support\MarketingEntities::flush());
+        static::deleted(fn () => \App\Support\MarketingEntities::flush());
+
+        // Les pages Facebook / Instagram d'un club alimentent le coffre des comptes marketing.
+        static::saved(function (self $node): void {
+            if ($node->kind === 'club' && ($node->wasChanged('facebook_url') || $node->wasChanged('instagram_url'))) {
+                \App\Support\EntityPages::pull($node);
+            }
+        });
     }
 
     /**

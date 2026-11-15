@@ -53,7 +53,10 @@ class AdminMenu
         'admin.events.*' => 'events.events',
         'admin.challenges.*' => 'challenges.challenges',
         'admin.activities.*' => 'challenges.activities',
-        'admin.marketing.*' => 'marketing.accounts',
+        'admin.marketing.accounts.*' => 'marketing.accounts',
+        'admin.marketing.requests.*' => 'marketing.requests',
+        'admin.marketing.review.*' => 'marketing.review',
+        'admin.marketing.charters.*' => 'marketing.review',
         'admin.sponsors.*' => 'sponsoring.contacts',
         'admin.sponsor-leads.*' => 'sponsoring.leads',
         'admin.meetings.*' => 'meetings.meetings',
@@ -207,7 +210,10 @@ class AdminMenu
             [
                 'title' => 'Marketing et partenariats',
                 'items' => [
-                    ['label' => 'Comptes marketing', 'route' => 'admin.marketing.accounts.index', 'icon' => 'key', 'match' => 'admin.marketing.*', 'perms' => ['event.manage']],
+                    ['label' => 'Pages et comptes', 'route' => 'admin.marketing.accounts.index', 'icon' => 'key', 'match' => 'admin.marketing.accounts.*', 'perms' => ['event.manage']],
+                    ['label' => 'Demandes d’accès', 'route' => 'admin.marketing.requests.index', 'icon' => 'users', 'match' => 'admin.marketing.requests.*', 'perms' => ['event.manage']],
+                    ['label' => 'Validation des accès', 'route' => 'admin.marketing.review.index', 'icon' => 'shield', 'match' => 'admin.marketing.review.*', 'perms' => ['event.manage'], 'badge' => 'marketing_requests'],
+                    ['label' => 'Charte des réseaux', 'route' => 'admin.marketing.charters.index', 'icon' => 'file-text', 'match' => 'admin.marketing.charters.*', 'perms' => ['event.manage']],
                     ['label' => 'Sponsors et partenaires', 'route' => 'admin.sponsors.index', 'icon' => 'award', 'match' => 'admin.sponsors.*', 'perms' => ['event.manage']],
                     ['label' => 'Pistes de sponsoring', 'route' => 'admin.sponsor-leads.index', 'icon' => 'flag', 'match' => 'admin.sponsor-leads.*', 'perms' => ['event.manage']],
                 ],
@@ -308,6 +314,9 @@ class AdminMenu
             'applications' => PositionApplication::query()->where('status', 'pending')->count(),
             'verifications' => \Illuminate\Support\Facades\Schema::hasTable('identity_verifications')
                 ? \App\Models\IdentityVerification::query()->where('status', 'pending')->count()
+                : 0,
+            'marketing_requests' => \Illuminate\Support\Facades\Schema::hasTable('marketing_access_requests')
+                ? \App\Models\MarketingAccessRequest::query()->where('status', 'pending')->count()
                 : 0,
             'mentoring' => Mentoring::enabled() ? MentoringTicket::query()->where('status', 'new')->count() : 0,
             'store_orders' => \App\Support\Store\StoreSettings::tablesReady() ? \App\Models\StoreOrder::query()->where('status', 'pending')->count() : 0,

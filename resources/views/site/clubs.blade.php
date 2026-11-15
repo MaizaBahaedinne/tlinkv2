@@ -51,10 +51,15 @@
                                         @if($club->founded_on) · {{ __('site.clubs.founded', ['year' => $club->founded_on->year]) }} @endif
                                     </p>
                                 </div>
-                                @php($facebook = preg_match('#^https?://#i', (string) $club->facebook_url) === 1 ? $club->facebook_url : null)
-                                @if($facebook)
-                                    <a href="{{ $facebook }}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-sm font-bold text-brand-600 hover:text-brand-800">{{ __('site.clubs.page') }} →</a>
-                                @endif
+                                @php($pageUrl = fn (?string $url): ?string => preg_match('#^https?://#i', (string) $url) === 1 ? $url : null)
+                                <div class="flex shrink-0 flex-col items-end gap-1 text-sm font-bold">
+                                    @if($pageUrl($club->facebook_url))
+                                        <a href="{{ $pageUrl($club->facebook_url) }}" target="_blank" rel="noopener noreferrer" class="text-brand-600 hover:text-brand-800">Facebook →</a>
+                                    @endif
+                                    @if($pageUrl($club->instagram_url))
+                                        <a href="{{ $pageUrl($club->instagram_url) }}" target="_blank" rel="noopener noreferrer" class="text-brand-600 hover:text-brand-800">Instagram →</a>
+                                    @endif
+                                </div>
                             </article>
                         @endforeach
                     </div>

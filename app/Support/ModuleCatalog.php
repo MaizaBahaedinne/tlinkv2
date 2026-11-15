@@ -48,7 +48,9 @@ final class ModuleCatalog
             [
                 'key' => 'marketing', 'name' => 'Marketing', 'description' => 'Comptes de communication des clubs (Facebook, Instagram, e-mail).',
                 'children' => [
-                    ['key' => 'marketing.accounts', 'name' => 'Comptes marketing', 'description' => 'Coffre des accès partagés Facebook, Instagram et e-mail : mots de passe chiffrés, consultation tracée, suivi des clubs qui n’ont pas encore déposé leurs accès.', 'actions' => self::CRUD],
+                    ['key' => 'marketing.accounts', 'name' => 'Pages et comptes marketing', 'description' => 'Pages Facebook et Instagram de chaque entité (affichées sur sa page) et coffre des accès : mots de passe facultatifs et chiffrés, consultation tracée, suivi des entités qui n’ont pas renseigné leurs pages.', 'actions' => self::CRUD],
+                    ['key' => 'marketing.requests', 'name' => 'Demandes d’accès aux réseaux', 'description' => 'Demandes d’accès aux pages de l’entité, pour soi ou pour un autre membre de l’entité (profil vérifié, profil Facebook et téléphone requis).', 'actions' => ['create', 'read', 'delete']],
+                    ['key' => 'marketing.review', 'name' => 'Validation des accès et charte', 'description' => 'Digital manager : valide ou refuse les demandes, tient la charte d’usage des réseaux sociaux, attribue les portfolios Meta.', 'actions' => ['read', 'update']],
                 ],
             ],
             [

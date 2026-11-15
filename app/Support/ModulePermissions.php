@@ -55,6 +55,8 @@ final class ModulePermissions
         'challenges.challenges' => 'event.manage',
         'challenges.activities' => 'event.manage',
         'marketing.accounts' => 'event.manage',
+        'marketing.requests' => 'event.manage',
+        'marketing.review' => 'event.manage',
         'sponsoring.contacts' => 'event.manage',
         'sponsoring.leads' => 'event.manage',
         'meetings.meetings' => 'event.manage',

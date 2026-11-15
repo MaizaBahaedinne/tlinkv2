@@ -250,6 +250,12 @@ Route::middleware('auth')->group(function (): void {
 
     // Recherche de la barre de navigation : page de résultats + suggestions (JSON).
     Route::get('/mes-taches', [\App\Http\Controllers\MyTasksController::class, 'index'])->name('tasks.mine');
+
+    // Accès aux réseaux sociaux des entités : suivi des demandes, charte d'usage à signer, mots de passe.
+    Route::get('/mes-acces-reseaux', [\App\Http\Controllers\MarketingAccessController::class, 'index'])->name('marketing-access.index');
+    Route::get('/mes-acces-reseaux/{accessRequest}/charte', [\App\Http\Controllers\MarketingAccessController::class, 'charter'])->whereNumber('accessRequest')->name('marketing-access.charter');
+    Route::post('/mes-acces-reseaux/{accessRequest}/charte', [\App\Http\Controllers\MarketingAccessController::class, 'sign'])->whereNumber('accessRequest')->name('marketing-access.sign');
+    Route::get('/mes-acces-reseaux/{accessRequest}/acces', [\App\Http\Controllers\MarketingAccessController::class, 'secrets'])->whereNumber('accessRequest')->middleware('throttle:20,1')->name('marketing-access.secrets');
     Route::get('/mes-reunions', [\App\Http\Controllers\MyMeetingsController::class, 'index'])->name('meetings.mine');
     Route::post('/mes-reunions/{meeting}/reponse', [\App\Http\Controllers\MyMeetingsController::class, 'respond'])->whereNumber('meeting')->middleware('throttle:30,1')->name('meetings.respond');
     Route::get('/recherche', [SearchController::class, 'index'])->name('search.index');
@@ -621,6 +627,25 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('marketing/comptes/{account}', [Admin\MarketingAccountController::class, 'update'])->whereNumber('account')->name('marketing.accounts.update');
             Route::delete('marketing/comptes/{account}', [Admin\MarketingAccountController::class, 'destroy'])->whereNumber('account')->name('marketing.accounts.destroy');
             Route::get('marketing/comptes/{account}/secret', [Admin\MarketingAccountController::class, 'secret'])->whereNumber('account')->middleware('throttle:30,1')->name('marketing.accounts.secret');
+
+            // Demandes d'accès aux comptes : déposées par les postes d'une entité, validées par le digital manager de la Fondation.
+            Route::get('marketing/demandes', [Admin\MarketingRequestController::class, 'index'])->name('marketing.requests.index');
+            Route::get('marketing/demandes/creer', [Admin\MarketingRequestController::class, 'create'])->name('marketing.requests.create');
+            Route::post('marketing/demandes', [Admin\MarketingRequestController::class, 'store'])->name('marketing.requests.store');
+            Route::get('marketing/demandes/{accessRequest}', [Admin\MarketingRequestController::class, 'show'])->whereNumber('accessRequest')->name('marketing.requests.show');
+            Route::delete('marketing/demandes/{accessRequest}', [Admin\MarketingRequestController::class, 'destroy'])->whereNumber('accessRequest')->name('marketing.requests.destroy');
+
+            Route::get('marketing/validation', [Admin\MarketingReviewController::class, 'index'])->name('marketing.review.index');
+            Route::get('marketing/validation/{accessRequest}', [Admin\MarketingReviewController::class, 'show'])->whereNumber('accessRequest')->name('marketing.review.show');
+            Route::post('marketing/validation/{accessRequest}/valider', [Admin\MarketingReviewController::class, 'approve'])->whereNumber('accessRequest')->name('marketing.review.approve');
+            Route::post('marketing/validation/{accessRequest}/refuser', [Admin\MarketingReviewController::class, 'refuse'])->whereNumber('accessRequest')->name('marketing.review.refuse');
+            Route::post('marketing/validation/{accessRequest}/portfolio-meta', [Admin\MarketingReviewController::class, 'meta'])->whereNumber('accessRequest')->name('marketing.review.meta');
+            Route::post('marketing/validation/{accessRequest}/retirer', [Admin\MarketingReviewController::class, 'revoke'])->whereNumber('accessRequest')->name('marketing.review.revoke');
+
+            Route::get('marketing/chartes', [Admin\MarketingCharterController::class, 'index'])->name('marketing.charters.index');
+            Route::get('marketing/chartes/modifier', [Admin\MarketingCharterController::class, 'edit'])->name('marketing.charters.edit');
+            Route::put('marketing/chartes', [Admin\MarketingCharterController::class, 'update'])->name('marketing.charters.update');
+            Route::post('marketing/chartes/supprimer', [Admin\MarketingCharterController::class, 'destroy'])->name('marketing.charters.destroy');
 
             // Sponsors et partenaires : carnet d'adresses et pistes de sponsoring.
             Route::get('sponsors', [Admin\SponsorController::class, 'index'])->name('sponsors.index');
