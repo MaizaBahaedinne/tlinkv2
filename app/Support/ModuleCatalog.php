@@ -61,6 +61,14 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'webmail', 'name' => 'Webmail', 'description' => 'Boîtes e-mail partagées par entité (club, chapitre, projet, Fondation), hébergées chez OVH.',
+                'children' => [
+                    ['key' => 'webmail.settings', 'name' => 'Connexion OVH du webmail', 'description' => 'Clés de l’API OVH, domaine et serveurs IMAP/SMTP : réservé à l’administration globale.', 'actions' => ['read', 'update']],
+                    ['key' => 'webmail.mailboxes', 'name' => 'Boîtes e-mail des entités', 'description' => 'Créer la boîte d’une entité (chez OVH), changer son mot de passe, sa signature, la supprimer. Les mots de passe sont chiffrés et jamais affichés.', 'actions' => self::CRUD],
+                    ['key' => 'webmail.inbox', 'name' => 'Lecture et envoi des e-mails', 'description' => 'Lire la boîte de son entité, répondre, écrire, brouillons, étiquettes, contacts. Créer = écrire un message ; modifier = classer, marquer, étiqueter ; supprimer = mettre à la corbeille.', 'actions' => self::CRUD],
+                ],
+            ],
+            [
                 'key' => 'meetings', 'name' => 'Réunions', 'description' => 'Planification des réunions des clubs et de la Fondation.',
                 'children' => [
                     ['key' => 'meetings.meetings', 'name' => 'Réunions', 'description' => 'Date, lieu, sujet, durée, ordre du jour, invitations, présences et décisions par point.', 'actions' => self::CRUD],

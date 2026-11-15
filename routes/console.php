@@ -197,3 +197,11 @@ Artisan::command('admin:create {email : Adresse e-mail du compte} {--name= : Nom
 
     return self::SUCCESS;
 })->purpose('Crée (ou promeut) un administrateur global de la plateforme');
+
+Artisan::command('webmail:sync', function () {
+    $result = \App\Support\Webmail\WebmailSync::run();
+
+    $this->info($result['checked'].' boîte(s) relevée(s), '.$result['notified'].' notification(s), '.$result['failed'].' échec(s).');
+})->purpose('Relève les boîtes e-mail des entités : messages non lus et notifications de nouveaux messages');
+
+\Illuminate\Support\Facades\Schedule::command('webmail:sync')->everyFiveMinutes()->withoutOverlapping();

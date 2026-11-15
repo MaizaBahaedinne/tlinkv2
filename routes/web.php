@@ -647,6 +647,36 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('marketing/chartes', [Admin\MarketingCharterController::class, 'update'])->name('marketing.charters.update');
             Route::post('marketing/chartes/supprimer', [Admin\MarketingCharterController::class, 'destroy'])->name('marketing.charters.destroy');
 
+            // Webmail des entités : connexion OVH, boîtes partagées, lecture et envoi.
+            Route::get('webmail/connexion', [Admin\WebmailSettingsController::class, 'edit'])->name('webmail.settings.edit');
+            Route::put('webmail/connexion', [Admin\WebmailSettingsController::class, 'update'])->name('webmail.settings.update');
+            Route::post('webmail/connexion/test', [Admin\WebmailSettingsController::class, 'test'])->middleware('throttle:6,1')->name('webmail.settings.test');
+
+            Route::get('webmail/boites', [Admin\WebmailMailboxController::class, 'index'])->name('webmail.mailboxes.index');
+            Route::get('webmail/boites/creer', [Admin\WebmailMailboxController::class, 'create'])->name('webmail.mailboxes.create');
+            Route::post('webmail/boites', [Admin\WebmailMailboxController::class, 'store'])->middleware('throttle:10,1')->name('webmail.mailboxes.store');
+            Route::get('webmail/boites/{mailbox}/modifier', [Admin\WebmailMailboxController::class, 'edit'])->whereNumber('mailbox')->name('webmail.mailboxes.edit');
+            Route::put('webmail/boites/{mailbox}', [Admin\WebmailMailboxController::class, 'update'])->whereNumber('mailbox')->name('webmail.mailboxes.update');
+            Route::post('webmail/boites/{mailbox}/mot-de-passe', [Admin\WebmailMailboxController::class, 'password'])->whereNumber('mailbox')->middleware('throttle:10,1')->name('webmail.mailboxes.password');
+            Route::post('webmail/boites/{mailbox}/test', [Admin\WebmailMailboxController::class, 'check'])->whereNumber('mailbox')->middleware('throttle:10,1')->name('webmail.mailboxes.check');
+            Route::delete('webmail/boites/{mailbox}', [Admin\WebmailMailboxController::class, 'destroy'])->whereNumber('mailbox')->name('webmail.mailboxes.destroy');
+
+            Route::get('webmail', [Admin\WebmailController::class, 'index'])->name('webmail.mail.index');
+            Route::get('webmail/{mailbox}/messages/{uid}', [Admin\WebmailController::class, 'show'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.show');
+            Route::get('webmail/{mailbox}/messages/{uid}/pieces/{index}', [Admin\WebmailController::class, 'attachment'])->whereNumber(['mailbox', 'uid', 'index'])->middleware('throttle:60,1')->name('webmail.mail.attachment');
+            Route::post('webmail/{mailbox}/messages/{uid}/marquer', [Admin\WebmailController::class, 'mark'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.mark');
+            Route::post('webmail/{mailbox}/messages/{uid}/deplacer', [Admin\WebmailController::class, 'move'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.move');
+            Route::post('webmail/{mailbox}/messages/{uid}/etiquettes', [Admin\WebmailController::class, 'tag'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.tag');
+            Route::delete('webmail/{mailbox}/messages/{uid}', [Admin\WebmailController::class, 'trash'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.trash');
+            Route::get('webmail/{mailbox}/ecrire', [Admin\WebmailController::class, 'compose'])->whereNumber('mailbox')->name('webmail.mail.compose');
+            Route::post('webmail/{mailbox}/envoyer', [Admin\WebmailController::class, 'send'])->whereNumber('mailbox')->middleware('throttle:20,1')->name('webmail.mail.send');
+            Route::get('webmail/{mailbox}/reglages', [Admin\WebmailController::class, 'settings'])->whereNumber('mailbox')->name('webmail.mail.settings');
+            Route::put('webmail/{mailbox}/signature', [Admin\WebmailController::class, 'signature'])->whereNumber('mailbox')->name('webmail.mail.signature');
+            Route::post('webmail/{mailbox}/etiquettes', [Admin\WebmailController::class, 'storeLabel'])->whereNumber('mailbox')->name('webmail.mail.labels.store');
+            Route::delete('webmail/{mailbox}/etiquettes/{label}', [Admin\WebmailController::class, 'destroyLabel'])->whereNumber(['mailbox', 'label'])->name('webmail.mail.labels.destroy');
+            Route::post('webmail/{mailbox}/contacts', [Admin\WebmailController::class, 'storeContact'])->whereNumber('mailbox')->name('webmail.mail.contacts.store');
+            Route::delete('webmail/{mailbox}/contacts/{contact}', [Admin\WebmailController::class, 'destroyContact'])->whereNumber(['mailbox', 'contact'])->name('webmail.mail.contacts.destroy');
+
             // Sponsors et partenaires : carnet d'adresses et pistes de sponsoring.
             Route::get('sponsors', [Admin\SponsorController::class, 'index'])->name('sponsors.index');
             Route::post('sponsors', [Admin\SponsorController::class, 'store'])->name('sponsors.store');

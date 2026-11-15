@@ -57,6 +57,9 @@ class AdminMenu
         'admin.marketing.requests.*' => 'marketing.requests',
         'admin.marketing.review.*' => 'marketing.review',
         'admin.marketing.charters.*' => 'marketing.review',
+        'admin.webmail.settings.*' => 'webmail.settings',
+        'admin.webmail.mailboxes.*' => 'webmail.mailboxes',
+        'admin.webmail.mail.*' => 'webmail.inbox',
         'admin.sponsors.*' => 'sponsoring.contacts',
         'admin.sponsor-leads.*' => 'sponsoring.leads',
         'admin.meetings.*' => 'meetings.meetings',
@@ -219,6 +222,14 @@ class AdminMenu
                 ],
             ],
             [
+                'title' => 'Webmail',
+                'items' => [
+                    ['label' => 'Boîtes de réception', 'route' => 'admin.webmail.mail.index', 'icon' => 'mail', 'match' => 'admin.webmail.mail.*', 'perms' => ['event.manage'], 'badge' => 'webmail_unseen'],
+                    ['label' => 'Boîtes des entités', 'route' => 'admin.webmail.mailboxes.index', 'icon' => 'users', 'match' => 'admin.webmail.mailboxes.*', 'perms' => ['event.manage']],
+                    ['label' => 'Connexion OVH', 'route' => 'admin.webmail.settings.edit', 'icon' => 'key', 'match' => 'admin.webmail.settings.*', 'perms' => ['entity.manage']],
+                ],
+            ],
+            [
                 'title' => 'Cartes et pointage',
                 'items' => [
                     ['label' => 'Pointage', 'route' => 'admin.checkpoint.index', 'icon' => 'check', 'match' => 'admin.checkpoint.*', 'perms' => ['event.manage']],
@@ -317,6 +328,9 @@ class AdminMenu
                 : 0,
             'marketing_requests' => \Illuminate\Support\Facades\Schema::hasTable('marketing_access_requests')
                 ? \App\Models\MarketingAccessRequest::query()->where('status', 'pending')->count()
+                : 0,
+            'webmail_unseen' => \Illuminate\Support\Facades\Schema::hasTable('webmail_mailboxes')
+                ? (int) \App\Support\Webmail\WebmailAccess::mailboxes($context->user)->sum('unseen')
                 : 0,
             'mentoring' => Mentoring::enabled() ? MentoringTicket::query()->where('status', 'new')->count() : 0,
             'store_orders' => \App\Support\Store\StoreSettings::tablesReady() ? \App\Models\StoreOrder::query()->where('status', 'pending')->count() : 0,
