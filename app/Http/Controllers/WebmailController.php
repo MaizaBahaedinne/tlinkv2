@@ -1,11 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers;
 
 use App\Models\WebmailContact;
 use App\Models\WebmailLabel;
 use App\Models\WebmailMailbox;
 use App\Models\WebmailMessageLabel;
+use App\Support\AdminContext;
+use App\Support\AuditLogger;
 use App\Support\Webmail\FolderRoles;
 use App\Support\Webmail\GatewayFactory;
 use App\Support\Webmail\HtmlSanitizer;
@@ -22,10 +24,10 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
- * Webmail des entités : lecture et envoi depuis la boîte partagée d'une entité. Les droits viennent du poste
+ * Application T.Link Webmail : lecture et envoi depuis la boîte partagée d'une entité. Les droits viennent du poste
  * (module « Lecture et envoi ») et de l'entité ; le mot de passe de la boîte n'est jamais montré.
  */
-class WebmailController extends AdminController
+class WebmailController extends Controller
 {
     private const MODULE = 'webmail.inbox';
 
@@ -43,7 +45,7 @@ class WebmailController extends AdminController
         $view = ['mailboxes' => $mailboxes, 'mailbox' => $mailbox, 'folders' => [], 'messages' => null, 'error' => null, 'folder' => 'INBOX', 'search' => '', 'labels' => collect(), 'activeLabel' => null, 'labelMap' => [], 'canWrite' => false, 'canUpdate' => false, 'roleLabels' => FolderRoles::LABELS];
 
         if ($mailbox === null) {
-            return view('admin.webmail.index', $view);
+            return view('webmail.index', $view);
         }
 
         $context = $this->context($request);
@@ -84,7 +86,7 @@ class WebmailController extends AdminController
             $view['error'] = $exception->getMessage();
         }
 
-        return view('admin.webmail.index', $view);
+        return view('webmail.index', $view);
     }
 
     public function show(Request $request, WebmailMailbox $mailbox, int $uid): View
@@ -115,7 +117,7 @@ class WebmailController extends AdminController
 
         $html = filled($message['html'] ?? null) ? HtmlSanitizer::clean((string) $message['html']) : null;
 
-        return view('admin.webmail.show', [
+        return view('webmail.show', [
             'mailbox' => $mailbox,
             'folder' => $folder,
             'message' => $message,
@@ -170,7 +172,7 @@ class WebmailController extends AdminController
             $draft = $this->prefill($mode, $source, $mailbox, $draft, $request->integer('uid'));
         }
 
-        return view('admin.webmail.compose', [
+        return view('webmail.compose', [
             'mailbox' => $mailbox,
             'draft' => $draft,
             'mode' => $mode,
@@ -229,7 +231,7 @@ class WebmailController extends AdminController
             if ($asDraft) {
                 $gateway->saveDraft($message, $draftUid);
 
-                return redirect()->route('admin.webmail.mail.index', ['boite' => $mailbox->id, 'dossier' => $this->draftsPath($gateway)])->with('status', 'Brouillon enregistré.');
+                return redirect()->route('webmail.index', ['boite' => $mailbox->id, 'dossier' => $this->draftsPath($gateway)])->with('status', 'Brouillon enregistré.');
             }
 
             $gateway->send($message);
@@ -256,7 +258,7 @@ class WebmailController extends AdminController
 
         $this->audit($request, 'webmail.message.sent', $mailbox, ['address' => $mailbox->address, 'recipients' => count($message['to']) + count($message['cc']) + count($message['bcc']), 'attachments' => count($message['attachments'])]);
 
-        return redirect()->route('admin.webmail.mail.index', ['boite' => $mailbox->id])->with('status', 'Message envoyé depuis '.$mailbox->address.'.');
+        return redirect()->route('webmail.index', ['boite' => $mailbox->id])->with('status', 'Message envoyé depuis '.$mailbox->address.'.');
     }
 
     public function mark(Request $request, WebmailMailbox $mailbox, int $uid): RedirectResponse
@@ -326,14 +328,14 @@ class WebmailController extends AdminController
             WebmailMessageLabel::query()->create(['label_id' => $id, 'folder' => $folder, 'uid' => $uid]);
         }
 
-        return redirect()->route('admin.webmail.mail.show', ['mailbox' => $mailbox, 'uid' => $uid, 'dossier' => $folder])->with('status', 'Étiquettes enregistrées.');
+        return redirect()->route('webmail.show', ['mailbox' => $mailbox, 'uid' => $uid, 'dossier' => $folder])->with('status', 'Étiquettes enregistrées.');
     }
 
     public function settings(Request $request, WebmailMailbox $mailbox): View
     {
         $this->authorizeMailbox($request, $mailbox, 'read');
 
-        return view('admin.webmail.settings-mailbox', [
+        return view('webmail.settings', [
             'mailbox' => $mailbox,
             'labels' => $mailbox->labels()->orderBy('name')->get(),
             'contacts' => $mailbox->contacts()->orderBy('name')->orderBy('email')->paginate(30, ['*'], 'page')->withQueryString(),
@@ -398,6 +400,25 @@ class WebmailController extends AdminController
         return back()->with('status', 'Contact supprimé.');
     }
 
+    private function context(Request $request): AdminContext
+    {
+        return AdminContext::of($request);
+    }
+
+    private function requireModuleAction(Request $request, string $module, string $action): void
+    {
+        abort_unless(
+            $this->context($request)->allowsModule(['event.manage'], $module, [$action]),
+            403,
+            'Les habilitations de votre poste ne couvrent pas cette action.'
+        );
+    }
+
+    private function audit(Request $request, string $action, object $target, array $metadata = []): void
+    {
+        AuditLogger::record(actorId: $request->user()->id, action: $action, targetType: $target::class, targetId: $target->getKey(), metadata: $metadata, ip: $request->ip());
+    }
+
     private function authorizeMailbox(Request $request, WebmailMailbox $mailbox, string $action): void
     {
         $this->requireModuleAction($request, self::MODULE, $action);
@@ -428,14 +449,14 @@ class WebmailController extends AdminController
 
     private function backToList(Request $request, WebmailMailbox $mailbox, string $folder, ?string $status = null): RedirectResponse
     {
-        $redirect = redirect()->route('admin.webmail.mail.index', ['boite' => $mailbox->id, 'dossier' => $folder]);
+        $redirect = redirect()->route('webmail.index', ['boite' => $mailbox->id, 'dossier' => $folder]);
 
         return $status ? $redirect->with('status', $status) : $redirect;
     }
 
     private function failure(WebmailMailbox $mailbox, string $folder, WebmailException $exception): RedirectResponse
     {
-        return redirect()->route('admin.webmail.mail.index', ['boite' => $mailbox->id, 'dossier' => $folder])->withErrors(['webmail' => $exception->getMessage()]);
+        return redirect()->route('webmail.index', ['boite' => $mailbox->id, 'dossier' => $folder])->withErrors(['webmail' => $exception->getMessage()]);
     }
 
     /** « a@b.tn, Nom <c@d.tn> » devient une liste d'adresses valides. @return array<int, string> */

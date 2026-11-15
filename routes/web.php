@@ -17,6 +17,7 @@ use App\Http\Controllers\MemberProfileController;
 use App\Http\Controllers\MembershipRequestController;
 use App\Http\Controllers\MentoringController;
 use App\Http\Controllers\MessengerController;
+use App\Http\Controllers\WebmailController;
 use App\Http\Controllers\MyOfficeController;
 use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\OrgChartController;
@@ -42,6 +43,11 @@ require base_path('routes/site.php');
 // et /academy/presentation). Déclarées avant la racine de T.Link, qui ne doit pas répondre à leur place.
 Domains::on('store')->get(Domains::host('store') !== null ? '/' : '/boutique/presentation', [ShowcaseController::class, 'store'])->name('store.showcase');
 Domains::on('academy')->get(Domains::host('academy') !== null ? '/' : '/academy/presentation', [ShowcaseController::class, 'academy'])->name('academy.showcase');
+
+// Racine de l'hôte Webmail : directement la boîte de réception.
+if (Domains::host('webmail') !== null) {
+    Route::domain(Domains::host('webmail'))->get('/', fn () => redirect()->route('webmail.index'))->name('webmail.root');
+}
 
 // Racine de l'hôte Messenger : directement la messagerie (déclarée avant la racine de T.Link).
 if (Domains::host('messenger') !== null) {
@@ -209,6 +215,25 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/{conversation}/lu', [MessengerController::class, 'read'])->whereNumber('conversation')->middleware('throttle:messenger-action')->name('read');
         Route::post('/{conversation}/ecriture', [MessengerController::class, 'typing'])->whereNumber('conversation')->middleware('throttle:messenger-action')->name('typing');
         Route::post('/{conversation}/quitter', [MessengerController::class, 'leave'])->whereNumber('conversation')->name('leave');
+    });
+
+    // T.Link Webmail : lecture et envoi depuis les boîtes partagées des entités (droits du poste, module « Lecture et envoi »).
+    Route::prefix('webmail')->name('webmail.')->group(function (): void {
+        Route::get('/', [WebmailController::class, 'index'])->name('index');
+        Route::get('/{mailbox}/messages/{uid}', [WebmailController::class, 'show'])->whereNumber(['mailbox', 'uid'])->name('show');
+        Route::get('/{mailbox}/messages/{uid}/pieces/{index}', [WebmailController::class, 'attachment'])->whereNumber(['mailbox', 'uid', 'index'])->middleware('throttle:60,1')->name('attachment');
+        Route::post('/{mailbox}/messages/{uid}/marquer', [WebmailController::class, 'mark'])->whereNumber(['mailbox', 'uid'])->name('mark');
+        Route::post('/{mailbox}/messages/{uid}/deplacer', [WebmailController::class, 'move'])->whereNumber(['mailbox', 'uid'])->name('move');
+        Route::post('/{mailbox}/messages/{uid}/etiquettes', [WebmailController::class, 'tag'])->whereNumber(['mailbox', 'uid'])->name('tag');
+        Route::delete('/{mailbox}/messages/{uid}', [WebmailController::class, 'trash'])->whereNumber(['mailbox', 'uid'])->name('trash');
+        Route::get('/{mailbox}/ecrire', [WebmailController::class, 'compose'])->whereNumber('mailbox')->name('compose');
+        Route::post('/{mailbox}/envoyer', [WebmailController::class, 'send'])->whereNumber('mailbox')->middleware('throttle:20,1')->name('send');
+        Route::get('/{mailbox}/reglages', [WebmailController::class, 'settings'])->whereNumber('mailbox')->name('settings');
+        Route::put('/{mailbox}/signature', [WebmailController::class, 'signature'])->whereNumber('mailbox')->name('signature');
+        Route::post('/{mailbox}/etiquettes', [WebmailController::class, 'storeLabel'])->whereNumber('mailbox')->name('labels.store');
+        Route::delete('/{mailbox}/etiquettes/{label}', [WebmailController::class, 'destroyLabel'])->whereNumber(['mailbox', 'label'])->name('labels.destroy');
+        Route::post('/{mailbox}/contacts', [WebmailController::class, 'storeContact'])->whereNumber('mailbox')->name('contacts.store');
+        Route::delete('/{mailbox}/contacts/{contact}', [WebmailController::class, 'destroyContact'])->whereNumber(['mailbox', 'contact'])->name('contacts.destroy');
     });
 
     // Mentorat : les membres remontent demandes et incidents, le manager mentor qualifie et affecte, le mentor accompagne et rédige le REX.
@@ -647,7 +672,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::put('marketing/chartes', [Admin\MarketingCharterController::class, 'update'])->name('marketing.charters.update');
             Route::post('marketing/chartes/supprimer', [Admin\MarketingCharterController::class, 'destroy'])->name('marketing.charters.destroy');
 
-            // Webmail des entités : connexion OVH, boîtes partagées, lecture et envoi.
+            // Webmail des entités : connexion OVH et boîtes partagées (la lecture et l'envoi se font dans l'application T.Link Webmail).
             Route::get('webmail/connexion', [Admin\WebmailSettingsController::class, 'edit'])->name('webmail.settings.edit');
             Route::put('webmail/connexion', [Admin\WebmailSettingsController::class, 'update'])->name('webmail.settings.update');
             Route::post('webmail/connexion/test', [Admin\WebmailSettingsController::class, 'test'])->middleware('throttle:6,1')->name('webmail.settings.test');
@@ -660,22 +685,6 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('webmail/boites/{mailbox}/mot-de-passe', [Admin\WebmailMailboxController::class, 'password'])->whereNumber('mailbox')->middleware('throttle:10,1')->name('webmail.mailboxes.password');
             Route::post('webmail/boites/{mailbox}/test', [Admin\WebmailMailboxController::class, 'check'])->whereNumber('mailbox')->middleware('throttle:10,1')->name('webmail.mailboxes.check');
             Route::delete('webmail/boites/{mailbox}', [Admin\WebmailMailboxController::class, 'destroy'])->whereNumber('mailbox')->name('webmail.mailboxes.destroy');
-
-            Route::get('webmail', [Admin\WebmailController::class, 'index'])->name('webmail.mail.index');
-            Route::get('webmail/{mailbox}/messages/{uid}', [Admin\WebmailController::class, 'show'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.show');
-            Route::get('webmail/{mailbox}/messages/{uid}/pieces/{index}', [Admin\WebmailController::class, 'attachment'])->whereNumber(['mailbox', 'uid', 'index'])->middleware('throttle:60,1')->name('webmail.mail.attachment');
-            Route::post('webmail/{mailbox}/messages/{uid}/marquer', [Admin\WebmailController::class, 'mark'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.mark');
-            Route::post('webmail/{mailbox}/messages/{uid}/deplacer', [Admin\WebmailController::class, 'move'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.move');
-            Route::post('webmail/{mailbox}/messages/{uid}/etiquettes', [Admin\WebmailController::class, 'tag'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.tag');
-            Route::delete('webmail/{mailbox}/messages/{uid}', [Admin\WebmailController::class, 'trash'])->whereNumber(['mailbox', 'uid'])->name('webmail.mail.trash');
-            Route::get('webmail/{mailbox}/ecrire', [Admin\WebmailController::class, 'compose'])->whereNumber('mailbox')->name('webmail.mail.compose');
-            Route::post('webmail/{mailbox}/envoyer', [Admin\WebmailController::class, 'send'])->whereNumber('mailbox')->middleware('throttle:20,1')->name('webmail.mail.send');
-            Route::get('webmail/{mailbox}/reglages', [Admin\WebmailController::class, 'settings'])->whereNumber('mailbox')->name('webmail.mail.settings');
-            Route::put('webmail/{mailbox}/signature', [Admin\WebmailController::class, 'signature'])->whereNumber('mailbox')->name('webmail.mail.signature');
-            Route::post('webmail/{mailbox}/etiquettes', [Admin\WebmailController::class, 'storeLabel'])->whereNumber('mailbox')->name('webmail.mail.labels.store');
-            Route::delete('webmail/{mailbox}/etiquettes/{label}', [Admin\WebmailController::class, 'destroyLabel'])->whereNumber(['mailbox', 'label'])->name('webmail.mail.labels.destroy');
-            Route::post('webmail/{mailbox}/contacts', [Admin\WebmailController::class, 'storeContact'])->whereNumber('mailbox')->name('webmail.mail.contacts.store');
-            Route::delete('webmail/{mailbox}/contacts/{contact}', [Admin\WebmailController::class, 'destroyContact'])->whereNumber(['mailbox', 'contact'])->name('webmail.mail.contacts.destroy');
 
             // Sponsors et partenaires : carnet d'adresses et pistes de sponsoring.
             Route::get('sponsors', [Admin\SponsorController::class, 'index'])->name('sponsors.index');

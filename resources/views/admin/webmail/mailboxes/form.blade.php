@@ -6,6 +6,9 @@
 @section('content')
     <x-admin.page-header :title="$mailbox->exists ? $mailbox->address : 'Nouvelle boîte e-mail'" subtitle="Le mot de passe est géré par T.Link : généré, chiffré et jamais affiché.">
         <x-slot:actions>
+            @if($mailbox->exists && $mailbox->is_active)
+                <a href="{{ \App\Support\Domains::url('webmail', route('webmail.index', ['boite' => $mailbox->id], false)) }}" class="btn btn-secondary" target="_blank" rel="noopener"><x-admin.icon name="mail" :size="16" /> Ouvrir dans T.Link Webmail</a>
+            @endif
             <a href="{{ route('admin.webmail.mailboxes.index') }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour aux boîtes</a>
         </x-slot:actions>
     </x-admin.page-header>
@@ -51,6 +54,31 @@
     </form>
 
     @if($mailbox->exists)
+        <article class="card" style="margin-top:18px">
+            <div class="card-body stack">
+                <h3 style="margin:0">Comptes autorisés à utiliser cette boîte</h3>
+                <p class="text-muted" style="margin:0">Titulaires d’un poste de l’entité dont la matrice (Gouvernance &gt; Modules, « Lecture et envoi ») ouvre le webmail. Ils l’utilisent dans l’application T.Link Webmail.</p>
+                @if($authorized->isEmpty())
+                    <p style="margin:0">Aucun compte n’est autorisé pour le moment.</p>
+                @else
+                    <div class="table-wrap">
+                        <table class="tbl">
+                            <thead><tr><th>Compte</th><th>Poste</th><th>Droits</th></tr></thead>
+                            <tbody>
+                                @foreach($authorized as $row)
+                                    <tr>
+                                        <td><strong>{{ $row['user']->name }}</strong><br><span class="text-muted">{{ $row['user']->email }}</span></td>
+                                        <td>{{ implode(' · ', $row['roles']) }}</td>
+                                        <td>@foreach($row['actions'] as $action)<span class="badge badge-neutral">{{ \App\Support\Webmail\WebmailAccess::ACTIONS[$action] }}</span> @endforeach</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </article>
+
         <article class="card" style="margin-top:18px">
             <div class="card-body stack">
                 <h3 style="margin:0">Mot de passe et connexion</h3>

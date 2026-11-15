@@ -49,7 +49,7 @@ final class WebmailSync
 
         $title = $count === 1 ? 'Nouveau message — '.$mailbox->title() : $count.' nouveaux messages — '.$mailbox->title();
         $body = $count === 1 ? Str::limit($sender.' : '.$first['subject'], 160) : Str::limit('Dernier : '.$sender.' : '.$first['subject'], 160);
-        $url = '/admin/webmail?boite='.$mailbox->id;
+        $url = '/webmail?boite='.$mailbox->id;
         $readers = WebmailAccess::readers($mailbox);
 
         foreach ($readers as $userId) {

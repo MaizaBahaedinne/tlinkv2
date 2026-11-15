@@ -22,6 +22,7 @@ class SubdomainsTest extends TestCase
         'DOMAIN_STORE' => 'store.example.test',
         'DOMAIN_ACADEMY' => 'academy.example.test',
         'DOMAIN_MESSENGER' => 'messenger.example.test',
+        'DOMAIN_WEBMAIL' => 'webmail.example.test',
     ];
 
     protected function setUp(): void
@@ -84,7 +85,7 @@ class SubdomainsTest extends TestCase
     {
         $user = User::factory()->create();
 
-        foreach (['store', 'academy', 'messenger'] as $host) {
+        foreach (['store', 'academy', 'messenger', 'webmail'] as $host) {
             $this->actingAs($user)->get("http://{$host}.example.test/feed")->assertNotFound();
             $this->actingAs($user)->get("http://{$host}.example.test/notifications")->assertNotFound();
             $this->actingAs($user)->get("http://{$host}.example.test/recherche")->assertNotFound();
@@ -102,7 +103,7 @@ class SubdomainsTest extends TestCase
 
     public function test_technical_routes_stay_available_on_every_host(): void
     {
-        foreach (['link', 'store', 'academy', 'messenger'] as $host) {
+        foreach (['link', 'store', 'academy', 'messenger', 'webmail'] as $host) {
             $this->get("http://{$host}.example.test/manifest.webmanifest")->assertOk();
         }
 
@@ -125,6 +126,7 @@ class SubdomainsTest extends TestCase
             'store' => ['Tunivisions Stores', '/boutique', 'com.tunivisions.stores', 'store'],
             'academy' => ['Tunivisions Academy', '/academy', 'com.tunivisions.academy', 'academy'],
             'messenger' => ['T.Link Messenger', '/messagerie', 'com.tunivisions.messenger', 'messenger'],
+            'webmail' => ['T.Link Webmail', '/webmail', 'com.tunivisions.webmail', 'link'],
         ];
 
         foreach ($expected as $sub => [$name, $start, $package, $icons]) {
@@ -207,6 +209,21 @@ class SubdomainsTest extends TestCase
         $this->get('http://messenger.example.test/')->assertRedirect('http://messenger.example.test/messagerie');
         $this->actingAs($user)->getJson('http://messenger.example.test/messagerie/non-lus')->assertOk()->assertJson(['unread' => 0]);
         $this->assertSame('messenger.example.test', Domains::host('messenger'));
+    }
+
+    public function test_webmail_is_its_own_application_on_its_host(): void
+    {
+        $user = User::factory()->create();
+
+        $this->get('http://webmail.example.test/')->assertRedirect('http://webmail.example.test/webmail');
+        $this->actingAs($user)->get('http://webmail.example.test/webmail')->assertOk()->assertSee('T.Link Webmail')->assertSee('Aucune boîte à lire');
+        $this->actingAs($user)->get('http://webmail.example.test/messagerie')->assertNotFound();
+
+        foreach (['link', 'store', 'academy', 'messenger'] as $host) {
+            $this->actingAs($user)->get("http://{$host}.example.test/webmail")->assertNotFound();
+        }
+
+        $this->assertSame('webmail.example.test', Domains::host('webmail'));
     }
 
     public function test_app_root_leads_to_the_feed_and_store_academy_roots_are_public_showcases(): void

@@ -169,18 +169,18 @@ class WebmailTest extends TestCase
 
     public function test_only_the_entity_members_with_the_right_see_a_mailbox(): void
     {
-        $this->actingAs($this->president)->get(route('admin.webmail.mail.index'))->assertOk()->assertSee('Demande de partenariat')->assertSee('esprit@fondation.test');
+        $this->actingAs($this->president)->get(route('webmail.index'))->assertOk()->assertSee('Demande de partenariat')->assertSee('esprit@fondation.test');
 
         $this->flushSession();
-        $this->actingAs($this->otherPresident)->get(route('admin.webmail.mail.index'))->assertOk()->assertDontSee('esprit@fondation.test')->assertSee('Aucune boîte à lire');
-        $this->get(route('admin.webmail.mail.show', ['mailbox' => $this->mailbox, 'uid' => 7]))->assertForbidden();
-        $this->get(route('admin.webmail.mail.compose', $this->mailbox))->assertForbidden();
+        $this->actingAs($this->otherPresident)->get(route('webmail.index'))->assertOk()->assertDontSee('esprit@fondation.test')->assertSee('Aucune boîte à lire');
+        $this->get(route('webmail.show', ['mailbox' => $this->mailbox, 'uid' => 7]))->assertForbidden();
+        $this->get(route('webmail.compose', $this->mailbox))->assertForbidden();
         $this->get(route('admin.webmail.mailboxes.index'))->assertForbidden();
     }
 
     public function test_reading_a_message_blocks_active_content_and_marks_it_read(): void
     {
-        $response = $this->actingAs($this->president)->get(route('admin.webmail.mail.show', ['mailbox' => $this->mailbox, 'uid' => 7, 'dossier' => 'INBOX']))->assertOk();
+        $response = $this->actingAs($this->president)->get(route('webmail.show', ['mailbox' => $this->mailbox, 'uid' => 7, 'dossier' => 'INBOX']))->assertOk();
 
         $response->assertSee('sandbox=', false)->assertSee('Bonjour')->assertDontSee('pixel.example', false)->assertDontSee('javascript:', false)->assertDontSee('onclick', false);
         $this->assertStringNotContainsString('&lt;script', $response->getContent());
@@ -205,15 +205,15 @@ class WebmailTest extends TestCase
 
     public function test_sending_a_message_validates_addresses_and_saves_contacts(): void
     {
-        $this->actingAs($this->president)->post(route('admin.webmail.mail.send', $this->mailbox), ['to' => 'pas-une-adresse', 'subject' => 'Hello', 'body' => 'x'])->assertSessionHasErrors('to');
-        $this->post(route('admin.webmail.mail.send', $this->mailbox), ['subject' => 'Hello', 'body' => 'x', 'action' => 'send'])->assertSessionHasErrors('to');
+        $this->actingAs($this->president)->post(route('webmail.send', $this->mailbox), ['to' => 'pas-une-adresse', 'subject' => 'Hello', 'body' => 'x'])->assertSessionHasErrors('to');
+        $this->post(route('webmail.send', $this->mailbox), ['subject' => 'Hello', 'body' => 'x', 'action' => 'send'])->assertSessionHasErrors('to');
         $this->assertSame([], $this->gateway->sent);
 
-        $this->post(route('admin.webmail.mail.send', $this->mailbox), [
+        $this->post(route('webmail.send', $this->mailbox), [
             'to' => 'Marie Ben <marie@example.org>, paul@example.org', 'cc' => 'chef@example.org', 'subject' => "Réunion\r\nBcc: evil@example.org", 'body' => 'Bonjour',
             'in_reply_to' => '<abc@example.org>', 'reply_uid' => 7, 'reply_folder' => 'INBOX', 'draft_uid' => 3,
             'attachments' => [UploadedFile::fake()->create('devis.pdf', 20, 'application/pdf')],
-        ])->assertRedirect(route('admin.webmail.mail.index', ['boite' => $this->mailbox->id]));
+        ])->assertRedirect(route('webmail.index', ['boite' => $this->mailbox->id]));
 
         $this->assertCount(1, $this->gateway->sent);
         $sent = $this->gateway->sent[0];
@@ -229,7 +229,7 @@ class WebmailTest extends TestCase
 
     public function test_draft_is_saved_without_recipient_and_read_only_cannot_write(): void
     {
-        $this->actingAs($this->president)->post(route('admin.webmail.mail.send', $this->mailbox), ['action' => 'draft', 'subject' => 'Brouillon', 'body' => 'à finir', 'draft_uid' => 4])->assertRedirect();
+        $this->actingAs($this->president)->post(route('webmail.send', $this->mailbox), ['action' => 'draft', 'subject' => 'Brouillon', 'body' => 'à finir', 'draft_uid' => 4])->assertRedirect();
         $this->assertCount(1, $this->gateway->drafts);
         $this->assertSame(4, $this->gateway->drafts[0][1]);
         $this->assertSame([], $this->gateway->sent);
@@ -238,52 +238,52 @@ class WebmailTest extends TestCase
         $reader = User::factory()->create();
         $this->grantTo($this->club, $reader, ['webmail.inbox' => ['read']]);
         $this->flushSession();
-        $this->actingAs($reader)->get(route('admin.webmail.mail.index'))->assertOk()->assertSee('Demande de partenariat');
-        $this->post(route('admin.webmail.mail.send', $this->mailbox), ['to' => 'a@example.org', 'body' => 'x'])->assertForbidden();
-        $this->delete(route('admin.webmail.mail.trash', ['mailbox' => $this->mailbox, 'uid' => 7]))->assertForbidden();
-        $this->post(route('admin.webmail.mail.mark', ['mailbox' => $this->mailbox, 'uid' => 7]), ['flag' => 'flagged', 'on' => 1])->assertForbidden();
+        $this->actingAs($reader)->get(route('webmail.index'))->assertOk()->assertSee('Demande de partenariat');
+        $this->post(route('webmail.send', $this->mailbox), ['to' => 'a@example.org', 'body' => 'x'])->assertForbidden();
+        $this->delete(route('webmail.trash', ['mailbox' => $this->mailbox, 'uid' => 7]))->assertForbidden();
+        $this->post(route('webmail.mark', ['mailbox' => $this->mailbox, 'uid' => 7]), ['flag' => 'flagged', 'on' => 1])->assertForbidden();
     }
 
     public function test_reply_prefills_recipient_subject_and_quotation(): void
     {
-        $this->actingAs($this->president)->get(route('admin.webmail.mail.compose', ['mailbox' => $this->mailbox, 'mode' => 'reply', 'uid' => 7, 'dossier' => 'INBOX']))
+        $this->actingAs($this->president)->get(route('webmail.compose', ['mailbox' => $this->mailbox, 'mode' => 'reply', 'uid' => 7, 'dossier' => 'INBOX']))
             ->assertOk()->assertSee('Jean &lt;jean@example.org&gt;', false)->assertSee('Re: Demande de partenariat')->assertSee('&gt; Bonjour', false);
 
-        $this->get(route('admin.webmail.mail.compose', ['mailbox' => $this->mailbox, 'mode' => 'forward', 'uid' => 7, 'dossier' => 'INBOX']))->assertOk()->assertSee('Tr: Demande de partenariat');
+        $this->get(route('webmail.compose', ['mailbox' => $this->mailbox, 'mode' => 'forward', 'uid' => 7, 'dossier' => 'INBOX']))->assertOk()->assertSee('Tr: Demande de partenariat');
     }
 
     public function test_trash_move_and_attachment_download(): void
     {
-        $this->actingAs($this->president)->delete(route('admin.webmail.mail.trash', ['mailbox' => $this->mailbox, 'uid' => 7, 'dossier' => 'INBOX']))->assertRedirect();
+        $this->actingAs($this->president)->delete(route('webmail.trash', ['mailbox' => $this->mailbox, 'uid' => 7, 'dossier' => 'INBOX']))->assertRedirect();
         $this->assertContains(['INBOX', 7], $this->gateway->trashed);
 
-        $this->post(route('admin.webmail.mail.move', ['mailbox' => $this->mailbox, 'uid' => 7]), ['dossier' => 'INBOX', 'target' => 'Trash'])->assertRedirect();
-        $this->post(route('admin.webmail.mail.move', ['mailbox' => $this->mailbox, 'uid' => 7]), ['dossier' => 'INBOX', 'target' => 'Inconnu'])->assertStatus(422);
+        $this->post(route('webmail.move', ['mailbox' => $this->mailbox, 'uid' => 7]), ['dossier' => 'INBOX', 'target' => 'Trash'])->assertRedirect();
+        $this->post(route('webmail.move', ['mailbox' => $this->mailbox, 'uid' => 7]), ['dossier' => 'INBOX', 'target' => 'Inconnu'])->assertStatus(422);
         $this->assertSame([['INBOX', 7, 'Trash']], $this->gateway->moved);
 
-        $this->get(route('admin.webmail.mail.attachment', ['mailbox' => $this->mailbox, 'uid' => 7, 'index' => 0, 'dossier' => 'INBOX']))
+        $this->get(route('webmail.attachment', ['mailbox' => $this->mailbox, 'uid' => 7, 'index' => 0, 'dossier' => 'INBOX']))
             ->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff')->assertHeader('Content-Type', 'application/octet-stream');
     }
 
     public function test_labels_contacts_and_signature(): void
     {
-        $this->actingAs($this->president)->post(route('admin.webmail.mail.labels.store', $this->mailbox), ['name' => 'Urgent', 'color' => 'red'])->assertRedirect();
-        $this->post(route('admin.webmail.mail.labels.store', $this->mailbox), ['name' => 'Urgent', 'color' => 'red'])->assertSessionHasErrors('name');
+        $this->actingAs($this->president)->post(route('webmail.labels.store', $this->mailbox), ['name' => 'Urgent', 'color' => 'red'])->assertRedirect();
+        $this->post(route('webmail.labels.store', $this->mailbox), ['name' => 'Urgent', 'color' => 'red'])->assertSessionHasErrors('name');
         $label = WebmailLabel::query()->firstOrFail();
 
-        $this->post(route('admin.webmail.mail.tag', ['mailbox' => $this->mailbox, 'uid' => 7]), ['dossier' => 'INBOX', 'labels' => [$label->id, 9999]])->assertRedirect();
+        $this->post(route('webmail.tag', ['mailbox' => $this->mailbox, 'uid' => 7]), ['dossier' => 'INBOX', 'labels' => [$label->id, 9999]])->assertRedirect();
         $this->assertSame(1, WebmailMessageLabel::query()->count());
 
-        $this->get(route('admin.webmail.mail.index', ['boite' => $this->mailbox->id, 'etiquette' => $label->id]))->assertOk()->assertSee('Demande de partenariat');
-        $this->get(route('admin.webmail.mail.index', ['boite' => $this->mailbox->id, 'q' => 'inexistant']))->assertOk()->assertSee('Aucun message ne correspond');
+        $this->get(route('webmail.index', ['boite' => $this->mailbox->id, 'etiquette' => $label->id]))->assertOk()->assertSee('Demande de partenariat');
+        $this->get(route('webmail.index', ['boite' => $this->mailbox->id, 'q' => 'inexistant']))->assertOk()->assertSee('Aucun message ne correspond');
 
-        $this->post(route('admin.webmail.mail.contacts.store', $this->mailbox), ['name' => 'Sponsor', 'email' => 'SPONSOR@Example.org'])->assertRedirect();
+        $this->post(route('webmail.contacts.store', $this->mailbox), ['name' => 'Sponsor', 'email' => 'SPONSOR@Example.org'])->assertRedirect();
         $this->assertTrue(WebmailContact::query()->where('email', 'sponsor@example.org')->exists());
-        $this->put(route('admin.webmail.mail.signature', $this->mailbox), ['signature' => 'Cordialement, Club ESPRIT'])->assertRedirect();
+        $this->put(route('webmail.signature', $this->mailbox), ['signature' => 'Cordialement, Club ESPRIT'])->assertRedirect();
         $this->assertSame('Cordialement, Club ESPRIT', $this->mailbox->fresh()->signature);
-        $this->get(route('admin.webmail.mail.settings', $this->mailbox))->assertOk()->assertSee('Urgent')->assertSee('sponsor@example.org');
+        $this->get(route('webmail.settings', $this->mailbox))->assertOk()->assertSee('Urgent')->assertSee('sponsor@example.org');
 
-        $this->delete(route('admin.webmail.mail.labels.destroy', ['mailbox' => $this->mailbox, 'label' => $label]))->assertRedirect();
+        $this->delete(route('webmail.labels.destroy', ['mailbox' => $this->mailbox, 'label' => $label]))->assertRedirect();
         $this->assertSame(0, WebmailMessageLabel::query()->count());
     }
 
@@ -291,7 +291,7 @@ class WebmailTest extends TestCase
     {
         $this->gateway->down = true;
 
-        $this->actingAs($this->president)->get(route('admin.webmail.mail.index'))->assertOk()->assertSee('Connexion à la boîte impossible.');
+        $this->actingAs($this->president)->get(route('webmail.index'))->assertOk()->assertSee('Connexion à la boîte impossible.');
     }
 
     public function test_sync_sets_a_baseline_then_notifies_readers_of_new_messages(): void
@@ -311,7 +311,7 @@ class WebmailTest extends TestCase
         $this->assertSame(1, $second['notified']);
 
         $notification = AppNotification::query()->where('user_id', $this->president->id)->where('type', 'webmail')->firstOrFail();
-        $this->assertSame('/admin/webmail?boite='.$this->mailbox->id, $notification->data['url']);
+        $this->assertSame('/webmail?boite='.$this->mailbox->id, $notification->data['url']);
         $this->assertStringContainsString('Invitation au forum', $notification->body);
         $this->assertFalse(AppNotification::query()->where('user_id', $this->otherPresident->id)->where('type', 'webmail')->exists());
 
@@ -351,6 +351,39 @@ class WebmailTest extends TestCase
         $this->assertStringContainsString('note.txt', $raw);
         $this->assertStringContainsString('esprit@fondation.test', $raw);
         @unlink($path);
+    }
+
+    public function test_mailbox_page_lists_authorized_accounts_with_their_rights(): void
+    {
+        $this->assertSame(['read', 'create', 'update', 'delete'], \App\Support\Webmail\WebmailAccess::authorized($this->mailbox->refresh())->firstWhere(fn (array $row): bool => $row['user']->is($this->president))['actions']);
+
+        // Le poste du club est partagé : sa matrice passe en lecture seule pour ses deux titulaires.
+        $reader = User::factory()->create(['name' => 'Lecteur Esprit']);
+        $this->grantTo($this->club, $reader, ['webmail.inbox' => ['read']]);
+
+        $page = $this->actingAs($this->admin)->get(route('admin.webmail.mailboxes.edit', $this->mailbox))->assertOk()
+            ->assertSee('Comptes autorisés à utiliser cette boîte')->assertSee($this->president->name)->assertSee('Lecteur Esprit')->assertSee('Ouvrir dans T.Link Webmail');
+
+        $this->assertStringNotContainsString($this->otherPresident->name, $page->getContent());
+
+        $authorized = \App\Support\Webmail\WebmailAccess::authorized($this->mailbox->refresh())->keyBy(fn (array $row): int => $row['user']->id);
+        $this->assertSame(['read'], $authorized[$this->president->id]['actions']);
+        $this->assertSame(['read'], $authorized[$reader->id]['actions']);
+        $this->assertArrayNotHasKey($this->otherPresident->id, $authorized->all());
+    }
+
+    public function test_webmail_is_its_own_application_outside_the_admin(): void
+    {
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('admin.webmail.mail.index'));
+        $this->assertSame('webmail', \App\Support\Domains::sectionOfRoute('webmail.index'));
+        $this->assertSame('webmail', \App\Support\Domains::sectionOfPath('/webmail'));
+
+        $this->actingAs($this->president)->get(route('admin.webmail.mailboxes.index'))->assertOk()->assertDontSee('Boîtes de réception');
+
+        $this->assertTrue(\App\Support\Webmail\WebmailAccess::available($this->president));
+        request()->attributes->remove('webmail.available.'.$this->otherPresident->id);
+        $this->assertFalse(\App\Support\Webmail\WebmailAccess::available($this->otherPresident));
+        $this->assertFalse(\App\Support\Webmail\WebmailAccess::available(User::factory()->create()));
     }
 
     public function test_deleting_a_mailbox_at_ovh_only_when_asked(): void

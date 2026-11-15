@@ -18,6 +18,7 @@
         ($mentoringEnabled ?? false) ? ['key' => 'mentoring', 'label' => 'Mentorat', 'href' => route('mentoring.index'), 'icon' => 'fa-solid fa-life-ring', 'active' => request()->routeIs('mentoring.*')] : null,
         \App\Support\Domains::reachableFrom($section, 'academy') ? ['key' => 'academy', 'label' => 'Academy', 'href' => route('academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'active' => request()->routeIs('academy.*')] : null,
         (($storeEnabled ?? false) && \App\Support\Domains::reachableFrom($section, 'store')) ? ['key' => 'store', 'label' => 'Boutique', 'href' => route('store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'active' => request()->routeIs('store.*'), 'badge' => (int) ($storeCartCount ?? 0), 'badgeLabel' => 'article(s) dans le panier'] : null,
+        (\App\Support\Domains::reachableFrom($section, 'webmail') && \App\Support\Webmail\WebmailAccess::available($me)) ? ['key' => 'webmail', 'label' => 'Webmail', 'href' => \App\Support\Domains::url('webmail', route('webmail.index', [], false)), 'icon' => 'fa-regular fa-envelope', 'active' => request()->routeIs('webmail.*'), 'badge' => \App\Support\Webmail\WebmailAccess::unseen($me), 'badgeLabel' => 'message(s) non lu(s)'] : null,
         ($canAdmin ?? false) ? ['key' => 'admin', 'label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'active' => false] : null,
         ($canSimulate ?? false) ? ['key' => 'simulator', 'label' => 'Simulateur de rôles', 'href' => route('admin.simulator.index'), 'icon' => 'fa-solid fa-user-secret', 'active' => false] : null,
     ]));
@@ -30,7 +31,7 @@
     $moreBadge = (int) collect($moreItems)->sum(fn (array $item): int => (int) ($item['badge'] ?? 0));
     $inIntegration = \App\Support\Onboarding::inProgress($me);
 @endphp
-@if(in_array($section, ['store', 'academy', 'messenger'], true))
+@if(in_array($section, ['store', 'academy', 'messenger', 'webmail'], true))
     @include('partials.section-header')
 @elseif($inIntegration)
     @include('partials.integration-header')

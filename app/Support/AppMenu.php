@@ -7,6 +7,7 @@ use App\Support\Challenges\Challenges;
 use App\Support\Messenger\Messenger;
 use App\Support\Store\StoreCart;
 use App\Support\Store\StoreSettings;
+use App\Support\Webmail\WebmailAccess;
 use Illuminate\Http\Request;
 
 /** Menu latéral du fil : une entrée par espace ouvert au membre, dans l'ordre d'affichage. */
@@ -50,6 +51,10 @@ final class AppMenu
 
         if (Messenger::enabled() && Domains::reachableFrom($section, 'messenger')) {
             $items[] = $item('messenger', 'T.Link Messenger', Domains::url('messenger', route('messenger.index', [], false)), 'fa-regular fa-comments', false, Messenger::unreadCount($user));
+        }
+
+        if (Domains::reachableFrom($section, 'webmail') && WebmailAccess::available($user)) {
+            $items[] = $item('webmail', 'T.Link Webmail', Domains::url('webmail', route('webmail.index', [], false)), 'fa-regular fa-envelope', false, WebmailAccess::unseen($user));
         }
 
         if (StoreSettings::enabled() && Domains::reachableFrom($section, 'store')) {

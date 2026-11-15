@@ -8,15 +8,15 @@ use Illuminate\Routing\RouteRegistrar;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Répartition du site entre sous-domaines (site vitrine, T.Link, Store, Academy, Messenger). Tout est optionnel : sans hôte configuré,
+ * Répartition du site entre sous-domaines (site vitrine, T.Link, Store, Academy, Messenger, Webmail). Tout est optionnel : sans hôte configuré,
  * l'application se comporte comme un site unique.
  */
 class Domains
 {
-    public const KEYS = ['site', 'app', 'store', 'academy', 'messenger'];
+    public const KEYS = ['site', 'app', 'store', 'academy', 'messenger', 'webmail'];
 
     /** Les applications (une par sous-domaine), cloisonnées entre elles. */
-    public const APPS = ['app', 'store', 'academy', 'messenger'];
+    public const APPS = ['app', 'store', 'academy', 'messenger', 'webmail'];
 
     /** Hôte configuré pour une section, ou null. */
     public static function host(string $key): ?string
@@ -29,7 +29,7 @@ class Domains
     /** Au moins un sous-domaine dédié est configuré. */
     public static function enabled(): bool
     {
-        foreach (['site', 'store', 'academy', 'messenger'] as $key) {
+        foreach (['site', 'store', 'academy', 'messenger', 'webmail'] as $key) {
             if (self::host($key) !== null) {
                 return true;
             }
@@ -112,13 +112,14 @@ class Domains
         }
 
         if ($key !== null) {
-            return $key === 'app' ? 'link' : $key;
+            return in_array($key, ['app', 'webmail'], true) ? 'link' : $key;
         }
 
         return match (explode('/', trim($request->path(), '/'))[0]) {
             'boutique' => 'store',
             'academy', 'certificats' => 'academy',
             'messagerie' => 'messenger',
+            'webmail' => 'webmail',
             default => null,
         };
     }
@@ -147,7 +148,7 @@ class Domains
             return null;
         }
 
-        foreach (['store', 'academy', 'messenger'] as $key) {
+        foreach (['store', 'academy', 'messenger', 'webmail'] as $key) {
             if (\Illuminate\Support\Str::is($key.'.*', $name)) {
                 return $key;
             }
@@ -163,6 +164,7 @@ class Domains
             'boutique' => 'store',
             'academy', 'certificats' => 'academy',
             'messagerie' => 'messenger',
+            'webmail' => 'webmail',
             default => 'app',
         };
     }
@@ -183,6 +185,7 @@ class Domains
             'store' => route('store.index'),
             'academy' => route('academy.index'),
             'messenger' => route('messenger.index'),
+            'webmail' => route('webmail.index'),
             default => route('home'),
         };
     }

@@ -9,6 +9,7 @@ Le site peut être réparti entre plusieurs hôtes sans dupliquer l'application 
 | `store.tunivisionsfoundation.org` | Tunivisions Stores (`/boutique`) | `DOMAIN_STORE` |
 | `academy.tunivisionsfoundation.org` | Tunivisions Academy (`/academy`, `/certificats/…`) | `DOMAIN_ACADEMY` |
 | `messenger.tunivisionsfoundation.org` | T.Link Messenger : la messagerie seule (`/` mène à `/messagerie`) | `DOMAIN_MESSENGER` |
+| `webmail.tunivisionsfoundation.org` | T.Link Webmail : le webmail des entités seul (`/` mène à `/webmail`) | `DOMAIN_WEBMAIL` |
 
 Chaque variable est facultative : une section sans hôte reste servie par l'hôte principal, sous son chemin habituel. Sans aucune variable, rien ne change.
 La messagerie reste accessible dans T.Link ; ses routes, avec les notifications, la recherche et la déconnexion, sont aussi utilisables depuis Store, Academy et Messenger (`shared_routes` dans `config/domains.php`).
@@ -22,6 +23,7 @@ DOMAIN_APP=link.tunivisionsfoundation.org
 DOMAIN_STORE=store.tunivisionsfoundation.org
 DOMAIN_ACADEMY=academy.tunivisionsfoundation.org
 DOMAIN_MESSENGER=messenger.tunivisionsfoundation.org
+DOMAIN_WEBMAIL=webmail.tunivisionsfoundation.org
 
 # Une seule session pour tous les sous-domaines (connexion unique).
 SESSION_DOMAIN=.tunivisionsfoundation.org
@@ -34,7 +36,7 @@ Puis : `php artisan optimize:clear`. Tout le monde sera déconnecté une fois (l
 
 Le domaine principal (`tunivisionsfoundation.org`, site vitrine) existe déjà et sert `production-app/public`. Il reste quatre sous-domaines à créer, qui servent le **même** dossier :
 
-1. **DNS** : un enregistrement A par sous-domaine (`link`, `store`, `academy`, `messenger`) vers l'IP du serveur (dans CyberPanel si elle gère le DNS, sinon chez le registrar). Attendre la propagation avant l'étape 4.
+1. **DNS** : un enregistrement A par sous-domaine (`link`, `store`, `academy`, `messenger`, `webmail`) vers l'IP du serveur (dans CyberPanel si elle gère le DNS, sinon chez le registrar). Attendre la propagation avant l'étape 4.
 2. **Child domain** : Websites > List Websites > Manage (tunivisionsfoundation.org) > Create Child Domain, une fois par sous-domaine. Garder la même version de PHP que le site principal.
 3. **Document root partagé** : dans chaque `vhost.conf` (`/usr/local/lsws/conf/vhosts/<sous-domaine>/vhost.conf`), mettre comme le site principal :
    ```
@@ -55,7 +57,7 @@ Les cookies d'un domaine parent sont partagés avec tous ses sous-domaines. Pour
 
 ## Comportement
 
-- **Cloisonnement : T.Link, Store, Academy et Messenger sont quatre applications étanches.** Une page d'une autre application demandée depuis l'hôte courant est introuvable (404) : `store.` ne sert ni le fil, ni la messagerie, ni l'Academy, etc. Aucun lien ne relie les applications (en-têtes, menus, notifications, profil), à une exception : l'en-tête de T.Link garde le bouton Messenger, qui redirige vers l'application Messenger de son sous-domaine (pastille des messages non lus incluse, sans tiroir de messages) et les barres de navigation de Store, Academy et Messenger ne contiennent que leurs propres pages et le compte (déconnexion). Seules exceptions : les routes techniques communes (`shared_routes` dans `config/domains.php` : médias, appareils, manifeste, déconnexion…) et la connexion/inscription, qui reste sur l'hôte T.Link (retour de Google) : les autres hôtes y renvoient (301/308). L'intégration d'un nouveau membre se termine dans T.Link.
+- **Cloisonnement : T.Link, Store, Academy, Messenger et Webmail sont cinq applications étanches.** Une page d'une autre application demandée depuis l'hôte courant est introuvable (404) : `store.` ne sert ni le fil, ni la messagerie, ni l'Academy, etc. Aucun lien ne relie les applications (en-têtes, menus, notifications, profil), à une exception : l'en-tête de T.Link garde le bouton Messenger, qui redirige vers l'application Messenger de son sous-domaine (pastille des messages non lus incluse, sans tiroir de messages) et les barres de navigation de Store, Academy et Messenger ne contiennent que leurs propres pages et le compte (déconnexion). Seules exceptions : les routes techniques communes (`shared_routes` dans `config/domains.php` : médias, appareils, manifeste, déconnexion…) et la connexion/inscription, qui reste sur l'hôte T.Link (retour de Google) : les autres hôtes y renvoient (301/308). L'intégration d'un nouveau membre se termine dans T.Link.
 - Notifications et recherche sont propres à T.Link ; les notifications push (appareils et navigateurs) sont envoyées uniquement à l'application concernée (colonne `app`).
 - Depuis le site vitrine, les anciennes adresses (`/boutique`, `/academy`, `/certificats/…`) sont redirigées (301) vers l'hôte de leur application ; depuis une autre application, elles sont introuvables.
 - La racine de `link.` mène au fil. Celles de `store.` et `academy.` sont des vitrines publiques qui reprennent la mise en page du site de la Fondation (barre de navigation, pied de page, langue du navigateur) ; la barre de navigation et la page « Projets » du site renvoient vers elles. La boutique et les cours restent sous `/boutique` et `/academy`, réservés aux membres. Sans sous-domaine, ces vitrines sont à `/boutique/presentation` et `/academy/presentation`.

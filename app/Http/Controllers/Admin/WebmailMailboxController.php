@@ -6,6 +6,7 @@ use App\Models\WebmailMailbox;
 use App\Support\MarketingEntities;
 use App\Support\Webmail\GatewayFactory;
 use App\Support\Webmail\OvhApi;
+use App\Support\Webmail\WebmailAccess;
 use App\Support\Webmail\WebmailException;
 use App\Support\Webmail\WebmailSettings;
 use Illuminate\Http\RedirectResponse;
@@ -214,6 +215,7 @@ class WebmailMailboxController extends AdminController
             'entityOptions' => MarketingEntities::grouped(MarketingEntities::reach($request->user())),
             'domain' => WebmailSettings::domain(),
             'apiReady' => WebmailSettings::apiReady(),
+            'authorized' => $mailbox->exists ? WebmailAccess::authorized($mailbox) : collect(),
         ];
     }
 

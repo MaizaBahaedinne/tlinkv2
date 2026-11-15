@@ -22,6 +22,7 @@ return [
         'academy' => env('DOMAIN_ACADEMY'),
         // T.Link Messenger : application de messagerie (mêmes routes /messagerie, racine redirigée vers la messagerie).
         'messenger' => env('DOMAIN_MESSENGER'),
+        'webmail' => env('DOMAIN_WEBMAIL'),
     ],
 
     // Routes techniques communes à toutes les applications (médias, appareils, manifeste, déconnexion…) : elles s'exécutent sur l'hôte courant,

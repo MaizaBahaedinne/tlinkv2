@@ -15,6 +15,7 @@ return [
         'com.tunivisions.stores' => ['section' => 'store', 'path' => '/boutique', 'name' => 'Tunivisions Stores', 'short_name' => 'Stores', 'icons' => 'store', 'description' => 'La boutique de la Fondation Tunivisions'],
         'com.tunivisions.academy' => ['section' => 'academy', 'path' => '/academy', 'name' => 'Tunivisions Academy', 'short_name' => 'Academy', 'icons' => 'academy', 'description' => 'Les formations de la Fondation Tunivisions'],
         'com.tunivisions.messenger' => ['section' => 'messenger', 'path' => '/messagerie', 'name' => 'T.Link Messenger', 'short_name' => 'Messenger', 'icons' => 'messenger', 'description' => 'La messagerie de T.Link'],
+        'com.tunivisions.webmail' => ['section' => 'webmail', 'path' => '/webmail', 'name' => 'T.Link Webmail', 'short_name' => 'Webmail', 'icons' => 'link', 'description' => 'Le webmail des entités de la Fondation'],
     ],
 
     // Empreintes SHA-256 du certificat de signature des APK (séparées par des virgules, format AA:BB:…) : elles permettent à Android
