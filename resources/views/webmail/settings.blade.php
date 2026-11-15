@@ -6,10 +6,11 @@
     $btnSecondary = 'inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50';
     $input = 'w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-tlink-blue focus:outline-none';
 @endphp
-<div class="min-h-screen bg-tlink-sand pb-12 text-slate-800">
+<div class="mg-shell bg-tlink-sand text-slate-800">
     @include('partials.app-header')
 
-    <main class="app-container max-w-3xl space-y-4 py-6">
+    <main class="min-h-0 overflow-y-auto">
+    <div class="app-container max-w-3xl space-y-4 py-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="font-display text-2xl font-bold text-slate-900">Réglages</h1>
@@ -108,6 +109,7 @@
                 <div>{{ $contacts->links() }}</div>
             @endif
         </section>
+    </div>
     </main>
 </div>
 @endsection
