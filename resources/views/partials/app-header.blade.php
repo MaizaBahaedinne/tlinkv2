@@ -136,6 +136,7 @@
                     @if($challengesEnabled ?? false)
                         <a href="{{ route('activities.scan') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-qrcode mr-2 w-4 text-center text-slate-500"></i>Scanner un QR code</a>
                     @endif
+                    <a href="{{ route('guides.index') }}" @if(request()->routeIs('guides.*')) aria-current="page" @endif class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-book-open mr-2 w-4 text-center text-slate-500"></i>Guides d’utilisation</a>
                     <form action="{{ route('logout') }}" method="post">
                         @csrf
                         <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">

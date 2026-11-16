@@ -146,6 +146,11 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/parrainage', [\App\Http\Controllers\SponsorshipController::class, 'index'])->name('sponsorship.index');
     Route::post('/parrainage/postes/{node}/invitation', [\App\Http\Controllers\SponsorshipController::class, 'invite'])->whereNumber('node')->middleware('throttle:20,10')->name('sponsorship.invite');
 
+    // Guides d'utilisation : bibliothèque de guides animés pas à pas, avec suivi de la progression.
+    Route::get('/guides', [\App\Http\Controllers\GuideController::class, 'index'])->name('guides.index');
+    Route::get('/guides/{slug}', [\App\Http\Controllers\GuideController::class, 'show'])->where('slug', '[a-z0-9\-]+')->name('guides.show');
+    Route::post('/guides/{slug}/progression', [\App\Http\Controllers\GuideController::class, 'progress'])->where('slug', '[a-z0-9\-]+')->middleware('throttle:120,1')->name('guides.progress');
+
     // Tunivisions Stores : boutique, panier, commande, suivi et retours (fermée tant que l'administration ne l'ouvre pas).
     Domains::on('store')->prefix('boutique')->name('store.')->middleware('store.open')->group(function (): void {
         Route::get('/', [StoreController::class, 'index'])->name('index');
@@ -547,6 +552,17 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('publicites', [Admin\AdvertController::class, 'store'])->name('adverts.store');
             Route::put('publicites/{advert}', [Admin\AdvertController::class, 'update'])->name('adverts.update');
             Route::delete('publicites/{advert}', [Admin\AdvertController::class, 'destroy'])->name('adverts.destroy');
+            Route::get('guides', [Admin\GuideController::class, 'index'])->name('guides.index');
+            Route::get('guides/nouveau', [Admin\GuideController::class, 'create'])->name('guides.create');
+            Route::post('guides', [Admin\GuideController::class, 'store'])->name('guides.store');
+            Route::get('guides/{guide:id}/modifier', [Admin\GuideController::class, 'edit'])->whereNumber('guide')->name('guides.edit');
+            Route::put('guides/{guide:id}', [Admin\GuideController::class, 'update'])->whereNumber('guide')->name('guides.update');
+            Route::post('guides/{guide:id}/publication', [Admin\GuideController::class, 'toggle'])->whereNumber('guide')->name('guides.toggle');
+            Route::delete('guides/{guide:id}', [Admin\GuideController::class, 'destroy'])->whereNumber('guide')->name('guides.destroy');
+            Route::post('guides/{guide:id}/etapes', [Admin\GuideController::class, 'storeStep'])->whereNumber('guide')->name('guides.steps.store');
+            Route::put('guides/{guide:id}/etapes/{step}', [Admin\GuideController::class, 'updateStep'])->whereNumber(['guide', 'step'])->name('guides.steps.update');
+            Route::post('guides/{guide:id}/etapes/{step}/deplacer', [Admin\GuideController::class, 'moveStep'])->whereNumber(['guide', 'step'])->name('guides.steps.move');
+            Route::delete('guides/{guide:id}/etapes/{step}', [Admin\GuideController::class, 'destroyStep'])->whereNumber(['guide', 'step'])->name('guides.steps.destroy');
             Route::get('projets', [Admin\ProjectController::class, 'index'])->name('projects.index');
             Route::get('projets/{scope}/modifier', [Admin\ProjectController::class, 'edit'])->name('projects.edit');
             Route::put('projets/{scope}', [Admin\ProjectController::class, 'update'])->name('projects.update');

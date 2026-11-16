@@ -165,6 +165,12 @@ final class ModuleCatalog
                 ],
             ],
             [
+                'key' => 'help', 'name' => 'Aide et formation', 'description' => 'Guides pour apprendre à utiliser T.Link.',
+                'children' => [
+                    ['key' => 'help.guides', 'name' => 'Guides d’utilisation', 'description' => 'Bibliothèque de guides animés pas à pas, avec captures, GIF et notices, pour former les membres.', 'actions' => self::CRUD],
+                ],
+            ],
+            [
                 'key' => 'gamification', 'name' => 'Badges et missions', 'description' => 'Missions, niveaux et badges des membres.',
                 'children' => [
                     ['key' => 'gamification.badges', 'name' => 'Badges et missions', 'description' => 'Créer les badges (bronze, argent, or, platine), leurs missions et leurs points de contrôle.', 'actions' => self::CRUD],

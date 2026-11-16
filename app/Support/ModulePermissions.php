@@ -30,6 +30,7 @@ final class ModulePermissions
         'website.content' => 'entity.manage',
         'website.partners' => 'entity.manage',
         'website.adverts' => 'entity.manage',
+        'help.guides' => 'entity.manage',
         'members.companies' => 'entity.manage',
         'members.verification' => 'entity.manage',
         'gamification.badges' => 'entity.manage',

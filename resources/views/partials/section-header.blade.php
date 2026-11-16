@@ -69,6 +69,7 @@
                             <p class="truncate text-xs text-slate-500">{{ $me->email }}</p>
                         @endunless
                     </div>
+                    <a href="{{ route('guides.index') }}" class="mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-book-open mr-2 w-4 text-center text-slate-500"></i>Guides d’utilisation</a>
                     <form action="{{ route('logout') }}" method="post">
                         @csrf
                         <button type="submit" class="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50">
