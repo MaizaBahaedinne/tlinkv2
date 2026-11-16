@@ -1,35 +1,24 @@
-// Parrainage : QR code d'un poste (généré à l'ouverture du panneau), copie du lien et partage natif du téléphone.
+// Parrainage : QR code du poste choisi, copie du lien, partage natif, et recherche dans l'organigramme horizontal.
 import QRCode from 'qrcode';
 
-document.querySelectorAll('[data-sponsor-panel]').forEach((panel) => {
-    panel.addEventListener('toggle', async () => {
-        const holder = panel.querySelector('[data-sponsor-qr]');
+document.querySelectorAll('[data-sponsor-qr]').forEach(async (holder) => {
+    try {
+        const image = await QRCode.toDataURL(holder.getAttribute('data-sponsor-qr'), { width: 480, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#0f172a', light: '#ffffff' } });
+        holder.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = image;
+        img.alt = holder.getAttribute('data-alt') ?? 'QR code';
+        img.className = 'h-full w-full';
+        holder.appendChild(img);
 
-        if (!panel.open || !holder || holder.dataset.ready) {
-            return;
+        const download = holder.closest('[data-sponsor-panel]')?.querySelector('[data-sponsor-download]');
+        if (download) {
+            download.href = image;
+            download.hidden = false;
         }
-
-        holder.dataset.ready = '1';
-
-        try {
-            const url = holder.getAttribute('data-sponsor-qr');
-            const image = await QRCode.toDataURL(url, { width: 480, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#0f172a', light: '#ffffff' } });
-            holder.innerHTML = '';
-            const img = document.createElement('img');
-            img.src = image;
-            img.alt = holder.getAttribute('data-alt') ?? 'QR code';
-            img.className = 'h-full w-full';
-            holder.appendChild(img);
-
-            const download = panel.querySelector('[data-sponsor-download]');
-            if (download) {
-                download.href = image;
-                download.hidden = false;
-            }
-        } catch {
-            holder.textContent = 'QR code indisponible : utilisez le lien.';
-        }
-    });
+    } catch {
+        holder.textContent = 'QR code indisponible : utilisez le lien.';
+    }
 });
 
 document.addEventListener('click', async (event) => {
@@ -62,4 +51,40 @@ document.addEventListener('click', async (event) => {
 
 if (!navigator.share) {
     document.querySelectorAll('[data-sponsor-share]').forEach((button) => { button.hidden = true; });
+}
+
+// Recherche : les postes qui ne correspondent pas sont estompés (l'arbre reste lisible), le premier résultat est centré.
+const search = document.querySelector('[data-sp-search]');
+const onlyOpen = document.querySelector('[data-sp-open]');
+const counter = document.querySelector('[data-sp-count]');
+
+if (search) {
+    const cards = [...document.querySelectorAll('[data-sp-node]')];
+
+    const apply = (scroll) => {
+        const term = search.value.trim().toLowerCase();
+        const filtering = term !== '' || onlyOpen?.checked;
+        let first = null;
+        let hits = 0;
+
+        cards.forEach((card) => {
+            const match = (term === '' || card.dataset.search.includes(term)) && (!onlyOpen?.checked || card.dataset.open === '1');
+            card.classList.toggle('sp-dim', filtering && !match);
+            card.classList.toggle('sp-hit', filtering && match);
+
+            if (filtering && match) {
+                hits += 1;
+                first ??= card;
+            }
+        });
+
+        counter.textContent = filtering ? `${hits} poste${hits > 1 ? 's' : ''} trouvé${hits > 1 ? 's' : ''}` : '';
+
+        if (scroll && first) {
+            first.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+        }
+    };
+
+    search.addEventListener('input', () => apply(true));
+    onlyOpen?.addEventListener('change', () => apply(true));
 }

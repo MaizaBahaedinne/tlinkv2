@@ -24,25 +24,47 @@ class SponsorshipController extends Controller
 
     public function index(Request $request): View
     {
-        $offices = collect(MyOffice::overview($request->user()))
-            ->map(function (array $office): array {
-                $positions = collect($office['team'])
-                    ->filter(fn (array $row): bool => $row['node']->kind === 'position' && filled($row['node']->join_token))
-                    ->map(fn (array $row): array => [
-                        'node' => $row['node'],
-                        'depth' => $row['depth'],
-                        'holders' => $row['holders'],
-                        'closed' => $row['node']->capacity !== 'multiple' && $row['holders'] !== [],
-                        'url' => $row['node']->joinUrl(),
-                        'scope' => $row['node']->scopeLabel(),
-                    ])
-                    ->values();
+        $selectedId = (int) $request->query('poste');
+        $selected = null;
 
-                return ['node' => $office['node'], 'positions' => $positions, 'truncated' => $office['team_truncated']];
+        $offices = collect(MyOffice::overview($request->user()))
+            ->map(function (array $office) use ($selectedId, &$selected): array {
+                $team = collect($office['team'])->filter(fn (array $row): bool => $row['node']->kind === 'position');
+
+                if ($selectedId > 0 && $selected === null && ($row = $team->first(fn (array $row): bool => (int) $row['node']->id === $selectedId))) {
+                    $node = $row['node'];
+                    $selected = [
+                        'node' => $node,
+                        'holders' => $row['holders'],
+                        'depth' => $row['depth'],
+                        'closed' => $this->isClosed($node, $row['holders']),
+                        'url' => $node->joinUrl(),
+                        'scope' => $node->scopeLabel(),
+                        'office' => $office['node']->title,
+                    ];
+                }
+
+                // Organigramme horizontal : mon poste à gauche, puis un niveau de postes par colonne vers la droite.
+                $tree = MyOffice::tree(['node' => $office['node'], 'holders' => $office['holders'], 'superiors' => [], 'team' => $team->values()->all()]);
+
+                return [
+                    'node' => $office['node'],
+                    'tree' => $tree,
+                    'depth' => (int) $team->max('depth'),
+                    'count' => $team->count(),
+                    'open' => $team->filter(fn (array $row): bool => ! $this->isClosed($row['node'], $row['holders']))->count(),
+                    'truncated' => $office['team_truncated'],
+                ];
             })
             ->values();
 
-        return view('sponsorship.index', ['offices' => $offices]);
+        return view('sponsorship.index', ['offices' => $offices, 'selected' => $selected]);
+    }
+
+    /** Poste à titulaire unique déjà occupé : les candidatures sont fermées. */
+    private function isClosed(OrgNode $node, array $holders): bool
+    {
+        return $node->capacity !== 'multiple' && $holders !== [];
     }
 
     /** Invitation personnelle par e-mail pour un poste situé sous celui du membre. */
@@ -74,7 +96,7 @@ class SponsorshipController extends Controller
         if ($result['sent'] !== []) {
             AuditLogger::record($user->id, 'sponsorship.invitation.sent', OrgNode::class, $node->id, ['position' => $node->title, 'email' => $result['sent'][0]['email']], $request->ip());
 
-            return back()->with('status', 'Invitation envoyée à '.$result['sent'][0]['email'].' pour le poste « '.$node->title.' ».');
+            return redirect(route('sponsorship.index', ['poste' => $node->id]).'#partage')->with('status', 'Invitation envoyée à '.$result['sent'][0]['email'].' pour le poste « '.$node->title.' ».');
         }
 
         $reason = $result['skipped'][0]['reason'] ?? null;

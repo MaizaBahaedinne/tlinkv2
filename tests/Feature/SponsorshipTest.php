@@ -60,21 +60,48 @@ class SponsorshipTest extends TestCase
         return ['first_name' => 'Amel', 'last_name' => 'Ben Salah', 'email' => $email];
     }
 
-    public function test_the_page_offers_the_positions_below_mine_with_link_and_qr_code(): void
+    public function test_the_page_draws_the_positions_below_mine_as_a_horizontal_tree_by_level(): void
     {
         $chief = $this->place($this->middle, 'Sonia Cheffe');
         $this->node('Conseiller rattaché', $this->middle, 'multiple', 'attachment');
+        $deputy = $this->node('Adjoint profond', $this->low);
 
-        $this->actingAs($chief)->get('/parrainage')->assertOk()
+        $html = $this->actingAs($chief)->get('/parrainage')->assertOk()
             ->assertSee('Sous mon poste : Chef de pôle')
+            ->assertSee('class="sp-tree"', false)
+            ->assertSee('Mon poste')
+            ->assertSee('Niveau −1')
+            ->assertSee('Niveau −2')
             ->assertSee('Assistant de pôle')
+            ->assertSee('Adjoint profond')
+            ->assertSee('Chercher un poste ou un titulaire')
+            ->assertSee('Choisissez un poste')
+            ->assertDontSee('Directeur du bureau')
+            ->assertDontSee('Conseiller rattaché')
+            ->assertDontSee($this->middle->join_token)
+            ->assertDontSee($this->low->join_token)
+            ->getContent();
+
+        $tree = substr($html, strpos($html, 'class="sp-tree"'));
+        $this->assertLessThan(strpos($tree, 'Adjoint profond'), strpos($tree, 'Assistant de pôle'), 'un poste précède ceux qui dépendent de lui');
+        $this->assertStringContainsString('poste='.$this->low->id, $html, 'chaque poste ouvert mène à son panneau de partage');
+        $this->assertStringContainsString('poste='.$deputy->id, $html);
+    }
+
+    public function test_choosing_a_position_shows_its_link_qr_code_and_email_form(): void
+    {
+        $chief = $this->place($this->middle, 'Sonia Cheffe');
+
+        $this->actingAs($chief)->get('/parrainage?poste='.$this->low->id)->assertOk()
             ->assertSee(route('position.join', $this->low->join_token))
             ->assertSee('data-sponsor-qr', false)
             ->assertSee('wa.me', false)
             ->assertSee('Inviter par e-mail')
-            ->assertDontSee('Directeur du bureau')
-            ->assertDontSee('Conseiller rattaché')
-            ->assertDontSee($this->middle->join_token);
+            ->assertSee('Niveau −1 · sous Chef de pôle');
+
+        $this->actingAs($chief)->get('/parrainage?poste='.$this->top->id)->assertOk()
+            ->assertDontSee($this->top->join_token)
+            ->assertSee('Choisissez un poste');
     }
 
     public function test_the_user_menu_entry_only_exists_for_position_holders(): void
@@ -94,10 +121,12 @@ class SponsorshipTest extends TestCase
         $chief = $this->place($this->middle);
         $this->place($this->low, 'Yassine Assistant');
 
-        $this->actingAs($chief)->get('/parrainage')->assertOk()
+        $this->actingAs($chief)->get('/parrainage')->assertOk()->assertSee('Pourvu : Yassine Assistant');
+
+        $this->actingAs($chief)->get('/parrainage?poste='.$this->low->id)->assertOk()
             ->assertSee('Candidatures fermées')
-            ->assertSee('Yassine Assistant')
-            ->assertDontSee(route('position.join', $this->low->join_token));
+            ->assertDontSee(route('position.join', $this->low->join_token))
+            ->assertDontSee('data-sponsor-qr', false);
     }
 
     public function test_an_invitation_by_email_is_sent_and_attributed_to_the_sponsor(): void

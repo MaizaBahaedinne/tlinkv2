@@ -111,6 +111,81 @@ body {
     padding-top: 0;
 }
 
+/* Parrainage : organigramme horizontal (mon poste à gauche, un niveau par colonne vers la droite), relié par des traits. */
+.sp-tree ul {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sp-tree li {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0.35rem 0 0.35rem 2rem;
+    list-style: none;
+}
+
+.sp-tree > ul > li {
+    padding: 0;
+}
+
+.sp-tree li > ul {
+    position: relative;
+    margin-left: 2rem;
+}
+
+.sp-tree li > ul::before,
+.sp-tree li::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 2rem;
+    border-top: 2px solid #cbd5e1;
+}
+
+.sp-tree li > ul::before {
+    left: -2rem;
+}
+
+.sp-tree li::before {
+    left: 0;
+}
+
+.sp-tree li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    border-left: 2px solid #cbd5e1;
+}
+
+.sp-tree li:first-child::after {
+    top: 50%;
+}
+
+.sp-tree li:last-child::after {
+    bottom: 50%;
+}
+
+.sp-tree li:only-child::after,
+.sp-tree > ul > li::before,
+.sp-tree > ul > li::after {
+    display: none;
+}
+
+.sp-dim {
+    opacity: 0.3;
+}
+
+.sp-hit {
+    box-shadow: 0 0 0 3px rgba(208, 0, 49, 0.35);
+}
+
 /* Applications (T.Link, Store, Academy, Messenger) : contenu centré sur 95 % de la largeur, sur ordinateur, tablette et mobile. */
 .app-container {
     width: 95%;
