@@ -101,6 +101,7 @@ class AuditLabels
         'orgchart.join_link.regenerated' => 'Organigramme : lien d’inscription d’un poste régénéré',
         'orgchart.invitation.sent' => 'Organigramme : invitation à candidater envoyée par e-mail',
         'orgchart.invitation.revoked' => 'Organigramme : invitation à candidater révoquée',
+        'sponsorship.invitation.sent' => 'Parrainage : invitation à rejoindre un poste envoyée par e-mail',
         'position.invitation.accepted' => 'Invitation à candidater utilisée (compte créé ou candidature déposée)',
         'orgchart.application.approved' => 'Candidature à un poste acceptée',
         'orgchart.application.rejected' => 'Candidature à un poste refusée',

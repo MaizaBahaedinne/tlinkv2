@@ -116,7 +116,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-B_32_TOC.css",
+    "file": "assets/app-DQolI5Ly.css",
     "name": "app",
     "names": [
       "app.css"
@@ -125,7 +125,7 @@
     "isEntry": true
   },
   "resources/css/site.css": {
-    "file": "assets/site-DFeCBrlc.css",
+    "file": "assets/site-CRpLJ4Zs.css",
     "name": "site",
     "names": [
       "site.css"
@@ -156,13 +156,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-CjUVTkcd.js",
+    "file": "assets/main-E7Ba3DA0.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-B_32_TOC.css"
+      "assets/app-DQolI5Ly.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",
@@ -246,6 +246,16 @@
       "assets/layers-BWBAp2CZ.png",
       "assets/layers-2x-Bpkbi35X.png",
       "assets/marker-icon-hN30_KVU.png"
+    ]
+  },
+  "resources/js/sponsorship.js": {
+    "file": "assets/sponsorship-y1LbT9Rr.js",
+    "name": "sponsorship",
+    "src": "resources/js/sponsorship.js",
+    "isEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_browser-CnJLfRiM.js"
     ]
   },
   "resources/js/web-push.js": {

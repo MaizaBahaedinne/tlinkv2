@@ -97,6 +97,8 @@ class AppServiceProvider extends ServiceProvider
             $view->with('canAdmin', $request->user() !== null && AdminMenu::hasAccess(AdminContext::of($request)));
             $view->with('canSimulate', $request->user() !== null && \App\Support\RoleSimulator::available($request->user()));
             $view->with('hasOffice', $request->user() !== null && \App\Support\MyOffice::enabled() && (\App\Support\MyOffice::holdsPosition($request->user()) || \App\Support\MyOfficeSpace::hasActivity($request->user())));
+            // Parrainage (menu du compte) : réservé aux membres qui occupent un poste.
+            $view->with('canSponsor', $request->user() !== null && \App\Support\MyOffice::holdsPosition($request->user()));
         });
 
         // Pastille de notifications non lues de la barre de navigation T.Link.

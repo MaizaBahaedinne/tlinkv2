@@ -142,6 +142,10 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/ma-carte', [\App\Http\Controllers\MemberCardController::class, 'show'])->name('card.show');
     Route::get('/ma-carte/{card}/code', [\App\Http\Controllers\MemberCardController::class, 'code'])->whereNumber('card')->middleware('throttle:120,1')->name('card.code');
 
+    // Parrainage : appeler des personnes vers les postes situés sous le mien (lien, QR code ou e-mail).
+    Route::get('/parrainage', [\App\Http\Controllers\SponsorshipController::class, 'index'])->name('sponsorship.index');
+    Route::post('/parrainage/postes/{node}/invitation', [\App\Http\Controllers\SponsorshipController::class, 'invite'])->whereNumber('node')->middleware('throttle:20,10')->name('sponsorship.invite');
+
     // Tunivisions Stores : boutique, panier, commande, suivi et retours (fermée tant que l'administration ne l'ouvre pas).
     Domains::on('store')->prefix('boutique')->name('store.')->middleware('store.open')->group(function (): void {
         Route::get('/', [StoreController::class, 'index'])->name('index');

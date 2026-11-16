@@ -130,6 +130,9 @@
                     <a href="{{ route('profile.show') }}" class="mt-1 block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-regular fa-id-card mr-2 w-4 text-center text-slate-500"></i>Mon profil</a>
                     <a href="{{ route('memberships.index') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-people-group mr-2 w-4 text-center text-slate-500"></i>Mes adhésions</a>
                     <a href="{{ route('card.show') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-qrcode mr-2 w-4 text-center text-slate-500"></i>Ma carte de membre</a>
+                    @if($canSponsor ?? false)
+                        <a href="{{ route('sponsorship.index') }}" @if(request()->routeIs('sponsorship.*')) aria-current="page" @endif class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-user-plus mr-2 w-4 text-center text-slate-500"></i>Parrainage</a>
+                    @endif
                     @if($challengesEnabled ?? false)
                         <a href="{{ route('activities.scan') }}" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><i class="fa-solid fa-qrcode mr-2 w-4 text-center text-slate-500"></i>Scanner un QR code</a>
                     @endif
