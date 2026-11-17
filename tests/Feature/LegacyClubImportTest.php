@@ -77,10 +77,10 @@ SQL;
         // Classement par SenJun : « CSFMT H.LIF » est universitaire, les lycees sont High School.
         $this->assertSame('university', OrgNode::query()->where('legacy_id', 173)->firstOrFail()->scope);
         $lycee = OrgNode::query()->where('legacy_id', 299)->firstOrFail();
-        $this->assertSame('Lycée Cité Salem', $lycee->title);
+        $this->assertSame('Club Tunivisions Lycée Cité Salem', $lycee->title);
         $this->assertSame('high-school', $lycee->scope);
         $this->assertSame('ben-arous', $lycee->governorate->slug);
-        $this->assertSame("Lycée le pôle d'enseignement", OrgNode::query()->where('legacy_id', 332)->value('title'));
+        $this->assertSame("Club Tunivisions Lycée le pôle d'enseignement", OrgNode::query()->where('legacy_id', 332)->value('title'));
 
         // Etablissements : ESPRIT TIC + ESPRIT GCEM partagent ESPRIT.
         $this->assertSame('ESPRIT', $esprit->institution_name);

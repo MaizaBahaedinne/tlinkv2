@@ -93,11 +93,11 @@ class MentoringTest extends TestCase
     public function test_a_collective_ticket_targets_a_club_of_the_member_or_a_free_collective(): void
     {
         $member = User::factory()->create();
-        $club = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Robotique Sfax', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
+        $club = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Tunivisions Robotique Sfax', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
         $foreign = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Étranger', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
         Membership::query()->create(['user_id' => $member->id, 'scope' => 'university', 'node_id' => $club->id, 'status' => 'approved']);
 
-        $this->actingAs($member)->get('/mentorat/nouvelle')->assertOk()->assertSee('Club Robotique Sfax')->assertDontSee('Club Étranger');
+        $this->actingAs($member)->get('/mentorat/nouvelle')->assertOk()->assertSee('Club Tunivisions Robotique Sfax')->assertDontSee('Club Étranger');
 
         $this->actingAs($member)->post('/mentorat', $this->payload(['audience' => 'collective', 'node_id' => $foreign->id]))->assertSessionHasErrors('node_id');
 
@@ -105,7 +105,7 @@ class MentoringTest extends TestCase
         $ticket = MentoringTicket::query()->firstOrFail();
         $this->assertSame($club->id, (int) $ticket->node_id);
         $this->assertSame('club', $ticket->collective_type);
-        $this->assertStringContainsString('Club Robotique Sfax', (string) $ticket->collectiveLabel());
+        $this->assertStringContainsString('Club Tunivisions Robotique Sfax', (string) $ticket->collectiveLabel());
 
         $this->actingAs($member)->post('/mentorat', $this->payload(['audience' => 'collective', 'collective_type' => 'project', 'collective_name' => 'Projet Eau Propre']))->assertRedirect();
         $project = MentoringTicket::query()->latest('id')->firstOrFail();

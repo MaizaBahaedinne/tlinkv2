@@ -58,16 +58,16 @@ class ProfileRecordsTest extends TestCase
         // Club + adhésion validée hors club (périmètre « University », sans bloc précis) ; ni attente ni refus.
         $this->assertCount(2, $rows);
         $byName = $rows->keyBy('club_name');
-        $this->assertSame('Club', $byName['ESPRIT']['kind_label']);
-        $this->assertSame('Membre', $byName['ESPRIT']['role']);
-        $this->assertSame('2025-09-15', $byName['ESPRIT']['start_date']);
-        $this->assertNull($byName['ESPRIT']['end_date']);
+        $this->assertSame('Club', $byName['Club Tunivisions ESPRIT']['kind_label']);
+        $this->assertSame('Membre', $byName['Club Tunivisions ESPRIT']['role']);
+        $this->assertSame('2025-09-15', $byName['Club Tunivisions ESPRIT']['start_date']);
+        $this->assertNull($byName['Club Tunivisions ESPRIT']['end_date']);
         $this->assertSame('Chapitre', $byName['University']['kind_label']);
 
         $this->actingAs($member)->get('/profil')
             ->assertOk()
             ->assertSee('Adhésion validée Tunivisions')
-            ->assertSee('Membre · ESPRIT', false)
+            ->assertSee('Membre · Club Tunivisions ESPRIT', false)
             ->assertSee('/storage/clubs/logos/esprit.png', false)
             ->assertDontSee('Membre · ISET', false);
 

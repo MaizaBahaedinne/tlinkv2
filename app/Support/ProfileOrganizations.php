@@ -89,7 +89,9 @@ class ProfileOrganizations
             return null;
         }
 
-        $matches = $this->clubs()->filter(fn (OrgNode $node): bool => self::key((string) $node->title) === $key);
+        // « ESPRIT » retrouve « Club Tunivisions ESPRIT » : les clubs University / High School portent ce préfixe.
+        $keys = [$key, self::key(OrgNode::clubTitle($name))];
+        $matches = $this->clubs()->filter(fn (OrgNode $node): bool => in_array(self::key((string) $node->title), $keys, true));
 
         return $matches->first(fn (OrgNode $node): bool => $node->logoUrl() !== null || $node->institution?->logoUrl() !== null) ?? $matches->first();
     }

@@ -491,7 +491,7 @@ class ChallengesTest extends TestCase
         $this->assertSame(5, $totals[$offTheme->id]['max']);
 
         $ranking = ChallengeScoring::ranking($challenge);
-        $this->assertSame(['ESPRIT', 'ISET'], $ranking->map(fn ($row) => $row['club']->title)->all());
+        $this->assertSame(['Club Tunivisions ESPRIT', 'Club Tunivisions ISET'], $ranking->map(fn ($row) => $row['club']->title)->all());
         $this->assertSame(14.0, $ranking[0]['points']);
         $this->assertSame(10.0, $ranking[0]['theme_points']);
         $this->assertSame(4.0, $ranking[0]['off_theme_points']);
@@ -626,7 +626,7 @@ class ChallengesTest extends TestCase
         $member = User::factory()->create();
 
         $page = $this->actingAs($member)->get("/activites/{$activity->id}")->assertOk();
-        $page->assertSee('activities/covers/hero.jpg', false)->assertSee('org/logos/esprit.png', false)->assertSee('Logo ESPRIT', false);
+        $page->assertSee('activities/covers/hero.jpg', false)->assertSee('org/logos/esprit.png', false)->assertSee('Logo Club Tunivisions ESPRIT', false);
         $page->assertSee('Tounes el khadhra')->assertSee('M’inscrire')->assertSee('id="inscription"', false)->assertSee('Plus que 3 place(s)');
 
         // Sans couverture ni logo : fond T.Link et initiales du club, l'inscription reste possible.

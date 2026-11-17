@@ -276,11 +276,11 @@ class MarketingAccessRequestTest extends TestCase
 
         $this->actingAs($this->manager)->put('/admin/marketing/chartes', ['entity' => 'club:'.$this->club->id, 'title' => 'Charte ESPRIT', 'body' => 'Règle propre à {entite}.'])->assertRedirect();
         $charter = \App\Support\MarketingCharters::forEntity($this->club->id, null);
-        $this->assertSame('Règle propre à ESPRIT.', $charter['body']);
-        $this->assertSame('Article modifié pour ENIT.', \App\Support\MarketingCharters::forEntity($this->otherClub->id, null)['body']);
+        $this->assertSame('Règle propre à Club Tunivisions ESPRIT.', $charter['body']);
+        $this->assertSame('Article modifié pour Club Tunivisions ENIT.', \App\Support\MarketingCharters::forEntity($this->otherClub->id, null)['body']);
 
         $this->actingAs($this->manager)->post('/admin/marketing/chartes/supprimer', ['entity' => 'club:'.$this->club->id])->assertRedirect();
-        $this->assertSame('Article modifié pour ESPRIT.', \App\Support\MarketingCharters::forEntity($this->club->id, null)['body']);
+        $this->assertSame('Article modifié pour Club Tunivisions ESPRIT.', \App\Support\MarketingCharters::forEntity($this->club->id, null)['body']);
     }
 
     public function test_people_of_a_foundation_scope_are_listed_without_club_positions(): void

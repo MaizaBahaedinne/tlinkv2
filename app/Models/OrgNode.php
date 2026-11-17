@@ -36,6 +36,11 @@ class OrgNode extends Model
 
     public const INSTITUTION_TYPES = ['university' => 'Université', 'high_school' => 'Lycée', 'other' => 'Autre'];
 
+    /** Catégories de clubs dont le nom commence toujours par « Club Tunivisions ». */
+    public const TUNIVISIONS_CLUB_CATEGORIES = ['university_club', 'highschool_club'];
+
+    public const CLUB_TITLE_PREFIX = 'Club Tunivisions';
+
     public const CAPACITIES = ['single' => 'Un seul titulaire', 'multiple' => 'Plusieurs personnes'];
 
     public const RELATIONS = ['hierarchy' => 'Lien hiérarchique', 'attachment' => 'Rattachement (sans lien hiérarchique)'];
@@ -119,6 +124,13 @@ class OrgNode extends Model
             $node->syncInstitution();
         });
 
+        // Les clubs University et High School s'appellent tous « Club Tunivisions » suivi du nom de l'établissement.
+        static::saving(function (self $node): void {
+            if ($node->kind === 'club' && in_array($node->category, self::TUNIVISIONS_CLUB_CATEGORIES, true) && filled($node->title)) {
+                $node->title = self::clubTitle((string) $node->title);
+            }
+        });
+
         static::saved(fn () => \App\Support\MarketingEntities::flush());
         static::deleted(fn () => \App\Support\MarketingEntities::flush());
 
@@ -172,6 +184,18 @@ class OrgNode extends Model
             $this->institution_name = $institution?->name;
             $this->institution_type = $institution?->clubType();
         }
+    }
+
+    /**
+     * Nom officiel d'un club University / High School : « Club Tunivisions » + nom de l'établissement.
+     * Idempotent ; un ancien préfixe « Club » (ex. « Club Sup'Com ») est remplacé, jamais doublé.
+     */
+    public static function clubTitle(string $name): string
+    {
+        $name = trim((string) preg_replace('/\s+/u', ' ', $name));
+        $base = trim((string) preg_replace('/^(?:club\b[\s:\-–]*)?(?:tunivisions\b[\s:\-–]*)?/iu', '', $name));
+
+        return $base === '' ? self::CLUB_TITLE_PREFIX : self::CLUB_TITLE_PREFIX.' '.$base;
     }
 
     public function institution(): BelongsTo

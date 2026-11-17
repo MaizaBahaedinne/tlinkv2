@@ -299,7 +299,7 @@ class StructureAdminTest extends TestCase
     public function test_sub_blocks_can_be_added_and_deleted_from_the_sheet(): void
     {
         $admin = $this->admin();
-        $club = $this->universityClub('Club Fiche', false);
+        $club = $this->universityClub('Club Tunivisions Fiche', false);
 
         $this->actingAs($admin)->post('/admin/structure/postes', [
             'parent_id' => $club->id, 'title' => 'Président de test', 'kind' => 'position', 'capacity' => 'single', 'access_level' => 'club_president',
@@ -307,7 +307,7 @@ class StructureAdminTest extends TestCase
 
         $president = OrgNode::query()->where('title', 'Président de test')->firstOrFail();
         $this->assertSame('club_president', $president->access_level);
-        $this->assertSame('Club Fiche', $president->subtitle);
+        $this->assertSame('Club Tunivisions Fiche', $president->subtitle);
 
         $this->actingAs($admin)->delete("/admin/structure/postes/{$president->id}")->assertRedirect("/admin/structure/postes/{$club->id}/modifier");
         $this->assertNull(OrgNode::query()->find($president->id));
@@ -316,23 +316,23 @@ class StructureAdminTest extends TestCase
     public function test_clubs_table_shows_team_progress_and_creates_clubs_with_the_template(): void
     {
         $admin = $this->admin();
-        $this->universityClub('Club Rempli');
-        $empty = $this->universityClub('Club Vide', false);
+        $this->universityClub('Club Tunivisions Rempli');
+        $empty = $this->universityClub('Club Tunivisions Vide', false);
 
         $this->actingAs($admin)->get('/admin/structure/clubs')
             ->assertOk()
-            ->assertSee('Club Rempli')
-            ->assertSee('Club Vide')
+            ->assertSee('Club Tunivisions Rempli')
+            ->assertSee('Club Tunivisions Vide')
             ->assertSee('Aucune équipe')
             ->assertSee('0 / 13 postes pourvus');
 
         $this->actingAs($admin)->post("/admin/structure/postes/{$empty->id}/modele")->assertRedirect();
-        $this->assertSame(13, OrgNode::query()->where('subtitle', 'Club Vide')->where('kind', 'position')->count());
+        $this->assertSame(13, OrgNode::query()->where('subtitle', 'Club Tunivisions Vide')->where('kind', 'position')->count());
 
         $this->actingAs($admin)->post('/admin/structure/clubs', ['name' => 'Nouveau Club', 'type' => 'highschool', 'apply_template' => '1'])->assertRedirect();
-        $created = OrgNode::query()->where('kind', 'club')->where('title', 'Nouveau Club')->firstOrFail();
+        $created = OrgNode::query()->where('kind', 'club')->where('title', 'Club Tunivisions Nouveau Club')->firstOrFail();
         $this->assertSame('highschool_club', $created->category);
-        $this->assertSame(4, OrgNode::query()->where('parent_id', '!=', null)->where('subtitle', 'Nouveau Club')->where('kind', 'club_department')->count());
+        $this->assertSame(4, OrgNode::query()->where('parent_id', '!=', null)->where('subtitle', 'Club Tunivisions Nouveau Club')->where('kind', 'club_department')->count());
 
         $this->actingAs($admin)->post('/admin/structure/clubs/aligner')->assertRedirect();
     }

@@ -170,7 +170,7 @@ class MemberProfileTest extends TestCase
 
     public function test_an_associative_experience_is_linked_to_its_club(): void
     {
-        $club = $this->universityClub('Club Robotique');
+        $club = $this->universityClub('Club Tunivisions Robotique');
         $club->update(['logo_path' => 'clubs/logos/robot.png']);
         $member = User::factory()->create();
 

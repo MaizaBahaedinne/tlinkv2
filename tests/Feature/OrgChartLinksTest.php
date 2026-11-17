@@ -116,7 +116,7 @@ class OrgChartLinksTest extends TestCase
             'title' => 'Sfax', 'system_key' => 'university-clubs:sfax', 'sort_order' => 1,
         ]);
 
-        $esprit = $this->club('Club ESPRIT', 'university', 'sfax', ['parent_id' => $group->id]);
+        $esprit = $this->club('Club Tunivisions ESPRIT', 'university', 'sfax', ['parent_id' => $group->id]);
 
         $stats = app(OrgChartLinker::class)->sync();
 
@@ -133,7 +133,7 @@ class OrgChartLinksTest extends TestCase
     public function test_sync_is_idempotent(): void
     {
         $this->chart();
-        $this->club('Club ESPRIT', 'university', 'tunis');
+        $this->club('Club Tunivisions ESPRIT', 'university', 'tunis');
         app(OrgChartLinker::class)->sync();
         $count = OrgNode::query()->count();
 
@@ -149,24 +149,24 @@ class OrgChartLinksTest extends TestCase
         $this->chart();
 
         $response = $this->actingAs($this->editor())->postJson('/organigramme/clubs', [
-            'name' => 'Club Sup\'Com',
+            'name' => 'Club Tunivisions Sup\'Com',
             'type' => 'university',
             'governorate_id' => Governorate::query()->where('slug', 'tunis')->value('id'),
             'apply_template' => 0,
         ])->assertCreated();
 
-        $this->assertSame(1, OrgNode::query()->where('title', 'Club Sup\'Com')->count());
-        $node = collect($response->json('chart.nodes'))->firstWhere('title', 'Club Sup\'Com');
+        $this->assertSame(1, OrgNode::query()->where('title', 'Club Tunivisions Sup\'Com')->count());
+        $node = collect($response->json('chart.nodes'))->firstWhere('title', 'Club Tunivisions Sup\'Com');
         $this->assertSame('club', $node['kind']);
         $this->assertSame('university', $node['scope']);
         $this->assertSame('active', $node['status']);
         $this->assertSame('university', $node['institution_type']);
-        $this->assertSame('Club Sup\'Com', $node['institution_name']);
+        $this->assertSame('Club Tunivisions Sup\'Com', $node['institution_name']);
     }
 
     public function test_club_fields_are_edited_on_the_node_and_ignored_on_other_kinds(): void
     {
-        $club = $this->club('Club ESPRIT', 'university', 'tunis');
+        $club = $this->club('Club Tunivisions ESPRIT', 'university', 'tunis');
         $chart = $this->chart();
         $node = $this->byId($chart, $club->id);
         $office = $this->bySystemKey($chart, 'university-office');
@@ -212,7 +212,7 @@ class OrgChartLinksTest extends TestCase
 
     public function test_member_counts_are_reserved_to_editors(): void
     {
-        $club = $this->club('Club ESPRIT', 'university', 'tunis');
+        $club = $this->club('Club Tunivisions ESPRIT', 'university', 'tunis');
         $member = User::factory()->create();
         Membership::query()->create(['user_id' => $member->id, 'scope' => 'university', 'node_id' => $club->id, 'status' => 'approved']);
 
@@ -242,7 +242,7 @@ class OrgChartLinksTest extends TestCase
 
     public function test_scope_and_club_data_survive_a_json_export_and_import(): void
     {
-        $club = $this->club('Club ESPRIT', 'university', 'tunis', [
+        $club = $this->club('Club Tunivisions ESPRIT', 'university', 'tunis', [
             'legacy_id' => 143, 'email' => 'club@esprit.tn', 'founded_on' => '2019-04-02',
             'institution_name' => 'ESPRIT', 'institution_type' => 'university', 'charter_signed' => true,
         ]);
@@ -254,7 +254,7 @@ class OrgChartLinksTest extends TestCase
         $json = $this->actingAs($editor)->get('/organigramme/export.json')->assertOk()->getContent();
         $exported = collect(json_decode($json, true)['nodes']);
         $this->assertSame('university', $exported->firstWhere('system_key', 'university-office')['scope']);
-        $this->assertSame(143, $exported->firstWhere('title', 'Club ESPRIT')['legacy_id']);
+        $this->assertSame(143, $exported->firstWhere('title', 'Club Tunivisions ESPRIT')['legacy_id']);
 
         OrgNode::query()->update(['scope' => null]);
 

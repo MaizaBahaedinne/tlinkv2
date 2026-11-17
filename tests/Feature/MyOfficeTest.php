@@ -132,7 +132,7 @@ class MyOfficeTest extends TestCase
 
     public function test_activities_the_member_took_part_in_are_listed(): void
     {
-        $club = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Robotique Sfax', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
+        $club = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Tunivisions Robotique Sfax', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
         $challenge = \App\Models\Challenge::query()->create([
             'title' => 'Défi Environnement', 'theme' => 'Sensibilisation', 'scope' => 'university',
             'starts_at' => now()->subMonth(), 'ends_at' => now()->addMonth(), 'evaluation_at' => now()->addMonths(2), 'results_at' => now()->addMonths(3),
@@ -208,7 +208,7 @@ class MyOfficeTest extends TestCase
 
     public function test_club_offices_below_me_are_hidden(): void
     {
-        $club = $this->node('Club Robotique', $this->top);
+        $club = $this->node('Club Tunivisions Robotique', $this->top);
         $club->update(['kind' => 'club']);
         $clubDept = $this->node('Département Média du club', $club);
         $clubDept->update(['kind' => 'club_department']);
@@ -220,12 +220,12 @@ class MyOfficeTest extends TestCase
             ->assertSee('Chargé de communication nationale')
             ->assertDontSee('Président du club')
             ->assertDontSee('Responsable média')
-            ->assertDontSee('Club Robotique');
+            ->assertDontSee('Club Tunivisions Robotique');
     }
 
     public function test_a_club_president_still_sees_their_own_club_team(): void
     {
-        $club = $this->node('Club Robotique', $this->top);
+        $club = $this->node('Club Tunivisions Robotique', $this->top);
         $club->update(['kind' => 'club']);
         $president = $this->node('Président du club', $club);
         $dept = $this->node('Département Média du club', $president);
@@ -354,7 +354,7 @@ class MyOfficeTest extends TestCase
 
     public function test_members_without_a_position_see_their_membership_club_events_and_journey(): void
     {
-        $club = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Robotique Sfax', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
+        $club = OrgNode::query()->create(['kind' => 'club', 'title' => 'Club Tunivisions Robotique Sfax', 'status' => 'active', 'category' => 'university_club', 'scope' => 'university']);
         $department = OrgNode::query()->create(['parent_id' => $club->id, 'kind' => 'club_department', 'title' => 'Pôle Média', 'category' => 'university_club']);
         $president = $this->node('Présidente du club', $club);
         $this->node('Responsable média', $department);
@@ -376,7 +376,7 @@ class MyOfficeTest extends TestCase
             ->assertDontSee('Mes adhésions en cours')
             ->assertDontSee('Aucun mandat en cours.')
             ->assertSee('Mes clubs')
-            ->assertSee('Club Robotique Sfax')
+            ->assertSee('Club Tunivisions Robotique Sfax')
             ->assertSee('Hiérarchie du club')
             ->assertSee('Pôle Média')
             ->assertSee('Présidente du club')
@@ -386,7 +386,7 @@ class MyOfficeTest extends TestCase
             ->assertSee('Journée portes ouvertes')
             ->assertSee('Présent(e)')
             ->assertSee('Mon parcours')
-            ->assertSee('Adhésion · Club Robotique Sfax')
+            ->assertSee('Adhésion · Club Tunivisions Robotique Sfax')
             ->assertDontSee('Événement · Journée portes ouvertes')
             ->assertDontSee('Événement · Hackathon du club')
             ->assertDontSee('Salon d\'un autre club', false)

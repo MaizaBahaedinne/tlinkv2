@@ -24,11 +24,11 @@ class NavbarSearchTest extends TestCase
         $unit = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'unit', 'category' => 'direction', 'title' => 'Direction exécutive', 'sort_order' => 0]);
         $club = OrgNode::query()->create([
             'parent_id' => $unit->id, 'relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club',
-            'title' => 'Club Robotique', 'governorate_id' => $sfax->id, 'status' => 'active', 'sort_order' => 0,
+            'title' => 'Club Tunivisions Robotique', 'governorate_id' => $sfax->id, 'status' => 'active', 'sort_order' => 0,
         ]);
         $archived = OrgNode::query()->create([
             'parent_id' => $unit->id, 'relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club',
-            'title' => 'Club Robotique Archivé', 'status' => 'archived', 'sort_order' => 0,
+            'title' => 'Club Tunivisions Robotique Archivé', 'status' => 'archived', 'sort_order' => 0,
         ]);
         $position = OrgNode::query()->create(['parent_id' => $unit->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'category' => 'direction', 'title' => 'Directrice des programmes', 'sort_order' => 0]);
 
@@ -65,7 +65,7 @@ class NavbarSearchTest extends TestCase
         $json = $this->getJson('/recherche/suggestions?q=robotique')->assertOk()->json();
         $this->assertSame(['structures', 'events'], array_column($json['groups'], 'key'));
         $titles = array_column($json['groups'][0]['items'], 'title');
-        $this->assertSame(['Club Robotique'], $titles);
+        $this->assertSame(['Club Tunivisions Robotique'], $titles);
         $this->assertSame(['Forum Robotique'], array_column($json['groups'][1]['items'], 'title'));
     }
 
@@ -97,7 +97,7 @@ class NavbarSearchTest extends TestCase
         $json = $this->getJson('/recherche/suggestions?q=esprit+tic')->assertOk()->json();
         $structures = collect($json['groups'])->firstWhere('key', 'structures')['items'];
         $urls = array_column($structures, 'url', 'title');
-        $this->assertSame(route('club.show', $club), $urls['ESPRIT TIC']);
+        $this->assertSame(route('club.show', $club), $urls['Club Tunivisions ESPRIT TIC']);
         $this->assertSame(route('club.show', [$club, 'onglet' => 'bureaux']), $urls['VP Média']);
         $this->assertSame(route('club.show', [$club, 'onglet' => 'bureaux']), $urls['Département Média']);
         $this->assertArrayNotHasKey('ESPRIT Secret', $urls);
@@ -132,7 +132,7 @@ class NavbarSearchTest extends TestCase
         $this->actingAs(User::factory()->create(['onboarding_completed_at' => now()]));
 
         $this->get('/recherche?q=robotique')->assertOk()
-            ->assertSee('Résultats pour', false)->assertSee('Club Robotique')->assertSee('Forum Robotique')
+            ->assertSee('Résultats pour', false)->assertSee('Club Tunivisions Robotique')->assertSee('Forum Robotique')
             ->assertDontSee('Robotique brouillon')->assertDontSee('Archivé');
 
         $this->get('/recherche?q=zzzzzz')->assertOk()->assertSee('Aucun résultat');

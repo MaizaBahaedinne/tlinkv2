@@ -130,7 +130,7 @@ class SponsorTest extends TestCase
 
         $page = $this->actingAs($this->president)->get("/admin/sponsors/{$sponsor->id}")->assertOk();
 
-        $this->assertSame(['ENIT'], $page->viewData('otherClubs')->all());
+        $this->assertSame(['Club Tunivisions ENIT'], $page->viewData('otherClubs')->all());
         $page->assertDontSee('Piste ENIT');
     }
 

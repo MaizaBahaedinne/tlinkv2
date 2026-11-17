@@ -26,7 +26,7 @@ class HistoryOnboardingTest extends TestCase
 
     private function club(): OrgNode
     {
-        return OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'Club Robotique', 'scope' => 'university', 'status' => 'active', 'sort_order' => 0]);
+        return OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'Club Tunivisions Robotique', 'scope' => 'university', 'status' => 'active', 'sort_order' => 0]);
     }
 
     public function test_passing_the_quiz_then_the_welcome_questions_are_reachable(): void
@@ -119,13 +119,13 @@ class HistoryOnboardingTest extends TestCase
     public function test_inactive_clubs_are_listed_and_selectable_for_past_mandates(): void
     {
         $joined = $this->mandate(2023);
-        $inactive = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'Club Dormant', 'scope' => 'university', 'status' => 'inactive', 'sort_order' => 0]);
+        $inactive = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'Club Tunivisions Dormant', 'scope' => 'university', 'status' => 'inactive', 'sort_order' => 0]);
         $position = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'multiple', 'access_level' => 'none', 'category' => 'direction', 'parent_id' => $inactive->id, 'title' => 'Membre actif', 'scope' => 'university', 'sort_order' => 0]);
         $user = $this->validated();
         $this->actingAs($user)->post('/bienvenue/origine', ['origin' => 'alumni']);
 
         $page = $this->actingAs($user)->get('/bienvenue')->assertOk()->getContent();
-        $this->assertStringContainsString('Club Dormant (inactif)', $page);
+        $this->assertStringContainsString('Club Tunivisions Dormant (inactif)', $page);
         // Le poste reste grisé (disabled) tant que le club n'est pas choisi.
         $this->assertMatchesRegularExpression('/id="past-position"[^>]*\\sdisabled/', $page);
 

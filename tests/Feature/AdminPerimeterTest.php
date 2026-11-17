@@ -68,12 +68,12 @@ class AdminPerimeterTest extends TestCase
     {
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'entity_admin', 'university');
-        $this->club('Club Robotique');
+        $this->club('Club Tunivisions Robotique');
         $this->club('Club Alumni Paris', 'alumni', 'regional_club');
 
         $this->actingAs($admin->fresh())->get('/admin/structure/clubs')
             ->assertOk()
-            ->assertSee('Club Robotique')
+            ->assertSee('Club Tunivisions Robotique')
             ->assertDontSee('Club Alumni Paris');
     }
 
@@ -81,7 +81,7 @@ class AdminPerimeterTest extends TestCase
     {
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'entity_admin', 'university');
-        $mine = $this->club('Club Robotique');
+        $mine = $this->club('Club Tunivisions Robotique');
         $foreign = $this->club('Club Alumni Paris', 'alumni', 'regional_club');
 
         $this->actingAs($admin->fresh())->get("/admin/structure/clubs/{$mine->id}")->assertOk();
@@ -92,12 +92,12 @@ class AdminPerimeterTest extends TestCase
     {
         $admin = User::factory()->create();
         $this->grantAccess($admin);
-        $this->club('Club Robotique');
+        $this->club('Club Tunivisions Robotique');
         $this->club('Club Alumni Paris', 'alumni', 'regional_club');
 
         $this->actingAs($admin->fresh())->get('/admin/structure/clubs')
             ->assertOk()
-            ->assertSee('Club Robotique')
+            ->assertSee('Club Tunivisions Robotique')
             ->assertSee('Club Alumni Paris');
     }
 
@@ -120,7 +120,7 @@ class AdminPerimeterTest extends TestCase
     public function test_club_president_only_sees_events_of_their_club(): void
     {
         $leader = User::factory()->create();
-        $mine = $this->club('Club Robotique');
+        $mine = $this->club('Club Tunivisions Robotique');
         $other = $this->club('Club Théâtre');
         $this->holdInClub($leader, $mine);
 
@@ -157,7 +157,7 @@ class AdminPerimeterTest extends TestCase
     public function test_activities_are_limited_to_the_clubs_in_reach(): void
     {
         $leader = User::factory()->create();
-        $mine = $this->club('Club Robotique');
+        $mine = $this->club('Club Tunivisions Robotique');
         $other = $this->club('Club Théâtre');
         $this->holdInClub($leader, $mine);
         $challenge = $this->challenge('Défi Campus', 'university');
@@ -175,7 +175,7 @@ class AdminPerimeterTest extends TestCase
     {
         $admin = User::factory()->create();
         $this->grantAccess($admin, 'entity_admin', 'university');
-        $one = $this->club('Club Robotique');
+        $one = $this->club('Club Tunivisions Robotique');
         $foreign = $this->club('Club Alumni Paris', 'alumni', 'regional_club');
         $challenge = $this->challenge('Défi Campus', 'university');
 

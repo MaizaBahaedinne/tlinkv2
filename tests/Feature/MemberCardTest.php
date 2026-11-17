@@ -35,7 +35,7 @@ class MemberCardTest extends TestCase
         return Mandate::query()->create(['label' => $start.'-'.($start + 1), 'start_year' => $start, 'end_year' => $start + 1, 'bureau_name' => 'Bureau', 'status' => $status]);
     }
 
-    private function club(string $title = 'Club Robotique', string $scope = 'university'): OrgNode
+    private function club(string $title = 'Club Tunivisions Robotique', string $scope = 'university'): OrgNode
     {
         return OrgNode::query()->create([
             'relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club',
@@ -138,10 +138,10 @@ class MemberCardTest extends TestCase
     public function test_member_page_and_rotating_code_belong_to_the_owner(): void
     {
         $this->mandate();
-        $membership = $this->member('Sana Ben Ali', $this->club('Club AAC'));
+        $membership = $this->member('Sana Ben Ali', $this->club('Club Tunivisions AAC'));
         $card = MemberCard::query()->where('membership_id', $membership->id)->firstOrFail();
 
-        $this->actingAs($membership->user)->get('/ma-carte')->assertOk()->assertSee('Sana Ben Ali')->assertSee($card->number)->assertSee('Club AAC')
+        $this->actingAs($membership->user)->get('/ma-carte')->assertOk()->assertSee('Sana Ben Ali')->assertSee($card->number)->assertSee('Club Tunivisions AAC')
             ->assertSee('data-card-role', false)->assertSee('Membre')->assertSee('logoFondation-white.webp', false);
 
         $membership->update(['membership_type' => 'Trésorier']);

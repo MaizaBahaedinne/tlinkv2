@@ -260,8 +260,8 @@ class OrgChartTest extends TestCase
         $id = $response->json('selected_id');
         $nodes = collect($response->json('chart.nodes'));
         $this->assertSame('university_club', $nodes->firstWhere('id', $id)['category']);
-        $this->assertGreaterThanOrEqual(5, $nodes->where('subtitle', 'We Are ESPRIT')->count());
-        $this->assertDatabaseHas('org_nodes', ['title' => 'We Are ESPRIT', 'kind' => 'club', 'scope' => 'university']);
+        $this->assertGreaterThanOrEqual(5, $nodes->where('subtitle', 'Club Tunivisions We Are ESPRIT')->count());
+        $this->assertDatabaseHas('org_nodes', ['title' => 'Club Tunivisions We Are ESPRIT', 'kind' => 'club', 'scope' => 'university']);
 
         $this->actingAs($editor)->postJson('/organigramme/clubs', [
             'name' => 'We Are Lycée Pilote',

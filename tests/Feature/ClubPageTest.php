@@ -31,7 +31,7 @@ class ClubPageTest extends TestCase
     private function club(array $attributes = []): OrgNode
     {
         return OrgNode::query()->create($attributes + [
-            'relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'Club Robotique',
+            'relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'Club Tunivisions Robotique',
             'scope' => 'university', 'status' => 'active', 'sort_order' => 0,
         ]);
     }
@@ -74,14 +74,14 @@ class ClubPageTest extends TestCase
 
     public function test_the_directory_lists_active_clubs_and_filters_them(): void
     {
-        $this->club(['title' => 'Club Alpha']);
-        $this->club(['title' => 'Club Beta', 'scope' => 'high-school']);
-        $this->club(['title' => 'Club Inactif', 'status' => 'inactive']);
+        $this->club(['title' => 'Club Tunivisions Alpha']);
+        $this->club(['title' => 'Club Tunivisions Beta', 'scope' => 'high-school']);
+        $this->club(['title' => 'Club Tunivisions Inactif', 'status' => 'inactive']);
         $user = $this->member();
 
-        $this->actingAs($user)->get('/clubs')->assertOk()->assertSee('Club Alpha')->assertSee('Club Beta')->assertDontSee('Club Inactif');
-        $this->actingAs($user)->get('/clubs?q=Alpha')->assertOk()->assertSee('Club Alpha')->assertDontSee('Club Beta');
-        $this->actingAs($user)->get('/clubs?scope=high-school')->assertOk()->assertSee('Club Beta')->assertDontSee('Club Alpha');
+        $this->actingAs($user)->get('/clubs')->assertOk()->assertSee('Club Tunivisions Alpha')->assertSee('Club Tunivisions Beta')->assertDontSee('Club Tunivisions Inactif');
+        $this->actingAs($user)->get('/clubs?q=Alpha')->assertOk()->assertSee('Club Tunivisions Alpha')->assertDontSee('Club Tunivisions Beta');
+        $this->actingAs($user)->get('/clubs?scope=high-school')->assertOk()->assertSee('Club Tunivisions Beta')->assertDontSee('Club Tunivisions Alpha');
     }
 
     public function test_the_hero_shows_identity_and_only_the_requested_tab(): void
@@ -94,7 +94,7 @@ class ClubPageTest extends TestCase
 
         $this->actingAs($user)->get('/clubs/'.$club->id)
             ->assertOk()
-            ->assertSee('Club Robotique')
+            ->assertSee('Club Tunivisions Robotique')
             ->assertSee('Fondé en '.now()->subYears(4)->year)
             ->assertSee('4 ans')
             ->assertSee('Campus El Manar')
@@ -188,15 +188,15 @@ class ClubPageTest extends TestCase
     {
         $unit = OrgNode::query()->create(['relation_type' => 'hierarchy', 'kind' => 'unit', 'category' => 'national_office', 'title' => 'Branche Université', 'sort_order' => 0]);
         $club = $this->club(['parent_id' => $unit->id]);
-        $this->club(['title' => 'Club Voisin', 'parent_id' => $unit->id]);
-        $this->club(['title' => 'Club Rattaché', 'parent_id' => $club->id]);
+        $this->club(['title' => 'Club Tunivisions Voisin', 'parent_id' => $unit->id]);
+        $this->club(['title' => 'Club Tunivisions Rattaché', 'parent_id' => $club->id]);
         $this->position($club, 'Département Média', 'single', 'none', 'club_department');
 
         $this->actingAs($this->member())->get('/clubs/'.$club->id.'/onglets/organisation')
             ->assertOk()
             ->assertSee('Branche Université')
-            ->assertSee('Club Voisin')
-            ->assertSee('Club Rattaché')
+            ->assertSee('Club Tunivisions Voisin')
+            ->assertSee('Club Tunivisions Rattaché')
             ->assertSee('Département Média');
     }
 

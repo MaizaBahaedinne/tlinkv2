@@ -144,12 +144,12 @@ class PublicSiteTest extends TestCase
 
     public function test_clubs_page_lists_active_clubs_and_filters(): void
     {
-        OrgNode::query()->create(['kind' => 'club', 'category' => 'university_club', 'title' => 'Club Alpha', 'scope' => 'university', 'status' => 'active']);
-        OrgNode::query()->create(['kind' => 'club', 'category' => 'highschool_club', 'title' => 'Club Beta', 'scope' => 'high-school', 'status' => 'active']);
-        OrgNode::query()->create(['kind' => 'club', 'category' => 'university_club', 'title' => 'Club Inactif', 'scope' => 'university', 'status' => 'inactive']);
+        OrgNode::query()->create(['kind' => 'club', 'category' => 'university_club', 'title' => 'Club Tunivisions Alpha', 'scope' => 'university', 'status' => 'active']);
+        OrgNode::query()->create(['kind' => 'club', 'category' => 'highschool_club', 'title' => 'Club Tunivisions Beta', 'scope' => 'high-school', 'status' => 'active']);
+        OrgNode::query()->create(['kind' => 'club', 'category' => 'university_club', 'title' => 'Club Tunivisions Inactif', 'scope' => 'university', 'status' => 'inactive']);
 
-        $this->get('/fr/clubs')->assertSee('Club Alpha')->assertSee('Club Beta')->assertDontSee('Club Inactif');
-        $this->get('/fr/clubs?scope=university')->assertSee('Club Alpha')->assertDontSee('Club Beta');
+        $this->get('/fr/clubs')->assertSee('Club Tunivisions Alpha')->assertSee('Club Tunivisions Beta')->assertDontSee('Club Tunivisions Inactif');
+        $this->get('/fr/clubs?scope=university')->assertSee('Club Tunivisions Alpha')->assertDontSee('Club Tunivisions Beta');
         $this->get('/fr/clubs?scope=bogus')->assertSessionHasErrors('scope');
     }
 
@@ -171,7 +171,7 @@ class PublicSiteTest extends TestCase
         $this->assertSame(2, collect($markers)->firstWhere('name', 'Tunis')['count']);
 
         // Filtrer sur un gouvernorat garde tous les marqueurs et met le choisi en évidence.
-        $filtered = $this->get('/fr/clubs?gov='.$sfax->id)->assertOk()->assertSee('Club C')->assertDontSee('Club A');
+        $filtered = $this->get('/fr/clubs?gov='.$sfax->id)->assertOk()->assertSee('Club Tunivisions C')->assertDontSee('Club Tunivisions A');
         preg_match('/data-markers="([^"]*)"/', $filtered->getContent(), $m);
         $markers = json_decode(html_entity_decode($m[1]), true);
         $this->assertCount(2, $markers);
@@ -264,9 +264,9 @@ class PublicSiteTest extends TestCase
 
     public function test_unsafe_club_link_is_not_rendered(): void
     {
-        OrgNode::query()->create(['kind' => 'club', 'category' => 'university_club', 'title' => 'Club Piège', 'scope' => 'university', 'status' => 'active', 'facebook_url' => 'javascript:alert(1)']);
+        OrgNode::query()->create(['kind' => 'club', 'category' => 'university_club', 'title' => 'Club Tunivisions Piège', 'scope' => 'university', 'status' => 'active', 'facebook_url' => 'javascript:alert(1)']);
 
-        $this->get('/fr/clubs')->assertSee('Club Piège')->assertDontSee('javascript:alert', false);
+        $this->get('/fr/clubs')->assertSee('Club Tunivisions Piège')->assertDontSee('javascript:alert', false);
     }
 
     public function test_home_shows_aggregate_statistics_only(): void

@@ -16,7 +16,7 @@ class MembershipRequestPageTest extends TestCase
     use GrantsAccess;
     use RefreshDatabase;
 
-    private function club(string $title = 'Club Robotique', string $scope = 'university', string $status = 'active'): OrgNode
+    private function club(string $title = 'Club Tunivisions Robotique', string $scope = 'university', string $status = 'active'): OrgNode
     {
         return OrgNode::query()->create([
             'relation_type' => 'hierarchy',
@@ -39,7 +39,7 @@ class MembershipRequestPageTest extends TestCase
         if ($withCv) {
             \App\Models\Profile::query()->create(['user_id' => $user->id, 'privacy_settings' => [
                 'educations' => [['degree_type' => 'Licence', 'diploma_name' => 'Informatique', 'school' => 'ISI']],
-                'associative_experiences' => [['club_name' => 'Club Robotique', 'role' => 'Membre']],
+                'associative_experiences' => [['club_name' => 'Club Tunivisions Robotique', 'role' => 'Membre']],
                 'skill_keywords' => ['Laravel', 'Gestion de projet'],
                 'languages' => [['name' => 'Français', 'level' => 'natif']],
             ]]);
@@ -126,7 +126,7 @@ class MembershipRequestPageTest extends TestCase
 
         $this->actingAs($member)->get('/adhesions')->assertOk()
             ->assertSee('Demander une adhésion')
-            ->assertSee('Club Robotique')
+            ->assertSee('Club Tunivisions Robotique')
             ->assertSee('Vous n’avez encore aucune adhésion');
 
         $this->actingAs($member)->get('/profil')->assertOk()->assertSee(route('memberships.index'), false);
