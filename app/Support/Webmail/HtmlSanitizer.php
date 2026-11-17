@@ -20,9 +20,15 @@ final class HtmlSanitizer
 
         $previous = libxml_use_internal_errors(true);
         $document = new \DOMDocument();
-        $document->loadHTML('<?xml encoding="utf-8" ?><div id="webmail-root">'.$html.'</div>', LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
-        libxml_clear_errors();
-        libxml_use_internal_errors($previous);
+
+        try {
+            $document->loadHTML('<?xml encoding="utf-8" ?><div id="webmail-root">'.str_replace("\0", '', $html).'</div>', LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        } catch (\Throwable) {
+            return '<pre>'.e(strip_tags($html)).'</pre>';
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
 
         $xpath = new \DOMXPath($document);
 

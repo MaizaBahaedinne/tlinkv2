@@ -97,17 +97,40 @@ class ImapGateway implements MailGateway
 
         $attachments = [];
 
-        foreach ($message->getAttachments()->values() as $index => $attachment) {
-            $attachments[] = ['index' => $index, 'name' => (string) ($attachment->name ?: 'piece-jointe'), 'mime' => (string) ($attachment->getMimeType() ?: 'application/octet-stream'), 'size' => (int) ($attachment->size ?? 0)];
+        // Un message au format inhabituel (encodage, pièce jointe illisible) reste lisible : on affiche ce qui peut l'être.
+        try {
+            foreach ($message->getAttachments()->values() as $index => $attachment) {
+                $attachments[] = ['index' => $index, 'name' => (string) ($attachment->name ?: 'piece-jointe'), 'mime' => (string) ($attachment->getMimeType() ?: 'application/octet-stream'), 'size' => (int) ($attachment->size ?? 0)];
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
         }
 
+        $part = function (callable $has, callable $get) {
+            try {
+                return $has() ? $this->utf8((string) $get()) : null;
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                return null;
+            }
+        };
+
         return $this->summary($message) + [
-            'html' => $message->hasHTMLBody() ? $message->getHTMLBody() : null,
-            'text' => $message->hasTextBody() ? $message->getTextBody() : null,
+            'html' => $part(fn () => $message->hasHTMLBody(), fn () => $message->getHTMLBody()),
+            'text' => $part(fn () => $message->hasTextBody(), fn () => $message->getTextBody()),
             'message_id' => (string) $message->get('message_id'),
             'references' => (string) $message->get('references'),
             'attachments' => $attachments,
         ];
+    }
+
+    /** Texte UTF-8 valide, sans octet nul (qui ferait échouer l'analyse HTML). */
+    private function utf8(string $text): string
+    {
+        $text = str_replace("\0", '', $text);
+
+        return mb_check_encoding($text, 'UTF-8') ? $text : mb_convert_encoding($text, 'UTF-8', 'UTF-8, ISO-8859-1');
     }
 
     public function attachment(string $folder, int $uid, int $index): ?array

@@ -189,6 +189,15 @@ class WebmailTest extends TestCase
         $this->assertContains(['INBOX', 7, 'seen', true], $this->gateway->marks);
     }
 
+    public function test_a_message_stays_readable_when_marking_it_read_fails_or_its_html_is_odd(): void
+    {
+        $this->gateway->markFails = true;
+        $this->gateway->messages['INBOX'][] = FakeMailGateway::mail(9, 'HTML bizarre', extra: ['html' => "<p>Salut\0 tout le monde</p>"]);
+
+        $this->actingAs($this->president)->get(route('webmail.show', ['mailbox' => $this->mailbox, 'uid' => 9, 'dossier' => 'INBOX']))->assertOk()->assertSee('HTML bizarre');
+        $this->assertStringContainsString('Salut', HtmlSanitizer::clean("<p>Salut\0 tout</p>"));
+    }
+
     public function test_html_sanitizer_removes_dangerous_content(): void
     {
         $clean = HtmlSanitizer::clean('<div onmouseover="x()"><script>alert(1)</script><iframe src="https://evil"></iframe><a href="javascript:alert(1)">a</a><a href="https://ok.test">b</a><img src="https://t.test/p.gif"><img src="data:image/png;base64,AAAA"><form><input></form><p style="background:url(http://x)">t</p></div>');

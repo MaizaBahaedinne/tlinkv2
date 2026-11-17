@@ -101,9 +101,11 @@ class WebmailController extends Controller
         $canUpdate = WebmailAccess::allows($request->user(), $mailbox, 'update');
 
         if (! $message['seen'] && $canUpdate) {
+            // Le marquage « lu » ne doit jamais empêcher la lecture du message.
             try {
                 $gateway->mark($folder, $uid, 'seen', true);
-            } catch (WebmailException) {
+            } catch (\Throwable $exception) {
+                report($exception);
             }
         }
 
@@ -112,6 +114,13 @@ class WebmailController extends Controller
 
         $html = filled($message['html'] ?? null) ? HtmlSanitizer::clean((string) $message['html']) : null;
 
+        try {
+            $folders = collect($gateway->folders());
+        } catch (\Throwable $exception) {
+            report($exception);
+            $folders = collect();
+        }
+
         return view('webmail.show', [
             'mailbox' => $mailbox,
             'folder' => $folder,
@@ -119,7 +128,7 @@ class WebmailController extends Controller
             'html' => $html,
             'labels' => $labels,
             'assigned' => $assigned,
-            'folders' => collect($gateway->folders()),
+            'folders' => $folders,
             'canWrite' => WebmailAccess::allows($request->user(), $mailbox, 'create'),
             'canUpdate' => $canUpdate,
             'canDelete' => WebmailAccess::allows($request->user(), $mailbox, 'delete'),

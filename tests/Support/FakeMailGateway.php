@@ -23,6 +23,8 @@ class FakeMailGateway implements MailGateway
 
     public bool $down = false;
 
+    public bool $markFails = false;
+
     public int $unseen = 0;
 
     public function folders(): array
@@ -61,6 +63,10 @@ class FakeMailGateway implements MailGateway
 
     public function mark(string $folder, int $uid, string $flag, bool $on): void
     {
+        if ($this->markFails) {
+            throw new \RuntimeException('Erreur IMAP inattendue.');
+        }
+
         $this->marks[] = [$folder, $uid, $flag, $on];
     }
 
