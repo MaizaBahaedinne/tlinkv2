@@ -116,7 +116,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-DKa74sFh.css",
+    "file": "assets/app-D1DJuQDE.css",
     "name": "app",
     "names": [
       "app.css"
@@ -125,7 +125,7 @@
     "isEntry": true
   },
   "resources/css/site.css": {
-    "file": "assets/site-CdquwaAu.css",
+    "file": "assets/site-A1aLCJ6e.css",
     "name": "site",
     "names": [
       "site.css"
@@ -162,13 +162,13 @@
     "isEntry": true
   },
   "resources/js/main.ts": {
-    "file": "assets/main-CRBdiY0z.js",
+    "file": "assets/main-BU5ImC5b.js",
     "name": "main",
     "src": "resources/js/main.ts",
     "isEntry": true,
     "css": [
       "assets/admin-icons-zXd8mtO7.css",
-      "assets/app-DKa74sFh.css"
+      "assets/app-D1DJuQDE.css"
     ],
     "assets": [
       "assets/fa-brands-400-Bs6tcqqs.woff2",
@@ -215,6 +215,12 @@
     "file": "assets/native-push-1hzppguM.js",
     "name": "native-push",
     "src": "resources/js/native-push.js",
+    "isEntry": true
+  },
+  "resources/js/office-calendar.js": {
+    "file": "assets/office-calendar-2sE_8YOP.js",
+    "name": "office-calendar",
+    "src": "resources/js/office-calendar.js",
     "isEntry": true
   },
   "resources/js/qr.js": {

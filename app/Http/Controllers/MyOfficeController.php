@@ -8,6 +8,7 @@ use App\Models\OrgNode;
 use App\Models\OrgPerson;
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\MyCalendar;
 use App\Support\MyOffice;
 use App\Support\MyOfficeSpace;
 use App\Support\OrgChart\OrgChartRules;
@@ -54,10 +55,13 @@ class MyOfficeController extends Controller
             }
         }
 
+        $space = MyOfficeSpace::build($user);
+
         return view('office.index', [
             'user' => $user,
             'offices' => MyOffice::overview($user),
-            'space' => MyOfficeSpace::build($user),
+            'space' => $space,
+            'calendar' => MyCalendar::month($user, MyCalendar::parseMonth($request->query('mois')), array_map(fn (array $club): int => $club['node']->id, $space['clubs'])),
             'searchNode' => $searchNode,
             'term' => $term,
             'results' => $results,

@@ -59,6 +59,8 @@
             @endforeach
         </div>
 
+        @include('office.partials.calendar')
+
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
                 <section id="postes" class="space-y-4">
@@ -85,4 +87,5 @@
         </div>
     </div>
 </div>
+@vite(['resources/js/office-calendar.js'])
 @endsection
