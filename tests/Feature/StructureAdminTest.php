@@ -157,6 +157,57 @@ class StructureAdminTest extends TestCase
         $this->assertSame('multiple', $position->capacity);
     }
 
+    public function test_a_club_manager_edits_the_info_of_their_club_without_touching_positions_or_rights(): void
+    {
+        $this->admin();
+        $club = $this->universityClub('ESPRIT');
+        $other = $this->universityClub('ENIT');
+        $manager = User::factory()->create();
+
+        // Poste dans le club : habilitation sur le module « Clubs » seulement (pas « Postes et droits »).
+        $post = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'category' => 'club', 'title' => 'Responsable du club', 'sort_order' => 99]);
+        \App\Support\ModulePermissions::apply($post, ['organization.clubs' => ['read', 'update']], false);
+        $this->placeOn($post, $manager);
+
+        $this->actingAs($manager)->get("/admin/structure/postes/{$club->id}/modifier")->assertOk()->assertSee('Enregistrer')->assertDontSee('name="scope"', false)->assertDontSee('name="status"', false)->assertDontSee('charter_signed', false);
+
+        $club = $club->fresh();
+        $this->put("/admin/structure/postes/{$club->id}", [
+            'title' => $club->title, 'description' => 'Club d’ingénierie', 'email' => 'contact@esprit.test', 'address' => 'Ariana',
+            'scope' => 'high-school', 'status' => 'archived', 'charter_signed' => 1, 'parent_id' => $other->id, 'permissions' => ['entity.manage'], 'scope_all' => 1,
+        ])->assertRedirect("/admin/structure/postes/{$club->id}/modifier");
+
+        $fresh = $club->fresh();
+        $this->assertSame('Club d’ingénierie', $fresh->description);
+        $this->assertSame('contact@esprit.test', $fresh->email);
+        $this->assertSame('Ariana', $fresh->address);
+        $this->assertSame($club->status, $fresh->status);
+        $this->assertEquals($club->charter_signed, $fresh->charter_signed);
+        $this->assertSame($club->parent_id, $fresh->parent_id);
+        $this->assertSame($club->scope, $fresh->scope);
+
+        // Ni un autre club, ni un poste, ni les habilitations ne sont à sa portée.
+        $this->get("/admin/structure/postes/{$other->id}/modifier")->assertForbidden();
+        $this->put("/admin/structure/postes/{$other->id}", ['title' => 'Piraté'])->assertForbidden();
+        $this->get("/admin/structure/postes/{$post->id}/modifier")->assertForbidden();
+        $this->put("/admin/structure/postes/{$post->id}", ['title' => 'Piraté'])->assertForbidden();
+        $this->put("/admin/structure/postes/{$post->id}/habilitations", ['modules' => []])->assertForbidden();
+        $this->assertSame('Responsable du club', $post->fresh()->title);
+    }
+
+    public function test_a_club_manager_without_the_update_right_only_reads_the_club(): void
+    {
+        $this->admin();
+        $club = $this->universityClub('ESPRIT');
+        $reader = User::factory()->create();
+        $post = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'category' => 'club', 'title' => 'Lecteur', 'sort_order' => 99]);
+        \App\Support\ModulePermissions::apply($post, ['organization.clubs' => ['read']], false);
+        $this->placeOn($post, $reader);
+
+        $this->actingAs($reader)->get("/admin/structure/postes/{$club->id}/modifier")->assertOk()->assertDontSee('Enregistrer');
+        $this->put("/admin/structure/postes/{$club->id}", ['title' => 'Piraté'])->assertForbidden();
+    }
+
     public function test_scoped_admin_can_read_but_not_write(): void
     {
         $scoped = User::factory()->create();

@@ -476,6 +476,12 @@ class StructureController extends AdminController
     public function edit(Request $request, OrgNode $node): View
     {
         $canEdit = $this->canEdit($request);
+        $canEditInfo = $canEdit || $this->canEditClubInfo($request, $node);
+
+        if (! $canEdit && $node->kind === 'club') {
+            $this->requireClubInReach($request, $node);
+        }
+
         $meta = $this->meta();
         $current = $this->currentAssignments();
 
@@ -514,6 +520,7 @@ class StructureController extends AdminController
         return view('admin.structure.edit', [
             'node' => $node,
             'canEdit' => $canEdit,
+            'canEditInfo' => $canEditInfo,
             'ancestors' => $ancestors,
             'parentOptions' => $canEdit && $node->parent_id !== null ? $this->parentOptions($node, $meta) : [],
             'children' => $node->children()->with(['assignments' => fn ($query) => $query->where($current)->with('person.user:id,name')])->get(),
@@ -545,7 +552,12 @@ class StructureController extends AdminController
 
     public function update(Request $request, OrgNode $node): RedirectResponse
     {
-        $this->requireEditor($request);
+        // Un responsable de club (module « Clubs ») ne modifie que les informations de son club : jamais l'organigramme ni les droits.
+        $full = $this->canEdit($request);
+
+        if (! $full) {
+            abort_unless($this->canEditClubInfo($request, $node), 403, 'Seuls les administrateurs globaux peuvent modifier la structure.');
+        }
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -578,6 +590,10 @@ class StructureController extends AdminController
             'instagram_url' => ['nullable', 'url:http,https', 'max:500'],
             'linkedin_url' => ['nullable', 'url:http,https', 'max:500'],
         ]);
+
+        if (! $full) {
+            $data = Arr::except($data, ['kind', 'parent_id', 'scope', 'extra_scopes', 'permissions', 'scope_all', 'status', 'charter_signed']);
+        }
 
         $kind = $node->kind === 'club' ? 'club' : ($data['kind'] ?? $node->kind);
         $parentId = $node->parent_id === null ? null : (int) ($data['parent_id'] ?? $node->parent_id);
@@ -615,7 +631,7 @@ class StructureController extends AdminController
 
         if ($kind === 'club') {
             $attributes += Arr::only($data, self::CLUB_FIELDS);
-            $attributes['charter_signed'] = $request->boolean('charter_signed');
+            $attributes['charter_signed'] = $full ? $request->boolean('charter_signed') : $node->charter_signed;
             $attributes['status'] = $data['status'] ?? $node->status;
 
             // Logo de l'établissement : affiché sur les profils des membres (formation et expérience associative).
@@ -642,7 +658,7 @@ class StructureController extends AdminController
 
         $before = $node->only(array_keys($attributes));
 
-        $this->keepingAdminAccess($request, function () use ($node, $attributes, $legacyRights, $request): void {
+        $mutation = function () use ($node, $attributes, $legacyRights, $request): void {
             $node->update($attributes);
 
             if ($legacyRights !== null) {
@@ -654,7 +670,10 @@ class StructureController extends AdminController
             }
 
             $this->rules->assertCanHold($node, $this->rules->currentPeopleCount($node));
-        });
+        };
+
+        // Les droits d'administration ne changent pas pour un responsable de club : pas de garde-fou « administrateur global ».
+        $full ? $this->keepingAdminAccess($request, $mutation) : DB::transaction($mutation);
 
         if ($oldLogo !== null && str_starts_with($oldLogo, 'clubs/logos/')) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($oldLogo);
@@ -859,6 +878,26 @@ class StructureController extends AdminController
     private function canEdit(Request $request): bool
     {
         return AdminContext::of($request)->isGlobal('entity.manage');
+    }
+
+    /** Un responsable de club peut modifier les informations de son club (module « Clubs », action « modifier »). */
+    private function canEditClubInfo(Request $request, OrgNode $node): bool
+    {
+        if ($node->kind !== 'club') {
+            return false;
+        }
+
+        $reach = $this->clubReach($request);
+
+        return ($reach === null || in_array($node->id, $reach, true))
+            && AdminContext::of($request)->allowsModule(['entity.manage'], 'organization.clubs', ['update']);
+    }
+
+    private function requireClubInReach(Request $request, OrgNode $node): void
+    {
+        $reach = $this->clubReach($request);
+
+        abort_if($reach !== null && ! in_array($node->id, $reach, true), 403, 'Ce club est hors de votre périmètre.');
     }
 
     private function requireEditor(Request $request): void

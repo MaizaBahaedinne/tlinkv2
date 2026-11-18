@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\OrgNode;
 use App\Support\AdminContext;
 use App\Support\AdminMenu;
 use Closure;
@@ -35,11 +36,34 @@ class EnsureModuleAccess
         };
 
         abort_unless(
-            AdminContext::of($request)->allowsModule($item['perms'], $item['module'], $actions),
+            AdminContext::of($request)->allowsModule($item['perms'], $item['module'], $actions) || $this->clubSheetAllowed($request, $actions),
             403,
             'Les habilitations de votre poste ne couvrent pas cette action.'
         );
 
         return $next($request);
+    }
+
+    /**
+     * La fiche d'un club (admin.postes.edit / update sur un bloc de type club) relève aussi du module « Clubs » :
+     * un responsable de club gère les informations de son club sans avoir accès aux postes de l'organigramme.
+     * Le périmètre (son club) est ensuite vérifié par le contrôleur.
+     */
+    private function clubSheetAllowed(Request $request, array $actions): bool
+    {
+        if (! in_array($request->route()?->getName(), ['admin.postes.edit', 'admin.postes.update'], true)) {
+            return false;
+        }
+
+        $node = $request->route('node');
+        $node = $node instanceof OrgNode ? $node : OrgNode::query()->find($node);
+
+        if ($node?->kind !== 'club') {
+            return false;
+        }
+
+        $item = AdminMenu::itemFor('admin.clubs.index');
+
+        return $item !== null && AdminContext::of($request)->allowsModule($item['perms'], $item['module'], $actions);
     }
 }

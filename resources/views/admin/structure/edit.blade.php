@@ -6,14 +6,14 @@
 @php
     $isPosition = $node->kind === 'position';
     $isClub = $node->kind === 'club';
-    $disabled = ! $canEdit;
+    $disabled = ! $canEditInfo;
     $back = $isClub ? route('admin.clubs.index') : route('admin.postes.index');
 @endphp
 
 @section('content')
     <x-admin.page-header :title="$node->title" :subtitle="(\App\Models\OrgNode::KINDS[$node->kind] ?? $node->kind).($ancestors ? ' · '.collect($ancestors)->pluck('title')->take(-3)->implode(' › ') : '')">
         <x-slot:actions>
-            @if($node->parent_id)
+            @if($node->parent_id && $canEdit)
                 <a href="{{ route('admin.postes.edit', $node->parent_id) }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Bloc parent</a>
             @endif
             @if($isClub)
@@ -51,8 +51,10 @@
                                 <x-admin.select name="parent_id" label="Rattaché à" :options="$parentOptions" :value="$node->parent_id" :required="true" :placeholder="null" />
                             @endif
 
-                            <x-admin.select name="scope" label="Périmètre sur lequel ce poste agit" :options="$scopes" :value="$node->scope" placeholder="Hérité du bloc parent"
-                                :hint="$effectiveScope ? 'Périmètre effectif : '.\App\Support\OrgScopes::label($effectiveScope).($scopeInherited ? ' (hérité)' : '').'.' : 'Aucun périmètre : un poste sans périmètre ne donne aucun droit (sauf s’il agit sur toute la plateforme).'" />
+                            @if($canEdit)
+                                <x-admin.select name="scope" label="Périmètre sur lequel ce poste agit" :options="$scopes" :value="$node->scope" placeholder="Hérité du bloc parent"
+                                    :hint="$effectiveScope ? 'Périmètre effectif : '.\App\Support\OrgScopes::label($effectiveScope).($scopeInherited ? ' (hérité)' : '').'.' : 'Aucun périmètre : un poste sans périmètre ne donne aucun droit (sauf s’il agit sur toute la plateforme).'" />
+                            @endif
 
                             @if($isPosition && ! $node->role_key)
                                 @php
@@ -98,7 +100,9 @@
                         @if($isClub)
                             <h3 class="text-sm text-muted" style="margin:24px 0 12px">Club</h3>
                             <div class="form-grid">
-                                <x-admin.select name="status" label="Statut" :options="$clubStatuses" :value="$node->status" :placeholder="null" />
+                                @if($canEdit)
+                                    <x-admin.select name="status" label="Statut" :options="$clubStatuses" :value="$node->status" :placeholder="null" />
+                                @endif
                                 <x-admin.select name="governorate_id" label="Gouvernorat" :options="$governorates" :value="$node->governorate_id" placeholder="Non renseigné" />
                                 <x-admin.select name="institution_id" label="Établissement" :options="$institutionOptions" :value="$node->institution_id" placeholder="Aucun" :hint="'Lycée, université ou faculté du club : son logo et ses informations s’affichent sur les profils.'" />
                                 <x-admin.input name="email" type="email" label="E-mail" :value="$node->email" :maxlength="255" />
@@ -124,16 +128,18 @@
                                 <x-admin.input name="instagram_url" type="url" label="Instagram" :value="$node->instagram_url" :maxlength="500" />
                                 <x-admin.input name="linkedin_url" type="url" label="LinkedIn" :value="$node->linkedin_url" :maxlength="500" />
                                 <x-admin.input name="founded_on" type="date" label="Date de fondation" :value="$node->founded_on?->format('Y-m-d')" />
-                                <div class="field">
-                                    <label>&nbsp;</label>
-                                    <input type="hidden" name="charter_signed" value="0">
-                                    <label class="check"><input type="checkbox" name="charter_signed" value="1" @checked((bool) old('charter_signed', $node->charter_signed))> Charte signée</label>
-                                </div>
+                                @if($canEdit)
+                                    <div class="field">
+                                        <label>&nbsp;</label>
+                                        <input type="hidden" name="charter_signed" value="0">
+                                        <label class="check"><input type="checkbox" name="charter_signed" value="1" @checked((bool) old('charter_signed', $node->charter_signed))> Charte signée</label>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>
                 </fieldset>
-                @if($canEdit)
+                @if($canEditInfo)
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary"><x-admin.icon name="check" :size="16" /> Enregistrer</button>
                     </div>
