@@ -197,9 +197,11 @@ class SubdomainsTest extends TestCase
             ->assertDontSee(route('store.index'), false)
             ->assertDontSee('id="nav-search"', false);
 
+        // Seul le menu des applications de T.Link renvoie vers les autres applications, chacune dans une nouvelle page.
         $this->actingAs($user)->get('http://link.example.test/feed')->assertOk()
-            ->assertDontSee(route('academy.index'), false)
-            ->assertDontSee(route('store.index'), false);
+            ->assertSee('id="nav-apps"', false)
+            ->assertSee('href="'.Domains::url('academy', '/academy').'" target="_blank"', false)
+            ->assertSee('href="'.Domains::url('messenger', '/messagerie').'" target="_blank"', false);
     }
 
     public function test_messenger_host_opens_the_messenger_and_serves_its_routes(): void

@@ -9,6 +9,21 @@
     $canMessenger = ($messengerEnabled ?? false) && \App\Support\Domains::reachableFrom($section, 'messenger');
     // Le bouton Messenger est toujours proposé quand la messagerie est ouverte : sur son propre sous-domaine, il redirige vers l'application Messenger.
     $messengerLink = (bool) ($messengerEnabled ?? false);
+    $unreadMessages = (int) ($unreadMessages ?? 0);
+
+    // Menu des applications de l'écosystème T.Link : chaque entrée s'ouvre dans une nouvelle page (autre application installée sur mobile).
+    $appUrl = fn (string $key, string $routeName) => \App\Support\Domains::url($key, route($routeName, [], false));
+    $appsMenu = array_values(array_filter([
+        $messengerLink ? ['key' => 'messenger', 'label' => 'Messenger', 'href' => $appUrl('messenger', 'messenger.index'), 'icon' => 'fa-regular fa-comments', 'tone' => 'bg-sky-50 text-sky-700', 'host' => 'messenger', 'badge' => $unreadMessages] : null,
+        ['key' => 'academy', 'label' => 'Academy', 'href' => $appUrl('academy', 'academy.index'), 'icon' => 'fa-solid fa-graduation-cap', 'tone' => 'bg-violet-50 text-violet-700', 'host' => 'academy'],
+        ($storeEnabled ?? false) ? ['key' => 'store', 'label' => 'Store', 'href' => $appUrl('store', 'store.index'), 'icon' => 'fa-solid fa-bag-shopping', 'tone' => 'bg-amber-50 text-amber-700', 'host' => 'store'] : null,
+        \App\Support\Webmail\WebmailAccess::available($me) ? ['key' => 'webmail', 'label' => 'Webmail', 'href' => $appUrl('webmail', 'webmail.index'), 'icon' => 'fa-regular fa-envelope', 'tone' => 'bg-rose-50 text-rose-700', 'host' => 'webmail', 'badge' => \App\Support\Webmail\WebmailAccess::unseen($me)] : null,
+        ($hasOffice ?? false)
+            ? ['key' => 'agenda', 'label' => 'Agenda', 'href' => route('office.index', [], false).'#calendrier', 'icon' => 'fa-regular fa-calendar-days', 'tone' => 'bg-emerald-50 text-emerald-700', 'host' => 'app']
+            : ['key' => 'agenda', 'label' => 'Agenda', 'href' => $appUrl('academy', 'academy.calendar'), 'icon' => 'fa-regular fa-calendar-days', 'tone' => 'bg-emerald-50 text-emerald-700', 'host' => 'academy'],
+        ($canAdmin ?? false) ? ['key' => 'admin', 'label' => 'Administration', 'href' => route('admin.dashboard'), 'icon' => 'fa-solid fa-list-check', 'tone' => 'bg-slate-100 text-slate-700', 'host' => 'app'] : null,
+    ]));
+    $appsBadge = (int) collect($appsMenu)->sum(fn (array $app): int => (int) ($app['badge'] ?? 0));
 
     $allNav = array_values(array_filter([
         ['key' => 'home', 'label' => 'Fil', 'href' => route('home'), 'icon' => 'fa-solid fa-house', 'active' => request()->routeIs('home')],
@@ -95,14 +110,35 @@
 
             @include('partials.install-app')
 
-            @if($messengerLink)
-                @php $unreadMessages = (int) ($unreadMessages ?? 0); @endphp
-                <a href="{{ \App\Support\Domains::url('messenger', route('messenger.index', [], false)) }}" title="{{ $canMessenger ? 'Messages' : 'Ouvrir T.Link Messenger' }}" aria-label="{{ $canMessenger ? 'Messages' : 'Ouvrir T.Link Messenger' }}" @if(request()->routeIs('messenger.*')) aria-current="page" @endif id="nav-messages" @if($canMessenger) data-unread-url="{{ route('messenger.unread') }}" @endif
-                   class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('messenger.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
-                    <i class="fa-regular fa-comments" aria-hidden="true"></i>
-                    <span id="nav-messages-badge" data-count="{{ $unreadMessages }}" @if($unreadMessages < 1) hidden @endif class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white">{{ $unreadMessages > 99 ? '99+' : $unreadMessages }}</span>
-                </a>
-            @endif
+            <details class="relative" id="nav-apps">
+                <summary title="Applications" aria-label="Applications T.Link" class="relative grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl text-base text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 [&::-webkit-details-marker]:hidden">
+                    <i class="fa-solid fa-grip" aria-hidden="true"></i>
+                    <span id="nav-apps-dot" @if($appsBadge < 1) hidden @endif class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-tlink-blue ring-2 ring-white" aria-hidden="true"></span>
+                </summary>
+                <div class="absolute right-0 z-30 mt-2 w-72 max-w-[92vw] rounded-2xl border border-slate-200 bg-white p-3 shadow-soft">
+                    <p class="px-1 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Applications T.Link</p>
+                    <div class="grid grid-cols-3 gap-1">
+                        @foreach($appsMenu as $app)
+                            @php
+                                $sameHost = \App\Support\Domains::host($app['host']) === null || $app['host'] === 'app';
+                                $badge = (int) ($app['badge'] ?? 0);
+                            @endphp
+                            <a href="{{ $app['href'] }}" target="_blank" rel="noopener" data-app-link @if($sameHost) data-app-same @endif title="{{ $app['label'] }}"
+                               @if($app['key'] === 'messenger') id="nav-messages" @if($canMessenger) data-unread-url="{{ route('messenger.unread') }}" @endif @endif
+                               class="relative flex flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 text-center transition hover:bg-slate-50">
+                                <span class="relative grid h-11 w-11 place-items-center rounded-xl text-lg {{ $app['tone'] }}"><i class="{{ $app['icon'] }}" aria-hidden="true"></i>
+                                    @if($app['key'] === 'messenger')
+                                        <span id="nav-messages-badge" data-count="{{ $unreadMessages }}" @if($unreadMessages < 1) hidden @endif class="absolute -right-1.5 -top-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white">{{ $unreadMessages > 99 ? '99+' : $unreadMessages }}</span>
+                                    @elseif($badge > 0)
+                                        <span data-app-badge class="absolute -right-1.5 -top-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-tlink-blue px-1 text-[10px] font-bold leading-[1.15rem] text-white ring-2 ring-white" aria-label="{{ $badge }} non lu(s)">{{ $badge > 99 ? '99+' : $badge }}</span>
+                                    @endif
+                                </span>
+                                <span class="w-full truncate text-xs font-medium text-slate-700">{{ $app['label'] }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            </details>
 
             <a href="{{ route('notifications.index') }}" title="Notifications" id="nav-notifications" data-unread="{{ $unread }}" data-unread-url="{{ route('notifications.unread') }}" aria-label="Notifications{{ $unread > 0 ? ' ('.$unread.' non lues)' : '' }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif
                class="relative grid h-10 w-10 place-items-center rounded-xl text-base transition {{ request()->routeIs('notifications.*') ? 'bg-rose-50 text-tlink-blue' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }}">
@@ -228,6 +264,8 @@
             known = count;
             badge.textContent = count > 99 ? '99+' : String(count);
             badge.hidden = count < 1;
+            var dot = document.getElementById('nav-apps-dot');
+            if (dot) { dot.hidden = count < 1 && !document.querySelector('#nav-apps [data-app-badge]'); }
         };
 
         if (document.getElementById('messenger') || !link.getAttribute('data-unread-url')) { return; }
@@ -248,7 +286,15 @@
 <script>
     // Le menu de l'avatar et le menu « Plus » se referment au clic ailleurs ou sur Échap.
     (function () {
-        var menus = [document.getElementById('nav-user'), document.getElementById('nav-more')].filter(Boolean);
+        // Dans l'application installée (Capacitor ou PWA), un lien vers cette même application reste dans la fenêtre : une nouvelle page la quitterait.
+        var cap = window.Capacitor;
+        var installed = (!!cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform())
+            || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        if (installed) {
+            document.querySelectorAll('#nav-apps [data-app-same]').forEach(function (link) { link.removeAttribute('target'); });
+        }
+
+        var menus = [document.getElementById('nav-user'), document.getElementById('nav-more'), document.getElementById('nav-apps')].filter(Boolean);
         if (!menus.length) { return; }
         document.addEventListener('click', function (event) { menus.forEach(function (menu) { if (!menu.contains(event.target)) { menu.open = false; } }); });
         document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { menus.forEach(function (menu) { menu.open = false; }); } });
