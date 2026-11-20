@@ -7,6 +7,7 @@
     <x-admin.page-header :title="$event->title" :subtitle="collect([$event->location, $event->governorate?->name])->filter()->implode(' · ') ?: 'Lieu non précisé'">
         <x-slot:actions>
             <a href="{{ route('admin.events.index') }}" class="btn btn-secondary"><x-admin.icon name="arrow-left" :size="16" /> Retour</a>
+            <a href="{{ route('admin.events.overview', $event) }}" class="btn btn-secondary"><x-admin.icon name="users" :size="16" /> Gérer (billetterie, programme, OC…)</a>
             <a href="{{ route('admin.events.edit', $event) }}" class="btn btn-primary"><x-admin.icon name="edit" :size="16" /> Modifier</a>
         </x-slot:actions>
     </x-admin.page-header>
@@ -24,7 +25,7 @@
                 <div class="table-wrap">
                     <table class="tbl">
                         <thead>
-                            <tr><th>Participant</th><th class="hide-mobile">Inscrit le</th><th>Statut</th></tr>
+                            <tr><th>Participant</th><th class="hide-mobile">Inscrit le</th><th class="hide-mobile">Release</th><th>Paiement</th><th>Statut</th></tr>
                         </thead>
                         <tbody>
                             @foreach($registrations as $registration)
@@ -39,6 +40,8 @@
                                         </div>
                                     </td>
                                     <td class="hide-mobile text-sm text-muted nowrap">{{ ($registration->registered_at ?? $registration->created_at)?->format('d/m/Y H:i') }}</td>
+                                    <td class="hide-mobile text-sm">{{ $registration->release?->name ?? '—' }}</td>
+                                    <td>@include('admin.events.manage._payment_badge', ['status' => $registration->payment_status])</td>
                                     <td>
                                         <form method="post" action="{{ route('admin.events.registrations.update', [$event, $registration]) }}" class="inline-form">
                                             @csrf

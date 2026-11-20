@@ -30,6 +30,7 @@ class FoundationEvent extends Model
         'price',
         'approval_required',
         'status',
+        'payment_methods',
     ];
 
     protected $casts = [
@@ -39,6 +40,7 @@ class FoundationEvent extends Model
         'registration_ends_at' => 'datetime',
         'approval_required' => 'boolean',
         'price' => 'decimal:2',
+        'payment_methods' => 'array',
     ];
 
     public function governorate(): BelongsTo
@@ -69,5 +71,40 @@ class FoundationEvent extends Model
     public function registrations(): HasMany
     {
         return $this->hasMany(EventRegistration::class, 'event_id');
+    }
+
+    public function releases(): HasMany
+    {
+        return $this->hasMany(EventRelease::class, 'event_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(EventSession::class, 'event_id')->orderBy('starts_at')->orderBy('sort_order');
+    }
+
+    public function speakers(): HasMany
+    {
+        return $this->hasMany(EventSpeaker::class, 'event_id')->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function sponsorLevels(): HasMany
+    {
+        return $this->hasMany(EventSponsorLevel::class, 'event_id')->orderBy('rank')->orderBy('id');
+    }
+
+    public function sponsors(): HasMany
+    {
+        return $this->hasMany(EventSponsor::class, 'event_id')->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function team(): HasMany
+    {
+        return $this->hasMany(EventTeamMember::class, 'event_id');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(EventPayment::class, 'event_id')->latest('id');
     }
 }

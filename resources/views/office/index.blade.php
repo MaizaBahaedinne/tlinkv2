@@ -4,7 +4,7 @@
 @php
     $fmt = fn ($date) => $date ? $date->translatedFormat('d M Y') : null;
     $siteLocale = array_key_exists(app()->getLocale(), config('site.locales')) ? app()->getLocale() : config('site.default_locale');
-    $eventUrl = fn ($event) => in_array($event->status, ['published', 'completed'], true) ? route('site.events.show', ['locale' => $siteLocale, 'event' => $event->id]) : null;
+    $eventUrl = fn ($event) => in_array($event->status, ['published', 'completed'], true) ? route('member.events.show', ['event' => $event->id]) : null;
 
     $mandate = \App\Support\Onboarding::currentMandate();
     $words = preg_split('/\s+/u', trim((string) $user->name)) ?: [];

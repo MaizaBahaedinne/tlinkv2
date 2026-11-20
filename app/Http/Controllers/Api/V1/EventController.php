@@ -8,10 +8,11 @@ use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Support\AccessScope;
 use App\Support\AuditLogger;
+use App\Support\Events\EventRegistrar;
+use App\Support\Events\EventRegistrationException;
 use App\Support\OrgScopes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class EventController extends Controller
@@ -80,34 +81,13 @@ class EventController extends Controller
 
     public function register(Request $request, FoundationEvent $event): JsonResponse
     {
-        $existing = EventRegistration::query()
-            ->where('event_id', $event->id)
-            ->where('user_id', $request->user()->id)
-            ->first();
+        $data = $request->validate(['release_id' => ['nullable', 'integer']]);
 
-        if ($existing) {
-            return response()->json(['message' => 'Inscription deja existante.'], 409);
+        try {
+            $registration = app(EventRegistrar::class)->register($event, $request->user(), $data['release_id'] ?? null);
+        } catch (EventRegistrationException $exception) {
+            return response()->json(['message' => $exception->getMessage()], $exception->status);
         }
-
-        $registration = DB::transaction(function () use ($request, $event) {
-            $confirmedCount = EventRegistration::query()
-                ->where('event_id', $event->id)
-                ->where('status', 'confirmed')
-                ->lockForUpdate()
-                ->count();
-
-            $status = 'confirmed';
-            if ($event->capacity !== null && $confirmedCount >= $event->capacity) {
-                $status = 'waitlisted';
-            }
-
-            return EventRegistration::query()->create([
-                'event_id' => $event->id,
-                'user_id' => $request->user()->id,
-                'status' => $status,
-                'registered_at' => now(),
-            ]);
-        });
 
         AuditLogger::record(
             actorId: $request->user()->id,
@@ -122,9 +102,11 @@ class EventController extends Controller
             'user_id' => $request->user()->id,
             'type' => 'event.registration',
             'title' => 'Inscription evenement',
-            'body' => $registration->status === 'confirmed'
-                ? 'Votre inscription est confirmee.'
-                : 'Vous etes en liste d\'attente.',
+            'body' => match ($registration->status) {
+                'confirmed' => 'Votre inscription est confirmee.',
+                'pending' => 'Votre inscription est enregistree, en attente de paiement ou de validation.',
+                default => 'Vous etes en liste d\'attente.',
+            },
             'data' => ['event_id' => $event->id, 'registration_id' => $registration->id, 'status' => $registration->status],
         ]);
 

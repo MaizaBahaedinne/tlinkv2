@@ -138,12 +138,18 @@
             </div>
         @endif
 
+        @include('events._details')
+
         @if($isUpcoming)
             <div class="mt-8 rounded-3xl bg-brand-50 p-6 text-sm font-semibold text-ink">
                 {{ __('site.events.register') }}
                 <span class="mt-3 flex flex-wrap gap-3">
-                    <a href="{{ route('login') }}" class="rounded-full bg-brand-600 px-5 py-2.5 text-white hover:bg-ink">{{ __('site.nav.members') }}</a>
-                    <a href="{{ route('register') }}" class="rounded-full border border-brand-600 px-5 py-2.5 text-brand-600 hover:bg-white">{{ __('site.nav.join') }}</a>
+                    @auth
+                        <a href="{{ route('member.events.show', $event) }}" class="rounded-full bg-brand-600 px-5 py-2.5 text-white hover:bg-ink">S’inscrire / voir mon inscription</a>
+                    @else
+                        <a href="{{ route('login') }}" class="rounded-full bg-brand-600 px-5 py-2.5 text-white hover:bg-ink">{{ __('site.nav.members') }}</a>
+                        <a href="{{ route('register') }}" class="rounded-full border border-brand-600 px-5 py-2.5 text-brand-600 hover:bg-white">{{ __('site.nav.join') }}</a>
+                    @endauth
                 </span>
             </div>
         @endif

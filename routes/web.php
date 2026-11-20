@@ -110,6 +110,53 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): v
     Route::post('simulateur/{node}', [Admin\RoleSimulatorController::class, 'start'])->whereNumber('node')->name('simulator.start');
 });
 
+// Gestion d'un événement (billetterie, programme, intervenants, sponsors, paiements, équipe OC) : les droits viennent du poste
+// (responsable de l'organisation) ou du rôle dans l'équipe OC de l'événement — contrôlés dans les contrôleurs (EventAccess).
+Route::middleware('auth')->prefix('admin')->name('admin.events.')->group(function (): void {
+    Route::get('mes-evenements', [Admin\Events\EventOverviewController::class, 'mine'])->name('oc');
+
+    Route::prefix('evenements/{event}')->whereNumber('event')->group(function (): void {
+        Route::get('apercu', [Admin\Events\EventOverviewController::class, 'overview'])->name('overview');
+        Route::get('inscriptions', [Admin\Events\EventOverviewController::class, 'registrations'])->name('registrations');
+        Route::patch('inscriptions/{registration}/statut', [Admin\Events\EventOverviewController::class, 'updateRegistration'])->whereNumber('registration')->name('registrations.status');
+
+        Route::get('billetterie', [Admin\Events\EventTicketController::class, 'index'])->name('tickets.index');
+        Route::post('billetterie', [Admin\Events\EventTicketController::class, 'store'])->name('tickets.store');
+        Route::put('billetterie/{release}', [Admin\Events\EventTicketController::class, 'update'])->whereNumber('release')->name('tickets.update');
+        Route::delete('billetterie/{release}', [Admin\Events\EventTicketController::class, 'destroy'])->whereNumber('release')->name('tickets.destroy');
+
+        Route::get('programme', [Admin\Events\EventProgramController::class, 'index'])->name('program.index');
+        Route::post('programme', [Admin\Events\EventProgramController::class, 'store'])->name('program.store');
+        Route::put('programme/{session}', [Admin\Events\EventProgramController::class, 'update'])->whereNumber('session')->name('program.update');
+        Route::delete('programme/{session}', [Admin\Events\EventProgramController::class, 'destroy'])->whereNumber('session')->name('program.destroy');
+
+        Route::get('intervenants', [Admin\Events\EventSpeakerController::class, 'index'])->name('speakers.index');
+        Route::post('intervenants', [Admin\Events\EventSpeakerController::class, 'store'])->name('speakers.store');
+        Route::put('intervenants/{speaker}', [Admin\Events\EventSpeakerController::class, 'update'])->whereNumber('speaker')->name('speakers.update');
+        Route::delete('intervenants/{speaker}', [Admin\Events\EventSpeakerController::class, 'destroy'])->whereNumber('speaker')->name('speakers.destroy');
+
+        Route::get('sponsors', [Admin\Events\EventSponsorController::class, 'index'])->name('sponsors.index');
+        Route::post('sponsors/niveaux', [Admin\Events\EventSponsorController::class, 'storeLevel'])->name('sponsors.levels.store');
+        Route::put('sponsors/niveaux/{level}', [Admin\Events\EventSponsorController::class, 'updateLevel'])->whereNumber('level')->name('sponsors.levels.update');
+        Route::delete('sponsors/niveaux/{level}', [Admin\Events\EventSponsorController::class, 'destroyLevel'])->whereNumber('level')->name('sponsors.levels.destroy');
+        Route::post('sponsors', [Admin\Events\EventSponsorController::class, 'store'])->name('sponsors.store');
+        Route::put('sponsors/{sponsor}', [Admin\Events\EventSponsorController::class, 'update'])->whereNumber('sponsor')->name('sponsors.update');
+        Route::delete('sponsors/{sponsor}', [Admin\Events\EventSponsorController::class, 'destroy'])->whereNumber('sponsor')->name('sponsors.destroy');
+
+        Route::get('paiements', [Admin\Events\EventPaymentController::class, 'index'])->name('payments.index');
+        Route::put('paiements/moyens', [Admin\Events\EventPaymentController::class, 'updateMethods'])->name('payments.methods');
+        Route::post('paiements', [Admin\Events\EventPaymentController::class, 'store'])->name('payments.store');
+        Route::post('paiements/{payment}/valider', [Admin\Events\EventPaymentController::class, 'validatePayment'])->whereNumber('payment')->name('payments.validate');
+        Route::post('paiements/{payment}/rejeter', [Admin\Events\EventPaymentController::class, 'reject'])->whereNumber('payment')->name('payments.reject');
+        Route::get('paiements/{payment}/preuve', [Admin\Events\EventPaymentController::class, 'proof'])->whereNumber('payment')->name('payments.proof');
+
+        Route::get('equipe', [Admin\Events\EventTeamController::class, 'index'])->name('team.index');
+        Route::post('equipe', [Admin\Events\EventTeamController::class, 'store'])->name('team.store');
+        Route::put('equipe/{member}', [Admin\Events\EventTeamController::class, 'update'])->whereNumber('member')->name('team.update');
+        Route::delete('equipe/{member}', [Admin\Events\EventTeamController::class, 'destroy'])->whereNumber('member')->name('team.destroy');
+    });
+});
+
 Route::get('/posts/attachments/{attachment}', [FeedController::class, 'showAttachment'])
     ->name('posts.attachments.show');
 
@@ -128,6 +175,16 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/posts/{post}/view', [FeedController::class, 'view'])->name('posts.view');
 
     Route::get('/profil', [ProfileController::class, 'show'])->name('profile.show');
+
+    // Événements : inscription par release, paiement avec preuve, étapes du programme.
+    Route::prefix('evenement/{event}')->whereNumber('event')->name('member.events.')->group(function (): void {
+        Route::get('/', [\App\Http\Controllers\MemberEventController::class, 'show'])->name('show');
+        Route::post('inscription', [\App\Http\Controllers\MemberEventController::class, 'register'])->middleware('throttle:20,1')->name('register');
+        Route::delete('inscription', [\App\Http\Controllers\MemberEventController::class, 'cancel'])->name('cancel');
+        Route::post('paiement', [\App\Http\Controllers\MemberEventController::class, 'pay'])->middleware('throttle:10,1')->name('pay');
+        Route::post('etapes/{session}', [\App\Http\Controllers\MemberEventController::class, 'registerSession'])->whereNumber('session')->name('sessions.register');
+        Route::delete('etapes/{session}', [\App\Http\Controllers\MemberEventController::class, 'cancelSession'])->whereNumber('session')->name('sessions.cancel');
+    });
     Route::get('/badges', [BadgeController::class, 'index'])->name('badges.index');
 
     // Mes adhésions : suivi et demande d'adhésion à une entité ou à un club.

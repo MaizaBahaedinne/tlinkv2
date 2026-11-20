@@ -82,7 +82,7 @@ class EventController extends AdminController
     {
         $this->authorizeEvent($request, $event);
 
-        $registrations = $event->registrations()->with('user:id,name,email')->latest('id')->get();
+        $registrations = $event->registrations()->with(['user:id,name,email', 'release:id,name'])->latest('id')->get();
 
         return view('admin.events.show', [
             'event' => $event,
