@@ -259,7 +259,7 @@ class EventManagementTest extends TestCase
         $event = $this->event();
         $person = User::factory()->create(['email' => 'oc@example.test']);
 
-        $this->actingAs($admin)->post("/admin/evenements/{$event->id}/equipe", ['email' => 'nobody@example.test', 'role' => 'finance'])->assertSessionHasErrors('email');
+        $this->actingAs($admin)->post("/admin/evenements/{$event->id}/equipe", ['email' => 'nobody@example.test', 'role' => 'finance'])->assertSessionHasErrors('user_id');
         $this->actingAs($admin)->post("/admin/evenements/{$event->id}/equipe", ['email' => 'oc@example.test', 'role' => 'finance'])->assertSessionHas('status');
         $member = EventTeamMember::query()->firstOrFail();
         $this->assertSame($person->id, $member->user_id);
@@ -351,6 +351,72 @@ class EventManagementTest extends TestCase
         // Un niveau non vide ne peut pas être supprimé.
         $this->actingAs($sponsoring)->delete("/admin/evenements/{$event->id}/sponsors/niveaux/{$gold->id}")->assertSessionHas('error');
         $this->assertNotNull($gold->fresh());
+    }
+
+    public function test_sponsor_can_be_picked_from_the_partner_database(): void
+    {
+        Storage::fake('public');
+        $event = $this->event();
+        $sponsoring = $this->oc($event, 'sponsoring');
+        $level = $event->sponsorLevels()->create(['name' => 'Or', 'kind' => 'sponsor', 'rank' => 1]);
+
+        $carnet = \App\Models\Sponsor::query()->create(['name' => 'Banque de Tunisie', 'relation' => 'sponsor', 'status' => 'active', 'website' => 'https://bt.example.test']);
+        Storage::disk('public')->put('partners/logo.png', 'png-bytes');
+        $site = \App\Models\Partner::query()->create(['name' => 'Ooredoo', 'logo_path' => 'partners/logo.png', 'website_url' => 'https://ooredoo.example.test']);
+
+        $this->actingAs($sponsoring)->get("/admin/evenements/{$event->id}/sponsors")->assertOk()
+            ->assertSee('Choisir dans ma base de partenaires')->assertSee('Banque de Tunisie')->assertSee('Ooredoo');
+
+        $this->actingAs($sponsoring)->post("/admin/evenements/{$event->id}/sponsors", ['level_id' => $level->id, 'directory' => 's:'.$carnet->id])->assertSessionHasNoErrors();
+        $this->actingAs($sponsoring)->post("/admin/evenements/{$event->id}/sponsors", ['level_id' => $level->id, 'directory' => 'p:'.$site->id])->assertSessionHasNoErrors();
+
+        $fromCarnet = EventSponsor::query()->where('name', 'Banque de Tunisie')->firstOrFail();
+        $this->assertSame($carnet->id, $fromCarnet->directory_sponsor_id);
+        $this->assertSame('https://bt.example.test', $fromCarnet->website_url);
+
+        $fromSite = EventSponsor::query()->where('name', 'Ooredoo')->firstOrFail();
+        $this->assertSame($site->id, $fromSite->directory_partner_id);
+        $this->assertNotSame('partners/logo.png', $fromSite->logo_path);
+        Storage::disk('public')->assertExists($fromSite->logo_path);
+
+        // Ni choix valide ni nom : refusé ; un nom saisi reste prioritaire.
+        $this->actingAs($sponsoring)->post("/admin/evenements/{$event->id}/sponsors", ['level_id' => $level->id, 'directory' => 's:9999'])->assertSessionHasErrors('name');
+        $this->actingAs($sponsoring)->post("/admin/evenements/{$event->id}/sponsors", ['level_id' => $level->id, 'name' => 'BT Assurances', 'directory' => 's:'.$carnet->id]);
+        $this->assertTrue(EventSponsor::query()->where('name', 'BT Assurances')->exists());
+        $this->actingAs($sponsoring)->post("/admin/evenements/{$event->id}/sponsors", ['level_id' => $level->id])->assertSessionHasErrors('name');
+    }
+
+    public function test_team_members_are_searched_in_the_database_with_a_free_text_post(): void
+    {
+        $event = $this->event();
+        $director = $this->oc($event, 'director');
+        $already = $this->oc($event, 'volunteer');
+        $already->update(['name' => 'Salma Déjà']);
+        $found = User::factory()->create(['name' => 'Salma Trabelsi', 'email' => 'salma@example.test']);
+        User::factory()->create(['name' => 'Karim Autre', 'email' => 'karim@example.test']);
+
+        $search = fn (string $q) => $this->actingAs($director)->getJson("/admin/evenements/{$event->id}/equipe/membres?q=".urlencode($q));
+
+        $search('s')->assertOk()->assertJsonCount(0, 'members');
+        $search('Salma')->assertOk()->assertJsonCount(1, 'members')->assertJsonPath('members.0.id', $found->id)->assertJsonPath('members.0.email', 'salma@example.test');
+        $search('karim@')->assertJsonCount(1, 'members');
+
+        // Réservé à ceux qui gèrent l'équipe.
+        $this->actingAs($this->oc($event, 'program'))->getJson("/admin/evenements/{$event->id}/equipe/membres?q=Salma")->assertForbidden();
+
+        $this->actingAs($director)->post("/admin/evenements/{$event->id}/equipe", [
+            'user_id' => $found->id, 'role' => 'logistics', 'job_title' => 'Responsable transport & hébergement',
+        ])->assertSessionHasNoErrors();
+
+        $member = EventTeamMember::query()->where('user_id', $found->id)->firstOrFail();
+        $this->assertSame('Responsable transport & hébergement', $member->job_title);
+        $this->assertSame('logistics', $member->role);
+
+        $this->actingAs($director)->put("/admin/evenements/{$event->id}/equipe/{$member->id}", ['role' => 'logistics', 'job_title' => 'Chef de projet']);
+        $this->assertSame('Chef de projet', $member->fresh()->job_title);
+
+        $this->actingAs($director)->post("/admin/evenements/{$event->id}/equipe", ['role' => 'finance'])->assertSessionHasErrors('user_id');
+        $this->actingAs($director)->get("/admin/evenements/{$event->id}/equipe")->assertOk()->assertSee('Rechercher par nom ou e-mail')->assertSee('Chef de projet');
     }
 
     public function test_cancelling_a_registration_promotes_the_waitlist(): void

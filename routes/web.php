@@ -151,6 +151,7 @@ Route::middleware('auth')->prefix('admin')->name('admin.events.')->group(functio
         Route::get('paiements/{payment}/preuve', [Admin\Events\EventPaymentController::class, 'proof'])->whereNumber('payment')->name('payments.proof');
 
         Route::get('equipe', [Admin\Events\EventTeamController::class, 'index'])->name('team.index');
+        Route::get('equipe/membres', [Admin\Events\EventTeamController::class, 'search'])->middleware('throttle:60,1')->name('team.search');
         Route::post('equipe', [Admin\Events\EventTeamController::class, 'store'])->name('team.store');
         Route::put('equipe/{member}', [Admin\Events\EventTeamController::class, 'update'])->whereNumber('member')->name('team.update');
         Route::delete('equipe/{member}', [Admin\Events\EventTeamController::class, 'destroy'])->whereNumber('member')->name('team.destroy');

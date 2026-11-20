@@ -32,7 +32,7 @@
                 @forelse($team as $member)
                     <div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0">
                         <span>{{ $member->user?->name }}</span>
-                        <span class="text-sm text-muted">{{ \App\Support\Events\EventAccess::ROLES[$member->role] ?? $member->role }}</span>
+                        <span class="text-sm text-muted">{{ $member->job_title ?: (\App\Support\Events\EventAccess::ROLES[$member->role] ?? $member->role) }}</span>
                     </div>
                 @empty
                     <p class="text-muted">Aucun membre dans l’équipe pour le moment.</p>

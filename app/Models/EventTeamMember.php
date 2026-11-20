@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** Membre de l'équipe d'organisation (OC) d'un événement. */
 class EventTeamMember extends Model
 {
-    protected $fillable = ['event_id', 'user_id', 'role', 'notes'];
+    protected $fillable = ['event_id', 'user_id', 'role', 'job_title', 'notes'];
 
     public function event(): BelongsTo
     {

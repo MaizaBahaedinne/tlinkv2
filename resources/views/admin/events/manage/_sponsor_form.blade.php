@@ -1,10 +1,35 @@
 @php
     $isNew = ! $sponsor->exists;
+    $hasDirectory = $isNew && (($directorySponsors ?? collect())->isNotEmpty() || ($directoryPartners ?? collect())->isNotEmpty());
+    $relationLabels = \App\Models\Sponsor::RELATIONS;
 @endphp
 <form method="post" action="{{ $action }}" class="form-grid" enctype="multipart/form-data">
     @csrf
     @if(! $isNew) @method('PUT') @endif
-    <div class="field"><label>Nom <span class="req">*</span></label><input name="name" value="{{ $sponsor->name }}" required maxlength="160"></div>
+    @if($hasDirectory)
+        <div class="field span-2">
+            <label for="directory-pick">Choisir dans ma base de partenaires</label>
+            <select id="directory-pick" name="directory">
+                <option value="">— Saisir un nouveau sponsor / partenaire —</option>
+                @if($directorySponsors->isNotEmpty())
+                    <optgroup label="Carnet de partenaires">
+                        @foreach($directorySponsors as $entry)
+                            <option value="s:{{ $entry->id }}" @selected(old('directory') === 's:'.$entry->id)>{{ $entry->name }} — {{ $relationLabels[$entry->relation] ?? $entry->relation }}{{ $entry->city ? ' ('.$entry->city.')' : '' }}</option>
+                        @endforeach
+                    </optgroup>
+                @endif
+                @if($directoryPartners->isNotEmpty())
+                    <optgroup label="Partenaires du site (avec logo)">
+                        @foreach($directoryPartners as $entry)
+                            <option value="p:{{ $entry->id }}" @selected(old('directory') === 'p:'.$entry->id)>{{ $entry->name }}</option>
+                        @endforeach
+                    </optgroup>
+                @endif
+            </select>
+            <p class="hint">Le nom, le site web et le logo (partenaires du site) sont repris automatiquement ; ce que vous saisissez ci-dessous reste prioritaire.</p>
+        </div>
+    @endif
+    <div class="field"><label>Nom @if(! $hasDirectory)<span class="req">*</span>@endif</label><input name="name" value="{{ $sponsor->name }}" @if(! $hasDirectory) required @endif maxlength="160" @if($hasDirectory) placeholder="Repris du choix ci-dessus" @endif></div>
     <div class="field">
         <label>Niveau <span class="req">*</span></label>
         <select name="level_id" required>

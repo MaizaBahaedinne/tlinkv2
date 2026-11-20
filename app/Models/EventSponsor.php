@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EventSponsor extends Model
 {
-    protected $fillable = ['event_id', 'level_id', 'name', 'logo_path', 'website_url', 'description', 'sort_order'];
+    protected $fillable = ['event_id', 'level_id', 'name', 'logo_path', 'website_url', 'description', 'sort_order', 'directory_sponsor_id', 'directory_partner_id'];
 
     public function event(): BelongsTo
     {
