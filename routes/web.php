@@ -69,6 +69,15 @@ Route::post('/rejoindre/{token}', [PositionJoinController::class, 'store'])->whe
 Route::get('/invitation/{token}', [PositionJoinController::class, 'showInvitation'])->where('token', '[A-Za-z0-9]{40}')->name('position.invitation');
 Route::post('/invitation/{token}', [PositionJoinController::class, 'storeInvitation'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:10,10')->name('position.invitation.store');
 
+// Inscrits importés d'un événement : ils retrouvent leur fiche avec leur numéro de téléphone et la complètent (public, limité en débit).
+Route::prefix('inscription-evenement/{event}')->whereNumber('event')->group(function (): void {
+    Route::get('/', [\App\Http\Controllers\EventCompletionController::class, 'show'])->name('event.complete');
+    Route::post('/telephone', [\App\Http\Controllers\EventCompletionController::class, 'lookup'])->middleware('throttle:8,1')->name('event.complete.lookup');
+    Route::post('/changer', [\App\Http\Controllers\EventCompletionController::class, 'forget'])->name('event.complete.forget');
+    Route::get('/postes', [\App\Http\Controllers\EventCompletionController::class, 'positions'])->middleware('throttle:60,1')->name('event.complete.positions');
+    Route::post('/', [\App\Http\Controllers\EventCompletionController::class, 'store'])->middleware('throttle:10,10')->name('event.complete.store');
+});
+
 // Identité installable de chaque sous-domaine (nom, logo) et liens vérifiés Android (ouvrir l'application installée).
 Route::get('/manifest.webmanifest', [\App\Http\Controllers\AppManifestController::class, 'manifest'])->name('manifest');
 Route::get('/.well-known/assetlinks.json', [\App\Http\Controllers\AppManifestController::class, 'assetLinks'])->name('well-known.assetlinks');
@@ -830,6 +839,8 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('evenements/{event}/modifier', [Admin\EventController::class, 'edit'])->name('events.edit');
             Route::put('evenements/{event}', [Admin\EventController::class, 'update'])->name('events.update');
             Route::delete('evenements/{event}', [Admin\EventController::class, 'destroy'])->name('events.destroy');
+            Route::post('evenements/{event}/inscrits-importes', [Admin\EventController::class, 'importRegistrations'])->whereNumber('event')->name('events.imports.store');
+            Route::delete('evenements/{event}/inscrits-importes/{entry}', [Admin\EventController::class, 'destroyImport'])->whereNumber(['event', 'entry'])->name('events.imports.destroy');
 
             // Défis thématiques (bureaux de chapitres et de projets) et activités des clubs.
             Route::get('defis', [Admin\ChallengeController::class, 'index'])->name('challenges.index');

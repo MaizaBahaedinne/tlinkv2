@@ -60,6 +60,8 @@
         </div>
     </section>
 
+    @include('admin.events.partials.imports')
+
     <div class="grid-3-1">
         <article class="card card-flush" style="min-width:0">
             <div class="card-head">

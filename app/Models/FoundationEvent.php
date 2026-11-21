@@ -73,6 +73,12 @@ class FoundationEvent extends Model
         return $this->hasMany(EventRegistration::class, 'event_id');
     }
 
+    /** Inscrits importés (nom, prénom, téléphone) dont la fiche est à compléter. */
+    public function registrationImports(): HasMany
+    {
+        return $this->hasMany(EventRegistrationImport::class, 'event_id');
+    }
+
     public function releases(): HasMany
     {
         return $this->hasMany(EventRelease::class, 'event_id')->orderBy('sort_order')->orderBy('id');

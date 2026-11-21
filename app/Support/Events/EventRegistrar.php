@@ -81,6 +81,37 @@ final class EventRegistrar
     }
 
     /**
+     * Inscription d'une personne déjà inscrite hors de T.Link (liste importée) : elle a sa place dans la release prévue,
+     * sans contrôle de quota ni de période d'ouverture. L'inscription attend le paiement (ou la validation) comme les autres.
+     */
+    public function registerImported(FoundationEvent $event, User $user, ?EventRelease $release): EventRegistration
+    {
+        $amount = $release !== null ? (float) $release->price : (float) ($event->price ?? 0);
+
+        $attributes = [
+            'status' => $event->approval_required || $amount > 0 ? 'pending' : 'confirmed',
+            'registered_at' => now(),
+            'release_id' => $release?->id,
+            'amount_due' => $amount,
+            'payment_status' => $amount > 0 ? 'unpaid' : 'free',
+        ];
+
+        $existing = EventRegistration::query()->where('event_id', $event->id)->where('user_id', $user->id)->first();
+
+        if ($existing !== null && $existing->status !== 'cancelled') {
+            return $existing;
+        }
+
+        if ($existing !== null) {
+            $existing->update($attributes);
+
+            return $existing->refresh();
+        }
+
+        return EventRegistration::query()->create($attributes + ['event_id' => $event->id, 'user_id' => $user->id]);
+    }
+
+    /**
      * Annule une inscription (et ses étapes), puis promeut la première personne de la liste d'attente.
      */
     public function cancel(EventRegistration $registration): void

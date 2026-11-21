@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\EventRegistration;
+use App\Models\EventRegistrationImport;
 use App\Models\FoundationEvent;
 use App\Models\Governorate;
+use App\Support\Events\RegistrationImportParser;
 use App\Support\MembershipResponsibility;
 use App\Support\OrgAccess;
 use App\Support\OrgScopes;
@@ -92,7 +94,78 @@ class EventController extends AdminController
             'statuses' => self::STATUSES,
             'registrationStatuses' => self::REGISTRATION_STATUSES,
             'registrationCounts' => $registrations->countBy('status'),
+            'imports' => $event->registrationImports()->with('release:id,name')->orderBy('status')->orderBy('last_name')->orderBy('first_name')->get(),
+            'releases' => $event->releases()->get(['id', 'name', 'price']),
         ]);
+    }
+
+    /**
+     * Importe une liste (nom, prénom, téléphone) d'inscrits à une release : chacun complète ensuite sa fiche
+     * depuis la page publique, avec son numéro de téléphone.
+     */
+    public function importRegistrations(Request $request, FoundationEvent $event): RedirectResponse
+    {
+        $this->authorizeEvent($request, $event);
+
+        $data = $request->validate([
+            'list' => ['required', 'string', 'max:100000'],
+            'release_id' => ['nullable', Rule::exists('event_releases', 'id')->where('event_id', $event->id)],
+        ], [
+            'list.required' => 'Collez la liste des inscrits (nom, prénom, téléphone).',
+            'release_id.exists' => 'Cette release n’appartient pas à l’événement.',
+        ]);
+
+        $parsed = RegistrationImportParser::parse($data['list']);
+
+        if ($parsed['rows'] === []) {
+            return back()->withInput()->withErrors(['list' => 'Aucune ligne exploitable : chaque ligne doit contenir un nom, un prénom et un numéro de téléphone.']);
+        }
+
+        $known = $event->registrationImports()->pluck('phone_key')->flip();
+        $added = 0;
+        $already = 0;
+
+        foreach ($parsed['rows'] as $row) {
+            if ($known->has($row['phone_key'])) {
+                $already++;
+
+                continue;
+            }
+
+            $event->registrationImports()->create($row + ['release_id' => $data['release_id'] ?? null]);
+            $added++;
+        }
+
+        $this->audit($request, 'admin.event.registrations_imported', $event, ['added' => $added, 'already' => $already, 'invalid' => count($parsed['invalid'])]);
+
+        $summary = $added.' inscrit(s) importé(s)';
+        $already += $parsed['duplicates'];
+
+        if ($already > 0) {
+            $summary .= ', '.$already.' déjà présent(s) (même numéro) ignoré(s)';
+        }
+
+        $response = back()->with('status', $summary.'.');
+
+        return $parsed['invalid'] === []
+            ? $response
+            : $response->with('import_invalid', array_slice($parsed['invalid'], 0, 10));
+    }
+
+    public function destroyImport(Request $request, FoundationEvent $event, EventRegistrationImport $entry): RedirectResponse
+    {
+        $this->authorizeEvent($request, $event);
+        abort_unless($entry->event_id === $event->id, 404);
+
+        if ($entry->isCompleted()) {
+            return back()->with('error', 'Cette fiche est déjà complétée : l’inscription existe, elle ne se supprime plus ici.');
+        }
+
+        $name = $entry->fullName();
+        $entry->delete();
+        $this->audit($request, 'admin.event.registration_import_removed', $event, ['name' => $name]);
+
+        return back()->with('status', $name.' retiré(e) de la liste.');
     }
 
     public function edit(Request $request, FoundationEvent $event): View
