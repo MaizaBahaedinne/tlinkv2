@@ -16,8 +16,8 @@
                             <tr>
                                 <td class="cell-main">{{ $event->title }}</td>
                                 <td class="hide-mobile text-sm text-muted nowrap">{{ $event->starts_at?->format('d/m/Y H:i') }}</td>
-                                <td>{{ \App\Support\Events\EventAccess::ROLES[$event->team->first()?->role] ?? '—' }}</td>
-                                <td class="text-right"><a href="{{ route('admin.events.overview', $event) }}" class="btn btn-secondary btn-sm">Gérer</a></td>
+                                <td>{{ \App\Support\Events\EventAccess::ROLES[$event->team->first()?->role] ?? 'Responsable de bus' }}</td>
+                                <td class="text-right"><a href="{{ \App\Support\Events\EventAccess::canView(auth()->user(), $event) ? route('admin.events.overview', $event) : route('admin.events.transport.index', $event) }}" class="btn btn-secondary btn-sm">Gérer</a></td>
                             </tr>
                         @endforeach
                     </tbody>

@@ -14,12 +14,16 @@ use Illuminate\View\View;
 
 class EventOverviewController extends EventManageController
 {
-    /** Événements dont l'utilisateur fait partie de l'équipe OC. */
+    /** Événements dont l'utilisateur fait partie de l'équipe OC ou dont il est responsable de bus. */
     public function mine(Request $request): View
     {
+        $userId = $request->user()->id;
+
         $events = FoundationEvent::query()
-            ->whereHas('team', fn ($query) => $query->where('user_id', $request->user()->id))
-            ->with(['team' => fn ($query) => $query->where('user_id', $request->user()->id)])
+            ->where(fn ($query) => $query
+                ->whereHas('team', fn ($team) => $team->where('user_id', $userId))
+                ->orWhereHas('buses.managers', fn ($manager) => $manager->where('user_id', $userId)))
+            ->with(['team' => fn ($query) => $query->where('user_id', $userId)])
             ->orderByDesc('starts_at')
             ->get();
 

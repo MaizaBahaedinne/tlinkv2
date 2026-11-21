@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\EventPayment;
 use App\Models\EventSession;
+use App\Models\EventBusStop;
+use App\Models\EventTransportBooking;
 use App\Models\FoundationEvent;
 use App\Support\Events\EventAccess;
 use App\Support\Events\EventPayments;
 use App\Support\Events\EventRegistrar;
 use App\Support\Events\EventRegistrationException;
+use App\Support\Events\EventTransport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -44,7 +47,60 @@ class MemberEventController extends Controller
             'outstanding' => $active ? EventPayments::outstanding($registration) : 0.0,
             'canManage' => $canManage,
             'registrationOpen' => $this->registrationOpen($event),
+            'transport' => $active && in_array($registration->status, ['pending', 'confirmed', 'attended'], true)
+                ? $this->transportData($event, $registration)
+                : null,
         ]);
+    }
+
+    /**
+     * Régions et départs proposés à l'inscrit, et son choix actuel (null si l'événement n'a pas de transport).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function transportData(FoundationEvent $event, $registration): ?array
+    {
+        $regions = $event->transportRegions()->get();
+
+        if ($regions->isEmpty()) {
+            return null;
+        }
+
+        $stops = EventBusStop::query()
+            ->whereHas('bus', fn ($query) => $query->where('event_id', $event->id))
+            ->with(['bus.managers.user:id,name', 'point'])
+            ->orderBy('departs_at')
+            ->get()
+            ->each(fn (EventBusStop $stop) => $stop->bus->setAttribute('remaining_seats', $stop->bus->remaining()));
+
+        return [
+            'regions' => $regions,
+            'stops' => $stops,
+            'booking' => EventTransportBooking::query()->where('registration_id', $registration->id)->with(['region', 'bus.managers.user:id,name', 'stop.point'])->first(),
+        ];
+    }
+
+    public function saveTransport(Request $request, FoundationEvent $event, EventTransport $transport): RedirectResponse
+    {
+        abort_unless($event->status === 'published', 404);
+        $registration = $event->registrations()->where('user_id', $request->user()->id)->firstOrFail();
+
+        $data = $request->validate([
+            'region_id' => ['required', 'integer'],
+            'mode' => ['required', Rule::in(array_keys(EventTransportBooking::MODES))],
+            'stop_id' => ['nullable', 'integer', 'required_if:mode,bus'],
+        ], [
+            'region_id.required' => 'Choisissez votre région de départ.',
+            'stop_id.required_if' => 'Choisissez votre bus et votre point de départ.',
+        ]);
+
+        try {
+            $transport->book($registration, (int) $data['region_id'], $data['mode'], isset($data['stop_id']) ? (int) $data['stop_id'] : null);
+        } catch (EventRegistrationException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Votre transport est enregistré.');
     }
 
     public function register(Request $request, FoundationEvent $event, EventRegistrar $registrar): RedirectResponse

@@ -103,6 +103,21 @@ class FoundationEvent extends Model
         return $this->hasMany(EventTeamMember::class, 'event_id');
     }
 
+    public function transportRegions(): HasMany
+    {
+        return $this->hasMany(EventTransportRegion::class, 'event_id')->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function transportPoints(): HasMany
+    {
+        return $this->hasMany(EventTransportPoint::class, 'event_id');
+    }
+
+    public function buses(): HasMany
+    {
+        return $this->hasMany(EventBus::class, 'event_id')->orderBy('sort_order')->orderBy('name');
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(EventPayment::class, 'event_id')->latest('id');

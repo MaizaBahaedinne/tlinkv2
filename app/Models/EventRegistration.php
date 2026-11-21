@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class EventRegistration extends Model
 {
@@ -42,6 +43,11 @@ class EventRegistration extends Model
     public function sessionRegistrations(): HasMany
     {
         return $this->hasMany(EventSessionRegistration::class, 'registration_id');
+    }
+
+    public function transportBooking(): HasOne
+    {
+        return $this->hasOne(EventTransportBooking::class, 'registration_id');
     }
 
     public function event(): BelongsTo

@@ -70,6 +70,7 @@ final class EventRegistrar
             ];
 
             if ($existing !== null) {
+                $existing->transportBooking()->delete();
                 $existing->update($attributes);
 
                 return $existing->refresh();
@@ -87,6 +88,7 @@ final class EventRegistrar
         DB::transaction(function () use ($registration): void {
             $registration->update(['status' => 'cancelled']);
             $registration->sessionRegistrations()->update(['status' => 'cancelled']);
+            $registration->transportBooking()->delete();
         });
 
         $this->promoteWaitlist($registration->event);

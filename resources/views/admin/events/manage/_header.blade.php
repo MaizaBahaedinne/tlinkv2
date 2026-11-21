@@ -8,6 +8,7 @@
         'speakers' => ['Intervenants', 'admin.events.speakers.index', 'program'],
         'sponsors' => ['Sponsors & partenaires', 'admin.events.sponsors.index', 'sponsors'],
         'payments' => ['Paiements', 'admin.events.payments.index', 'registrations'],
+        'transport' => ['Transport', 'admin.events.transport.index', 'transport'],
         'team' => ['Équipe OC', 'admin.events.team.index', 'team'],
     ];
 @endphp
@@ -23,7 +24,7 @@
 
 <nav class="tabs" style="margin-bottom:14px" aria-label="Gestion de l’événement">
     @foreach($tabs as $key => [$label, $routeName, $ability])
-        @if(in_array($ability, $abilities, true))
+        @if(in_array($ability, $abilities, true) || ($key === 'transport' && in_array('transport_bus', $abilities, true)))
             <a href="{{ route($routeName, $event) }}" class="tab {{ $tab === $key ? 'is-active' : '' }}">{{ $label }}</a>
         @endif
     @endforeach

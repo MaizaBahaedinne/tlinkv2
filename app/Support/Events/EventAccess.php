@@ -2,6 +2,7 @@
 
 namespace App\Support\Events;
 
+use App\Models\EventBusManager;
 use App\Models\EventTeamMember;
 use App\Models\FoundationEvent;
 use App\Models\User;
@@ -20,6 +21,7 @@ final class EventAccess
         'coordinator' => 'Coordinateur',
         'program' => 'Responsable programme',
         'logistics' => 'Logistique',
+        'transport' => 'Responsable transport',
         'communication' => 'Communication',
         'sponsoring' => 'Sponsoring & partenariats',
         'finance' => 'Finance & trésorerie',
@@ -38,13 +40,15 @@ final class EventAccess
         'payments_validate' => 'Valider ou rejeter des paiements',
         'payments_settings' => 'Configurer les moyens de paiement',
         'team' => "Gérer l'équipe OC",
+        'transport' => 'Gérer le transport (régions, bus, circuits)',
     ];
 
     public const ROLE_ABILITIES = [
-        'director' => ['view', 'tickets', 'program', 'sponsors', 'registrations', 'payments_record', 'payments_validate', 'payments_settings', 'team'],
-        'coordinator' => ['view', 'tickets', 'program', 'sponsors', 'registrations', 'team'],
+        'director' => ['view', 'tickets', 'program', 'sponsors', 'registrations', 'payments_record', 'payments_validate', 'payments_settings', 'team', 'transport'],
+        'coordinator' => ['view', 'tickets', 'program', 'sponsors', 'registrations', 'team', 'transport'],
         'program' => ['view', 'program'],
-        'logistics' => ['view', 'program'],
+        'logistics' => ['view', 'program', 'transport'],
+        'transport' => ['view', 'transport'],
         'communication' => ['view', 'program', 'sponsors'],
         'sponsoring' => ['view', 'sponsors'],
         'finance' => ['view', 'registrations', 'payments_record', 'payments_validate', 'payments_settings'],
@@ -79,9 +83,22 @@ final class EventAccess
             return true;
         }
 
+        if ($ability === 'transport_bus') {
+            return self::isBusManager($user, $event);
+        }
+
         $role = self::role($user, $event);
 
         return $role !== null && in_array($ability, self::ROLE_ABILITIES[$role] ?? [], true);
+    }
+
+    /** Responsable d'au moins un bus de l'événement (présence / communication). */
+    public static function isBusManager(User $user, FoundationEvent $event): bool
+    {
+        return EventBusManager::query()
+            ->where('user_id', $user->id)
+            ->whereHas('bus', fn ($query) => $query->where('event_id', $event->id))
+            ->exists();
     }
 
     /** Au moins l'accès en lecture (organisateur ou OC). */
@@ -100,7 +117,13 @@ final class EventAccess
         }
 
         $role = self::role($user, $event);
+        $abilities = $role !== null ? (self::ROLE_ABILITIES[$role] ?? []) : [];
 
-        return $role !== null ? (self::ROLE_ABILITIES[$role] ?? []) : [];
+        // Responsable de bus : accès limité à ses bus (pointage des présences, messages aux passagers).
+        if (self::isBusManager($user, $event)) {
+            $abilities[] = 'transport_bus';
+        }
+
+        return $abilities;
     }
 }

@@ -111,6 +111,10 @@
                         </details>
                     @endif
 
+                    @if($transport)
+                        @include('events._transport')
+                    @endif
+
                     <form method="post" action="{{ route('member.events.cancel', $event) }}" onsubmit="return confirm('Annuler votre inscription ?')">
                         @csrf @method('DELETE')
                         <button type="submit" class="{{ $btnGhost }}">Annuler mon inscription</button>

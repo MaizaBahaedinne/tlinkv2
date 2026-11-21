@@ -155,6 +155,26 @@ Route::middleware('auth')->prefix('admin')->name('admin.events.')->group(functio
         Route::post('equipe', [Admin\Events\EventTeamController::class, 'store'])->name('team.store');
         Route::put('equipe/{member}', [Admin\Events\EventTeamController::class, 'update'])->whereNumber('member')->name('team.update');
         Route::delete('equipe/{member}', [Admin\Events\EventTeamController::class, 'destroy'])->whereNumber('member')->name('team.destroy');
+
+        $transport = Admin\Events\EventTransportController::class;
+        Route::get('transport', [$transport, 'index'])->name('transport.index');
+        Route::get('transport/membres', [$transport, 'search'])->middleware('throttle:60,1')->name('transport.search');
+        Route::post('transport/regions', [$transport, 'storeRegion'])->name('transport.regions.store');
+        Route::delete('transport/regions/{region}', [$transport, 'destroyRegion'])->whereNumber('region')->name('transport.regions.destroy');
+        Route::post('transport/points', [$transport, 'storePoint'])->name('transport.points.store');
+        Route::put('transport/points/{point}', [$transport, 'updatePoint'])->whereNumber('point')->name('transport.points.update');
+        Route::delete('transport/points/{point}', [$transport, 'destroyPoint'])->whereNumber('point')->name('transport.points.destroy');
+        Route::post('transport/bus', [$transport, 'storeBus'])->name('transport.bus.store');
+        Route::get('transport/bus/{bus}', [$transport, 'bus'])->whereNumber('bus')->name('transport.bus.show');
+        Route::put('transport/bus/{bus}', [$transport, 'updateBus'])->whereNumber('bus')->name('transport.bus.update');
+        Route::delete('transport/bus/{bus}', [$transport, 'destroyBus'])->whereNumber('bus')->name('transport.bus.destroy');
+        Route::post('transport/bus/{bus}/arrets', [$transport, 'storeStop'])->whereNumber('bus')->name('transport.stops.store');
+        Route::put('transport/arrets/{stop}', [$transport, 'updateStop'])->whereNumber('stop')->name('transport.stops.update');
+        Route::delete('transport/arrets/{stop}', [$transport, 'destroyStop'])->whereNumber('stop')->name('transport.stops.destroy');
+        Route::post('transport/bus/{bus}/responsables', [$transport, 'storeManager'])->whereNumber('bus')->name('transport.managers.store');
+        Route::delete('transport/responsables/{manager}', [$transport, 'destroyManager'])->whereNumber('manager')->name('transport.managers.destroy');
+        Route::patch('transport/reservations/{booking}/presence', [$transport, 'presence'])->whereNumber('booking')->name('transport.presence');
+        Route::post('transport/bus/{bus}/message', [$transport, 'message'])->whereNumber('bus')->middleware('throttle:20,1')->name('transport.message');
     });
 });
 
@@ -185,6 +205,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('paiement', [\App\Http\Controllers\MemberEventController::class, 'pay'])->middleware('throttle:10,1')->name('pay');
         Route::post('etapes/{session}', [\App\Http\Controllers\MemberEventController::class, 'registerSession'])->whereNumber('session')->name('sessions.register');
         Route::delete('etapes/{session}', [\App\Http\Controllers\MemberEventController::class, 'cancelSession'])->whereNumber('session')->name('sessions.cancel');
+        Route::post('transport', [\App\Http\Controllers\MemberEventController::class, 'saveTransport'])->name('transport');
     });
     Route::get('/badges', [BadgeController::class, 'index'])->name('badges.index');
 
