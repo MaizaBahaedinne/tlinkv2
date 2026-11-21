@@ -391,6 +391,7 @@ class StructureController extends AdminController
         return view('admin.structure.club', [
             'club' => $node,
             'canEdit' => $this->canEdit($request),
+            'canInvite' => $this->canEdit($request) || $this->canEditClubInfo($request, $node),
             'tree' => $team->groupBy('parent_id'),
             'assignments' => $assignments,
             'positions' => $positions,
@@ -405,6 +406,60 @@ class StructureController extends AdminController
             'pastActivities' => (clone $activities)->where('starts_at', '<', now())->orderByDesc('starts_at')->limit(10)->get(),
             'activityStatuses' => ClubActivity::STATUSES,
         ]);
+    }
+
+    /**
+     * Invite par e-mail une personne à candidater à un poste vacant d'un club (lien personnel, candidature examinée ensuite).
+     * Le lien direct et le QR code du poste sont affichés sur la fiche du club ; ici, seule l'invitation personnelle.
+     */
+    public function invitePosition(Request $request, OrgNode $node, OrgNode $position): RedirectResponse
+    {
+        abort_unless($node->kind === 'club' && $position->kind === 'position', 404);
+        abort_unless($this->isInside($position, $node), 404);
+        abort_unless($this->canEdit($request) || $this->canEditClubInfo($request, $node), 403, 'Vous ne pouvez pas inviter de candidat pour ce club.');
+
+        $data = $request->validate([
+            'first_name' => ['required', 'string', 'max:120'],
+            'last_name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:255'],
+        ], [
+            'first_name.required' => 'Indiquez le prénom de la personne.',
+            'last_name.required' => 'Indiquez le nom de la personne.',
+            'email.required' => 'Indiquez son adresse e-mail.',
+            'email.email' => 'Cette adresse e-mail n’est pas valide.',
+        ]);
+
+        if ($position->capacity !== 'multiple' && $this->rules->currentPeopleCount($position) >= 1) {
+            throw ValidationException::withMessages(['email' => 'Ce poste est déjà pourvu : il n’est plus possible d’inviter un candidat.']);
+        }
+
+        $result = \App\Support\PositionInvitations::send($position, [$data], $request->user());
+
+        if ($result['sent'] === []) {
+            $reason = $result['skipped'][0]['reason'] ?? null;
+
+            throw ValidationException::withMessages(['email' => $reason !== null
+                ? 'Cette personne '.$reason.'.'
+                : 'L’e-mail n’a pas pu être envoyé. Partagez plutôt le lien ou le QR code, ou réessayez plus tard.']);
+        }
+
+        $this->audit($request, 'orgchart.invitation.sent', $position, ['title' => $position->title, 'email' => $result['sent'][0]['email']]);
+
+        return redirect()->route('admin.clubs.show', $node)->with('status', 'Invitation envoyée à '.$result['sent'][0]['email'].' pour le poste « '.$position->title.' ».');
+    }
+
+    /** Le bloc est sous le club (à n'importe quelle profondeur). */
+    private function isInside(OrgNode $block, OrgNode $club): bool
+    {
+        for ($id = $block->parent_id, $guard = 0; $id !== null && $guard < 80; $guard++) {
+            if ((int) $id === (int) $club->id) {
+                return true;
+            }
+
+            $id = OrgNode::query()->whereKey($id)->value('parent_id');
+        }
+
+        return false;
     }
 
     /**

@@ -388,6 +388,71 @@ class StructureAdminTest extends TestCase
         $this->actingAs($admin)->post('/admin/structure/clubs/aligner')->assertRedirect();
     }
 
+    public function test_club_page_shows_a_horizontal_chart_and_invites_candidates_to_vacant_positions(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+        $admin = $this->admin();
+        $club = $this->universityClub();
+        $other = $this->universityClub('ENIT');
+        $president = OrgNode::query()->where('subtitle', $club->title)->where('title', 'Président de club')->firstOrFail();
+        $foreign = OrgNode::query()->where('subtitle', $other->title)->where('title', 'Président de club')->firstOrFail();
+        $url = "/admin/structure/clubs/{$club->id}";
+        $invitee = ['first_name' => 'Sami', 'last_name' => 'Ben Ali', 'email' => 'sami@example.test'];
+
+        // Organigramme horizontal, avec lien, QR code et e-mail sur les postes vacants.
+        $this->actingAs($admin)->get($url)->assertOk()
+            ->assertSee('hz-tree', false)->assertSee('Inviter un candidat')->assertSee($president->joinUrl(), false)
+            ->assertSee('data-invite-qr', false)->assertSee('Envoyer l’invitation');
+
+        $this->post("{$url}/postes/{$president->id}/invitation", $invitee)->assertRedirect($url)->assertSessionHas('status');
+        \Illuminate\Support\Facades\Notification::assertSentOnDemand(\App\Notifications\PositionInvitationNotification::class);
+
+        $this->post("{$url}/postes/{$president->id}/invitation", ['first_name' => '', 'last_name' => 'X', 'email' => 'pas-un-mail'])->assertSessionHasErrors(['first_name', 'email']);
+
+        // Un poste d'un autre club n'est pas concerné.
+        $this->post("{$url}/postes/{$foreign->id}/invitation", $invitee)->assertNotFound();
+
+        // Poste à titulaire unique déjà pourvu : plus d'invitation, plus de bouton.
+        $this->placeOn($president, User::factory()->create());
+        $this->post("{$url}/postes/{$president->id}/invitation", ['email' => 'autre@example.test'] + $invitee)->assertSessionHasErrors('email');
+        $this->get($url)->assertOk()->assertDontSee($president->joinUrl(), false);
+
+        // Sans droit de modifier le club, ni bouton ni invitation.
+        $reader = User::factory()->create();
+        $post = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'category' => 'club', 'title' => 'Lecteur', 'sort_order' => 99]);
+        \App\Support\ModulePermissions::apply($post, ['organization.clubs' => ['read']], false);
+        $this->placeOn($post, $reader);
+        $vacantDepartmentPost = OrgNode::query()->where('subtitle', $club->title)->where('title', 'VP Marketing')->firstOrFail();
+        $this->actingAs($reader)->get($url)->assertOk()->assertDontSee('Inviter un candidat')->assertDontSee($vacantDepartmentPost->joinUrl(), false);
+        $this->post("{$url}/postes/{$vacantDepartmentPost->id}/invitation", $invitee)->assertForbidden();
+    }
+
+    public function test_club_status_is_toggled_by_global_admins_and_explained_to_club_managers(): void
+    {
+        $admin = $this->admin();
+        $club = $this->universityClub();
+        $this->assertSame('active', $club->fresh()->status);
+
+        // Administrateur global : sélecteur sur la fiche et bascule depuis la page du club.
+        $this->actingAs($admin)->get("/admin/structure/postes/{$club->id}/modifier")->assertOk()->assertSee('name="status"', false);
+        $this->actingAs($admin)->get("/admin/structure/clubs/{$club->id}")->assertOk()->assertSee('Désactiver le club');
+        $this->post('/admin/structure/clubs/statut', ['nodes' => [$club->id], 'status' => 'inactive'])->assertSessionHas('status');
+        $this->assertSame('inactive', $club->fresh()->status);
+        $this->get("/admin/structure/clubs/{$club->id}")->assertOk()->assertSee('Activer le club');
+        $this->put("/admin/structure/postes/{$club->id}", ['title' => $club->title, 'status' => 'active'])->assertRedirect();
+        $this->assertSame('active', $club->fresh()->status);
+
+        // Responsable de club : le statut est affiché avec l'explication, pas modifiable.
+        $manager = User::factory()->create();
+        $post = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'category' => 'club', 'title' => 'Responsable du club', 'sort_order' => 99]);
+        \App\Support\ModulePermissions::apply($post, ['organization.clubs' => ['read', 'update']], false);
+        $this->placeOn($post, $manager);
+
+        $this->actingAs($manager)->get("/admin/structure/postes/{$club->id}/modifier")->assertOk()
+            ->assertSee('Seul un administrateur global peut activer ou désactiver un club')->assertDontSee('name="status"', false);
+        $this->post('/admin/structure/clubs/statut', ['nodes' => [$club->id], 'status' => 'inactive'])->assertForbidden();
+    }
+
     public function test_menu_links_to_the_new_screens(): void
     {
         $admin = $this->admin();

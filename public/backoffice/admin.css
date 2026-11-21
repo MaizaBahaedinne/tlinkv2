@@ -613,3 +613,39 @@ a.team-title:hover { color: var(--cyan); }
 .sp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
 .sp-info strong, .sp-info a { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sp-actions { display: flex; gap: 2px; }
+
+/* Organigramme horizontal d'un club : le club à gauche, un niveau de postes par colonne vers la droite */
+.hz-scroll { overflow-x: auto; padding: 6px 4px 18px; }
+.hz-tree, .hz-tree ul { list-style: none; margin: 0; padding: 0; }
+.hz-tree { display: inline-block; min-width: 100%; }
+.hz-node { display: flex; align-items: center; }
+.hz-kids { position: relative; margin-left: 36px; }
+.hz-kids::before { content: ''; position: absolute; left: -36px; top: 50%; width: 36px; border-top: 2px solid var(--line-strong); }
+.hz-kids > .hz-node { position: relative; padding: 6px 0 6px 18px; }
+.hz-kids > .hz-node::before { content: ''; position: absolute; left: 0; top: 50%; width: 18px; border-top: 2px solid var(--line-strong); }
+.hz-kids > .hz-node::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; border-left: 2px solid var(--line-strong); }
+.hz-kids > .hz-node:first-child::after { top: 50%; }
+.hz-kids > .hz-node:last-child::after { bottom: 50%; }
+.hz-kids > .hz-node:only-child::after { display: none; }
+.hz-card { flex: none; width: 238px; display: grid; gap: 8px; padding: 11px 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 2px rgba(42, 7, 16, 0.05); }
+.hz-card.is-club { background: var(--cyan-soft); border-color: transparent; }
+.hz-card.is-dept { background: var(--bg); border-left: 4px solid var(--cyan); }
+.hz-card.is-vacant { border: 1px dashed var(--warning); background: #fffaf1; }
+.hz-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.hz-title { font-weight: 700; font-size: 13.5px; line-height: 1.3; color: inherit; text-decoration: none; }
+a.hz-title:hover { color: var(--cyan); }
+.hz-meta { color: var(--muted); font-size: 12px; font-weight: 600; }
+.hz-holders { display: grid; gap: 6px; }
+.hz-holder { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; min-width: 0; }
+.hz-holder span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hz-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.hz-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--line-strong); background: var(--surface); }
+.hz-legend i.is-vacant { border: 1px dashed var(--warning); background: #fffaf1; }
+.hz-legend i.is-dept { border-left: 4px solid var(--cyan); background: var(--bg); }
+
+/* Partage d'un poste vacant : lien, QR code, invitation par e-mail */
+.share-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.share-pane[hidden] { display: none; }
+.share-qr { width: min(240px, 100%); margin: 0 auto 12px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; min-height: 120px; display: grid; place-items: center; color: var(--muted); font-size: 12.5px; }
+.share-link { display: flex; gap: 8px; }
+.share-link input { flex: 1; min-width: 0; }

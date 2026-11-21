@@ -101,7 +101,13 @@
                             <h3 class="text-sm text-muted" style="margin:24px 0 12px">Club</h3>
                             <div class="form-grid">
                                 @if($canEdit)
-                                    <x-admin.select name="status" label="Statut" :options="$clubStatuses" :value="$node->status" :placeholder="null" />
+                                    <x-admin.select name="status" label="Statut" :options="$clubStatuses" :value="$node->status" :placeholder="null" hint="Un club inactif n’apparaît ni sur le site, ni dans l’API, ni dans les statistiques." />
+                                @else
+                                    <div class="field">
+                                        <label>Statut</label>
+                                        <div><x-admin.badge :status="$node->status ?? 'draft'" /></div>
+                                        <p class="hint">Seul un administrateur global peut activer ou désactiver un club : demandez-lui de changer ce statut.</p>
+                                    </div>
                                 @endif
                                 <x-admin.select name="governorate_id" label="Gouvernorat" :options="$governorates" :value="$node->governorate_id" placeholder="Non renseigné" />
                                 <x-admin.select name="institution_id" label="Établissement" :options="$institutionOptions" :value="$node->institution_id" placeholder="Aucun" :hint="'Lycée, université ou faculté du club : son logo et ses informations s’affichent sur les profils.'" />

@@ -679,6 +679,7 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::post('structure/clubs/aligner', [Admin\StructureController::class, 'alignClubs'])->name('clubs.align');
             Route::post('structure/clubs/statut', [Admin\StructureController::class, 'bulkClubStatus'])->name('clubs.status');
             Route::get('structure/clubs/{node}', [Admin\StructureController::class, 'showClub'])->name('clubs.show');
+            Route::post('structure/clubs/{node}/postes/{position}/invitation', [Admin\StructureController::class, 'invitePosition'])->whereNumber(['node', 'position'])->middleware('throttle:20,10')->name('clubs.invite');
             Route::get('structure/roles', fn () => redirect()->route('admin.templates.index', ['category' => 'university_club']))->name('roles.index');
             Route::get('structure/modeles', fn () => redirect()->route('admin.templates.index', ['category' => 'university_club']))->name('templates.home');
             Route::get('structure/modeles/{category}', [Admin\ClubTemplateController::class, 'index'])->whereIn('category', array_keys(\App\Support\OrgChart\ClubTemplates::CATEGORIES))->name('templates.index');
