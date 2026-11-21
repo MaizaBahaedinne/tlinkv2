@@ -30,7 +30,9 @@
             <p class="mt-1 text-sm">Ton inscription est enregistrée. L’équipe vérifie ta preuve de paiement et te confirmera ta place. Confirme aussi ton adresse e-mail avec le code reçu.</p>
         </div>
         @auth
-            <a href="{{ route('member.events.show', $event) }}" class="mt-5 inline-flex rounded-xl bg-tlink-blue px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-tlink-blue/25 hover:bg-tlink-blue-700">Voir mon inscription</a>
+            @unless (\App\Support\LaunchGate::isClosed())
+                <a href="{{ route('member.events.show', $event) }}" class="mt-5 inline-flex rounded-xl bg-tlink-blue px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-tlink-blue/25 hover:bg-tlink-blue-700">Voir mon inscription</a>
+            @endunless
         @endauth
     @elseif ($entry === null)
         <p class="mt-4 text-sm text-slate-600">Tu es déjà inscrit(e) à cet événement. Saisis le numéro de téléphone avec lequel tu t’es inscrit(e) pour retrouver ta fiche et la compléter.</p>

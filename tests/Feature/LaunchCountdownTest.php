@@ -123,6 +123,17 @@ class LaunchCountdownTest extends TestCase
         $this->assertDatabaseHas('position_applications', ['node_id' => $position->id, 'user_id' => $member->id]);
     }
 
+    public function test_event_sheet_completion_page_stays_open_while_closed(): void
+    {
+        $this->closeUntil();
+        $event = \App\Models\FoundationEvent::query()->create(['title' => 'Forum', 'starts_at' => now()->addDays(10), 'status' => 'published']);
+        \App\Models\EventRegistrationImport::query()->create(['event_id' => $event->id, 'first_name' => 'Farah', 'last_name' => 'Dhmaied', 'phone' => '58 048 528', 'phone_key' => '58048528']);
+
+        $this->get("/inscription-evenement/{$event->id}")->assertOk()->assertSee('Retrouver ma fiche');
+        $this->post("/inscription-evenement/{$event->id}/telephone", ['phone' => '58048528'])->assertRedirect("/inscription-evenement/{$event->id}");
+        $this->get("/inscription-evenement/{$event->id}")->assertOk()->assertSee('Envoyer ma fiche');
+    }
+
     public function test_position_invitation_links_stay_open_while_closed(): void
     {
         $this->closeUntil();
