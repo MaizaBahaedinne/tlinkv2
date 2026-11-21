@@ -249,6 +249,21 @@ class StructureController extends AdminController
      * Change le statut de clubs cochés, ou de tous les clubs du filtre en cours.
      * Un club inactif n'apparaît ni sur le site, ni dans l'API, ni dans les statistiques.
      */
+    public function setClubStatus(Request $request, OrgNode $node): RedirectResponse
+    {
+        abort_unless($node->kind === 'club', 404);
+        abort_unless($this->canEdit($request) || $this->canEditClubInfo($request, $node), 403, 'Vous ne pouvez pas modifier le statut de ce club.');
+
+        $data = $request->validate(['status' => ['required', Rule::in(array_keys(OrgNode::CLUB_STATUSES))]]);
+
+        if ($node->status !== $data['status']) {
+            $node->update(['status' => $data['status']]);
+            AuditLogger::record($request->user()->id, 'orgchart.club.status', 'org_node', $node->id, ['status' => $data['status']], $request->ip());
+        }
+
+        return back()->with('status', '« '.$node->title.' » est passé en « '.OrgNode::CLUB_STATUSES[$data['status']].' ».');
+    }
+
     public function bulkClubStatus(Request $request): RedirectResponse
     {
         $this->requireEditor($request);
@@ -392,6 +407,7 @@ class StructureController extends AdminController
             'club' => $node,
             'canEdit' => $this->canEdit($request),
             'canInvite' => $this->canEdit($request) || $this->canEditClubInfo($request, $node),
+            'canStatus' => $this->canEdit($request) || $this->canEditClubInfo($request, $node),
             'tree' => $team->groupBy('parent_id'),
             'assignments' => $assignments,
             'positions' => $positions,
@@ -647,7 +663,7 @@ class StructureController extends AdminController
         ]);
 
         if (! $full) {
-            $data = Arr::except($data, ['kind', 'parent_id', 'scope', 'extra_scopes', 'permissions', 'scope_all', 'status', 'charter_signed']);
+            $data = Arr::except($data, ['kind', 'parent_id', 'scope', 'extra_scopes', 'permissions', 'scope_all', 'charter_signed']);
         }
 
         $kind = $node->kind === 'club' ? 'club' : ($data['kind'] ?? $node->kind);

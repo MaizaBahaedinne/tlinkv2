@@ -94,6 +94,7 @@ class AuditLabels
         'orgchart.club_template.updated' => 'Organigramme : modèle d’équipe des clubs modifié',
         'orgchart.club_template.slot_added' => 'Organigramme : poste ou département ajouté au modèle des clubs',
         'orgchart.club_template.slot_removed' => 'Organigramme : poste ou département retiré du modèle des clubs',
+        'orgchart.club.status' => 'Organigramme : statut d’un club modifié',
         'orgchart.club.status_bulk' => 'Organigramme : statut de plusieurs clubs modifié',
         'orgchart.club.aligned' => 'Organigramme : clubs alignés sur l’équipe type',
         'orgchart.access.bulk_updated' => 'Organigramme : droits et périmètre de plusieurs postes modifiés',

@@ -82,6 +82,19 @@ class PositionJoinTest extends TestCase
             ->assertSee('name="birth_date"', false);
     }
 
+    public function test_join_page_shows_the_club_name_only_for_club_positions(): void
+    {
+        $club = OrgNode::query()->create([
+            'parent_id' => OrgNode::query()->where('system_key', 'university-office')->value('id'),
+            'relation_type' => 'hierarchy', 'kind' => 'club', 'category' => 'university_club', 'title' => 'ESPRIT', 'sort_order' => 0,
+        ]);
+        $department = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'club_department', 'category' => 'club', 'title' => 'Communication', 'sort_order' => 0]);
+        $inClub = OrgNode::query()->create(['parent_id' => $department->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'access_level' => 'none', 'category' => 'club', 'title' => 'Responsable média', 'sort_order' => 0]);
+
+        $this->get('/rejoindre/'.$inClub->join_token)->assertOk()->assertSee('Club : '.OrgNode::clubTitle('ESPRIT'), false);
+        $this->get('/rejoindre/'.$this->position()->join_token)->assertOk()->assertDontSee('Club :');
+    }
+
     public function test_guest_registers_with_avatar_and_creates_a_pending_application_without_any_assignment(): void
     {
         Storage::fake('public');

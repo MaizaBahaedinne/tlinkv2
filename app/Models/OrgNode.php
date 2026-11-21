@@ -248,6 +248,22 @@ class OrgNode extends Model
         return $this->kind === 'position' && $this->join_token ? route('position.join', $this->join_token) : null;
     }
 
+    /** Club auquel appartient ce bloc (lui-même s'il est un club), sinon null. */
+    public function club(): ?self
+    {
+        $node = $this;
+
+        for ($guard = 0; $node !== null && $guard < 60; $guard++) {
+            if ($node->kind === 'club') {
+                return $node;
+            }
+
+            $node = $node->parent;
+        }
+
+        return null;
+    }
+
     /** Libellé du périmètre du bloc : le sien, sinon celui du plus proche bloc parent. */
     public function scopeLabel(): ?string
     {

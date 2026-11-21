@@ -1,6 +1,6 @@
 @extends('auth.layout', [
-    'title' => 'Candidature : '.$node->title.' | T.Link',
-    'heroTitle' => 'Rejoins l’équipe : '.$node->title.'.',
+    'title' => 'Candidature : '.$node->title.($node->club() ? ' – '.$node->club()->title : '').' | T.Link',
+    'heroTitle' => 'Rejoins l’équipe : '.$node->title.($node->club() ? ' – '.$node->club()->title : '').'.',
     'heroText' => 'Crée ton compte complet en une seule fois, avec ta photo et tes informations. Ta candidature sera examinée par l’équipe de la Fondation.',
     'formWidth' => 'max-w-2xl',
 ])
@@ -14,7 +14,11 @@
 <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-10">
     <p class="{{ $legend }}">Candidature</p>
     <h1 class="mt-1 font-display text-3xl font-semibold text-slate-900">{{ $node->title }}@if ($node->scopeLabel()) <span class="ml-1 align-middle rounded-full bg-tlink-blue/10 px-3 py-1 text-sm font-semibold text-tlink-blue">{{ $node->scopeLabel() }}</span>@endif</h1>
-    @if ($node->subtitle)
+    @php($joinClub = $node->club())
+    @if ($joinClub)
+        <p class="mt-2 text-base font-semibold text-slate-700">Club : {{ $joinClub->title }}</p>
+    @endif
+    @if ($node->subtitle && (! $joinClub || $node->subtitle !== $joinClub->title))
         <p class="mt-1 text-sm text-slate-500">{{ $node->subtitle }}</p>
     @endif
 

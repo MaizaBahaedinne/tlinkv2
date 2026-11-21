@@ -169,7 +169,7 @@ class StructureAdminTest extends TestCase
         \App\Support\ModulePermissions::apply($post, ['organization.clubs' => ['read', 'update']], false);
         $this->placeOn($post, $manager);
 
-        $this->actingAs($manager)->get("/admin/structure/postes/{$club->id}/modifier")->assertOk()->assertSee('Enregistrer')->assertDontSee('name="scope"', false)->assertDontSee('name="status"', false)->assertDontSee('charter_signed', false);
+        $this->actingAs($manager)->get("/admin/structure/postes/{$club->id}/modifier")->assertOk()->assertSee('Enregistrer')->assertDontSee('name="scope"', false)->assertSee('name="status"', false)->assertDontSee('charter_signed', false);
 
         $club = $club->fresh();
         $this->put("/admin/structure/postes/{$club->id}", [
@@ -181,7 +181,7 @@ class StructureAdminTest extends TestCase
         $this->assertSame('Club d’ingénierie', $fresh->description);
         $this->assertSame('contact@esprit.test', $fresh->email);
         $this->assertSame('Ariana', $fresh->address);
-        $this->assertSame($club->status, $fresh->status);
+        $this->assertSame('archived', $fresh->status);
         $this->assertEquals($club->charter_signed, $fresh->charter_signed);
         $this->assertSame($club->parent_id, $fresh->parent_id);
         $this->assertSame($club->scope, $fresh->scope);
@@ -442,14 +442,20 @@ class StructureAdminTest extends TestCase
         $this->put("/admin/structure/postes/{$club->id}", ['title' => $club->title, 'status' => 'active'])->assertRedirect();
         $this->assertSame('active', $club->fresh()->status);
 
-        // Responsable de club : le statut est affiché avec l'explication, pas modifiable.
+        // Responsable de club (droit de modification) : il active / désactive son club, mais pas un autre.
         $manager = User::factory()->create();
         $post = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'category' => 'club', 'title' => 'Responsable du club', 'sort_order' => 99]);
         \App\Support\ModulePermissions::apply($post, ['organization.clubs' => ['read', 'update']], false);
         $this->placeOn($post, $manager);
+        $other = $this->universityClub('ENIT');
 
-        $this->actingAs($manager)->get("/admin/structure/postes/{$club->id}/modifier")->assertOk()
-            ->assertSee('Seul un administrateur global peut activer ou désactiver un club')->assertDontSee('name="status"', false);
+        $this->actingAs($manager)->get("/admin/structure/postes/{$club->id}/modifier")->assertOk()->assertSee('name="status"', false);
+        $this->actingAs($manager)->get("/admin/structure/clubs/{$club->id}")->assertOk()->assertSee('Désactiver le club');
+        $this->post("/admin/structure/clubs/{$club->id}/statut", ['status' => 'inactive'])->assertSessionHas('status');
+        $this->assertSame('inactive', $club->fresh()->status);
+        $this->post("/admin/structure/clubs/{$club->id}/statut", ['status' => 'active'])->assertSessionHas('status');
+        $this->assertSame('active', $club->fresh()->status);
+        $this->post("/admin/structure/clubs/{$other->id}/statut", ['status' => 'inactive'])->assertForbidden();
         $this->post('/admin/structure/clubs/statut', ['nodes' => [$club->id], 'status' => 'inactive'])->assertForbidden();
     }
 

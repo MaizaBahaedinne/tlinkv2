@@ -23,11 +23,10 @@
     <x-admin.page-header :title="$club->title" subtitle="Fiche du club">
         <x-slot:actions>
             <x-admin.badge :status="$club->status ?? 'draft'" :label="\App\Models\OrgNode::CLUB_STATUSES[$club->status] ?? null" />
-            @if($canEdit)
+            @if($canStatus)
                 @php($activating = $club->status !== 'active')
-                <form method="post" action="{{ route('admin.clubs.status') }}" @unless($activating) data-confirm="Un club inactif n’apparaît plus sur le site, dans l’API ni dans les statistiques. Désactiver « {{ $club->title }} » ?" data-confirm-title="Désactiver le club" @endunless>
+                <form method="post" action="{{ route('admin.clubs.set_status', $club) }}" @unless($activating) data-confirm="Un club inactif n’apparaît plus sur le site, dans l’API ni dans les statistiques. Désactiver « {{ $club->title }} » ?" data-confirm-title="Désactiver le club" @endunless>
                     @csrf
-                    <input type="hidden" name="nodes[]" value="{{ $club->id }}">
                     <input type="hidden" name="status" value="{{ $activating ? 'active' : 'inactive' }}">
                     <button type="submit" class="btn btn-secondary"><x-admin.icon :name="$activating ? 'check' : 'x'" :size="16" /> {{ $activating ? 'Activer le club' : 'Désactiver le club' }}</button>
                 </form>
