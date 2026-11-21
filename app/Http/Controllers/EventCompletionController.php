@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\EventPayment;
+use App\Models\EventBusStop;
 use App\Models\EventRegistrationImport;
+use App\Models\EventTransportBooking;
 use App\Models\FoundationEvent;
 use App\Models\Mandate;
 use App\Models\Profile;
@@ -12,6 +14,7 @@ use App\Support\AuditLogger;
 use App\Support\Events\EventPayments;
 use App\Support\Events\EventRegistrar;
 use App\Support\Events\EventRegistrationException;
+use App\Support\Events\EventTransport;
 use App\Support\MembershipRequests;
 use App\Support\OrgScopes;
 use Illuminate\Auth\Events\Registered;
@@ -60,6 +63,7 @@ class EventCompletionController extends Controller
             'clubs' => MembershipRequests::clubsByScope(true),
             'mandates' => Mandate::query()->where('status', Mandate::STATUS_CLOSED)->orderByDesc('start_year')->orderByDesc('id')->get(),
             'account' => $request->user(),
+            'transport' => $this->transportData($event),
         ]);
     }
 
@@ -106,7 +110,7 @@ class EventCompletionController extends Controller
             ->values()]);
     }
 
-    public function store(Request $request, FoundationEvent $event, EventRegistrar $registrar, EventPayments $payments): RedirectResponse
+    public function store(Request $request, FoundationEvent $event, EventRegistrar $registrar, EventPayments $payments, EventTransport $transportService): RedirectResponse
     {
         $this->assertAvailable($event);
         $entry = $this->sessionEntry($request, $event);
@@ -121,6 +125,7 @@ class EventCompletionController extends Controller
         $amount = $release !== null ? (float) $release->price : (float) ($event->price ?? 0);
         $payable = $amount > 0 && $methods !== [];
         $proofLater = $request->boolean('proof_later') && ! $request->hasFile('proof_camera') && ! $request->hasFile('proof_file');
+        $transport = $this->transportData($event);
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:120'],
@@ -141,11 +146,17 @@ class EventCompletionController extends Controller
             'reference' => ['nullable', 'string', 'max:255'],
             'proof_camera' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
             'proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:6144'],
+            'region_id' => [$transport !== null ? 'required' : 'nullable', 'integer'],
+            'mode' => [$transport !== null ? 'required' : 'nullable', Rule::in(array_keys(EventTransportBooking::MODES))],
+            'stop_id' => ['nullable', 'integer', 'required_if:mode,bus'],
         ], [
             'avatar.required' => 'Une photo de profil est obligatoire.',
             'email.unique' => 'Un compte existe déjà avec cet e-mail : connectez-vous, puis rouvrez ce lien.',
             'joined_scope.required_with' => 'Choisissez la partie rejointe à votre arrivée.',
             'method.required' => 'Choisissez le moyen de paiement utilisé.',
+            'region_id.required' => 'Choisissez votre région de départ.',
+            'mode.required' => 'Indiquez comment vous viendrez (bus ou véhicule personnel).',
+            'stop_id.required_if' => 'Choisissez votre bus et votre point de départ.',
         ]);
 
         $proof = $request->file('proof_camera') ?? $request->file('proof_file');
@@ -171,7 +182,7 @@ class EventCompletionController extends Controller
         $created = false;
 
         try {
-            $user = DB::transaction(function () use ($request, $event, $entry, $data, $account, $release, $avatarPath, $registrar, $payments, $payable, $proof, $scope, $clubId, $position, $joinedMandate, $joinedScope, $joinedClubId, $joinedPosition, &$created): User {
+            $user = DB::transaction(function () use ($request, $event, $entry, $data, $account, $release, $avatarPath, $registrar, $payments, $transportService, $transport, $payable, $proof, $scope, $clubId, $position, $joinedMandate, $joinedScope, $joinedClubId, $joinedPosition, &$created): User {
                 $locked = EventRegistrationImport::query()->whereKey($entry->id)->lockForUpdate()->first();
 
                 if ($locked === null || $locked->isCompleted()) {
@@ -208,6 +219,16 @@ class EventCompletionController extends Controller
                     }
                 }
 
+                if ($transport !== null) {
+                    try {
+                        $booking = $transportService->book($registration, (int) $data['region_id'], $data['mode'], isset($data['stop_id']) ? (int) $data['stop_id'] : null);
+                    } catch (EventRegistrationException $exception) {
+                        throw ValidationException::withMessages([$data['mode'] === 'bus' ? 'stop_id' : 'region_id' => $exception->getMessage()]);
+                    }
+
+                    $booking->loadMissing(['region', 'bus', 'stop.point']);
+                }
+
                 if ($joinedMandate !== null) {
                     try {
                         MembershipRequests::declarePast($user, $joinedMandate, (string) $joinedScope, $joinedClubId, $joinedPosition?->id, $request->ip());
@@ -229,6 +250,11 @@ class EventCompletionController extends Controller
                         'scope' => $scope !== null ? OrgScopes::label($scope) : null,
                         'club' => $clubId !== null ? $this->clubTitle($clubId) : null,
                         'position' => $position?->title,
+                        'transport' => isset($booking) ? [
+                            'region' => $booking->region?->name,
+                            'mode' => EventTransportBooking::MODES[$booking->mode] ?? $booking->mode,
+                            'bus' => $booking->mode === 'bus' ? trim($booking->bus?->name.' · '.$booking->stop?->point?->label(), ' ·') : null,
+                        ] : null,
                         'joined' => $joinedMandate === null ? null : [
                             'mandate' => $joinedMandate->label,
                             'scope' => OrgScopes::label((string) $joinedScope),
@@ -259,6 +285,29 @@ class EventCompletionController extends Controller
         }
 
         return redirect()->route('event.complete', $event)->with('done', true);
+    }
+
+    /**
+     * Régions de départ et bus proposés par l'événement (null s'il n'organise pas de transport).
+     *
+     * @return array{regions: \Illuminate\Support\Collection, stops: \Illuminate\Support\Collection}|null
+     */
+    private function transportData(FoundationEvent $event): ?array
+    {
+        $regions = $event->transportRegions()->get();
+
+        if ($regions->isEmpty()) {
+            return null;
+        }
+
+        $stops = EventBusStop::query()
+            ->whereHas('bus', fn ($query) => $query->where('event_id', $event->id))
+            ->with(['bus', 'point'])
+            ->orderBy('departs_at')
+            ->get()
+            ->each(fn (EventBusStop $stop) => $stop->bus->setAttribute('remaining_seats', $stop->bus->remaining()));
+
+        return ['regions' => $regions, 'stops' => $stops];
     }
 
     private function assertAvailable(FoundationEvent $event): void

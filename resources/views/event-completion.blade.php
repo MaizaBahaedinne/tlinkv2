@@ -192,6 +192,43 @@
                 <p id="join-hint" class="hidden text-xs text-slate-500">Un poste de responsabilité (président, vice-président…) est soumis à la validation d’un administrateur.</p>
             </fieldset>
 
+            @if ($transport)
+                <fieldset class="space-y-4">
+                    <legend class="{{ $legend }}">Transport</legend>
+                    <div>
+                        <label class="{{ $label }}" for="transport-region">Région de départ *</label>
+                        <select id="transport-region" name="region_id" required class="{{ $input }}">
+                            <option value="">Choisir…</option>
+                            @foreach ($transport['regions'] as $region)
+                                <option value="{{ $region->id }}" @selected((string) old('region_id') === (string) $region->id)>{{ $region->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('region_id') <p class="{{ $err }}">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <p class="{{ $label }}">Comment viendras-tu ? *</p>
+                        @foreach (\App\Models\EventTransportBooking::MODES as $code => $modeLabel)
+                            <label class="mt-1 flex items-center gap-2 text-sm text-slate-700"><input type="radio" name="mode" value="{{ $code }}" required @checked(old('mode') === $code) class="h-4 w-4 border-slate-300"> {{ $modeLabel }}</label>
+                        @endforeach
+                        @error('mode') <p class="{{ $err }}">{{ $message }}</p> @enderror
+                    </div>
+                    <div id="transport-stop-box" class="hidden">
+                        <label class="{{ $label }}" for="transport-stop">Bus et point de départ *</label>
+                        <select id="transport-stop" name="stop_id" class="{{ $input }}">
+                            <option value="" data-region="">Choisir…</option>
+                            @foreach ($transport['stops'] as $stop)
+                                @php $full = $stop->bus->remaining_seats <= 0; @endphp
+                                <option value="{{ $stop->id }}" data-region="{{ $stop->point->region_id }}" @selected((string) old('stop_id') === (string) $stop->id) @disabled($full)>
+                                    {{ $stop->bus->name }} · {{ $stop->point->label() }}{{ $stop->departs_at ? ' · départ '.$stop->departs_at->format('d/m H:i') : '' }} · {{ $full ? 'complet' : $stop->bus->remaining_seats.' place(s)' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p id="transport-stop-empty" class="mt-1.5 hidden text-xs text-slate-500">Aucun bus ne part de cette région pour le moment.</p>
+                        @error('stop_id') <p class="{{ $err }}">{{ $message }}</p> @enderror
+                    </div>
+                </fieldset>
+            @endif
+
             @if ($amount > 0)
                 <fieldset class="space-y-4">
                     <legend class="{{ $legend }}">Preuve de paiement</legend>
@@ -340,6 +377,32 @@
                 }
 
                 var method = document.getElementById('method');
+                var tRegion = document.getElementById('transport-region');
+                if (tRegion) {
+                    var tStop = document.getElementById('transport-stop');
+                    var tBox = document.getElementById('transport-stop-box');
+                    var tEmpty = document.getElementById('transport-stop-empty');
+
+                    function syncTransport() {
+                        var checked = form.querySelector('input[name="mode"]:checked');
+                        var useBus = !!checked && checked.value === 'bus';
+                        tBox.classList.toggle('hidden', !useBus);
+                        tStop.required = useBus;
+                        var visible = 0;
+                        Array.prototype.forEach.call(tStop.options, function (option) {
+                            if (option.value === '') { return; }
+                            var match = option.dataset.region === tRegion.value;
+                            option.hidden = !match;
+                            if (match) { visible++; }
+                            if (!match && option.selected) { tStop.value = ''; }
+                        });
+                        tEmpty.classList.toggle('hidden', !(useBus && tRegion.value !== '' && visible === 0));
+                    }
+
+                    tRegion.addEventListener('change', syncTransport);
+                    form.querySelectorAll('input[name="mode"]').forEach(function (radio) { radio.addEventListener('change', syncTransport); });
+                    syncTransport();
+                }
                 if (method) {
                     function showHelp() {
                         document.querySelectorAll('[data-method-help]').forEach(function (el) {

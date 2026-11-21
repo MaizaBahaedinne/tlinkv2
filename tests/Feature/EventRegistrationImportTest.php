@@ -193,6 +193,58 @@ class EventRegistrationImportTest extends TestCase
         $this->assertSame(0, EventPayment::query()->count());
     }
 
+    public function test_the_transport_choice_is_part_of_the_sheet_when_the_event_organizes_a_bus(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $event = $this->event();
+        $this->entry($event);
+        $tunis = $event->transportRegions()->create(['name' => 'Tunis']);
+        $sfax = $event->transportRegions()->create(['name' => 'Sfax']);
+        $point = \App\Models\EventTransportPoint::query()->create(['event_id' => $event->id, 'region_id' => $tunis->id, 'name' => 'Place Barcelone', 'city' => 'Tunis']);
+        $bus = \App\Models\EventBus::query()->create(['event_id' => $event->id, 'name' => 'Bus 1', 'capacity' => 1]);
+        $stop = \App\Models\EventBusStop::query()->create(['bus_id' => $bus->id, 'point_id' => $point->id, 'departs_at' => now()->addDays(10)->setTime(6, 0)]);
+
+        $this->post("/inscription-evenement/{$event->id}/telephone", ['phone' => '58048528']);
+        $this->get("/inscription-evenement/{$event->id}")->assertOk()->assertSee('Région de départ')->assertSee('Sfax')->assertSee('Bus 1');
+
+        // Région et mode sont obligatoires ; le bus aussi quand on choisit le bus.
+        $this->post("/inscription-evenement/{$event->id}", $this->formData())->assertSessionHasErrors(['region_id', 'mode']);
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $tunis->id, 'mode' => 'bus']))->assertSessionHasErrors('stop_id');
+        // Un bus d'une autre région est refusé, sans rien créer.
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $sfax->id, 'mode' => 'bus', 'stop_id' => $stop->id]))->assertSessionHasErrors('stop_id');
+        $this->assertSame(0, User::query()->where('email', 'farah@example.com')->count());
+        $this->assertSame(0, EventRegistration::query()->count());
+
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $tunis->id, 'mode' => 'bus', 'stop_id' => $stop->id]))->assertSessionHasNoErrors();
+
+        $registration = EventRegistration::query()->firstOrFail();
+        $booking = $registration->transportBooking;
+        $this->assertSame($tunis->id, $booking->region_id);
+        $this->assertSame('bus', $booking->mode);
+        $this->assertSame($stop->id, $booking->stop_id);
+
+        $entry = EventRegistrationImport::query()->firstOrFail();
+        $this->assertSame('Tunis', $entry->declared['transport']['region'] ?? null);
+    }
+
+    public function test_a_personal_vehicle_only_needs_the_departure_region(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $event = $this->event();
+        $this->entry($event);
+        $sfax = $event->transportRegions()->create(['name' => 'Sfax']);
+        $this->post("/inscription-evenement/{$event->id}/telephone", ['phone' => '58048528']);
+
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $sfax->id, 'mode' => 'own']))->assertSessionHasNoErrors();
+
+        $booking = EventRegistration::query()->firstOrFail()->transportBooking;
+        $this->assertSame('own', $booking->mode);
+        $this->assertNull($booking->bus_id);
+        $this->assertSame($sfax->id, $booking->region_id);
+    }
+
     public function test_an_e_mail_that_already_has_an_account_is_refused_and_the_sheet_stays_open(): void
     {
         Storage::fake('public');
