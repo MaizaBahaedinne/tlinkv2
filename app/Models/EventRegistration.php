@@ -45,6 +45,11 @@ class EventRegistration extends Model
         return $this->hasMany(EventSessionRegistration::class, 'registration_id');
     }
 
+    public function companions(): HasMany
+    {
+        return $this->hasMany(EventRegistrationCompanion::class, 'registration_id')->orderBy('id');
+    }
+
     public function transportBooking(): HasOne
     {
         return $this->hasOne(EventTransportBooking::class, 'registration_id');

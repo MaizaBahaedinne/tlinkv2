@@ -6,6 +6,7 @@ use App\Models\EventBus;
 use App\Models\EventBusStop;
 use App\Models\EventRegistration;
 use App\Models\EventTransportBooking;
+use App\Models\EventTransportPoint;
 use App\Models\EventTransportRegion;
 use App\Models\AppNotification;
 use Illuminate\Support\Facades\DB;
@@ -74,6 +75,7 @@ final class EventTransport
                 'event_id' => $event->id,
                 'user_id' => $registration->user_id,
                 'region_id' => $region->id,
+                'point_id' => $mode === 'bus' ? $stop->point_id : null,
                 'mode' => $mode === 'bus' ? 'bus' : 'own',
                 'bus_id' => $busId,
                 'stop_id' => $stopKey,
@@ -81,6 +83,50 @@ final class EventTransport
 
             return EventTransportBooking::query()->updateOrCreate(['registration_id' => $registration->id], $attributes);
         });
+    }
+
+    /**
+     * Choix de l'inscrit : région puis point de départ seulement. Le bus est affecté ensuite par l'équipe transport.
+     *
+     * @throws EventRegistrationException
+     */
+    public function bookPoint(EventRegistration $registration, ?int $regionId, string $mode, ?int $pointId): EventTransportBooking
+    {
+        $event = $registration->event;
+
+        if (! in_array($registration->status, ['pending', 'confirmed', 'attended'], true)) {
+            throw new EventRegistrationException('Le transport est réservé aux inscriptions actives.', 422);
+        }
+
+        if ($event->starts_at !== null && $event->starts_at->isPast()) {
+            throw new EventRegistrationException('L’événement a commencé : le transport ne peut plus être modifié.', 422);
+        }
+
+        $region = EventTransportRegion::query()->where('event_id', $event->id)->find($regionId);
+
+        if ($region === null) {
+            throw new EventRegistrationException('Choisissez votre région de départ.', 422);
+        }
+
+        $point = null;
+
+        if ($mode === 'bus') {
+            $point = EventTransportPoint::query()->where('event_id', $event->id)->where('region_id', $region->id)->find($pointId);
+
+            if ($point === null) {
+                throw new EventRegistrationException('Choisissez un point de départ de votre région.', 422);
+            }
+        }
+
+        return EventTransportBooking::query()->updateOrCreate(['registration_id' => $registration->id], [
+            'event_id' => $event->id,
+            'user_id' => $registration->user_id,
+            'region_id' => $region->id,
+            'point_id' => $point?->id,
+            'mode' => $point !== null ? 'bus' : 'own',
+            'bus_id' => null,
+            'stop_id' => null,
+        ]);
     }
 
     /** Prévient tous les passagers actifs d'un bus. */

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EventPayment;
-use App\Models\EventBusStop;
+use App\Models\EventRegistrationCompanion;
 use App\Models\EventRegistrationImport;
 use App\Models\EventTransportBooking;
 use App\Models\FoundationEvent;
@@ -38,6 +38,12 @@ class EventCompletionController extends Controller
 {
     private const SESSION_KEY = 'event_completion';
 
+    private const EXCLUDED_SCOPE = 'foundation';
+
+    private const HIGH_SCHOOL = 'high-school';
+
+    private const MAX_COMPANIONS = 4;
+
     public function show(Request $request, FoundationEvent $event): View
     {
         $this->assertAvailable($event);
@@ -59,7 +65,10 @@ class EventCompletionController extends Controller
             'amount' => $amount,
             'methods' => $methods,
             'methodLabels' => EventPayment::METHODS,
-            'scopes' => OrgScopes::all(),
+            'scopes' => $this->scopes(),
+            'highSchool' => self::HIGH_SCHOOL,
+            'relationships' => EventRegistrationCompanion::RELATIONSHIPS,
+            'maxCompanions' => self::MAX_COMPANIONS,
             'clubs' => MembershipRequests::clubsByScope(true),
             'mandates' => Mandate::query()->where('status', Mandate::STATUS_CLOSED)->orderByDesc('start_year')->orderByDesc('id')->get(),
             'account' => $request->user(),
@@ -126,6 +135,10 @@ class EventCompletionController extends Controller
         $payable = $amount > 0 && $methods !== [];
         $proofLater = $request->boolean('proof_later') && ! $request->hasFile('proof_camera') && ! $request->hasFile('proof_file');
         $transport = $this->transportData($event);
+        $scopeSlugs = array_keys($this->scopes());
+        $mandatesExist = Mandate::query()->where('status', Mandate::STATUS_CLOSED)->exists();
+        $highSchool = $request->input('scope') === self::HIGH_SCHOOL || $request->input('joined_scope') === self::HIGH_SCHOOL;
+        $withCompanions = $highSchool && $request->input('has_companion') === 'yes';
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:120'],
@@ -135,11 +148,16 @@ class EventCompletionController extends Controller
             'avatar' => [$account?->profile?->photo_path ? 'nullable' : 'required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'email' => $account ? ['nullable'] : ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => $account ? ['nullable'] : ['required', 'confirmed', Password::defaults()],
-            'scope' => ['nullable', Rule::in(OrgScopes::slugs())],
+            'scope' => ['nullable', Rule::in($scopeSlugs)],
             'club_id' => ['nullable', 'integer'],
             'position_id' => ['nullable', 'integer'],
-            'joined_mandate_id' => ['nullable', 'integer', Rule::exists('mandates', 'id')->where('status', Mandate::STATUS_CLOSED)],
-            'joined_scope' => ['nullable', 'required_with:joined_mandate_id', Rule::in(OrgScopes::slugs())],
+            'joined_mandate_id' => [$mandatesExist ? 'required' : 'nullable', 'integer', Rule::exists('mandates', 'id')->where('status', Mandate::STATUS_CLOSED)],
+            'joined_scope' => ['nullable', 'required_with:joined_mandate_id', Rule::in($scopeSlugs)],
+            'has_companion' => [$highSchool ? 'required' : 'nullable', Rule::in(['yes', 'no'])],
+            'companions' => [$withCompanions ? 'required' : 'nullable', 'array', 'max:'.self::MAX_COMPANIONS],
+            'companions.*.first_name' => [$withCompanions ? 'required' : 'nullable', 'string', 'max:120'],
+            'companions.*.last_name' => [$withCompanions ? 'required' : 'nullable', 'string', 'max:120'],
+            'companions.*.relationship' => [$withCompanions ? 'required' : 'nullable', Rule::in(array_keys(EventRegistrationCompanion::RELATIONSHIPS))],
             'joined_club_id' => ['nullable', 'integer'],
             'joined_position_id' => ['nullable', 'integer'],
             'method' => [$payable && ! $proofLater ? 'required' : 'nullable', Rule::in(array_keys($methods))],
@@ -148,15 +166,23 @@ class EventCompletionController extends Controller
             'proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:6144'],
             'region_id' => [$transport !== null ? 'required' : 'nullable', 'integer'],
             'mode' => [$transport !== null ? 'required' : 'nullable', Rule::in(array_keys(EventTransportBooking::MODES))],
-            'stop_id' => ['nullable', 'integer', 'required_if:mode,bus'],
+            'point_id' => ['nullable', 'integer', 'required_if:mode,bus'],
         ], [
+            'joined_mandate_id.required' => 'Choisissez votre mandat d’arrivée.',
+            'has_companion.required' => 'Indiquez si vous venez accompagné(e).',
+            'companions.required' => 'Ajoutez au moins un accompagnant.',
+            'companions.min' => 'Ajoutez au moins un accompagnant.',
+            'companions.*.first_name.required' => 'Le prénom de l’accompagnant est obligatoire.',
+            'companions.*.last_name.required' => 'Le nom de l’accompagnant est obligatoire.',
+            'companions.*.relationship.required' => 'Choisissez le lien familial de l’accompagnant.',
+            'companions.*.relationship.in' => 'Choisissez le lien familial de l’accompagnant.',
             'avatar.required' => 'Une photo de profil est obligatoire.',
             'email.unique' => 'Un compte existe déjà avec cet e-mail : connectez-vous, puis rouvrez ce lien.',
             'joined_scope.required_with' => 'Choisissez la partie rejointe à votre arrivée.',
             'method.required' => 'Choisissez le moyen de paiement utilisé.',
             'region_id.required' => 'Choisissez votre région de départ.',
             'mode.required' => 'Indiquez comment vous viendrez (bus ou véhicule personnel).',
-            'stop_id.required_if' => 'Choisissez votre bus et votre point de départ.',
+            'point_id.required_if' => 'Choisissez votre point de départ.',
         ]);
 
         $proof = $request->file('proof_camera') ?? $request->file('proof_file');
@@ -182,7 +208,7 @@ class EventCompletionController extends Controller
         $created = false;
 
         try {
-            $user = DB::transaction(function () use ($request, $event, $entry, $data, $account, $release, $avatarPath, $registrar, $payments, $transportService, $transport, $payable, $proof, $scope, $clubId, $position, $joinedMandate, $joinedScope, $joinedClubId, $joinedPosition, &$created): User {
+            $user = DB::transaction(function () use ($request, $event, $entry, $data, $account, $release, $avatarPath, $registrar, $payments, $transportService, $transport, $withCompanions, $payable, $proof, $scope, $clubId, $position, $joinedMandate, $joinedScope, $joinedClubId, $joinedPosition, &$created): User {
                 $locked = EventRegistrationImport::query()->whereKey($entry->id)->lockForUpdate()->first();
 
                 if ($locked === null || $locked->isCompleted()) {
@@ -221,12 +247,22 @@ class EventCompletionController extends Controller
 
                 if ($transport !== null) {
                     try {
-                        $booking = $transportService->book($registration, (int) $data['region_id'], $data['mode'], isset($data['stop_id']) ? (int) $data['stop_id'] : null);
+                        $booking = $transportService->bookPoint($registration, (int) $data['region_id'], $data['mode'], isset($data['point_id']) ? (int) $data['point_id'] : null);
                     } catch (EventRegistrationException $exception) {
-                        throw ValidationException::withMessages([$data['mode'] === 'bus' ? 'stop_id' : 'region_id' => $exception->getMessage()]);
+                        throw ValidationException::withMessages([$data['mode'] === 'bus' ? 'point_id' : 'region_id' => $exception->getMessage()]);
                     }
 
-                    $booking->loadMissing(['region', 'bus', 'stop.point']);
+                    $booking->loadMissing(['region', 'point']);
+                }
+
+                $companions = $withCompanions ? array_values($data['companions']) : [];
+
+                foreach ($companions as $companion) {
+                    $registration->companions()->create([
+                        'first_name' => trim($companion['first_name']),
+                        'last_name' => trim($companion['last_name']),
+                        'relationship' => $companion['relationship'],
+                    ]);
                 }
 
                 if ($joinedMandate !== null) {
@@ -253,8 +289,12 @@ class EventCompletionController extends Controller
                         'transport' => isset($booking) ? [
                             'region' => $booking->region?->name,
                             'mode' => EventTransportBooking::MODES[$booking->mode] ?? $booking->mode,
-                            'bus' => $booking->mode === 'bus' ? trim($booking->bus?->name.' · '.$booking->stop?->point?->label(), ' ·') : null,
+                            'point' => $booking->point?->label(),
                         ] : null,
+                        'companions' => collect($companions)->map(fn (array $companion): array => [
+                            'name' => trim($companion['first_name'].' '.$companion['last_name']),
+                            'relationship' => EventRegistrationCompanion::RELATIONSHIPS[$companion['relationship']] ?? $companion['relationship'],
+                        ])->all(),
                         'joined' => $joinedMandate === null ? null : [
                             'mandate' => $joinedMandate->label,
                             'scope' => OrgScopes::label((string) $joinedScope),
@@ -300,14 +340,17 @@ class EventCompletionController extends Controller
             return null;
         }
 
-        $stops = EventBusStop::query()
-            ->whereHas('bus', fn ($query) => $query->where('event_id', $event->id))
-            ->with(['bus', 'point'])
-            ->orderBy('departs_at')
-            ->get()
-            ->each(fn (EventBusStop $stop) => $stop->bus->setAttribute('remaining_seats', $stop->bus->remaining()));
+        return ['regions' => $regions, 'points' => $event->transportPoints()->orderBy('city')->orderBy('name')->get()];
+    }
 
-        return ['regions' => $regions, 'stops' => $stops];
+    /**
+     * Parties proposées dans la fiche : le périmètre Fondation n'en fait pas partie.
+     *
+     * @return array<string, string>
+     */
+    private function scopes(): array
+    {
+        return array_diff_key(OrgScopes::all(), [self::EXCLUDED_SCOPE => true]);
     }
 
     private function assertAvailable(FoundationEvent $event): void
@@ -397,7 +440,7 @@ class EventCompletionController extends Controller
      */
     private function parseTarget(string $target, string $field): array
     {
-        if (preg_match('/^scope:([a-z0-9\-]+)$/', $target, $match) === 1 && OrgScopes::valid($match[1])) {
+        if (preg_match('/^scope:([a-z0-9\-]+)$/', $target, $match) === 1 && OrgScopes::valid($match[1]) && $match[1] !== self::EXCLUDED_SCOPE) {
             return [$match[1], null];
         }
 

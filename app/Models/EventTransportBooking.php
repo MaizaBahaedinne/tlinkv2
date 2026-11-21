@@ -20,7 +20,7 @@ class EventTransportBooking extends Model
         'absent' => 'Absent',
     ];
 
-    protected $fillable = ['event_id', 'registration_id', 'user_id', 'region_id', 'mode', 'bus_id', 'stop_id', 'boarding', 'marked_by'];
+    protected $fillable = ['event_id', 'registration_id', 'user_id', 'region_id', 'point_id', 'mode', 'bus_id', 'stop_id', 'boarding', 'marked_by'];
 
     public function event(): BelongsTo
     {
@@ -40,6 +40,11 @@ class EventTransportBooking extends Model
     public function region(): BelongsTo
     {
         return $this->belongsTo(EventTransportRegion::class, 'region_id');
+    }
+
+    public function point(): BelongsTo
+    {
+        return $this->belongsTo(EventTransportPoint::class, 'point_id');
     }
 
     public function bus(): BelongsTo

@@ -76,7 +76,7 @@ class MemberEventController extends Controller
         return [
             'regions' => $regions,
             'stops' => $stops,
-            'booking' => EventTransportBooking::query()->where('registration_id', $registration->id)->with(['region', 'bus.managers.user:id,name', 'stop.point'])->first(),
+            'booking' => EventTransportBooking::query()->where('registration_id', $registration->id)->with(['region', 'point', 'bus.managers.user:id,name', 'stop.point'])->first(),
         ];
     }
 

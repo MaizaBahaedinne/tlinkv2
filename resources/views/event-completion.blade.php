@@ -156,9 +156,9 @@
             <fieldset class="space-y-4">
                 <legend class="{{ $legend }}">Membre Tunivisions depuis</legend>
                 <div>
-                    <label class="{{ $label }}" for="joined_mandate_id">Mandat d’arrivée</label>
-                    <select id="joined_mandate_id" name="joined_mandate_id" class="{{ $input }}">
-                        <option value="">Je ne suis pas (encore) membre</option>
+                    <label class="{{ $label }}" for="joined_mandate_id">Mandat d’arrivée{{ $mandates->isNotEmpty() ? ' *' : '' }}</label>
+                    <select id="joined_mandate_id" name="joined_mandate_id" @required($mandates->isNotEmpty()) class="{{ $input }}">
+                        <option value="">{{ $mandates->isNotEmpty() ? 'Choisir mon mandat d’arrivée…' : 'Aucun mandat disponible' }}</option>
                         @foreach ($mandates as $mandate)
                             <option value="{{ $mandate->id }}" @selected((string) old('joined_mandate_id') === (string) $mandate->id)>Mandat {{ $mandate->label }}{{ filled($mandate->bureau_name) ? ' — '.$mandate->bureau_name : '' }}</option>
                         @endforeach
@@ -192,6 +192,30 @@
                 <p id="join-hint" class="hidden text-xs text-slate-500">Un poste de responsabilité (président, vice-président…) est soumis à la validation d’un administrateur.</p>
             </fieldset>
 
+            @php $oldCompanions = array_values((array) old('companions', [])); @endphp
+            <fieldset id="companion-box" class="hidden space-y-4" data-high-school="{{ $highSchool }}" data-max="{{ $maxCompanions }}">
+                <legend class="{{ $legend }}">Accompagnant (High School)</legend>
+                <div>
+                    <p class="{{ $label }}">Viens-tu accompagné(e) ? *</p>
+                    <label class="mt-1 flex items-center gap-2 text-sm text-slate-700"><input type="radio" name="has_companion" value="yes" @checked(old('has_companion') === 'yes') class="h-4 w-4 border-slate-300"> Oui, j’ai un ou plusieurs accompagnants</label>
+                    <label class="mt-1 flex items-center gap-2 text-sm text-slate-700"><input type="radio" name="has_companion" value="no" @checked(old('has_companion') === 'no') class="h-4 w-4 border-slate-300"> Non, je viens seul(e)</label>
+                    @error('has_companion') <p class="{{ $err }}">{{ $message }}</p> @enderror
+                </div>
+                <div id="companion-list" class="hidden space-y-3">
+                    <div id="companion-rows" class="space-y-3">
+                        @foreach ($oldCompanions as $i => $row)
+                            @include('event-completion-companion', ['index' => $i, 'values' => (array) $row])
+                        @endforeach
+                    </div>
+                    @error('companions') <p class="{{ $err }}">{{ $message }}</p> @enderror
+                    @foreach ($errors->get('companions.*') as $messages)
+                        <p class="{{ $err }}">{{ $messages[0] }}</p>
+                    @endforeach
+                    <button type="button" id="companion-add" class="rounded-xl border border-tlink-blue px-4 py-2 text-sm font-semibold text-tlink-blue hover:bg-tlink-blue/5">+ Ajouter un accompagnant</button>
+                </div>
+                <template id="companion-template">@include('event-completion-companion', ['index' => '__i__', 'values' => []])</template>
+            </fieldset>
+
             @if ($transport)
                 <fieldset class="space-y-4">
                     <legend class="{{ $legend }}">Transport</legend>
@@ -213,18 +237,16 @@
                         @error('mode') <p class="{{ $err }}">{{ $message }}</p> @enderror
                     </div>
                     <div id="transport-stop-box" class="hidden">
-                        <label class="{{ $label }}" for="transport-stop">Bus et point de départ *</label>
-                        <select id="transport-stop" name="stop_id" class="{{ $input }}">
+                        <label class="{{ $label }}" for="transport-stop">Point de départ *</label>
+                        <select id="transport-stop" name="point_id" class="{{ $input }}">
                             <option value="" data-region="">Choisir…</option>
-                            @foreach ($transport['stops'] as $stop)
-                                @php $full = $stop->bus->remaining_seats <= 0; @endphp
-                                <option value="{{ $stop->id }}" data-region="{{ $stop->point->region_id }}" @selected((string) old('stop_id') === (string) $stop->id) @disabled($full)>
-                                    {{ $stop->bus->name }} · {{ $stop->point->label() }}{{ $stop->departs_at ? ' · départ '.$stop->departs_at->format('d/m H:i') : '' }} · {{ $full ? 'complet' : $stop->bus->remaining_seats.' place(s)' }}
-                                </option>
+                            @foreach ($transport['points'] as $point)
+                                <option value="{{ $point->id }}" data-region="{{ $point->region_id }}" @selected((string) old('point_id') === (string) $point->id)>{{ $point->label() }}</option>
                             @endforeach
                         </select>
-                        <p id="transport-stop-empty" class="mt-1.5 hidden text-xs text-slate-500">Aucun bus ne part de cette région pour le moment.</p>
-                        @error('stop_id') <p class="{{ $err }}">{{ $message }}</p> @enderror
+                        <p class="mt-1.5 text-xs text-slate-500">Le bus qui te prendra en charge te sera communiqué par l’organisation.</p>
+                        <p id="transport-stop-empty" class="mt-1.5 hidden text-xs text-slate-500">Aucun point de départ n’est encore proposé dans cette région.</p>
+                        @error('point_id') <p class="{{ $err }}">{{ $message }}</p> @enderror
                     </div>
                 </fieldset>
             @endif
@@ -375,6 +397,48 @@
                     preview(document.getElementById('proof_camera'), proofPreview);
                     preview(document.getElementById('proof_file'), proofPreview);
                 }
+
+                // Accompagnants : la question n'est posée qu'aux High School (rôle actuel ou partie rejointe).
+                var cBox = document.getElementById('companion-box');
+                var cList = document.getElementById('companion-list');
+                var cRows = document.getElementById('companion-rows');
+                var cTemplate = document.getElementById('companion-template');
+                var cAdd = document.getElementById('companion-add');
+                var cNext = cRows.children.length;
+                var cMax = parseInt(cBox.dataset.max, 10) || 4;
+
+                function syncCompanions() {
+                    var hs = cBox.dataset.highSchool;
+                    var show = document.getElementById('cur-scope').value === hs || document.getElementById('join-scope').value === hs;
+                    var yes = form.querySelector('input[name="has_companion"]:checked');
+                    var active = show && !!yes && yes.value === 'yes';
+                    cBox.classList.toggle('hidden', !show);
+                    cList.classList.toggle('hidden', !active);
+                    form.querySelectorAll('input[name="has_companion"]').forEach(function (radio) { radio.required = show; radio.disabled = !show; });
+                    cBox.querySelectorAll('[data-companion-row] input, [data-companion-row] select').forEach(function (el) { el.disabled = !active; el.required = active; });
+                    if (active && cRows.children.length === 0) { addCompanion(); }
+                    cAdd.classList.toggle('hidden', cRows.children.length >= cMax);
+                }
+
+                function addCompanion() {
+                    if (cRows.children.length >= cMax) { return; }
+                    var holder = document.createElement('div');
+                    holder.innerHTML = cTemplate.innerHTML.replace(/__i__/g, String(cNext++));
+                    cRows.appendChild(holder.firstElementChild);
+                    syncCompanions();
+                }
+
+                cAdd.addEventListener('click', addCompanion);
+                cRows.addEventListener('click', function (event) {
+                    var button = event.target.closest('[data-companion-remove]');
+                    if (!button) { return; }
+                    button.closest('[data-companion-row]').remove();
+                    syncCompanions();
+                });
+                form.querySelectorAll('input[name="has_companion"]').forEach(function (radio) { radio.addEventListener('change', syncCompanions); });
+                document.getElementById('cur-scope').addEventListener('change', syncCompanions);
+                document.getElementById('join-scope').addEventListener('change', syncCompanions);
+                syncCompanions();
 
                 var method = document.getElementById('method');
                 var tRegion = document.getElementById('transport-region');

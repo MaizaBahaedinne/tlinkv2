@@ -132,7 +132,7 @@ class EventRegistrationImportTest extends TestCase
         $this->post("/inscription-evenement/{$event->id}/telephone", ['phone' => '58048528']);
 
         $this->post("/inscription-evenement/{$event->id}", $this->formData([
-            'scope' => 'university', 'joined_mandate_id' => $mandate->id, 'joined_scope' => 'high-school',
+            'scope' => 'university', 'joined_mandate_id' => $mandate->id, 'joined_scope' => 'high-school', 'has_companion' => 'no',
         ]))->assertSessionHasNoErrors()->assertRedirect("/inscription-evenement/{$event->id}");
 
         $user = User::query()->where('email', 'farah@example.com')->firstOrFail();
@@ -193,7 +193,7 @@ class EventRegistrationImportTest extends TestCase
         $this->assertSame(0, EventPayment::query()->count());
     }
 
-    public function test_the_transport_choice_is_part_of_the_sheet_when_the_event_organizes_a_bus(): void
+    public function test_the_participant_only_chooses_a_departure_point_and_the_bus_is_assigned_later(): void
     {
         Storage::fake('public');
         Storage::fake('local');
@@ -203,29 +203,97 @@ class EventRegistrationImportTest extends TestCase
         $sfax = $event->transportRegions()->create(['name' => 'Sfax']);
         $point = \App\Models\EventTransportPoint::query()->create(['event_id' => $event->id, 'region_id' => $tunis->id, 'name' => 'Place Barcelone', 'city' => 'Tunis']);
         $bus = \App\Models\EventBus::query()->create(['event_id' => $event->id, 'name' => 'Bus 1', 'capacity' => 1]);
-        $stop = \App\Models\EventBusStop::query()->create(['bus_id' => $bus->id, 'point_id' => $point->id, 'departs_at' => now()->addDays(10)->setTime(6, 0)]);
+        \App\Models\EventBusStop::query()->create(['bus_id' => $bus->id, 'point_id' => $point->id, 'departs_at' => now()->addDays(10)->setTime(6, 0)]);
 
         $this->post("/inscription-evenement/{$event->id}/telephone", ['phone' => '58048528']);
-        $this->get("/inscription-evenement/{$event->id}")->assertOk()->assertSee('Région de départ')->assertSee('Sfax')->assertSee('Bus 1');
+        $this->get("/inscription-evenement/{$event->id}")->assertOk()->assertSee('Région de départ')->assertSee('Sfax')->assertSee('Place Barcelone')->assertDontSee('Bus 1');
 
-        // Région et mode sont obligatoires ; le bus aussi quand on choisit le bus.
         $this->post("/inscription-evenement/{$event->id}", $this->formData())->assertSessionHasErrors(['region_id', 'mode']);
-        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $tunis->id, 'mode' => 'bus']))->assertSessionHasErrors('stop_id');
-        // Un bus d'une autre région est refusé, sans rien créer.
-        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $sfax->id, 'mode' => 'bus', 'stop_id' => $stop->id]))->assertSessionHasErrors('stop_id');
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $tunis->id, 'mode' => 'bus']))->assertSessionHasErrors('point_id');
+        // Un point d'une autre région est refusé, sans rien créer.
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $sfax->id, 'mode' => 'bus', 'point_id' => $point->id]))->assertSessionHasErrors('point_id');
         $this->assertSame(0, User::query()->where('email', 'farah@example.com')->count());
         $this->assertSame(0, EventRegistration::query()->count());
 
-        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $tunis->id, 'mode' => 'bus', 'stop_id' => $stop->id]))->assertSessionHasNoErrors();
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['region_id' => $tunis->id, 'mode' => 'bus', 'point_id' => $point->id]))->assertSessionHasNoErrors();
 
-        $registration = EventRegistration::query()->firstOrFail();
-        $booking = $registration->transportBooking;
+        $booking = EventRegistration::query()->firstOrFail()->transportBooking;
         $this->assertSame($tunis->id, $booking->region_id);
         $this->assertSame('bus', $booking->mode);
-        $this->assertSame($stop->id, $booking->stop_id);
+        $this->assertSame($point->id, $booking->point_id);
+        $this->assertNull($booking->bus_id);
 
         $entry = EventRegistrationImport::query()->firstOrFail();
         $this->assertSame('Tunis', $entry->declared['transport']['region'] ?? null);
+
+        // L'équipe transport affecte ensuite le passager au bus qui dessert ce point.
+        $admin = User::factory()->create();
+        $this->grantAccess($admin, 'global_admin');
+        $base = "/admin/evenements/{$event->id}/transport";
+        $this->actingAs($admin)->get("$base/bus/{$bus->id}")->assertOk()->assertSee('Passagers en attente d’un bus');
+        $this->post("$base/bus/{$bus->id}/reservations/{$booking->id}/prise-en-charge")->assertSessionHas('status');
+
+        $booking->refresh();
+        $this->assertSame($bus->id, $booking->bus_id);
+        $this->assertNotNull($booking->stop_id);
+    }
+
+    public function test_the_arrival_mandate_is_required_and_the_foundation_scope_is_not_offered(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $event = $this->event();
+        $this->entry($event);
+        $mandate = Mandate::query()->create(['label' => '2022-2023', 'start_year' => 2022, 'end_year' => 2023, 'bureau_name' => 'Bureau test', 'status' => Mandate::STATUS_CLOSED]);
+        $this->post("/inscription-evenement/{$event->id}/telephone", ['phone' => '58048528']);
+
+        $this->get("/inscription-evenement/{$event->id}")->assertOk()->assertDontSee('value="foundation"', false)->assertSee('value="university"', false);
+
+        $this->post("/inscription-evenement/{$event->id}", $this->formData())->assertSessionHasErrors('joined_mandate_id');
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['joined_mandate_id' => $mandate->id, 'joined_scope' => 'foundation']))->assertSessionHasErrors('joined_scope');
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['joined_mandate_id' => $mandate->id, 'joined_scope' => 'university', 'scope' => 'foundation']))->assertSessionHasErrors('scope');
+        $this->assertSame(0, User::query()->where('email', 'farah@example.com')->count());
+
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['joined_mandate_id' => $mandate->id, 'joined_scope' => 'university']))->assertSessionHasNoErrors();
+    }
+
+    public function test_high_school_participants_declare_their_companions(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $event = $this->event();
+        $this->entry($event);
+        $this->post("/inscription-evenement/{$event->id}/telephone", ['phone' => '58048528']);
+        $this->get("/inscription-evenement/{$event->id}")->assertOk()->assertSee('Lien familial');
+
+        // High School : la question est obligatoire.
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['scope' => 'high-school']))->assertSessionHasErrors('has_companion');
+        // « Oui » demande au moins un accompagnant complet.
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['scope' => 'high-school', 'has_companion' => 'yes']))->assertSessionHasErrors('companions');
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['scope' => 'high-school', 'has_companion' => 'yes', 'companions' => [['first_name' => 'Samia', 'last_name' => '', 'relationship' => 'cousin']]]))
+            ->assertSessionHasErrors(['companions.0.last_name', 'companions.0.relationship']);
+        $this->assertSame(0, User::query()->where('email', 'farah@example.com')->count());
+
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['scope' => 'high-school', 'has_companion' => 'yes', 'companions' => [
+            ['first_name' => 'Samia', 'last_name' => 'Dhmaied', 'relationship' => 'mother'],
+            ['first_name' => 'Karim', 'last_name' => 'Dhmaied', 'relationship' => 'brother'],
+        ]]))->assertSessionHasNoErrors();
+
+        $registration = EventRegistration::query()->firstOrFail();
+        $this->assertSame(['Samia Dhmaied' => 'mother', 'Karim Dhmaied' => 'brother'], $registration->companions->mapWithKeys(fn ($c) => [$c->first_name.' '.$c->last_name => $c->relationship])->all());
+        $this->assertSame('Mère', $registration->companions->first()->relationshipLabel());
+    }
+
+    public function test_other_participants_are_not_asked_about_companions(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $event = $this->event();
+        $this->entry($event);
+        $this->post("/inscription-evenement/{$event->id}/telephone", ['phone' => '58048528']);
+
+        $this->post("/inscription-evenement/{$event->id}", $this->formData(['scope' => 'university', 'companions' => [['first_name' => 'X', 'last_name' => 'Y', 'relationship' => 'mother']]]))->assertSessionHasNoErrors();
+        $this->assertSame(0, \App\Models\EventRegistrationCompanion::query()->count());
     }
 
     public function test_a_personal_vehicle_only_needs_the_departure_region(): void

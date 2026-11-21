@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -88,6 +89,7 @@ class EventTransportController extends EventManageController
         return $this->render($request, $event, 'transport', 'admin.events.manage.transport-bus', [
             'bus' => $bus,
             'passengers' => $passengers,
+            'waiting' => $this->waitingFor($event, $bus),
             'canAttendance' => $this->canDuty($request, $event, $bus, 'attendance'),
             'canCommunicate' => $this->canDuty($request, $event, $bus, 'communication'),
             'boarding' => EventTransportBooking::BOARDING,
@@ -118,6 +120,45 @@ class EventTransportController extends EventManageController
         $this->manageAudit($request, $event, 'transport.message:'.$bus->id);
 
         return back()->with('status', $count > 0 ? 'Message envoyé à '.$count.' passager(s).' : 'Aucun passager inscrit sur ce bus pour le moment.');
+    }
+
+    /** Passagers ayant choisi un point de ce circuit, en attente d'un bus. */
+    private function waitingFor(FoundationEvent $event, EventBus $bus)
+    {
+        return EventTransportBooking::query()
+            ->where('event_id', $event->id)
+            ->where('mode', 'bus')
+            ->whereNull('bus_id')
+            ->whereIn('point_id', $bus->stops->pluck('point_id'))
+            ->active()
+            ->with(['user:id,name,email', 'point'])
+            ->get()
+            ->sortBy(fn (EventTransportBooking $booking) => [$booking->point?->name, $booking->user?->name])
+            ->values();
+    }
+
+    /** Prise en charge, dans ce bus, d'un passager qui a seulement choisi son point de départ. */
+    public function claim(Request $request, FoundationEvent $event, EventBus $bus, EventTransportBooking $booking): RedirectResponse
+    {
+        $this->ownBus($event, $bus);
+        abort_unless($this->canDuty($request, $event, $bus, 'attendance'), 403, 'Vous ne gérez pas l’affectation de ce bus.');
+
+        $bus->load('stops');
+        $stop = $bus->stops->firstWhere('point_id', $booking->point_id);
+
+        abort_unless($booking->event_id === $event->id && $booking->mode === 'bus' && $booking->bus_id === null && $stop !== null, 404);
+
+        DB::transaction(function () use ($bus, $booking, $stop): void {
+            $locked = EventBus::query()->whereKey($bus->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->taken() >= $locked->capacity) {
+                throw ValidationException::withMessages(['booking' => 'Ce bus est complet.']);
+            }
+
+            $booking->update(['bus_id' => $locked->id, 'stop_id' => $stop->id]);
+        });
+
+        return back()->with('status', 'Passager affecté à '.$bus->name.'.');
     }
 
     /** Affectation d'un passager à un arrêt du bus (par le responsable). */

@@ -58,7 +58,8 @@
                             <td class="hide-mobile text-sm">
                                 @if($role !== '')<div>{{ $role }}</div>@endif
                                 @if($joined)<div class="text-muted">Depuis le mandat {{ $joined['mandate'] }} : {{ collect([$joined['scope'] ?? null, $joined['club'] ?? null, $joined['position'] ?? null])->filter()->implode(' · ') }}</div>@endif
-                                @if($transport = $declared['transport'] ?? null)<div class="text-muted">Transport : {{ collect([$transport['region'] ?? null, $transport['bus'] ?? ($transport['mode'] ?? null)])->filter()->implode(' · ') }}</div>@endif
+                                @if($transport = $declared['transport'] ?? null)<div class="text-muted">Transport : {{ collect([$transport['region'] ?? null, $transport['point'] ?? ($transport['mode'] ?? null)])->filter()->implode(' · ') }}</div>@endif
+                                @if($companions = $declared['companions'] ?? [])<div class="text-muted">Accompagnant(s) : {{ collect($companions)->map(fn ($c) => $c['name'].' ('.$c['relationship'].')')->implode(', ') }}</div>@endif
                                 @if($role === '' && ! $joined && ! $transport)—@endif
                             </td>
                             <td>

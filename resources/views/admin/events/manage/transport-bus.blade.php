@@ -32,6 +32,37 @@
         </div>
     </article>
 
+    @if($canAttendance && $waiting->count())
+        <article class="card card-flush" style="margin-bottom:16px">
+            <div class="card-head">
+                <div>
+                    <h2>Passagers en attente d’un bus</h2>
+                    <div class="sub">Ils ont choisi un point de départ de ce circuit ; affectez-les à ce bus ({{ $bus->remaining() }} place(s) restante(s)).</div>
+                </div>
+            </div>
+            @error('booking') <p class="text-sm" style="padding:0 16px;color:var(--danger,#b91c1c)">{{ $message }}</p> @enderror
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead><tr><th>Passager</th><th>Point de départ</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach($waiting as $candidate)
+                            <tr>
+                                <td><div class="cell-main">{{ $candidate->user?->name }}</div><div class="cell-sub">{{ $candidate->user?->email }}</div></td>
+                                <td>{{ $candidate->point?->label() }}</td>
+                                <td class="text-right">
+                                    <form method="post" action="{{ route('admin.events.transport.claim', [$event, $bus, $candidate]) }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-secondary btn-sm">Affecter à ce bus</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    @endif
+
     <article class="card card-flush" style="margin-bottom:16px">
         <div class="card-head">
             <div>

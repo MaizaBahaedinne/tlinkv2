@@ -184,6 +184,7 @@ Route::middleware('auth')->prefix('admin')->name('admin.events.')->group(functio
         Route::patch('transport/reservations/{booking}/presence', [$transport, 'presence'])->whereNumber('booking')->name('transport.presence');
         Route::post('transport/bus/{bus}/message', [$transport, 'message'])->whereNumber('bus')->middleware('throttle:20,1')->name('transport.message');
         Route::patch('transport/bus/{bus}/reservations/{booking}/affectation', [$transport, 'assign'])->whereNumber('bus')->whereNumber('booking')->name('transport.assign');
+        Route::post('transport/bus/{bus}/reservations/{booking}/prise-en-charge', [$transport, 'claim'])->whereNumber('bus')->whereNumber('booking')->name('transport.claim');
     });
 });
 

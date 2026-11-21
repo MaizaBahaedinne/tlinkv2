@@ -24,6 +24,8 @@
                 @if($booking->bus?->managers->isNotEmpty())
                     <p class="mt-1 text-xs text-slate-600">Responsable(s) du bus : {{ $booking->bus->managers->map(fn ($manager) => $manager->user?->name)->filter()->implode(', ') }}</p>
                 @endif
+            @elseif($booking->mode === 'bus')
+                <p class="mt-1">Point de départ : <strong>{{ $booking->point?->label() }}</strong>. Le bus qui vous prendra en charge vous sera communiqué par l’organisation.</p>
             @else
                 <p class="mt-1">Vous venez avec votre propre véhicule (non pris en charge par l’organisation).</p>
             @endif
