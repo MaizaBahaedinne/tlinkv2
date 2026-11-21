@@ -1,6 +1,6 @@
 {{-- Sélecteur de membre avec recherche en base (autocomplétion). Variables : $url (JSON ?q=), $inputName (défaut user_id). --}}
 @php($pickerId = 'picker-'.\Illuminate\Support\Str::random(6))
-<div class="field span-2" data-member-picker data-search-url="{{ $url }}" style="position:relative">
+<div class="field span-2" data-member-picker data-search-url="{{ $url }}" style="position:relative;grid-column:1/-1">
     <label for="{{ $pickerId }}">Membre <span class="req">*</span></label>
     <input type="hidden" name="{{ $inputName ?? 'user_id' }}" data-picker-id>
     <input type="search" id="{{ $pickerId }}" autocomplete="off" placeholder="Rechercher par nom ou e-mail…" data-picker-input>

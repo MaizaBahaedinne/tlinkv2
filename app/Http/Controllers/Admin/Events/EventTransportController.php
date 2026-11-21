@@ -207,7 +207,7 @@ class EventTransportController extends EventManageController
         $data = $this->busData($request);
 
         if ($data['capacity'] < $bus->taken()) {
-            return back()->with('error', 'La capacité ne peut pas être inférieure aux places déjà réservées ('.$bus->taken().').');
+            return back()->withInput()->withErrors(['capacity' => 'La capacité ne peut pas être inférieure aux places déjà réservées ('.$bus->taken().').']);
         }
 
         $bus->update($data);
@@ -241,7 +241,7 @@ class EventTransportController extends EventManageController
         $data = $this->stopData($request, $event);
 
         if ($bus->stops()->where('point_id', $data['point_id'])->exists()) {
-            return back()->withInput()->with('error', 'Ce point fait déjà partie du circuit de ce bus.');
+            return back()->withInput()->withErrors(['point_id' => 'Ce point fait déjà partie du circuit de ce bus.']);
         }
 
         $bus->stops()->create($data + ['sort_order' => (int) $bus->stops()->max('sort_order') + 1]);

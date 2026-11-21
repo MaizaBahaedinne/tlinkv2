@@ -90,7 +90,7 @@ class EventTransportTest extends TestCase
         $arrives = now()->addDays(10)->setTime(9, 0)->format('Y-m-d H:i');
         $this->actingAs($transport)->post("$base/bus/{$bus->id}/arrets", ['point_id' => $point->id, 'departs_at' => $departs, 'arrives_at' => $arrives])->assertSessionHasNoErrors();
         $this->actingAs($transport)->post("$base/bus/{$bus->id}/arrets", ['point_id' => $second->id, 'departs_at' => $departs])->assertSessionHasNoErrors();
-        $this->actingAs($transport)->post("$base/bus/{$bus->id}/arrets", ['point_id' => $point->id])->assertSessionHas('error');
+        $this->actingAs($transport)->post("$base/bus/{$bus->id}/arrets", ['point_id' => $point->id])->assertSessionHasErrors('point_id');
         $this->assertSame([1, 2], $bus->stops()->pluck('sort_order')->all());
 
         // Un second bus peut partir du même point.
@@ -105,7 +105,13 @@ class EventTransportTest extends TestCase
         $this->assertTrue(AppNotification::query()->where('user_id', $lead->id)->where('type', 'event.transport')->exists());
 
         $this->actingAs($transport)->get($base.'/membres?q=Karim')->assertOk()->assertJsonPath('members.0.id', $lead->id);
-        $this->actingAs($transport)->get($base)->assertOk()->assertSee('Bus Sud')->assertSee('Gare routière')->assertSee('Karim Responsable');
+        $this->actingAs($transport)->get($base)->assertOk()->assertSee('Bus Sud')->assertSee('Gare routière')->assertSee('Karim Responsable')
+            ->assertSee('id="bus-create"', false)->assertSee('id="stop-create-'.$bus->id.'"', false)->assertSee('id="manager-create-'.$bus->id.'"', false)
+            ->assertSee('id="point-create-'.$region->id.'"', false)->assertSee('id="point-edit-'.$point->id.'"', false);
+
+        // Un échec de validation rouvre la modale concernée.
+        $this->actingAs($transport)->from($base)->post("$base/bus", ['_form' => 'bus-create', 'name' => '', 'capacity' => 10])->assertRedirect($base);
+        $this->actingAs($transport)->get($base)->assertOk()->assertSee('data-modal-autoopen', false);
 
         // Un point utilisé dans un circuit ne peut pas être supprimé.
         $this->actingAs($transport)->delete("$base/points/{$point->id}")->assertSessionHas('error');
