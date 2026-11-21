@@ -238,6 +238,7 @@ class StructureController extends AdminController
             'presidents' => $presidents,
             'filters' => $filters,
             'canEdit' => $this->canEdit($request),
+            'canCreate' => $this->canCreateClub($request),
             'governorates' => Governorate::query()->orderBy('name')->pluck('name', 'id')->all(),
             'statuses' => OrgNode::CLUB_STATUSES,
             'statusCounts' => OrgNode::query()->where('kind', 'club')->when($reach !== null, fn ($query) => $query->whereIn('id', $reach))->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(),
@@ -313,7 +314,7 @@ class StructureController extends AdminController
 
     public function storeClub(Request $request): RedirectResponse
     {
-        $this->requireEditor($request);
+        abort_unless($this->canCreateClub($request), 403, 'Les habilitations de votre poste ne permettent pas de créer un club.');
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -348,7 +349,15 @@ class StructureController extends AdminController
 
         $this->audit($request, 'orgchart.club.created', $node, ['name' => $node->title, 'category' => $category]);
 
-        return redirect()->route('admin.postes.edit', $node)->with('status', 'Club créé.');
+        if ($this->canEdit($request)) {
+            return redirect()->route('admin.postes.edit', $node)->with('status', 'Club créé.');
+        }
+
+        $reach = $this->clubReach($request);
+
+        return $reach === null || in_array($node->id, $reach, true)
+            ? redirect()->route('admin.clubs.show', $node)->with('status', 'Club créé.')
+            : redirect()->route('admin.clubs.index')->with('status', 'Club « '.$node->title.' » créé.');
     }
 
     public function alignClubs(Request $request): RedirectResponse
@@ -949,6 +958,13 @@ class StructureController extends AdminController
     private function canEdit(Request $request): bool
     {
         return AdminContext::of($request)->isGlobal('entity.manage');
+    }
+
+    /** Création d'un club : administrateur global, ou poste dont le module « Clubs » coche l'action « créer ». */
+    private function canCreateClub(Request $request): bool
+    {
+        return $this->canEdit($request)
+            || AdminContext::of($request)->allowsModule(['entity.manage'], 'organization.clubs', ['create']);
     }
 
     /** Un responsable de club peut modifier les informations de son club (module « Clubs », action « modifier »). */

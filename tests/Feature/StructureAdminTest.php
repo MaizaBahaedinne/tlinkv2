@@ -208,6 +208,32 @@ class StructureAdminTest extends TestCase
         $this->put("/admin/structure/postes/{$club->id}", ['title' => 'Piraté'])->assertForbidden();
     }
 
+    public function test_the_create_club_form_is_offered_to_posts_with_the_create_right_on_the_clubs_module(): void
+    {
+        $this->admin();
+        $club = $this->universityClub('ESPRIT');
+        $creator = User::factory()->create();
+        $editor = User::factory()->create();
+
+        $createPost = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'category' => 'club', 'title' => 'Créateur', 'sort_order' => 98]);
+        \App\Support\ModulePermissions::apply($createPost, ['organization.clubs' => ['read', 'create']], false);
+        $this->placeOn($createPost, $creator);
+
+        $editPost = OrgNode::query()->create(['parent_id' => $club->id, 'relation_type' => 'hierarchy', 'kind' => 'position', 'capacity' => 'single', 'category' => 'club', 'title' => 'Éditeur', 'sort_order' => 99]);
+        \App\Support\ModulePermissions::apply($editPost, ['organization.clubs' => ['read', 'update']], false);
+        $this->placeOn($editPost, $editor);
+
+        $payload = ['name' => 'Nouveau club test', 'type' => 'university', 'apply_template' => 0];
+
+        $this->actingAs($editor)->get('/admin/structure/clubs')->assertOk()->assertDontSee('Créer un club');
+        $this->post('/admin/structure/clubs', $payload)->assertForbidden();
+        $this->assertSame(0, OrgNode::query()->where('kind', 'club')->where('title', 'like', '%Nouveau club test%')->count());
+
+        $this->actingAs($creator)->get('/admin/structure/clubs')->assertOk()->assertSee('Créer un club')->assertSee('name="name"', false);
+        $this->post('/admin/structure/clubs', $payload)->assertRedirect();
+        $this->assertSame(1, OrgNode::query()->where('kind', 'club')->where('title', 'like', '%Nouveau club test%')->count());
+    }
+
     public function test_scoped_admin_can_read_but_not_write(): void
     {
         $scoped = User::factory()->create();

@@ -7,8 +7,10 @@
     <x-admin.page-header title="Clubs" subtitle="Chaque club suit le modèle d’équipe de son type (University, High School, We Are Carthage), réglé dans Modèles de clubs.">
         <x-slot:actions>
             <a href="{{ route('admin.templates.home') }}" class="btn btn-secondary"><x-admin.icon name="shield" :size="16" /> Modèles de clubs</a>
-            @if($canEdit)
+            @if($canCreate)
                 <button type="button" class="btn btn-primary" data-modal-open="club-create"><x-admin.icon name="plus" :size="16" /> Créer un club</button>
+            @endif
+            @if($canEdit)
                 <form method="post" action="{{ route('admin.clubs.align') }}" data-confirm="Les clubs University et High School qui n’ont pas encore l’équipe standard (ou dont elle est incomplète) seront complétés. Les personnes déjà affectées ne bougent pas." data-confirm-title="Compléter les équipes des clubs ?">
                     @csrf
                     <button type="submit" class="btn btn-secondary"><x-admin.icon name="layers" :size="16" /> Compléter les équipes</button>
@@ -29,7 +31,7 @@
             <span>Seuls les clubs <strong>Actifs</strong> apparaissent sur le site public, dans l’application et dans les statistiques. {{ $canEdit ? 'Cochez des clubs ci-dessous, ou tous ceux de la liste, pour changer leur statut.' : '' }}</span>
         </div>
     @endif
-    @if($canEdit)
+    @if($canCreate)
         <dialog id="club-create" class="modal" aria-labelledby="club-create-title" @if($errors->has('name') || $errors->has('type') || $errors->has('governorate_id')) data-modal-autoopen @endif>
             <div class="modal-head">
                 <h2 id="club-create-title">Créer un club</h2>
