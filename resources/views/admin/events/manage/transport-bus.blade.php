@@ -3,6 +3,10 @@
 @section('title', $bus->name.' — Transport — '.$event->title)
 @section('section', 'Événements')
 
+@php
+    $passengersByStop = $passengers->groupBy(fn ($passenger) => $passenger->stop_id ?: 0);
+@endphp
+
 @section('content')
     @include('admin.events.manage._header', ['subtitle' => 'Transport — '.$bus->name])
 
@@ -29,31 +33,63 @@
     </article>
 
     <article class="card card-flush" style="margin-bottom:16px">
-        <div class="card-head"><h2>Présence</h2></div>
+        <div class="card-head">
+            <div>
+                <h2>Passagers par point de départ</h2>
+                <div class="sub">Le responsable peut affecter un passager à un autre arrêt de ce bus, puis pointer sa présence.</div>
+            </div>
+        </div>
         @if($passengers->count())
-            <div class="table-wrap">
-                <table class="tbl">
-                    <thead><tr><th>Passager</th><th>Point de montée</th><th>Statut</th>@if($canAttendance)<th></th>@endif</tr></thead>
-                    <tbody>
-                        @foreach($passengers as $passenger)
-                            <tr>
-                                <td><div class="cell-main">{{ $passenger->user?->name }}</div></td>
-                                <td>{{ $passenger->stop?->point->label() }}<div class="cell-sub">{{ $passenger->stop?->departs_at?->format('d/m H:i') }}</div></td>
-                                <td><span class="badge {{ $passenger->boarding === 'present' ? 'badge-success' : ($passenger->boarding === 'absent' ? 'badge-danger' : 'badge-info') }}">{{ $boarding[$passenger->boarding] ?? $passenger->boarding }}</span></td>
-                                @if($canAttendance)
-                                    <td class="text-right">
-                                        <form method="post" action="{{ route('admin.events.transport.presence', [$event, $passenger]) }}" class="inline-form" style="gap:4px;justify-content:flex-end">
-                                            @csrf @method('PATCH')
-                                            <button type="submit" name="boarding" value="present" class="btn btn-secondary btn-sm">Présent</button>
-                                            <button type="submit" name="boarding" value="absent" class="btn btn-ghost btn-sm">Absent</button>
-                                            <button type="submit" name="boarding" value="pending" class="btn btn-ghost btn-sm">Réinitialiser</button>
-                                        </form>
-                                    </td>
-                                @endif
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <div class="card-body" style="display:grid;gap:14px">
+                @foreach($passengersByStop as $stopId => $group)
+                    @php($stop = $group->first()->stop)
+                    <article class="card" style="border:1px solid var(--line)">
+                        <div class="card-head" style="padding:10px 14px">
+                            <div>
+                                <strong>Point de départ : {{ $stop?->point->label() ?? 'Non défini' }}</strong>
+                                <div class="sub">{{ $group->count() }} passager(s) · départ {{ $stop?->departs_at?->format('d/m H:i') ?? '—' }}</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap" style="border-top:1px solid var(--line)">
+                            <table class="tbl">
+                                <thead><tr><th>Passager</th><th>Affectation</th><th>Statut</th>@if($canAttendance)<th></th>@endif</tr></thead>
+                                <tbody>
+                                    @foreach($group as $passenger)
+                                        <tr>
+                                            <td><div class="cell-main">{{ $passenger->user?->name }}</div><div class="cell-sub">{{ $passenger->user?->email }}</div></td>
+                                            <td>
+                                                @if($canAttendance)
+                                                    <form method="post" action="{{ route('admin.events.transport.assign', [$event, $bus, $passenger]) }}" class="inline-form" style="gap:6px;align-items:center">
+                                                        @csrf @method('PATCH')
+                                                        <select name="stop_id" aria-label="Point de départ du passager">
+                                                            @foreach($bus->stops as $option)
+                                                                <option value="{{ $option->id }}" @selected($passenger->stop_id === $option->id)>{{ $option->point->label() }}{{ $option->departs_at ? ' · '.$option->departs_at->format('d/m H:i') : '' }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        <button type="submit" class="btn btn-secondary btn-sm">Affecter</button>
+                                                    </form>
+                                                @else
+                                                    {{ $passenger->stop?->point->label() }}
+                                                @endif
+                                            </td>
+                                            <td><span class="badge {{ $passenger->boarding === 'present' ? 'badge-success' : ($passenger->boarding === 'absent' ? 'badge-danger' : 'badge-info') }}">{{ $boarding[$passenger->boarding] ?? $passenger->boarding }}</span></td>
+                                            @if($canAttendance)
+                                                <td class="text-right">
+                                                    <form method="post" action="{{ route('admin.events.transport.presence', [$event, $passenger]) }}" class="inline-form" style="gap:4px;justify-content:flex-end">
+                                                        @csrf @method('PATCH')
+                                                        <button type="submit" name="boarding" value="present" class="btn btn-secondary btn-sm">Présent</button>
+                                                        <button type="submit" name="boarding" value="absent" class="btn btn-ghost btn-sm">Absent</button>
+                                                        <button type="submit" name="boarding" value="pending" class="btn btn-ghost btn-sm">Réinitialiser</button>
+                                                    </form>
+                                                </td>
+                                            @endif
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                @endforeach
             </div>
         @else
             <x-admin.empty icon="users" title="Aucun passager" text="Aucun membre n’a encore réservé ce bus." />

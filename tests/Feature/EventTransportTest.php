@@ -186,6 +186,8 @@ class EventTransportTest extends TestCase
     {
         $event = $this->event();
         ['region' => $region, 'bus' => $bus, 'stop' => $stop] = $this->setupBus($event, 5);
+        $point2 = $event->transportPoints()->create(['region_id' => $region->id, 'name' => 'Péage Km 13', 'city' => $region->name]);
+        $stop2 = $bus->stops()->create(['point_id' => $point2->id, 'sort_order' => 2, 'departs_at' => now()->addDays(10)->setTime(6, 55)]);
         $otherBus = $event->buses()->create(['name' => 'Bus Nord', 'capacity' => 5]);
 
         $lead = User::factory()->create();
@@ -200,10 +202,18 @@ class EventTransportTest extends TestCase
 
         // Le responsable accède à ses bus uniquement, sans avoir de rôle OC.
         $this->actingAs($lead)->get($base)->assertOk()->assertSee('Bus Sud')->assertDontSee('Bus Nord');
-        $this->actingAs($lead)->get("$base/bus/{$bus->id}")->assertOk()->assertSee($passenger->name);
+        $this->actingAs($lead)->get("$base/bus/{$bus->id}")->assertOk()->assertSee($passenger->name)->assertSee('Passagers par point de départ');
         $this->actingAs($lead)->get("$base/bus/{$otherBus->id}")->assertForbidden();
         $this->actingAs($lead)->post("$base/regions", ['name' => 'Tunis'])->assertForbidden();
         $this->actingAs($lead)->get("/admin/mes-evenements")->assertOk()->assertSee('Forum Tunivisions');
+
+        // Affectation à un autre point de départ du même bus.
+        $this->actingAs($lead)->patch("$base/bus/{$bus->id}/reservations/{$booking->id}/affectation", ['stop_id' => $stop2->id])->assertSessionHas('status');
+        $this->assertSame($stop2->id, $booking->fresh()->stop_id);
+
+        // Affectation hors du bus refusée.
+        $otherStop = $otherBus->stops()->create(['point_id' => $point2->id, 'sort_order' => 1]);
+        $this->actingAs($lead)->patch("$base/bus/{$bus->id}/reservations/{$booking->id}/affectation", ['stop_id' => $otherStop->id])->assertSessionHasErrors('stop_id');
 
         // Présence.
         $this->actingAs($lead)->patch("$base/reservations/{$booking->id}/presence", ['boarding' => 'present'])->assertSessionHas('status');

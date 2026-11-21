@@ -120,6 +120,34 @@ class EventTransportController extends EventManageController
         return back()->with('status', $count > 0 ? 'Message envoyé à '.$count.' passager(s).' : 'Aucun passager inscrit sur ce bus pour le moment.');
     }
 
+    /** Affectation d'un passager à un arrêt du bus (par le responsable). */
+    public function assign(Request $request, FoundationEvent $event, EventBus $bus, EventTransportBooking $booking): RedirectResponse
+    {
+        $this->ownBus($event, $bus);
+        abort_unless($this->canDuty($request, $event, $bus, 'attendance'), 403, 'Vous ne gérez pas l’affectation de ce bus.');
+
+        abort_unless(
+            $booking->event_id === $event->id
+            && $booking->mode === 'bus'
+            && (int) $booking->bus_id === (int) $bus->id,
+            404
+        );
+
+        $data = $request->validate([
+            'stop_id' => ['required', 'integer', Rule::exists('event_bus_stops', 'id')->where('bus_id', $bus->id)],
+        ], ['stop_id.required' => 'Choisissez un point de départ du circuit.']);
+
+        $changed = (int) $booking->stop_id !== (int) $data['stop_id'];
+        $booking->update([
+            'stop_id' => $data['stop_id'],
+            // Un changement d'affectation invalide le pointage précédent.
+            'boarding' => $changed ? 'pending' : $booking->boarding,
+            'marked_by' => $changed ? null : $booking->marked_by,
+        ]);
+
+        return back()->with('status', $changed ? 'Passager réaffecté au point de départ choisi.' : 'Aucune modification de l’affectation.');
+    }
+
     // --- Régions de départ -------------------------------------------------------------------------------------------
 
     public function storeRegion(Request $request, FoundationEvent $event): RedirectResponse
