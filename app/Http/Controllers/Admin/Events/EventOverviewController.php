@@ -3,13 +3,9 @@
 namespace App\Http\Controllers\Admin\Events;
 
 use App\Http\Controllers\Admin\EventController;
-use App\Models\EventRegistration;
 use App\Models\FoundationEvent;
 use App\Support\Events\EventAccess;
-use App\Support\Events\EventRegistrar;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class EventOverviewController extends EventManageController
@@ -55,26 +51,5 @@ class EventOverviewController extends EventManageController
             'registrations' => $event->registrations()->with(['user:id,name,email', 'release:id,name'])->latest('id')->get(),
             'statuses' => EventController::REGISTRATION_STATUSES,
         ]);
-    }
-
-    public function updateRegistration(Request $request, FoundationEvent $event, EventRegistration $registration): RedirectResponse
-    {
-        $this->allow($request, $event, 'registrations');
-        abort_unless($registration->event_id === $event->id, 404);
-
-        $data = $request->validate(['status' => ['required', Rule::in(array_keys(EventController::REGISTRATION_STATUSES))]]);
-
-        $from = $registration->status;
-        $registration->update(['status' => $data['status']]);
-
-        if (in_array($data['status'], ['cancelled', 'rejected'], true)) {
-            app(EventRegistrar::class)->promoteWaitlist($event);
-        }
-
-        $this->audit($request, 'admin.event.registration_updated', $registration, [
-            'event_id' => $event->id, 'user_id' => $registration->user_id, 'from' => $from, 'to' => $data['status'],
-        ]);
-
-        return back()->with('status', 'Inscription mise à jour.');
     }
 }

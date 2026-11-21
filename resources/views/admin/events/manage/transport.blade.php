@@ -52,7 +52,7 @@
     <section class="tab-panel" id="pane-buses" role="tabpanel" aria-labelledby="tab-btn-buses">
         @if($full)
             <div class="tr-toolbar">
-                <p class="text-sm text-muted">Chaque bus suit un circuit : points de collecte dans l’ordre, jusqu’à l’adresse de l’événement{{ $event->location ? ' ('.$event->location.')' : '' }}.</p>
+                <p class="text-sm text-muted">Chaque bus part d’un point de la liste, passe par ses points de collecte dans l’ordre, jusqu’à l’adresse de l’événement{{ $event->location ? ' ('.$event->location.')' : '' }}.</p>
                 <button type="button" class="btn btn-primary" data-modal-open="bus-create"><x-admin.icon name="plus" :size="16" /> Ajouter un bus</button>
             </div>
         @endif
@@ -84,7 +84,7 @@
                             @forelse($bus->stops as $stop)
                                 <li>
                                     <div class="tr-route-main">
-                                        <strong>{{ $stop->point->label() }}</strong>
+                                        <strong>{{ $stop->point->label() }}@if($loop->first) <span class="badge badge-info">Départ</span>@endif</strong>
                                         <span class="text-sm text-muted">{{ $stop->point->region?->name }} · départ {{ $hm($stop->departs_at) ?? '—' }}@if($stop->arrives_at) · arrivée estimée {{ $hm($stop->arrives_at) }}@endif</span>
                                     </div>
                                     @if($full)
@@ -198,6 +198,27 @@
             <div class="field"><label>Capacité (places) <span class="req">*</span></label><input type="number" name="capacity" min="1" max="500" required value="{{ $o('bus-create', 'capacity', 50) }}"></div>
             <div class="field"><label>Immatriculation</label><input name="plate" maxlength="40" value="{{ $o('bus-create', 'plate') }}"></div>
             <div class="field" style="grid-column:1/-1"><label>Notes</label><input name="notes" maxlength="500" value="{{ $o('bus-create', 'notes') }}" placeholder="Transporteur, contact chauffeur…"></div>
+
+            <div class="field" style="grid-column:1/-1">
+                <label>Point de départ du bus <span class="req">*</span></label>
+                <select name="point_id" required>
+                    <option value="">— choisir dans la liste —</option>
+                    @foreach($regions as $region)
+                        @if($region->points->isNotEmpty())
+                            <optgroup label="{{ $region->name }}">
+                                @foreach($region->points as $option)<option value="{{ $option->id }}" @selected((int) $o('bus-create', 'point_id') === $option->id)>{{ $option->label() }}</option>@endforeach
+                            </optgroup>
+                        @endif
+                    @endforeach
+                </select>
+                @if($points->isEmpty())
+                    <p class="hint">Aucun point disponible : créez d’abord une région et un point dans l’onglet « Régions et points de départ ».</p>
+                @else
+                    <p class="hint">Premier arrêt du circuit ; les points de collecte suivants s’ajoutent ensuite depuis la carte du bus.</p>
+                @endif
+            </div>
+            <div class="field"><label>Heure de départ <span class="req">*</span></label><input type="datetime-local" name="departs_at" required value="{{ $o('bus-create', 'departs_at') }}"></div>
+            <div class="field"><label>Arrivée estimée à l’événement</label><input type="datetime-local" name="arrives_at" value="{{ $o('bus-create', 'arrives_at') }}"></div>
         </x-admin.modal>
 
         @foreach($regions as $region)
@@ -260,5 +281,145 @@
                 </x-admin.modal>
             @endforeach
         @endforeach
+
+        @push('head')
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+        @endpush
+        @push('scripts')
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+            <script>
+                // Choix d'un point GPS : clic sur la carte, repère déplaçable, recherche d'un lieu (OpenStreetMap / Nominatim) ou position de l'appareil.
+                (function () {
+                    var mapElements = document.querySelectorAll('[data-geo-picker]');
+                    if (!mapElements.length) { return; }
+
+                    if (typeof L === 'undefined') {
+                        mapElements.forEach(function (box) {
+                            box.querySelector('[data-geo-map]').textContent = 'La carte n’a pas pu être chargée : saisissez la latitude et la longitude à la main.';
+                        });
+                        return;
+                    }
+
+                    mapElements.forEach(function (box) {
+                        var form = box.closest('form');
+                        var lat = form.querySelector('[name="latitude"]');
+                        var lng = form.querySelector('[name="longitude"]');
+                        var mapEl = box.querySelector('[data-geo-map]');
+                        var query = box.querySelector('[data-geo-query]');
+                        var results = box.querySelector('[data-geo-results]');
+                        var map = null;
+                        var marker = null;
+
+                        function current() {
+                            var a = parseFloat(lat.value);
+                            var b = parseFloat(lng.value);
+                            return isFinite(a) && isFinite(b) ? [a, b] : null;
+                        }
+
+                        function write(a, b) {
+                            lat.value = a.toFixed(7);
+                            lng.value = b.toFixed(7);
+                        }
+
+                        function place(latlng, zoomIn) {
+                            if (!marker) {
+                                marker = L.marker(latlng, { draggable: true }).addTo(map);
+                                marker.on('dragend', function () {
+                                    var p = marker.getLatLng();
+                                    write(p.lat, p.lng);
+                                });
+                            } else {
+                                marker.setLatLng(latlng);
+                            }
+                            if (zoomIn) { map.setView(latlng, Math.max(map.getZoom(), 15)); }
+                        }
+
+                        function init() {
+                            var start = current();
+                            map = L.map(mapEl).setView(start || [34.0, 9.5], start ? 15 : 6);
+                            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                maxZoom: 19,
+                                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
+                            }).addTo(map);
+                            if (start) { place(start, false); }
+                            map.on('click', function (event) {
+                                write(event.latlng.lat, event.latlng.lng);
+                                place(event.latlng, false);
+                            });
+                        }
+
+                        // La carte est créée quand la modale devient visible (taille non nulle), puis recalculée si elle change.
+                        new ResizeObserver(function () {
+                            if (mapEl.clientWidth === 0) { return; }
+                            if (!map) { init(); } else { map.invalidateSize(); }
+                        }).observe(mapEl);
+
+                        [lat, lng].forEach(function (input) {
+                            input.addEventListener('change', function () {
+                                var value = current();
+                                if (!map) { return; }
+                                if (value) { place(value, true); } else if (marker) { map.removeLayer(marker); marker = null; }
+                            });
+                        });
+
+                        box.querySelector('[data-geo-clear]').addEventListener('click', function () {
+                            lat.value = '';
+                            lng.value = '';
+                            if (marker && map) { map.removeLayer(marker); marker = null; }
+                        });
+
+                        box.querySelector('[data-geo-locate]').addEventListener('click', function () {
+                            if (!navigator.geolocation || !map) { return; }
+                            navigator.geolocation.getCurrentPosition(function (position) {
+                                write(position.coords.latitude, position.coords.longitude);
+                                place([position.coords.latitude, position.coords.longitude], true);
+                            });
+                        });
+
+                        function showResults(items) {
+                            results.innerHTML = '';
+                            if (!items.length) {
+                                var none = document.createElement('li');
+                                none.textContent = 'Aucun lieu trouvé.';
+                                results.appendChild(none);
+                            }
+                            items.forEach(function (item) {
+                                var li = document.createElement('li');
+                                li.setAttribute('role', 'option');
+                                li.textContent = item.display_name;
+                                li.addEventListener('click', function () {
+                                    var a = parseFloat(item.lat);
+                                    var b = parseFloat(item.lon);
+                                    write(a, b);
+                                    place([a, b], true);
+                                    var address = item.address || {};
+                                    var city = form.querySelector('[name="city"]');
+                                    var street = form.querySelector('[name="address"]');
+                                    if (city && !city.value) { city.value = address.city || address.town || address.village || address.municipality || address.county || ''; }
+                                    if (street && !street.value) { street.value = item.display_name.slice(0, 255); }
+                                    results.hidden = true;
+                                });
+                                results.appendChild(li);
+                            });
+                            results.hidden = false;
+                        }
+
+                        function search() {
+                            var term = query.value.trim();
+                            if (term.length < 3) { return; }
+                            fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&accept-language=fr&q=' + encodeURIComponent(term), { headers: { 'Accept': 'application/json' } })
+                                .then(function (response) { return response.ok ? response.json() : []; })
+                                .then(showResults)
+                                .catch(function () { showResults([]); });
+                        }
+
+                        box.querySelector('[data-geo-search]').addEventListener('click', search);
+                        query.addEventListener('keydown', function (event) {
+                            if (event.key === 'Enter') { event.preventDefault(); search(); }
+                        });
+                    });
+                })();
+            </script>
+        @endpush
     @endif
 @endsection

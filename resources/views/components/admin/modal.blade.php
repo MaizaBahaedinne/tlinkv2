@@ -1,4 +1,4 @@
-@props(['id', 'title', 'action', 'method' => 'POST', 'submit' => 'Enregistrer', 'icon' => null])
+@props(['id', 'title', 'action', 'method' => 'POST', 'submit' => 'Enregistrer', 'icon' => null, 'files' => false])
 {{-- Fenêtre modale de formulaire. S'ouvre au chargement si ce formulaire vient d'échouer (champ caché _form). --}}
 @php($open = old('_form') === $id && $errors->any())
 <dialog id="{{ $id }}" class="modal" aria-labelledby="{{ $id }}-title" style="width:min(560px, calc(100vw - 32px))" @if($open) data-modal-autoopen @endif>
@@ -6,7 +6,7 @@
         <h2 id="{{ $id }}-title">{{ $title }}</h2>
         <button type="button" class="btn btn-ghost btn-sm" data-modal-close aria-label="Fermer">✕</button>
     </div>
-    <form method="post" action="{{ $action }}" class="modal-form">
+    <form method="post" action="{{ $action }}" class="modal-form" @if($files) enctype="multipart/form-data" @endif>
         @csrf
         @if(strtoupper($method) !== 'POST')
             @method($method)

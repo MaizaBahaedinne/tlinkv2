@@ -452,6 +452,32 @@ class EventManagementTest extends TestCase
         $this->assertSame(0, EventRegistration::query()->count());
     }
 
+    public function test_registrations_page_is_read_only_and_status_route_is_not_available(): void
+    {
+        $event = $this->event();
+        $registrationManager = $this->oc($event, 'registration');
+        $member = User::factory()->create(['name' => 'Nour Test', 'email' => 'nour@example.test']);
+
+        $registration = $event->registrations()->create([
+            'user_id' => $member->id,
+            'status' => 'pending',
+            'amount_due' => 25,
+            'payment_status' => 'unpaid',
+        ]);
+
+        $this->actingAs($registrationManager)->get("/admin/evenements/{$event->id}/inscriptions")
+            ->assertOk()
+            ->assertSee('Affichage seul', false)
+            ->assertDontSee('name="status"', false)
+            ->assertSee('Nour Test');
+
+        $this->actingAs($registrationManager)
+            ->patch("/admin/evenements/{$event->id}/inscriptions/{$registration->id}/statut", ['status' => 'confirmed'])
+            ->assertNotFound();
+
+        $this->assertSame('pending', $registration->fresh()->status);
+    }
+
     public function test_global_admin_manages_any_event_without_being_in_the_team(): void
     {
         $admin = User::factory()->create();

@@ -17,6 +17,8 @@ use App\Support\Events\EventTransport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -193,10 +195,26 @@ class EventTransportController extends EventManageController
     {
         $this->allow($request, $event, 'transport');
 
-        $bus = $event->buses()->create($this->busData($request) + ['sort_order' => (int) $event->buses()->max('sort_order') + 1]);
+        // Un bus naît avec son point de départ, choisi dans la liste des points de l'événement : c'est le premier arrêt du circuit.
+        $data = $request->validate($this->busRules() + [
+            'point_id' => ['required', 'integer', Rule::exists('event_transport_points', 'id')->where('event_id', $event->id)],
+            'departs_at' => ['required', 'date'],
+            'arrives_at' => ['nullable', 'date', 'after_or_equal:departs_at'],
+        ], [
+            'point_id.required' => 'Choisissez le point de départ du bus dans la liste.',
+            'point_id.exists' => 'Ce point de départ n’existe pas pour cet événement.',
+            'departs_at.required' => 'Indiquez l’heure de départ du bus.',
+        ]);
+
+        $bus = DB::transaction(function () use ($event, $data): EventBus {
+            $bus = $event->buses()->create(Arr::only($data, ['name', 'plate', 'capacity', 'notes']) + ['sort_order' => (int) $event->buses()->max('sort_order') + 1]);
+            $bus->stops()->create(['point_id' => $data['point_id'], 'sort_order' => 1, 'departs_at' => $data['departs_at'], 'arrives_at' => $data['arrives_at'] ?? null]);
+
+            return $bus;
+        });
         $this->manageAudit($request, $event, 'transport.bus.created');
 
-        return redirect()->to(route('admin.events.transport.index', $event).'#bus-'.$bus->id)->with('status', 'Bus ajouté : définissez maintenant son circuit et ses responsables.');
+        return redirect()->to(route('admin.events.transport.index', $event).'#bus-'.$bus->id)->with('status', 'Bus ajouté : ajoutez les points de collecte de son circuit et ses responsables.');
     }
 
     public function updateBus(Request $request, FoundationEvent $event, EventBus $bus): RedirectResponse
@@ -276,6 +294,10 @@ class EventTransportController extends EventManageController
 
         if ($stop->bookings()->exists()) {
             return back()->with('error', 'Des membres montent à cet arrêt : impossible de le retirer du circuit.');
+        }
+
+        if ($stop->bus->stops()->count() <= 1) {
+            return back()->with('error', 'Un bus doit garder un point de départ : ajoutez un autre arrêt avant de retirer celui-ci.');
         }
 
         $stop->delete();
@@ -394,12 +416,20 @@ class EventTransportController extends EventManageController
      */
     private function busData(Request $request): array
     {
-        return $request->validate([
+        return $request->validate($this->busRules());
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function busRules(): array
+    {
+        return [
             'name' => ['required', 'string', 'max:120'],
             'plate' => ['nullable', 'string', 'max:40'],
             'capacity' => ['required', 'integer', 'min:1', 'max:500'],
             'notes' => ['nullable', 'string', 'max:500'],
-        ]);
+        ];
     }
 
     /**

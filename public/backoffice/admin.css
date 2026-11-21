@@ -591,8 +591,25 @@ a.team-title:hover { color: var(--cyan); }
 .tr-chip button { border: 0; background: transparent; color: var(--muted); cursor: pointer; width: 22px; height: 22px; border-radius: 50%; }
 .tr-chip button:hover { background: var(--danger-bg); color: var(--danger); }
 .tr-bus-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--line); }
+.geo-search { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.geo-search input { flex: 1; min-width: 180px; }
+.geo-results { list-style: none; margin: 0 0 8px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: #fff; max-height: 160px; overflow: auto; font-size: 12.5px; }
+.geo-results[hidden] { display: none; }
+.geo-results li { padding: 7px 9px; border-radius: 8px; cursor: pointer; }
+.geo-results li:hover { background: var(--neutral-bg); }
+.geo-map { height: 280px; border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; background: var(--neutral-bg); color: var(--muted); font-size: 12.5px; z-index: 0; }
+.geo-clear { border: 0; background: transparent; padding: 0; color: var(--navy-800); font-weight: 700; cursor: pointer; text-decoration: underline; }
 
 @media (max-width: 720px) {
     .stepper.is-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 0; }
     .committee-row { flex-wrap: wrap; }
 }
+
+/* Sponsors & partenaires d'un événement */
+.sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 16px 20px 20px; }
+.sp-tile { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border, #e5e7eb); border-radius: 12px; background: var(--surface, #fff); }
+.sp-logo { flex: 0 0 56px; width: 56px; height: 56px; border-radius: 10px; background: var(--surface-2, #f3f4f6); display: grid; place-items: center; overflow: hidden; font-weight: 700; font-size: 1.25rem; color: var(--muted, #6b7280); }
+.sp-logo img { width: 100%; height: 100%; object-fit: contain; }
+.sp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.sp-info strong, .sp-info a { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-actions { display: flex; gap: 2px; }

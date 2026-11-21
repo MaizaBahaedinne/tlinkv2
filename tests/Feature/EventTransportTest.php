@@ -83,21 +83,35 @@ class EventTransportTest extends TestCase
         $point = EventTransportPoint::query()->firstOrFail();
         $second = $event->transportPoints()->create(['region_id' => $region->id, 'name' => 'Péage', 'city' => 'Sfax']);
 
-        $this->actingAs($transport)->post("$base/bus", ['name' => 'Bus Sud', 'capacity' => 50])->assertSessionHasNoErrors();
-        $bus = EventBus::query()->firstOrFail();
-
+        // Un bus exige un point de départ choisi dans la liste de l'événement.
         $departs = now()->addDays(10)->setTime(6, 30)->format('Y-m-d H:i');
         $arrives = now()->addDays(10)->setTime(9, 0)->format('Y-m-d H:i');
-        $this->actingAs($transport)->post("$base/bus/{$bus->id}/arrets", ['point_id' => $point->id, 'departs_at' => $departs, 'arrives_at' => $arrives])->assertSessionHasNoErrors();
+        $this->actingAs($transport)->post("$base/bus", ['name' => 'Sans départ', 'capacity' => 50])->assertSessionHasErrors(['point_id', 'departs_at']);
+        $foreign = $this->event()->transportRegions()->create(['name' => 'Ailleurs']);
+        $foreignPoint = $foreign->event->transportPoints()->create(['region_id' => $foreign->id, 'name' => 'Autre', 'city' => 'X']);
+        $this->actingAs($transport)->post("$base/bus", ['name' => 'Mauvais point', 'capacity' => 50, 'point_id' => $foreignPoint->id, 'departs_at' => $departs])->assertSessionHasErrors('point_id');
+        $this->assertSame(0, EventBus::query()->count());
+
+        $this->actingAs($transport)->post("$base/bus", ['name' => 'Bus Sud', 'capacity' => 50, 'point_id' => $point->id, 'departs_at' => $departs, 'arrives_at' => $arrives])->assertSessionHasNoErrors();
+        $bus = EventBus::query()->firstOrFail();
+        $this->assertSame([$point->id], $bus->stops()->pluck('point_id')->all());
+        $this->assertSame(1, $bus->stops()->value('sort_order'));
+
         $this->actingAs($transport)->post("$base/bus/{$bus->id}/arrets", ['point_id' => $second->id, 'departs_at' => $departs])->assertSessionHasNoErrors();
         $this->actingAs($transport)->post("$base/bus/{$bus->id}/arrets", ['point_id' => $point->id])->assertSessionHasErrors('point_id');
         $this->assertSame([1, 2], $bus->stops()->pluck('sort_order')->all());
 
+        // Le dernier arrêt (le départ) d'un bus ne peut pas être retiré.
+        $this->actingAs($transport)->delete("$base/arrets/".$bus->stops()->where('point_id', $second->id)->value('id'))->assertSessionHas('status');
+        $this->actingAs($transport)->delete("$base/arrets/".$bus->stops()->value('id'))->assertSessionHas('error');
+        $this->assertSame(1, $bus->stops()->count());
+        $this->actingAs($transport)->post("$base/bus/{$bus->id}/arrets", ['point_id' => $second->id, 'departs_at' => $departs])->assertSessionHasNoErrors();
+
         // Un second bus peut partir du même point.
-        $this->actingAs($transport)->post("$base/bus", ['name' => 'Bus Sud 2', 'capacity' => 30]);
+        $this->actingAs($transport)->post("$base/bus", ['name' => 'Bus Sud 2', 'capacity' => 30, 'point_id' => $point->id, 'departs_at' => $departs])->assertSessionHasNoErrors();
         $second_bus = EventBus::query()->where('name', 'Bus Sud 2')->firstOrFail();
-        $this->actingAs($transport)->post("$base/bus/{$second_bus->id}/arrets", ['point_id' => $point->id])->assertSessionHasNoErrors();
         $this->assertSame(2, EventBusStop::query()->where('point_id', $point->id)->count());
+        $this->assertSame(1, $second_bus->stops()->count());
 
         $lead = User::factory()->create(['name' => 'Karim Responsable']);
         $this->actingAs($transport)->post("$base/bus/{$bus->id}/responsables", ['user_id' => $lead->id, 'duty' => 'both'])->assertSessionHasNoErrors();
@@ -107,7 +121,8 @@ class EventTransportTest extends TestCase
         $this->actingAs($transport)->get($base.'/membres?q=Karim')->assertOk()->assertJsonPath('members.0.id', $lead->id);
         $this->actingAs($transport)->get($base)->assertOk()->assertSee('Bus Sud')->assertSee('Gare routière')->assertSee('Karim Responsable')
             ->assertSee('id="bus-create"', false)->assertSee('id="stop-create-'.$bus->id.'"', false)->assertSee('id="manager-create-'.$bus->id.'"', false)
-            ->assertSee('id="point-create-'.$region->id.'"', false)->assertSee('id="point-edit-'.$point->id.'"', false);
+            ->assertSee('id="point-create-'.$region->id.'"', false)->assertSee('id="point-edit-'.$point->id.'"', false)
+            ->assertSee('data-geo-picker', false)->assertSee('leaflet', false);
 
         // Un échec de validation rouvre la modale concernée.
         $this->actingAs($transport)->from($base)->post("$base/bus", ['_form' => 'bus-create', 'name' => '', 'capacity' => 10])->assertRedirect($base);

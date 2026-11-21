@@ -118,7 +118,6 @@ Route::middleware('auth')->prefix('admin')->name('admin.events.')->group(functio
     Route::prefix('evenements/{event}')->whereNumber('event')->group(function (): void {
         Route::get('apercu', [Admin\Events\EventOverviewController::class, 'overview'])->name('overview');
         Route::get('inscriptions', [Admin\Events\EventOverviewController::class, 'registrations'])->name('registrations');
-        Route::patch('inscriptions/{registration}/statut', [Admin\Events\EventOverviewController::class, 'updateRegistration'])->whereNumber('registration')->name('registrations.status');
 
         Route::get('billetterie', [Admin\Events\EventTicketController::class, 'index'])->name('tickets.index');
         Route::post('billetterie', [Admin\Events\EventTicketController::class, 'store'])->name('tickets.store');

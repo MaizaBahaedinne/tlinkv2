@@ -23,14 +23,42 @@ class EventPaymentController extends EventManageController
 
         $config = $event->payment_methods;
 
+        $payments = $event->payments()->with(['registration.user:id,name,email', 'submitter:id,name', 'validator:id,name'])->get();
+        $byRegistration = $payments->groupBy('registration_id');
+
+        // Soldes par inscription active : dû, validé, en attente de validation et reste à engager.
+        $balances = $event->registrations()
+            ->with('user:id,name,email')
+            ->where('amount_due', '>', 0)
+            ->whereNotIn('status', ['cancelled', 'rejected'])
+            ->get()
+            ->map(function (EventRegistration $registration) use ($byRegistration): array {
+                $own = $byRegistration->get($registration->id, collect());
+                $due = (float) $registration->amount_due;
+                $validated = (float) $own->where('status', 'validated')->sum('amount');
+                $pending = (float) $own->where('status', 'pending')->sum('amount');
+
+                return [
+                    'registration' => $registration,
+                    'due' => $due,
+                    'validated' => $validated,
+                    'pending' => $pending,
+                    'remaining' => max(0.0, round($due - $validated, 2)),
+                    'outstanding' => max(0.0, round($due - $validated - $pending, 2)),
+                ];
+            })
+            ->filter(fn (array $row) => $row['remaining'] > 0)
+            ->values();
+
         return $this->render($request, $event, 'payments', 'admin.events.manage.payments', [
-            'payments' => $event->payments()->with(['registration.user:id,name,email', 'submitter:id,name', 'validator:id,name'])->get(),
-            'owing' => $event->registrations()
-                ->with('user:id,name,email')
-                ->where('amount_due', '>', 0)
-                ->whereNotIn('status', ['cancelled', 'rejected'])
-                ->where('payment_status', '!=', 'paid')
-                ->get(),
+            'payments' => $payments,
+            'balances' => $balances,
+            'stats' => [
+                'collected' => (float) $payments->where('status', 'validated')->sum('amount'),
+                'pending' => (float) $payments->where('status', 'pending')->sum('amount'),
+                'pendingCount' => $payments->where('status', 'pending')->count(),
+                'toCollect' => (float) $balances->sum('remaining'),
+            ],
             'methods' => EventPayment::METHODS,
             'config' => is_array($config) ? $config : null,
             'enabled' => EventPayments::enabledMethods($event),
