@@ -323,11 +323,12 @@ class AdminBackofficeTest extends TestCase
             'event_id' => $event->id, 'user_id' => User::factory()->create()->id, 'status' => 'pending',
         ]);
 
-        $this->actingAs($admin)->get("/admin/evenements/{$event->id}")->assertOk();
+        $this->actingAs($admin)->get("/admin/evenements/{$event->id}")->assertOk()->assertDontSee('name="status"', false);
 
+        // Le statut d'une inscription n'est pas modifiable depuis la fiche de l'événement.
         $this->actingAs($admin)->patch("/admin/evenements/{$event->id}/inscriptions/{$registration->id}", ['status' => 'confirmed'])
-            ->assertSessionHas('status');
-        $this->assertSame('confirmed', $registration->fresh()->status);
+            ->assertNotFound();
+        $this->assertSame('pending', $registration->fresh()->status);
 
         // Evenement avec inscriptions : suppression refusee
         $this->actingAs($admin)->delete("/admin/evenements/{$event->id}")->assertSessionHas('error');

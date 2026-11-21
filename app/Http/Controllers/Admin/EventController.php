@@ -131,28 +131,6 @@ class EventController extends AdminController
         return redirect()->route('admin.events.index')->with('status', "Événement « {$title} » supprimé.");
     }
 
-    public function updateRegistration(Request $request, FoundationEvent $event, EventRegistration $registration): RedirectResponse
-    {
-        $this->authorizeEvent($request, $event);
-        abort_unless($registration->event_id === $event->id, 404);
-
-        $data = $request->validate([
-            'status' => ['required', Rule::in(array_keys(self::REGISTRATION_STATUSES))],
-        ]);
-
-        $from = $registration->status;
-        $registration->update(['status' => $data['status']]);
-
-        $this->audit($request, 'admin.event.registration_updated', $registration, [
-            'event_id' => $event->id,
-            'user_id' => $registration->user_id,
-            'from' => $from,
-            'to' => $data['status'],
-        ]);
-
-        return back()->with('status', 'Inscription mise à jour.');
-    }
-
     /**
      * Un responsable de club ne voit que les événements de son club ; un responsable de périmètre, ceux de tout le périmètre.
      * Les événements du périmètre sans club restent réservés à ses responsables.

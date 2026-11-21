@@ -830,7 +830,6 @@ Route::middleware(['auth', 'admin.can:entity.manage,membership.manage,approval.r
             Route::get('evenements/{event}/modifier', [Admin\EventController::class, 'edit'])->name('events.edit');
             Route::put('evenements/{event}', [Admin\EventController::class, 'update'])->name('events.update');
             Route::delete('evenements/{event}', [Admin\EventController::class, 'destroy'])->name('events.destroy');
-            Route::patch('evenements/{event}/inscriptions/{registration}', [Admin\EventController::class, 'updateRegistration'])->name('events.registrations.update');
 
             // Défis thématiques (bureaux de chapitres et de projets) et activités des clubs.
             Route::get('defis', [Admin\ChallengeController::class, 'index'])->name('challenges.index');

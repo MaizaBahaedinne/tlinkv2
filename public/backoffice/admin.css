@@ -649,3 +649,16 @@ a.hz-title:hover { color: var(--cyan); }
 .share-qr { width: min(240px, 100%); margin: 0 auto 12px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; min-height: 120px; display: grid; place-items: center; color: var(--muted); font-size: 12.5px; }
 .share-link { display: flex; gap: 8px; }
 .share-link input { flex: 1; min-width: 0; }
+
+/* ---------- Fiche événement (bandeau) ---------- */
+.ev-hero { position: relative; margin-bottom: 18px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-sm); background: linear-gradient(135deg, #0b3a6f, #1d6fb8); color: #fff; }
+.ev-hero::before { content: ''; position: absolute; inset: 0; background: var(--ev-cover, none) center / cover no-repeat; opacity: 0.45; }
+.ev-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8, 24, 48, 0.25), rgba(8, 24, 48, 0.82)); }
+.ev-hero-body { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 12px; padding: 56px 26px 22px; min-height: 220px; justify-content: flex-end; }
+.ev-hero-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ev-chip { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; background: rgba(255, 255, 255, 0.18); color: #fff; }
+.ev-hero-title { margin: 0; font: 700 30px/1.15 var(--font-display); color: #fff; }
+.ev-hero-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13.5px; color: rgba(255, 255, 255, 0.9); }
+.ev-hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.ev-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+@media (max-width: 640px) { .ev-hero-body { padding: 36px 16px 16px; } .ev-hero-title { font-size: 24px; } }
