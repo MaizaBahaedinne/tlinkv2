@@ -8,6 +8,7 @@
         <x-slot:actions>
             <a href="{{ route('admin.templates.home') }}" class="btn btn-secondary"><x-admin.icon name="shield" :size="16" /> Modèles de clubs</a>
             @if($canEdit)
+                <button type="button" class="btn btn-primary" data-modal-open="club-create"><x-admin.icon name="plus" :size="16" /> Créer un club</button>
                 <form method="post" action="{{ route('admin.clubs.align') }}" data-confirm="Les clubs University et High School qui n’ont pas encore l’équipe standard (ou dont elle est incomplète) seront complétés. Les personnes déjà affectées ne bougent pas." data-confirm-title="Compléter les équipes des clubs ?">
                     @csrf
                     <button type="submit" class="btn btn-secondary"><x-admin.icon name="layers" :size="16" /> Compléter les équipes</button>
@@ -29,16 +30,15 @@
         </div>
     @endif
     @if($canEdit)
-        <details class="card card-flush" style="margin-bottom:18px" @if($errors->has('name') || $errors->has('type') || $errors->has('governorate_id')) open @endif>
-            <summary class="card-head" style="cursor:pointer">
-                <div>
-                    <h2>Créer un club</h2>
-                    <p class="sub">Le club est rangé dans sa branche et reçoit l’équipe type.</p>
-                </div>
-            </summary>
-            <form method="post" action="{{ route('admin.clubs.store') }}">
+        <dialog id="club-create" class="modal" aria-labelledby="club-create-title" @if($errors->has('name') || $errors->has('type') || $errors->has('governorate_id')) data-modal-autoopen @endif>
+            <div class="modal-head">
+                <h2 id="club-create-title">Créer un club</h2>
+                <button type="button" class="btn btn-ghost btn-sm" data-modal-close aria-label="Fermer">✕</button>
+            </div>
+            <form method="post" action="{{ route('admin.clubs.store') }}" class="modal-form">
                 @csrf
-                <div class="card-body">
+                <div class="modal-body">
+                    <p class="hint" style="margin-bottom:12px">Le club est rangé dans sa branche et reçoit l’équipe type.</p>
                     <div class="form-grid">
                         <x-admin.input name="name" label="Nom du club" required :maxlength="120" />
                         <x-admin.select name="type" label="Type" required :options="['university' => 'University club', 'highschool' => 'High School club', 'regional' => 'Club régional We Are']" placeholder="Choisir…" />
@@ -50,11 +50,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-actions">
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-secondary" data-modal-close>Annuler</button>
                     <button type="submit" class="btn btn-primary"><x-admin.icon name="plus" :size="16" /> Créer le club</button>
                 </div>
             </form>
-        </details>
+        </dialog>
     @endif
 
     <article class="card card-flush">
